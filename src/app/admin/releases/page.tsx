@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,8 +18,7 @@ import {
   AlertCircle,
   LogOut,
 } from "lucide-react";
-import ReleaseEditModal from "@/components/admin/ReleaseEditModal";
-
+import ReleaseEditModal from "../../../components/admin/ReleaseEditModal";
 interface Release {
   id: string;
   title: string;
@@ -33,7 +31,6 @@ interface Release {
   isPublic: number;
   isPublished: number;
 }
-
 export default function ReleasesAdminPage() {
   const router = useRouter();
   const [releases, setReleases] = useState<Release[]>([]);
@@ -43,7 +40,6 @@ export default function ReleasesAdminPage() {
   const [editingRelease, setEditingRelease] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
   // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
@@ -63,7 +59,6 @@ export default function ReleasesAdminPage() {
     };
     checkAuth();
   }, [router]);
-
   const fetchReleases = useCallback(async () => {
     try {
       const res = await fetch("/api/releases?all=true");
@@ -77,21 +72,17 @@ export default function ReleasesAdminPage() {
       setIsLoading(false);
     }
   }, []);
-
   useEffect(() => {
     if (isAuthenticated) {
       fetchReleases();
     }
   }, [isAuthenticated, fetchReleases]);
-
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/admin/login");
   };
-
   const handleDelete = async (id: string) => {
     if (!confirm("¿Estás seguro de eliminar este release?")) return;
-
     try {
       const res = await fetch(`/api/releases/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -105,12 +96,10 @@ export default function ReleasesAdminPage() {
       setMessage({ type: "error", text: "Error al eliminar el release" });
     }
   };
-
   const handleCopyLink = (id: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/releases/${id}`);
     setMessage({ type: "success", text: "Link copiado al portapapeles" });
   };
-
   const getDaysRemaining = (releaseDate: string | null) => {
     if (!releaseDate) return null;
     const release = new Date(releaseDate);
@@ -119,7 +108,6 @@ export default function ReleasesAdminPage() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
-
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Sin fecha";
     const date = new Date(dateString);
@@ -129,7 +117,6 @@ export default function ReleasesAdminPage() {
       year: "numeric",
     });
   };
-
   if (isCheckingAuth || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
@@ -137,7 +124,6 @@ export default function ReleasesAdminPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-zinc-900 text-white">
       {/* Header */}
@@ -171,7 +157,6 @@ export default function ReleasesAdminPage() {
           </div>
         </div>
       </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Message */}
         {message && (
@@ -191,12 +176,10 @@ export default function ReleasesAdminPage() {
             </button>
           </div>
         )}
-
         {/* Stats */}
         <div className="mb-6 p-4 bg-zinc-800 rounded-xl border border-zinc-700">
           <p className="text-amber-400 font-bold text-lg">{releases.length} MEDIA RELEASES</p>
         </div>
-
         {/* Releases List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -217,7 +200,6 @@ export default function ReleasesAdminPage() {
           <div className="space-y-4">
             {releases.map((release) => {
               const daysRemaining = getDaysRemaining(release.releaseDate);
-
               return (
                 <div
                   key={release.id}
@@ -239,7 +221,6 @@ export default function ReleasesAdminPage() {
                         </div>
                       )}
                     </div>
-
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4">
@@ -247,7 +228,6 @@ export default function ReleasesAdminPage() {
                           <h3 className="font-bold text-white truncate">{release.title}</h3>
                           <p className="text-sm text-zinc-400">{release.artistName || "Sin artista"}</p>
                         </div>
-
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
                           <button
@@ -280,7 +260,6 @@ export default function ReleasesAdminPage() {
                           </button>
                         </div>
                       </div>
-
                       {/* Tags */}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -315,7 +294,6 @@ export default function ReleasesAdminPage() {
           </div>
         )}
       </main>
-
       {/* Edit Modal */}
       {(editingRelease || isCreating) && (
         <ReleaseEditModal

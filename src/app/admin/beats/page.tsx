@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,8 +20,7 @@ import {
   Lock,
   Tag,
 } from "lucide-react";
-import BeatEditModal from "@/components/admin/BeatEditModal";
-
+import BeatEditModal from "../../../components/admin/BeatEditModal";
 interface Beat {
   id: string;
   title: string;
@@ -37,7 +35,6 @@ interface Beat {
   isAvailable: boolean;
   isFeatured: boolean;
 }
-
 interface Stats {
   totalBeats: number;
   availableBeats: number;
@@ -45,7 +42,6 @@ interface Stats {
   totalDownloads: number;
   producers: number;
 }
-
 export default function BeatsAdminPage() {
   const router = useRouter();
   const [beats, setBeats] = useState<Beat[]>([]);
@@ -56,7 +52,6 @@ export default function BeatsAdminPage() {
   const [editingBeat, setEditingBeat] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -75,7 +70,6 @@ export default function BeatsAdminPage() {
     };
     checkAuth();
   }, [router]);
-
   const fetchBeats = useCallback(async () => {
     try {
       const res = await fetch("/api/beats?all=true&stats=true");
@@ -90,21 +84,17 @@ export default function BeatsAdminPage() {
       setIsLoading(false);
     }
   }, []);
-
   useEffect(() => {
     if (isAuthenticated) {
       fetchBeats();
     }
   }, [isAuthenticated, fetchBeats]);
-
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/admin/login");
   };
-
   const handleDelete = async (id: string) => {
     if (!confirm("¿Estás seguro de eliminar este beat?")) return;
-
     try {
       const res = await fetch(`/api/beats/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -118,12 +108,10 @@ export default function BeatsAdminPage() {
       setMessage({ type: "error", text: "Error al eliminar el beat" });
     }
   };
-
   const handleCopyLink = (id: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/beats/${id}`);
     setMessage({ type: "success", text: "Link copiado al portapapeles" });
   };
-
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Sin fecha";
     const date = new Date(dateString);
@@ -133,12 +121,10 @@ export default function BeatsAdminPage() {
       year: "numeric",
     });
   };
-
   const parseTags = (tagsString: string | null): string[] => {
     if (!tagsString) return [];
     return tagsString.split(",").map((t) => t.trim()).filter(Boolean);
   };
-
   if (isCheckingAuth || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
@@ -146,7 +132,6 @@ export default function BeatsAdminPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-zinc-900 text-white">
       {/* Header */}
@@ -180,7 +165,6 @@ export default function BeatsAdminPage() {
           </div>
         </div>
       </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Message */}
         {message && (
@@ -200,7 +184,6 @@ export default function BeatsAdminPage() {
             </button>
           </div>
         )}
-
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -226,7 +209,6 @@ export default function BeatsAdminPage() {
             </div>
           </div>
         )}
-
         {/* Beats List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -247,7 +229,6 @@ export default function BeatsAdminPage() {
           <div className="space-y-4">
             {beats.map((beat) => {
               const tags = parseTags(beat.tags);
-
               return (
                 <div
                   key={beat.id}
@@ -268,7 +249,6 @@ export default function BeatsAdminPage() {
                         </div>
                       )}
                     </div>
-
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4">
@@ -276,7 +256,6 @@ export default function BeatsAdminPage() {
                           <h3 className="font-bold text-amber-500 truncate">{beat.title}</h3>
                           <p className="text-sm text-zinc-400">{beat.producerName}</p>
                         </div>
-
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
                           <button
@@ -309,7 +288,6 @@ export default function BeatsAdminPage() {
                           </button>
                         </div>
                       </div>
-
                       {/* Meta info */}
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                         {beat.bpm && (
@@ -328,7 +306,6 @@ export default function BeatsAdminPage() {
                           </span>
                         ))}
                       </div>
-
                       {/* Tags */}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -365,7 +342,6 @@ export default function BeatsAdminPage() {
           </div>
         )}
       </main>
-
       {/* Edit Modal */}
       {(editingBeat || isCreating) && (
         <BeatEditModal
