@@ -1,25 +1,19 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../lib/db";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
-
 export async function POST() {
   try {
     // Initialize database tables
     await initializeDatabase();
-
     const db = await getClient();
-
     // Clear existing data to avoid duplicates
     await db.execute("DELETE FROM artists");
     await db.execute("DELETE FROM releases");
     await db.execute("DELETE FROM videos");
     await db.execute("DELETE FROM events");
-
     // Seed sample artists
     const artists = [
       {
@@ -60,7 +54,6 @@ export async function POST() {
         is_active: 1,
       },
     ];
-
     for (const artist of artists) {
       await db.execute({
         sql: `INSERT OR REPLACE INTO artists (id, name, display_name, slug, role, profile_image_url, spotify_url, youtube_url, instagram_url, sort_order, is_active)
@@ -80,7 +73,6 @@ export async function POST() {
         ],
       });
     }
-
     // Seed sample releases
     const releases = [
       {
@@ -126,7 +118,6 @@ export async function POST() {
         is_published: 1,
       },
     ];
-
     for (const release of releases) {
       await db.execute({
         sql: `INSERT OR REPLACE INTO releases (id, title, title_en, slug, release_type, release_date, cover_image_url, spotify_url, artist_name, description_es, description_en, is_published)
@@ -147,7 +138,6 @@ export async function POST() {
         ],
       });
     }
-
     // Seed sample videos
     const videos = [
       {
@@ -169,7 +159,6 @@ export async function POST() {
         is_published: 1,
       },
     ];
-
     for (const video of videos) {
       await db.execute({
         sql: `INSERT OR REPLACE INTO videos (id, youtube_id, title, artist_name, thumbnail_url, duration_seconds, is_published)
@@ -185,7 +174,6 @@ export async function POST() {
         ],
       });
     }
-
     // Seed sample events
     const events = [
       {
@@ -209,7 +197,6 @@ export async function POST() {
         is_published: 1,
       },
     ];
-
     for (const event of events) {
       await db.execute({
         sql: `INSERT OR REPLACE INTO events (id, title, venue, city, event_date, event_time, ticket_url, is_published)
@@ -226,7 +213,6 @@ export async function POST() {
         ],
       });
     }
-
     // Initialize newsletter settings
     await db.execute({
       sql: `INSERT OR REPLACE INTO newsletter_settings (id, popup_title, popup_description)
@@ -237,7 +223,6 @@ export async function POST() {
         "Recibe las últimas noticias, lanzamientos exclusivos y acceso anticipado a eventos.",
       ],
     });
-
     return NextResponse.json({
       success: true,
       message: "Database seeded successfully",
@@ -256,7 +241,6 @@ export async function POST() {
     );
   }
 }
-
 export async function GET() {
   return NextResponse.json({
     message: "Use POST to seed the database",

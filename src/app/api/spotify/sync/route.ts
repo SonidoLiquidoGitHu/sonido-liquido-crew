@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-import { getArtists, getArtistAlbums, ROSTER_ARTIST_IDS, ARTIST_SOCIAL_LINKS } from "@/lib/spotify";
-
+import { getClient, initializeDatabase } from "../../../../lib/db";
+import { getArtists, getArtistAlbums, ROSTER_ARTIST_IDS, ARTIST_SOCIAL_LINKS } from "../../../../lib/spotify";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
-
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -17,36 +14,28 @@ function slugify(text: string): string {
     .replace(/--+/g, "-")
     .trim();
 }
-
 export async function POST() {
   const syncId = generateId();
   const startedAt = new Date().toISOString();
-
   try {
     await initializeDatabase();
     const client = await getClient();
-
     await client.execute({
       sql: `INSERT INTO sync_logs (id, sync_type, status, started_at) VALUES (?, ?, ?, ?)`,
       args: [syncId, "spotify_full", "in_progress", startedAt],
     });
-
     let artistsSynced = 0;
     let releasesSynced = 0;
-
     console.log("Fetching artists from Spotify...");
     const spotifyArtists = await getArtists(ROSTER_ARTIST_IDS);
-
     for (let i = 0; i < spotifyArtists.length; i++) {
       const artist = spotifyArtists[i];
       if (!artist) continue;
-
       const artistId = generateId();
       const genres = artist.genres?.join(", ") || null;
       const imageUrl = artist.images?.[0]?.url || null;
       const slug = slugify(artist.name);
       const socialLinks = ARTIST_SOCIAL_LINKS[artist.id] || {};
-
       await client.execute({
         sql: `
           INSERT INTO artists (id, spotify_id, name, display_name, slug, image_url, profile_image_url, genres, followers, popularity, spotify_url, youtube_url, instagram_url, sort_order, is_active, updated_at)
@@ -84,24 +73,19 @@ export async function POST() {
           new Date().toISOString(),
         ],
       });
-
       artistsSynced++;
-
       try {
         const albums = await getArtistAlbums(artist.id);
         const recentAlbums = albums.slice(0, 10);
-
         for (const album of recentAlbums) {
           const releaseId = generateId();
           const albumImageUrl = album.images?.[0]?.url || null;
           const releaseSlug = slugify(album.name);
-
           const artistResult = await client.execute({
             sql: `SELECT id FROM artists WHERE spotify_id = ?`,
             args: [artist.id],
           });
           const internalArtistId = artistResult.rows[0]?.id as string;
-
           await client.execute({
             sql: `
               INSERT INTO releases (id, spotify_id, artist_id, artist_name, slug, title, release_type, release_date, image_url, cover_image_url, spotify_url, total_tracks, is_published, updated_at)
@@ -134,21 +118,17 @@ export async function POST() {
               new Date().toISOString(),
             ],
           });
-
           releasesSynced++;
         }
       } catch (albumError) {
         console.error(`Error fetching albums for ${artist.name}:`, albumError);
       }
     }
-
     const itemsSynced = artistsSynced + releasesSynced;
-
     await client.execute({
       sql: `UPDATE sync_logs SET status = ?, items_synced = ?, artists_synced = ?, releases_synced = ?, completed_at = ? WHERE id = ?`,
       args: ["completed", itemsSynced, artistsSynced, releasesSynced, new Date().toISOString(), syncId],
     });
-
     return NextResponse.json({
       success: true,
       message: "Sync completed successfully",
@@ -159,7 +139,6 @@ export async function POST() {
     });
   } catch (error) {
     console.error("Sync error:", error);
-
     try {
       const client = await getClient();
       await client.execute({
@@ -174,7 +153,6 @@ export async function POST() {
     } catch (logError) {
       console.error("Failed to update sync log:", logError);
     }
-
     return NextResponse.json(
       {
         success: false,
@@ -185,32 +163,26 @@ export async function POST() {
     );
   }
 }
-
 export async function GET() {
   try {
     await initializeDatabase();
     const client = await getClient();
-
     const artistsCount = await client.execute(`SELECT COUNT(*) as count FROM artists WHERE is_active = 1`);
     const releasesCount = await client.execute(`SELECT COUNT(*) as count FROM releases WHERE is_published = 1`);
     const videosCount = await client.execute(`SELECT COUNT(*) as count FROM videos WHERE is_published = 1`);
     const eventsCount = await client.execute(`SELECT COUNT(*) as count FROM events WHERE is_published = 1`);
-
     const lastSyncResult = await client.execute(`
       SELECT * FROM sync_logs
       ORDER BY started_at DESC
       LIMIT 1
     `);
-
     const recentLogsResult = await client.execute(`
       SELECT * FROM sync_logs
       ORDER BY started_at DESC
       LIMIT 10
     `);
-
     const lastSync = lastSyncResult.rows[0] || null;
     const recentLogs = recentLogsResult.rows;
-
     return NextResponse.json({
       success: true,
       artists: Number(artistsCount.rows[0]?.count || 0),
