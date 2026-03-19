@@ -1,4 +1,4 @@
-import { getClient, initializeDatabase } from "@/lib/db";
+import { getClient, initializeDatabase } from "../lib/db";
 import {
   Calendar,
   Disc3,
