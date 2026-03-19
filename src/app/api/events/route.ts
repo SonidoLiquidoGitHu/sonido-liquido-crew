@@ -1,22 +1,17 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../lib/db";
 export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
   try {
     await initializeDatabase();
     const client = await getClient();
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("stats") === "true";
-
     const today = new Date().toISOString().split("T")[0];
-
     const result = await client.execute({
       sql: `SELECT * FROM events WHERE is_published = 1 AND event_date >= ? ORDER BY event_date ASC`,
       args: [today],
     });
-
     const events = result.rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -30,13 +25,11 @@ export async function GET(request: Request) {
       imageUrl: row.image_url,
       status: row.status,
     }));
-
     if (includeStats) {
       const statsResult = await client.execute({
         sql: `SELECT COUNT(*) as upcomingEvents FROM events WHERE is_published = 1 AND event_date >= ?`,
         args: [today],
       });
-
       return NextResponse.json({
         success: true,
         events,
@@ -46,7 +39,6 @@ export async function GET(request: Request) {
         },
       });
     }
-
     return NextResponse.json({
       success: true,
       events,

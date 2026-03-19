@@ -1,31 +1,24 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../lib/db";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
-
 export async function GET(request: Request) {
   try {
     await initializeDatabase();
     const client = await getClient();
     const { searchParams } = new URL(request.url);
     const all = searchParams.get("all") === "true";
-
     // Only get upcoming releases (release_date >= today) unless all=true
     const today = new Date().toISOString().split("T")[0];
-
     const sql = all
       ? "SELECT * FROM upcoming_releases ORDER BY release_date ASC, sort_order ASC"
       : "SELECT * FROM upcoming_releases WHERE is_active = 1 AND release_date >= ? ORDER BY release_date ASC, sort_order ASC";
-
     const result = all
       ? await client.execute(sql)
       : await client.execute({ sql, args: [today] });
-
     const releases = result.rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -43,7 +36,6 @@ export async function GET(request: Request) {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
-
     return NextResponse.json({
       success: true,
       releases,
@@ -57,17 +49,13 @@ export async function GET(request: Request) {
     );
   }
 }
-
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-
     await initializeDatabase();
     const client = await getClient();
-
     const id = generateId();
     const now = new Date().toISOString();
-
     await client.execute({
       sql: `
         INSERT INTO upcoming_releases (
@@ -94,7 +82,6 @@ export async function POST(request: Request) {
         now,
       ],
     });
-
     return NextResponse.json({
       success: true,
       message: "Upcoming release created successfully",

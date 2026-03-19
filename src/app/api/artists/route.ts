@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../lib/db";
 export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
   try {
     await initializeDatabase();
     const client = await getClient();
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("stats") === "true";
-
     const result = await client.execute(`
       SELECT * FROM artists WHERE is_active = 1 ORDER BY sort_order ASC
     `);
-
     const artists = result.rows.map((row) => ({
       id: row.id,
       spotifyId: row.spotify_id,
@@ -31,7 +27,6 @@ export async function GET(request: Request) {
       youtubeUrl: row.youtube_url,
       instagramUrl: row.instagram_url,
     }));
-
     if (includeStats) {
       const statsResult = await client.execute(`
         SELECT
@@ -39,7 +34,6 @@ export async function GET(request: Request) {
           SUM(followers) as totalFollowers
         FROM artists WHERE is_active = 1
       `);
-
       return NextResponse.json({
         success: true,
         artists,
@@ -50,7 +44,6 @@ export async function GET(request: Request) {
         },
       });
     }
-
     return NextResponse.json({
       success: true,
       artists,

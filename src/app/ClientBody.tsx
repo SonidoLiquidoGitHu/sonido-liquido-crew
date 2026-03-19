@@ -1,9 +1,7 @@
 "use client";
-
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import NewsletterPopup from "@/components/NewsletterPopup";
-
+import NewsletterPopup from "../components/NewsletterPopup";
 export default function ClientBody({
   children,
 }: {
@@ -11,13 +9,11 @@ export default function ClientBody({
 }) {
   const pathname = usePathname();
   const isAdminPage = pathname?.startsWith("/admin");
-
   // Remove any extension-added classes during hydration
   useEffect(() => {
     // This runs only on the client after hydration
     document.body.className = "antialiased";
   }, []);
-
   return (
     <div className="antialiased">
       {children}

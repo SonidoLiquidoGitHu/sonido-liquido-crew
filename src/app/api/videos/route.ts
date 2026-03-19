@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../lib/db";
 export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
   try {
     await initializeDatabase();
     const client = await getClient();
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("stats") === "true";
-
     const result = await client.execute(`
       SELECT * FROM videos WHERE is_published = 1 ORDER BY published_at DESC
     `);
-
     const videos = result.rows.map((row) => ({
       id: row.id,
       youtubeId: row.youtube_id,
@@ -27,7 +23,6 @@ export async function GET(request: Request) {
       durationSeconds: row.duration_seconds,
       publishedAt: row.published_at,
     }));
-
     if (includeStats) {
       const statsResult = await client.execute(`
         SELECT
@@ -35,7 +30,6 @@ export async function GET(request: Request) {
           SUM(view_count) as totalViews
         FROM videos WHERE is_published = 1
       `);
-
       return NextResponse.json({
         success: true,
         videos,
@@ -46,7 +40,6 @@ export async function GET(request: Request) {
         },
       });
     }
-
     return NextResponse.json({
       success: true,
       videos,
