@@ -1,4 +1,4 @@
-import { getClient, initializeDatabase } from "@/lib/db";
+import { getClient, initializeDatabase } from "../../../lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -64,7 +64,7 @@ async function getRelease(releaseId: string): Promise<{ release: Release; tracks
 
     const result = await client.execute({
       sql: "SELECT * FROM releases WHERE id = ?",
-      args: [id],
+      args: [releaseId],
     });
 
     if (result.rows.length === 0) {
@@ -73,7 +73,7 @@ async function getRelease(releaseId: string): Promise<{ release: Release; tracks
 
     const row = result.rows[0];
     const release: Release = {
-      id: row.id as string,
+      releaseId: row.id as string,
       title: row.title as string,
       titleEn: row.title_en as string | null,
       artistName: row.artist_name as string | null,
@@ -97,19 +97,18 @@ async function getRelease(releaseId: string): Promise<{ release: Release; tracks
       soundcloudUrl: row.soundcloud_url as string | null,
       audioPreviewUrl: row.audio_preview_url as string | null,
       presaveOnerpm: row.presave_onerpm as string | null,
-      presaveDistrokid: row.presave_distrokid as string | null,
+      presaveDistrokreleaseId: row.presave_distrokid as string | null,
       presaveBandcamp: row.presave_bandcamp as string | null,
       presaveDirect: row.presave_direct as string | null,
     };
 
-    // Get tracks
     const tracksResult = await client.execute({
       sql: "SELECT * FROM release_tracks WHERE release_id = ? ORDER BY track_number ASC",
-      args: [id],
+      args: [releaseId],
     });
 
     const tracks: Track[] = tracksResult.rows.map((t) => ({
-      id: t.id as string,
+      releaseId: t.id as string,
       trackNumber: t.track_number as number,
       title: t.title as string,
       artistName: t.artist_name as string | null,
@@ -156,7 +155,7 @@ export default async function ReleasePage({
   params: Promise<{ releaseId: string }>;
 }) {
   const { releaseId } = await params;
-  const data = await getRelease(id);
+  const data = await getRelease(releaseId);
 
   if (!data) {
     notFound();
@@ -164,20 +163,18 @@ export default async function ReleasePage({
 
   const { release, tracks } = data;
 
-  // Check if release is accessible
   if (!release.isActive || !release.isPublished) {
     notFound();
   }
 
   const hasPresaveLinks =
     release.presaveOnerpm ||
-    release.presaveDistrokid ||
+    release.presaveDistrokreleaseId ||
     release.presaveBandcamp ||
     release.presaveDirect;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Header */}
       <header className="fixed top-0 z-50 w-full border-b border-zinc-800/50 bg-zinc-950/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2">
@@ -189,7 +186,6 @@ export default async function ReleasePage({
               <p className="text-[10px] text-zinc-500 tracking-widest">MEDIA PREVIEW</p>
             </div>
           </Link>
-
           <div className="flex items-center gap-3">
             <Link
               href="/"
@@ -201,14 +197,10 @@ export default async function ReleasePage({
           </div>
         </div>
       </header>
-
-      {/* Main Content */}
       <main className="pt-16">
-        {/* Hero Section */}
         <section className="relative py-12 bg-gradient-to-b from-zinc-900 to-zinc-950">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="grid md:grid-cols-2 gap-8 items-start">
-              {/* Cover Image */}
               <div className="relative">
                 <div className="aspect-square rounded-2xl overflow-hidden bg-zinc-800 shadow-2xl">
                   {release.coverImageUrl ? (
@@ -223,18 +215,13 @@ export default async function ReleasePage({
                     </div>
                   )}
                 </div>
-
-                {/* Pre-save badge */}
                 {hasPresaveLinks && (
                   <div className="absolute top-4 left-4 bg-amber-500 text-black px-3 py-1 rounded-full text-sm font-bold">
                     PRE-SAVE DISPONIBLE
                   </div>
                 )}
               </div>
-
-              {/* Info */}
               <div className="space-y-6">
-                {/* Type badge */}
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded-full text-xs font-medium uppercase">
                     {getReleaseTypeLabel(release.releaseType)}
@@ -246,8 +233,6 @@ export default async function ReleasePage({
                     </span>
                   )}
                 </div>
-
-                {/* Title */}
                 <div>
                   <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight">
                     {release.title}
@@ -256,8 +241,6 @@ export default async function ReleasePage({
                     <p className="text-xl text-zinc-400 mt-1">{release.titleEn}</p>
                   )}
                 </div>
-
-                {/* Artist */}
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center">
                     <User className="h-5 w-5 text-zinc-400" />
@@ -269,13 +252,9 @@ export default async function ReleasePage({
                     )}
                   </div>
                 </div>
-
-                {/* Description */}
                 {release.descriptionEs && (
                   <p className="text-zinc-400 leading-relaxed">{release.descriptionEs}</p>
                 )}
-
-                {/* Pre-save Links */}
                 {hasPresaveLinks && (
                   <div className="space-y-3">
                     <p className="text-sm text-zinc-500 uppercase tracking-wider">Pre-save / Escuchar</p>
@@ -291,9 +270,9 @@ export default async function ReleasePage({
                           Spotify Pre-save
                         </a>
                       )}
-                      {release.presaveDistrokid && (
+                      {release.presaveDistrokreleaseId && (
                         <a
-                          href={release.presaveDistrokid}
+                          href={release.presaveDistrokreleaseId}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white font-medium rounded-lg transition-colors"
@@ -331,14 +310,10 @@ export default async function ReleasePage({
             </div>
           </div>
         </section>
-
-        {/* Audio Preview Section */}
         {(release.youtubeVideoId || release.spotifyUrl || release.audioPreviewUrl || tracks.length > 0) && (
           <section className="py-12 bg-zinc-900">
             <div className="mx-auto max-w-6xl px-4 sm:px-6">
               <h2 className="text-2xl font-bold text-white mb-6">Escuchar Preview</h2>
-
-              {/* YouTube Embed */}
               {release.youtubeVideoId && (
                 <div className="mb-8">
                   <div className="aspect-video rounded-xl overflow-hidden bg-zinc-800">
@@ -352,8 +327,6 @@ export default async function ReleasePage({
                   </div>
                 </div>
               )}
-
-              {/* Spotify Embed */}
               {release.spotifyUrl && (
                 <div className="mb-8">
                   <iframe
@@ -365,14 +338,12 @@ export default async function ReleasePage({
                   />
                 </div>
               )}
-
-              {/* Tracks List */}
               {tracks.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-lg font-medium text-zinc-300 mb-4">Tracklist</h3>
                   {tracks.map((track) => (
                     <div
-                      key={track.id}
+                      key={track.releaseId}
                       className={`flex items-center gap-4 p-4 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors ${
                         track.isFeatured ? "border border-amber-500/30" : ""
                       }`}
@@ -406,15 +377,11 @@ export default async function ReleasePage({
             </div>
           </section>
         )}
-
-        {/* Press Kit Section */}
         {(release.pressReleaseEs || release.creditsEs || release.quotes.length > 0 || release.pressPhotos.length > 0) && (
           <section className="py-12 bg-zinc-950">
             <div className="mx-auto max-w-6xl px-4 sm:px-6">
               <h2 className="text-2xl font-bold text-white mb-8">Press Kit</h2>
-
               <div className="grid md:grid-cols-2 gap-8">
-                {/* Press Release */}
                 {release.pressReleaseEs && (
                   <div className="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
                     <h3 className="text-lg font-medium text-amber-400 mb-4">Nota de Prensa</h3>
@@ -427,8 +394,6 @@ export default async function ReleasePage({
                     )}
                   </div>
                 )}
-
-                {/* Credits */}
                 {release.creditsEs && (
                   <div className="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
                     <h3 className="text-lg font-medium text-amber-400 mb-4">Créditos</h3>
@@ -442,8 +407,6 @@ export default async function ReleasePage({
                   </div>
                 )}
               </div>
-
-              {/* Quotes */}
               {release.quotes.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-lg font-medium text-amber-400 mb-4">Quotes</h3>
@@ -459,8 +422,6 @@ export default async function ReleasePage({
                   </div>
                 </div>
               )}
-
-              {/* Press Photos */}
               {release.pressPhotos.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-lg font-medium text-amber-400 mb-4">Fotos (Alta Resolución)</h3>
@@ -486,8 +447,6 @@ export default async function ReleasePage({
             </div>
           </section>
         )}
-
-        {/* Share Section */}
         <section className="py-8 bg-zinc-900 border-t border-zinc-800">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -511,8 +470,6 @@ export default async function ReleasePage({
           </div>
         </section>
       </main>
-
-      {/* Footer */}
       <footer className="py-8 bg-zinc-950 border-t border-zinc-800">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 text-center">
           <div className="flex items-center justify-center gap-2 text-zinc-500">
