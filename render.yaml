@@ -1,0 +1,28 @@
+# Render Blueprint - Sonido Líquido Crew
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: sonido-liquido-crew
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20
+      # Database (Turso) - Add your values in Render dashboard
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      # Spotify API - Add your values in Render dashboard
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true
