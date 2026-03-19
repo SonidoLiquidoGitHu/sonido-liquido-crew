@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../../lib/db";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
-
 const SAMPLE_VIDEOS = [
   {
     youtubeId: "dQw4w9WgXcQ",
@@ -52,18 +49,14 @@ const SAMPLE_VIDEOS = [
     thumbnailUrl: "https://i.ytimg.com/vi/CevxZvSJLk8/maxresdefault.jpg",
   },
 ];
-
 export async function POST() {
   try {
     await initializeDatabase();
     const client = await getClient();
-
     let videosAdded = 0;
-
     for (const video of SAMPLE_VIDEOS) {
       const videoId = generateId();
       const now = new Date().toISOString();
-
       await client.execute({
         sql: `
           INSERT INTO videos (id, youtube_id, artist_name, title, thumbnail_url, duration_seconds, is_published, is_featured, published_at, created_at, updated_at)
@@ -87,10 +80,8 @@ export async function POST() {
           now,
         ],
       });
-
       videosAdded++;
     }
-
     return NextResponse.json({
       success: true,
       message: `Added ${videosAdded} sample videos`,

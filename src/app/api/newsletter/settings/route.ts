@@ -1,29 +1,22 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../../lib/db";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
-
 export async function GET() {
   try {
     await initializeDatabase();
     const client = await getClient();
-
     const result = await client.execute(
       "SELECT * FROM newsletter_settings LIMIT 1"
     );
-
     const settings = result.rows[0];
-
     // Get subscriber count
     const subscriberCount = await client.execute(
       "SELECT COUNT(*) as count FROM newsletter_subscribers WHERE is_active = 1"
     );
-
     return NextResponse.json({
       success: true,
       settings: settings ? {
@@ -46,21 +39,16 @@ export async function GET() {
     );
   }
 }
-
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-
     await initializeDatabase();
     const client = await getClient();
-
     // Check if settings exist
     const existing = await client.execute(
       "SELECT id FROM newsletter_settings LIMIT 1"
     );
-
     const now = new Date().toISOString();
-
     if (existing.rows.length > 0) {
       // Update existing settings
       await client.execute({
@@ -106,7 +94,6 @@ export async function POST(request: Request) {
         ],
       });
     }
-
     return NextResponse.json({
       success: true,
       message: "Settings updated successfully",
