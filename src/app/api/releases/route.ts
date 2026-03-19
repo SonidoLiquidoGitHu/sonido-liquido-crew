@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../lib/db";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
-
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -16,7 +13,6 @@ function slugify(text: string): string {
     .replace(/--+/g, "-")
     .trim();
 }
-
 export async function GET(request: Request) {
   try {
     await initializeDatabase();
@@ -24,13 +20,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("stats") === "true";
     const all = searchParams.get("all") === "true";
-
     const sql = all
       ? "SELECT * FROM releases ORDER BY release_date DESC"
       : "SELECT * FROM releases WHERE is_published = 1 ORDER BY release_date DESC";
-
     const result = await client.execute(sql);
-
     const releases = result.rows.map((row) => ({
       id: row.id,
       spotifyId: row.spotify_id,
@@ -55,7 +48,6 @@ export async function GET(request: Request) {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
-
     if (includeStats) {
       const statsResult = await client.execute(`
         SELECT
@@ -63,7 +55,6 @@ export async function GET(request: Request) {
           SUM(total_tracks) as totalTracks
         FROM releases WHERE is_published = 1
       `);
-
       return NextResponse.json({
         success: true,
         releases,
@@ -74,7 +65,6 @@ export async function GET(request: Request) {
         },
       });
     }
-
     return NextResponse.json({
       success: true,
       releases,
@@ -88,18 +78,14 @@ export async function GET(request: Request) {
     );
   }
 }
-
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-
     await initializeDatabase();
     const client = await getClient();
-
     const id = generateId();
     const slug = slugify(data.title);
     const now = new Date().toISOString();
-
     await client.execute({
       sql: `
         INSERT INTO releases (
@@ -151,7 +137,6 @@ export async function POST(request: Request) {
         now,
       ],
     });
-
     // Add tracks if provided
     if (data.tracks && data.tracks.length > 0) {
       for (const track of data.tracks) {
@@ -174,7 +159,6 @@ export async function POST(request: Request) {
         });
       }
     }
-
     return NextResponse.json({
       success: true,
       message: "Release created successfully",

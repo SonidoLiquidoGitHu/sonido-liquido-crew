@@ -1,38 +1,30 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../../lib/db";
 export const dynamic = "force-dynamic";
-
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ releaseId: string }> }
 ) {
   try {
-    const { releaseId } = await params;
-
+    const { releaseId: id } = await params;
     await initializeDatabase();
     const client = await getClient();
-
     const result = await client.execute({
       sql: "SELECT * FROM releases WHERE id = ?",
       args: [id],
     });
-
     if (result.rows.length === 0) {
       return NextResponse.json(
         { success: false, error: "Release not found" },
         { status: 404 }
       );
     }
-
     const row = result.rows[0];
-
     // Get tracks
     const tracksResult = await client.execute({
       sql: "SELECT * FROM release_tracks WHERE release_id = ? ORDER BY track_number ASC",
       args: [id],
     });
-
     const tracks = tracksResult.rows.map((t) => ({
       id: t.id,
       trackNumber: t.track_number,
@@ -42,7 +34,6 @@ export async function GET(
       audioUrl: t.audio_url,
       isFeatured: Boolean(t.is_featured),
     }));
-
     const release = {
       id: row.id,
       spotifyId: row.spotify_id,
@@ -83,7 +74,6 @@ export async function GET(
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
-
     return NextResponse.json({ success: true, release });
   } catch (error) {
     console.error("Error fetching release:", error);
@@ -93,20 +83,16 @@ export async function GET(
     );
   }
 }
-
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ releaseId: string }> }
 ) {
   try {
-    const { releaseId } = await params;
+    const { releaseId: id } = await params;
     const data = await request.json();
-
     await initializeDatabase();
     const client = await getClient();
-
     const now = new Date().toISOString();
-
     await client.execute({
       sql: `
         UPDATE releases SET
@@ -155,7 +141,6 @@ export async function PUT(
         id,
       ],
     });
-
     return NextResponse.json({
       success: true,
       message: "Release updated successfully",
@@ -168,28 +153,23 @@ export async function PUT(
     );
   }
 }
-
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ releaseId: string }> }
 ) {
   try {
-    const { releaseId } = await params;
-
+    const { releaseId: id } = await params;
     await initializeDatabase();
     const client = await getClient();
-
     // Delete tracks first
     await client.execute({
       sql: "DELETE FROM release_tracks WHERE release_id = ?",
       args: [id],
     });
-
     await client.execute({
       sql: "DELETE FROM releases WHERE id = ?",
       args: [id],
     });
-
     return NextResponse.json({
       success: true,
       message: "Release deleted successfully",
