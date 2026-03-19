@@ -1,43 +1,34 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../../lib/db";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
-
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ beatId: string }> }
 ) {
   try {
-    const { beatId } = await params;
-
+    const { beatId: id } = await params;
     await initializeDatabase();
     const client = await getClient();
-
     const result = await client.execute({
       sql: "SELECT * FROM beats WHERE id = ?",
       args: [id],
     });
-
     if (result.rows.length === 0) {
       return NextResponse.json(
         { success: false, error: "Beat not found" },
         { status: 404 }
       );
     }
-
     const row = result.rows[0];
-
     // Get download gate actions
     const actionsResult = await client.execute({
       sql: "SELECT * FROM download_gate_actions WHERE beat_id = ? ORDER BY sort_order ASC",
       args: [id],
     });
-
     const actions = actionsResult.rows.map((a) => ({
       id: a.id,
       actionType: a.action_type,
@@ -45,7 +36,6 @@ export async function GET(
       url: a.url,
       sortOrder: a.sort_order,
     }));
-
     const beat = {
       id: row.id,
       title: row.title,
@@ -72,7 +62,6 @@ export async function GET(
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
-
     return NextResponse.json({ success: true, beat });
   } catch (error) {
     console.error("Error fetching beat:", error);
@@ -82,20 +71,16 @@ export async function GET(
     );
   }
 }
-
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ beatId: string }> }
 ) {
   try {
-    const { beatId } = await params;
+    const { beatId: id } = await params;
     const data = await request.json();
-
     await initializeDatabase();
     const client = await getClient();
-
     const now = new Date().toISOString();
-
     await client.execute({
       sql: `
         UPDATE beats SET
@@ -129,13 +114,11 @@ export async function PUT(
         id,
       ],
     });
-
     // Update download gate actions
     await client.execute({
       sql: "DELETE FROM download_gate_actions WHERE beat_id = ?",
       args: [id],
     });
-
     if (data.downloadGateActions && data.downloadGateActions.length > 0) {
       for (let i = 0; i < data.downloadGateActions.length; i++) {
         const action = data.downloadGateActions[i];
@@ -146,7 +129,6 @@ export async function PUT(
         });
       }
     }
-
     return NextResponse.json({
       success: true,
       message: "Beat updated successfully",
@@ -159,28 +141,23 @@ export async function PUT(
     );
   }
 }
-
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ beatId: string }> }
 ) {
   try {
-    const { beatId } = await params;
-
+    const { beatId: id } = await params;
     await initializeDatabase();
     const client = await getClient();
-
     // Delete associated actions first (cascade might not work in SQLite)
     await client.execute({
       sql: "DELETE FROM download_gate_actions WHERE beat_id = ?",
       args: [id],
     });
-
     await client.execute({
       sql: "DELETE FROM beats WHERE id = ?",
       args: [id],
     });
-
     return NextResponse.json({
       success: true,
       message: "Beat deleted successfully",

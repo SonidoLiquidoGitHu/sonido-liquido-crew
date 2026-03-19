@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "@/lib/db";
-
+import { getClient, initializeDatabase } from "../../../lib/db";
 export const dynamic = "force-dynamic";
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
-
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -16,7 +13,6 @@ function slugify(text: string): string {
     .replace(/--+/g, "-")
     .trim();
 }
-
 export async function GET(request: Request) {
   try {
     await initializeDatabase();
@@ -24,19 +20,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("stats") === "true";
     const all = searchParams.get("all") === "true";
-
     const sql = all
       ? "SELECT * FROM beats ORDER BY created_at DESC"
       : "SELECT * FROM beats WHERE is_available = 1 ORDER BY created_at DESC";
-
     const result = await client.execute(sql);
-
     const beats = await Promise.all(result.rows.map(async (row) => {
       const actionsResult = await client.execute({
         sql: "SELECT * FROM download_gate_actions WHERE beat_id = ? ORDER BY sort_order ASC",
         args: [row.id as string],
       });
-
       const actions = actionsResult.rows.map((a) => ({
         id: a.id,
         actionType: a.action_type,
@@ -44,7 +36,6 @@ export async function GET(request: Request) {
         url: a.url,
         sortOrder: a.sort_order,
       }));
-
       return {
         id: row.id,
         title: row.title,
@@ -72,7 +63,6 @@ export async function GET(request: Request) {
         updatedAt: row.updated_at,
       };
     }));
-
     if (includeStats) {
       const statsResult = await client.execute(`
         SELECT
@@ -83,7 +73,6 @@ export async function GET(request: Request) {
           COUNT(DISTINCT producer_name) as producers
         FROM beats
       `);
-
       return NextResponse.json({
         success: true,
         beats,
@@ -97,24 +86,20 @@ export async function GET(request: Request) {
         },
       });
     }
-
     return NextResponse.json({ success: true, beats, count: beats.length });
   } catch (error) {
     console.error("Error fetching beats:", error);
     return NextResponse.json({ success: false, error: "Failed to fetch beats" }, { status: 500 });
   }
 }
-
 export async function POST(request: Request) {
   try {
     const data = await request.json();
     await initializeDatabase();
     const client = await getClient();
-
     const id = generateId();
     const slug = slugify(data.title);
     const now = new Date().toISOString();
-
     await client.execute({
       sql: `INSERT INTO beats (id, title, producer_name, slug, release_date, bpm, key_signature, tags,
           cover_image_url, audio_file_url, audio_preview_url, hypeddit_url, spotify_track_id,
@@ -128,7 +113,6 @@ export async function POST(request: Request) {
         data.distrokidUrl || null, data.bandcampUrl || null, data.downloadGateEnabled ? 1 : 0,
         data.isAvailable !== false ? 1 : 0, data.isFeatured ? 1 : 0, now, now],
     });
-
     if (data.downloadGateActions?.length > 0) {
       for (let i = 0; i < data.downloadGateActions.length; i++) {
         const action = data.downloadGateActions[i];
@@ -139,7 +123,6 @@ export async function POST(request: Request) {
         });
       }
     }
-
     return NextResponse.json({ success: true, message: "Beat created successfully", id });
   } catch (error) {
     console.error("Error creating beat:", error);
