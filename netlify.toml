@@ -30,8 +30,8 @@
   ]
 
 [build]
-  command = "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache node_modules/.next && npm run build"
-  # Don't set publish - @netlify/plugin-nextjs handles this automatically
+  command = "npm run build"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
