@@ -1,0 +1,176 @@
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+// ===========================================
+// ARTISTS TABLE
+// ===========================================
+export const artists = sqliteTable("artists", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  realName: text("real_name"), // Private - not shown publicly
+  bio: text("bio"),
+  shortBio: text("short_bio"), // 1-2 sentence bio for cards
+  role: text("role", {
+    enum: ["mc", "dj", "producer", "cantante", "divo", "lado_b"]
+  }).notNull().default("mc"),
+  // Images
+  profileImageUrl: text("profile_image_url"),
+  featuredImageUrl: text("featured_image_url"),
+  bannerImageUrl: text("banner_image_url"),
+  // Styling
+  tintColor: text("tint_color"),
+  // Location & Contact
+  location: text("location"), // e.g., "Ciudad de México, México"
+  country: text("country"),
+  bookingEmail: text("booking_email"),
+  managementEmail: text("management_email"),
+  pressEmail: text("press_email"),
+  websiteUrl: text("website_url"),
+  // Career Info
+  yearStarted: integer("year_started"),
+  genres: text("genres"), // JSON array of genres
+  labels: text("labels"), // JSON array of label names
+  // Stats (can be synced from Spotify)
+  monthlyListeners: integer("monthly_listeners"),
+  followers: integer("followers"),
+  // Press & Media
+  pressQuotes: text("press_quotes"), // JSON array: [{quote, source, sourceUrl}]
+  featuredVideos: text("featured_videos"), // JSON array: [{videoUrl, title, platform, views, thumbnailUrl}]
+  // Status
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  verificationStatus: text("verification_status", {
+    enum: ["pending", "verified", "rejected"]
+  }).notNull().default("pending"),
+  identityConflictFlag: integer("identity_conflict_flag", { mode: "boolean" }).notNull().default(false),
+  adminNotes: text("admin_notes"),
+  // Timestamps
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+// ===========================================
+// ARTIST EXTERNAL PROFILES TABLE
+// ===========================================
+export const artistExternalProfiles = sqliteTable("artist_external_profiles", {
+  id: text("id").primaryKey(),
+  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  platform: text("platform", {
+    enum: [
+      "spotify",
+      "apple_music",
+      "youtube",
+      "youtube_music",
+      "instagram",
+      "tiktok",
+      "twitter",
+      "facebook",
+      "soundcloud",
+      "bandcamp",
+      "deezer",
+      "tidal",
+      "amazon_music",
+      "mixcloud",
+      "beatport",
+      "discogs",
+      "genius",
+      "linktree",
+      "other"
+    ]
+  }).notNull(),
+  externalId: text("external_id"),
+  externalUrl: text("external_url").notNull(),
+  handle: text("handle"), // @username
+  displayName: text("display_name"), // Name shown on the platform
+  isVerified: integer("is_verified", { mode: "boolean" }).notNull().default(false),
+  isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false), // Primary profile for this platform
+  followerCount: integer("follower_count"),
+  lastSynced: integer("last_synced", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+// ===========================================
+// ARTIST GALLERY ASSETS TABLE
+// ===========================================
+export const artistGalleryAssets = sqliteTable("artist_gallery_assets", {
+  id: text("id").primaryKey(),
+  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  assetUrl: text("asset_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  assetType: text("asset_type", {
+    enum: ["photo", "press_photo", "album_art", "logo", "banner"]
+  }).notNull().default("photo"),
+  caption: text("caption"),
+  credit: text("credit"), // Photographer credit
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+// ===========================================
+// ARTIST RELATIONS TABLE
+// ===========================================
+export const artistRelations = sqliteTable("artist_relations", {
+  id: text("id").primaryKey(),
+  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  relatedArtistId: text("related_artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  relationType: text("relation_type", {
+    enum: ["collaborator", "alias", "member_of", "featured", "producer", "dj_duo"]
+  }).notNull().default("collaborator"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+// ===========================================
+// TYPE EXPORTS
+// ===========================================
+export type Artist = typeof artists.$inferSelect;
+export type NewArtist = typeof artists.$inferInsert;
+export type ArtistExternalProfile = typeof artistExternalProfiles.$inferSelect;
+export type NewArtistExternalProfile = typeof artistExternalProfiles.$inferInsert;
+export type ArtistGalleryAsset = typeof artistGalleryAssets.$inferSelect;
+export type NewArtistGalleryAsset = typeof artistGalleryAssets.$inferInsert;
+export type ArtistRelation = typeof artistRelations.$inferSelect;
+export type NewArtistRelation = typeof artistRelations.$inferInsert;
+// Platform display names
+export const platformLabels: Record<string, string> = {
+  spotify: "Spotify",
+  apple_music: "Apple Music",
+  youtube: "YouTube",
+  youtube_music: "YouTube Music",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  twitter: "X (Twitter)",
+  facebook: "Facebook",
+  soundcloud: "SoundCloud",
+  bandcamp: "Bandcamp",
+  deezer: "Deezer",
+  tidal: "Tidal",
+  amazon_music: "Amazon Music",
+  mixcloud: "Mixcloud",
+  beatport: "Beatport",
+  discogs: "Discogs",
+  genius: "Genius",
+  linktree: "Linktree",
+  other: "Otro",
+};
+// Platform icons (for UI reference)
+export const platformColors: Record<string, string> = {
+  spotify: "#1DB954",
+  apple_music: "#FA243C",
+  youtube: "#FF0000",
+  youtube_music: "#FF0000",
+  instagram: "#E4405F",
+  tiktok: "#000000",
+  twitter: "#1DA1F2",
+  facebook: "#1877F2",
+  soundcloud: "#FF5500",
+  bandcamp: "#629AA9",
+  deezer: "#FEAA2D",
+  tidal: "#000000",
+  amazon_music: "#FF9900",
+  mixcloud: "#5000FF",
+  beatport: "#94D500",
+  discogs: "#333333",
+  genius: "#FFFF64",
+  linktree: "#43E55E",
+  other: "#888888",
+};
