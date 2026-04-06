@@ -48,7 +48,9 @@ export const emailCampaigns = sqliteTable("email_campaigns", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
+// ===========================================
 // TYPE EXPORTS
+// ===========================================
 export type Subscriber = typeof subscribers.$inferSelect;
 export type NewSubscriber = typeof subscribers.$inferInsert;
 export type Segment = typeof segments.$inferSelect;

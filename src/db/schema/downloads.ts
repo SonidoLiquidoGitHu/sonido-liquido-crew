@@ -51,7 +51,9 @@ export const downloadGateActions = sqliteTable("download_gate_actions", {
   downloadedAt: integer("downloaded_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
+// ===========================================
 // TYPE EXPORTS
+// ===========================================
 export type FileAsset = typeof fileAssets.$inferSelect;
 export type NewFileAsset = typeof fileAssets.$inferInsert;
 export type DownloadGate = typeof downloadGates.$inferSelect;
