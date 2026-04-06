@@ -2,14 +2,12 @@ import type { Metadata, Viewport } from "next";
 import { Oswald, Barlow } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
-
 const oswald = Oswald({
   subsets: ["latin"],
   variable: "--font-oswald",
   display: "swap",
   preload: true,
 });
-
 const barlow = Barlow({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
@@ -17,7 +15,6 @@ const barlow = Barlow({
   display: "swap",
   preload: true,
 });
-
 // Viewport configuration for mobile optimization
 export const viewport: Viewport = {
   width: "device-width",
@@ -25,7 +22,6 @@ export const viewport: Viewport = {
   maximumScale: 5,
   themeColor: "#000000",
 };
-
 export const metadata: Metadata = {
   title: "Sonido Líquido Crew | Hip Hop Mexicano desde 1999 | CDMX",
   description:
@@ -64,7 +60,6 @@ export const metadata: Metadata = {
     follow: true,
   },
 };
-
 export default function RootLayout({
   children,
 }: {
