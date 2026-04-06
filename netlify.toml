@@ -3,6 +3,7 @@
 # ===========================================
 # For Next.js 13.5+, Netlify uses the OpenNext adapter automatically.
 # Most settings are auto-configured - keep this file minimal.
+
 # Netlify Image CDN - Dropbox excluded to prevent caching issues
 [images]
   remote_images = [
@@ -27,19 +28,29 @@
     "https://yt3.googleusercontent.com/.*",
     "https://placehold.co/.*"
   ]
+
 [build]
   command = "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache node_modules/.next && npm run build"
   # Don't set publish - @netlify/plugin-nextjs handles this automatically
+
 [build.environment]
   NODE_VERSION = "20"
   NODE_OPTIONS = "--max-old-space-size=4096"
   NPM_FLAGS = "--legacy-peer-deps"
+
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["music-metadata-browser", "@libsql/client"]
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
 # ===========================================
 # REQUIRED ENVIRONMENT VARIABLES (set in Netlify Dashboard):
 # ===========================================
+# - DATABASE_URL (Turso database URL)
+# - DATABASE_AUTH_TOKEN (Turso auth token)
+# - SPOTIFY_CLIENT_ID (optional, for Spotify sync)
+# - SPOTIFY_CLIENT_SECRET (optional, for Spotify sync)
+# - YOUTUBE_API_KEY (required for roster videos sync)
 # ===========================================
