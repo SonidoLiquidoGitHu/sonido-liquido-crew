@@ -1,0 +1,78 @@
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { artists } from "./artists";
+
+export const beats = sqliteTable("beats", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  producerId: text("producer_id").references(() => artists.id, { onDelete: "set null" }),
+  producerName: text("producer_name"),
+  bpm: integer("bpm"),
+  key: text("key"),
+  genre: text("genre"),
+  tags: text("tags", { mode: "json" }).$type<string[]>(),
+  duration: integer("duration"),
+  previewAudioUrl: text("preview_audio_url"),
+  fullAudioUrl: text("full_audio_url"),
+  stemPackUrl: text("stem_pack_url"),
+  coverImageUrl: text("cover_image_url"),
+  waveformImageUrl: text("waveform_image_url"),
+  previewVideoUrl: text("preview_video_url"),
+  youtubeVideoId: text("youtube_video_id"),
+  videoIsVertical: integer("video_is_vertical", { mode: "boolean" }).default(false),
+  isFree: integer("is_free", { mode: "boolean" }).notNull().default(true),
+  price: real("price"),
+  currency: text("currency").default("USD"),
+  gateEnabled: integer("gate_enabled", { mode: "boolean" }).notNull().default(true),
+  requireEmail: integer("require_email", { mode: "boolean" }).notNull().default(true),
+  requireSpotifyFollow: integer("require_spotify_follow", { mode: "boolean" }).notNull().default(false),
+  spotifyArtistUrl: text("spotify_artist_url"),
+  requireSpotifyPlay: integer("require_spotify_play", { mode: "boolean" }).notNull().default(false),
+  spotifySongUrl: text("spotify_song_url"),
+  spotifySongId: text("spotify_song_id"),
+  requireHyperfollow: integer("require_hyperfollow", { mode: "boolean" }).notNull().default(false),
+  hyperfollowUrl: text("hyperfollow_url"),
+  requireInstagramShare: integer("require_instagram_share", { mode: "boolean" }).notNull().default(false),
+  instagramShareText: text("instagram_share_text"),
+  requireFacebookShare: integer("require_facebook_share", { mode: "boolean" }).notNull().default(false),
+  facebookShareText: text("facebook_share_text"),
+  requireCustomAction: integer("require_custom_action", { mode: "boolean" }).notNull().default(false),
+  customActionLabel: text("custom_action_label"),
+  customActionUrl: text("custom_action_url"),
+  customActionInstructions: text("custom_action_instructions"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  playCount: integer("play_count").notNull().default(0),
+  downloadCount: integer("download_count").notNull().default(0),
+  viewCount: integer("view_count").notNull().default(0),
+  metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+  styleSettings: text("style_settings", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export const beatDownloads = sqliteTable("beat_downloads", {
+  id: text("id").primaryKey(),
+  beatId: text("beat_id").notNull().references(() => beats.id, { onDelete: "cascade" }),
+  email: text("email"),
+  name: text("name"),
+  completedSpotifyFollow: integer("completed_spotify_follow", { mode: "boolean" }).notNull().default(false),
+  completedSpotifyPlay: integer("completed_spotify_play", { mode: "boolean" }).notNull().default(false),
+  completedHyperfollow: integer("completed_hyperfollow", { mode: "boolean" }).notNull().default(false),
+  completedInstagramShare: integer("completed_instagram_share", { mode: "boolean" }).notNull().default(false),
+  completedFacebookShare: integer("completed_facebook_share", { mode: "boolean" }).notNull().default(false),
+  completedCustomAction: integer("completed_custom_action", { mode: "boolean" }).notNull().default(false),
+  downloadedAt: integer("downloaded_at", { mode: "timestamp" }),
+  downloadCount: integer("download_count").notNull().default(0),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  referrer: text("referrer"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+export type Beat = typeof beats.$inferSelect;
+export type NewBeat = typeof beats.$inferInsert;
+export type BeatDownload = typeof beatDownloads.$inferSelect;
+export type NewBeatDownload = typeof beatDownloads.$inferInsert;
