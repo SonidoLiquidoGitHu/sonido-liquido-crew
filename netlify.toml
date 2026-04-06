@@ -3,7 +3,6 @@
 # ===========================================
 # For Next.js 13.5+, Netlify uses the OpenNext adapter automatically.
 # Most settings are auto-configured - keep this file minimal.
-
 # Netlify Image CDN - Dropbox excluded to prevent caching issues
 [images]
   remote_images = [
@@ -28,23 +27,18 @@
     "https://yt3.googleusercontent.com/.*",
     "https://placehold.co/.*"
   ]
-
 [build]
   command = "npm run build"
   publish = ".next"
-
 [build.environment]
   NODE_VERSION = "20"
   NODE_OPTIONS = "--max-old-space-size=4096"
   NPM_FLAGS = "--force"
-
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["music-metadata-browser", "@libsql/client"]
-
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
 # ===========================================
 # REQUIRED ENVIRONMENT VARIABLES (set in Netlify Dashboard):
 # ===========================================

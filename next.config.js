@@ -231,5 +231,4 @@ const nextConfig = {
     },
   } : undefined,
 };
-
 module.exports = nextConfig;
