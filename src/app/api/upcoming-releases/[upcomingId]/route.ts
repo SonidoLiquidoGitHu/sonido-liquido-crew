@@ -15,7 +15,7 @@ export async function GET(
 
     const result = await client.execute({
       sql: "SELECT * FROM upcoming_releases WHERE id = ?",
-      args: [id],
+      args: [upcomingId],
     });
 
     if (result.rows.length === 0) {
@@ -99,7 +99,7 @@ export async function PUT(
         data.presavePlatform || "onerpm",
         data.sortOrder || 0,
         now,
-        id,
+        upcomingId,
       ],
     });
 
@@ -128,7 +128,7 @@ export async function DELETE(
 
     await client.execute({
       sql: "DELETE FROM upcoming_releases WHERE id = ?",
-      args: [id],
+      args: [upcomingId],
     });
 
     return NextResponse.json({

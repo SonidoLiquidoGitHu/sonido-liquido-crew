@@ -20,7 +20,7 @@ export async function GET(
 
     const result = await client.execute({
       sql: "SELECT * FROM beats WHERE id = ?",
-      args: [id],
+      args: [beatId],
     });
 
     if (result.rows.length === 0) {
@@ -35,7 +35,7 @@ export async function GET(
     // Get download gate actions
     const actionsResult = await client.execute({
       sql: "SELECT * FROM download_gate_actions WHERE beat_id = ? ORDER BY sort_order ASC",
-      args: [id],
+      args: [beatId],
     });
 
     const actions = actionsResult.rows.map((a) => ({
@@ -126,14 +126,14 @@ export async function PUT(
         data.isAvailable !== false ? 1 : 0,
         data.isFeatured ? 1 : 0,
         now,
-        id,
+        beatId,
       ],
     });
 
     // Update download gate actions
     await client.execute({
       sql: "DELETE FROM download_gate_actions WHERE beat_id = ?",
-      args: [id],
+      args: [beatId],
     });
 
     if (data.downloadGateActions && data.downloadGateActions.length > 0) {
@@ -142,7 +142,7 @@ export async function PUT(
         await client.execute({
           sql: `INSERT INTO download_gate_actions (id, beat_id, action_type, label, url, sort_order)
                 VALUES (?, ?, ?, ?, ?, ?)`,
-          args: [generateId(), id, action.actionType, action.label, action.url || null, i],
+          args: [generateId(), beatId, action.actionType, action.label, action.url || null, i],
         });
       }
     }
@@ -173,12 +173,12 @@ export async function DELETE(
     // Delete associated actions first (cascade might not work in SQLite)
     await client.execute({
       sql: "DELETE FROM download_gate_actions WHERE beat_id = ?",
-      args: [id],
+      args: [beatId],
     });
 
     await client.execute({
       sql: "DELETE FROM beats WHERE id = ?",
-      args: [id],
+      args: [beatId],
     });
 
     return NextResponse.json({

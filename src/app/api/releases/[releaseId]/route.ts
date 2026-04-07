@@ -15,7 +15,7 @@ export async function GET(
 
     const result = await client.execute({
       sql: "SELECT * FROM releases WHERE id = ?",
-      args: [id],
+      args: [releaseId],
     });
 
     if (result.rows.length === 0) {
@@ -30,7 +30,7 @@ export async function GET(
     // Get tracks
     const tracksResult = await client.execute({
       sql: "SELECT * FROM release_tracks WHERE release_id = ? ORDER BY track_number ASC",
-      args: [id],
+      args: [releaseId],
     });
 
     const tracks = tracksResult.rows.map((t) => ({
@@ -152,7 +152,7 @@ export async function PUT(
         data.socialPreviewTitle || null,
         data.socialPreviewDescription || null,
         now,
-        id,
+        releaseId,
       ],
     });
 
@@ -182,12 +182,12 @@ export async function DELETE(
     // Delete tracks first
     await client.execute({
       sql: "DELETE FROM release_tracks WHERE release_id = ?",
-      args: [id],
+      args: [releaseId],
     });
 
     await client.execute({
       sql: "DELETE FROM releases WHERE id = ?",
-      args: [id],
+      args: [releaseId],
     });
 
     return NextResponse.json({
