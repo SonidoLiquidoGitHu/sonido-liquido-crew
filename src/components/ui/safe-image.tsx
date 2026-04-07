@@ -113,7 +113,7 @@ export function SafeImage({
   return (
     <Image
       {...props}
-      src={finalSrc}
+      src={finalSrc || ""}
       alt={alt || "Image"}
       fill={fill}
       width={width}
