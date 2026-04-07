@@ -28,12 +28,12 @@
     "https://placehold.co/.*"
   ]
 [build]
-  command = "npm run build"
+  command = "bun run build"
   publish = ".next"
 [build.environment]
   NODE_VERSION = "20"
   NODE_OPTIONS = "--max-old-space-size=4096"
-  NPM_FLAGS = "--force"
+  BUN_VERSION = "1"
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["music-metadata-browser", "@libsql/client"]
