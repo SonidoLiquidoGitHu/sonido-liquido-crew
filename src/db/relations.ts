@@ -21,7 +21,7 @@ import {
   downloadGates,
   downloadGateActions,
   mediaReleases,
-  pressKits,
+  pressKit,
   syncJobs,
   syncLogs,
   tags,
@@ -49,7 +49,7 @@ export const artistsRelations = relations(artists, ({ many }) => ({
   relatedFrom: many(artistRelations, { relationName: "relatedArtist" }),
   releaseArtists: many(releaseArtists),
   videos: many(videos),
-  pressKits: many(pressKits),
+  pressKit: many(pressKit),
 }));
 export const artistExternalProfilesRelations = relations(artistExternalProfiles, ({ one }) => ({
   artist: one(artists, {
@@ -157,13 +157,6 @@ export const fileAssetsRelations = relations(fileAssets, ({ many }) => ({
 }));
 // ===========================================
 // PRESS KIT RELATIONS
-// ===========================================
-export const pressKitsRelations = relations(pressKits, ({ one }) => ({
-  artist: one(artists, {
-    fields: [pressKits.artistId],
-    references: [artists.id],
-  }),
-}));
 // ===========================================
 // SYNC RELATIONS
 // ===========================================
