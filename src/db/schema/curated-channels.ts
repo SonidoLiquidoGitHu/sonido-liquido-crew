@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+
 // ===========================================
 // CURATED SPOTIFY CHANNELS TABLE
 // Stores Spotify artist profiles that are approved for playlist curation
@@ -32,6 +33,7 @@ export const curatedSpotifyChannels = sqliteTable("curated_spotify_channels", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
+
 // ===========================================
 // CURATED TRACKS TABLE
 // Stores tracks from curated channels that can be added to playlists
@@ -63,6 +65,27 @@ export const curatedTracks = sqliteTable("curated_tracks", {
   addedAt: integer("added_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
+
+// ===========================================
+// CURATED PLAYLISTS TABLE
+// Predefined playlists for curation
+// ===========================================
+export const curatedPlaylists = sqliteTable("curated_playlists", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  coverImageUrl: text("cover_image_url"),
+  // Settings
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  priority: integer("priority").notNull().default(0),
+  // Timestamps
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
 // ===========================================
 // PLAYLIST TRACKS TABLE
 // Tracks added to playlists (for custom playlist curation)
@@ -87,6 +110,7 @@ export const playlistTracks = sqliteTable("playlist_tracks", {
   // Timestamps
   addedAt: integer("added_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
+
 // ===========================================
 // TYPE EXPORTS
 // ===========================================
@@ -96,6 +120,9 @@ export type CuratedTrack = typeof curatedTracks.$inferSelect;
 export type NewCuratedTrack = typeof curatedTracks.$inferInsert;
 export type PlaylistTrack = typeof playlistTracks.$inferSelect;
 export type NewPlaylistTrack = typeof playlistTracks.$inferInsert;
+export type CuratedPlaylist = typeof curatedPlaylists.$inferSelect;
+export type NewCuratedPlaylist = typeof curatedPlaylists.$inferInsert;
+
 // Category labels for UI
 export const channelCategoryLabels: Record<string, string> = {
   roster: "Artista del Roster",
@@ -105,6 +132,7 @@ export const channelCategoryLabels: Record<string, string> = {
   featured: "Artista Destacado",
   other: "Otro",
 };
+
 export const channelCategoryColors: Record<string, string> = {
   roster: "#f97316", // Orange
   affiliate: "#22c55e", // Green
