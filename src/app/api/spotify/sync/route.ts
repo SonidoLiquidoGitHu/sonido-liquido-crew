@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getClient, initializeDatabase } from "../../../../lib/db";
-import { getArtists, getArtistAlbums, ROSTER_ARTIST_IDS, ARTIST_SOCIAL_LINKS } from "../../../../lib/spotify";
+import { getClient, initializeDatabase } from "@/lib/db";
+import { getArtists, getArtistAlbums, ROSTER_ARTIST_IDS, ARTIST_SOCIAL_LINKS } from "@/lib/spotify";
 export const dynamic = "force-dynamic";
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) +
@@ -18,6 +18,15 @@ export async function POST() {
   const syncId = generateId();
   const startedAt = new Date().toISOString();
   try {
+    // Check Spotify credentials first
+    if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
+      return NextResponse.json({
+        success: false,
+        error: "Credenciales de Spotify no configuradas",
+        message: "Configura SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET en las variables de entorno de Netlify",
+        needsCredentials: true,
+      }, { status: 400 });
+    }
     await initializeDatabase();
     const client = await getClient();
     await client.execute({
@@ -27,7 +36,27 @@ export async function POST() {
     let artistsSynced = 0;
     let releasesSynced = 0;
     console.log("Fetching artists from Spotify...");
-    const spotifyArtists = await getArtists(ROSTER_ARTIST_IDS);
+    let spotifyArtists;
+    try {
+      spotifyArtists = await getArtists(ROSTER_ARTIST_IDS);
+    } catch (spotifyError) {
+      console.error("Spotify API error:", spotifyError);
+      const errorMessage = spotifyError instanceof Error ? spotifyError.message : "Error desconocido";
+      // Check for rate limiting
+      if (errorMessage.includes("429") || errorMessage.includes("rate")) {
+        return NextResponse.json({
+          success: false,
+          error: "API de Spotify limitada temporalmente",
+          message: "La API de Spotify está limitada. Intenta de nuevo en unos minutos.",
+          rateLimited: true,
+        }, { status: 429 });
+      }
+      return NextResponse.json({
+        success: false,
+        error: "Error al conectar con Spotify",
+        message: errorMessage,
+      }, { status: 500 });
+    }
     for (let i = 0; i < spotifyArtists.length; i++) {
       const artist = spotifyArtists[i];
       if (!artist) continue;
@@ -36,10 +65,11 @@ export async function POST() {
       const imageUrl = artist.images?.[0]?.url || null;
       const slug = slugify(artist.name);
       const socialLinks = ARTIST_SOCIAL_LINKS[artist.id] || {};
+      // NOTE: Removed sort_order column - doesn't exist in production database
       await client.execute({
         sql: `
-          INSERT INTO artists (id, spotify_id, name, display_name, slug, image_url, profile_image_url, genres, followers, popularity, spotify_url, youtube_url, instagram_url, sort_order, is_active, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+          INSERT INTO artists (id, spotify_id, name, display_name, slug, image_url, profile_image_url, genres, followers, popularity, spotify_url, youtube_url, instagram_url, is_active, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
           ON CONFLICT(spotify_id) DO UPDATE SET
             name = excluded.name,
             display_name = excluded.display_name,
@@ -52,7 +82,6 @@ export async function POST() {
             spotify_url = excluded.spotify_url,
             youtube_url = excluded.youtube_url,
             instagram_url = excluded.instagram_url,
-            sort_order = excluded.sort_order,
             updated_at = excluded.updated_at
         `,
         args: [
@@ -69,7 +98,6 @@ export async function POST() {
           artist.external_urls?.spotify || null,
           socialLinks.youtube || null,
           socialLinks.instagram || null,
-          i,
           new Date().toISOString(),
         ],
       });
@@ -125,10 +153,15 @@ export async function POST() {
       }
     }
     const itemsSynced = artistsSynced + releasesSynced;
-    await client.execute({
-      sql: `UPDATE sync_logs SET status = ?, items_synced = ?, artists_synced = ?, releases_synced = ?, completed_at = ? WHERE id = ?`,
-      args: ["completed", itemsSynced, artistsSynced, releasesSynced, new Date().toISOString(), syncId],
-    });
+    // Use simpler UPDATE that doesn't rely on columns that might not exist
+    try {
+      await client.execute({
+        sql: `UPDATE sync_logs SET status = ?, items_synced = ?, completed_at = ? WHERE id = ?`,
+        args: ["completed", itemsSynced, new Date().toISOString(), syncId],
+      });
+    } catch (updateError) {
+      console.error("Failed to update sync_logs:", updateError);
+    }
     return NextResponse.json({
       success: true,
       message: "Sync completed successfully",
