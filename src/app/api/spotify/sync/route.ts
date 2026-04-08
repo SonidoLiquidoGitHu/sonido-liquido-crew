@@ -16,7 +16,6 @@ function slugify(text: string): string {
 }
 export async function POST() {
   const syncId = generateId();
-  const startedAt = new Date().toISOString();
   try {
     // Check Spotify credentials first
     if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
@@ -29,10 +28,16 @@ export async function POST() {
     }
     await initializeDatabase();
     const client = await getClient();
-    await client.execute({
-      sql: `INSERT INTO sync_logs (id, sync_type, status, started_at) VALUES (?, ?, ?, ?)`,
-      args: [syncId, "spotify_full", "in_progress", startedAt],
-    });
+    // Try to insert into sync_logs - handle gracefully if table schema differs
+    try {
+      await client.execute({
+        sql: `INSERT INTO sync_logs (id, sync_type, status) VALUES (?, ?, ?)`,
+        args: [syncId, "spotify_full", "in_progress"],
+      });
+    } catch (insertError) {
+      console.log("Could not insert sync_logs:", insertError);
+      // Continue with sync even if logging fails
+    }
     let artistsSynced = 0;
     let releasesSynced = 0;
     console.log("Fetching artists from Spotify...");
@@ -204,48 +209,57 @@ export async function GET() {
     const releasesCount = await client.execute(`SELECT COUNT(*) as count FROM releases WHERE is_published = 1`);
     const videosCount = await client.execute(`SELECT COUNT(*) as count FROM videos WHERE is_published = 1`);
     const eventsCount = await client.execute(`SELECT COUNT(*) as count FROM events WHERE is_published = 1`);
-    const lastSyncResult = await client.execute(`
-      SELECT * FROM sync_logs
-      ORDER BY started_at DESC
-      LIMIT 1
-    `);
-    const recentLogsResult = await client.execute(`
-      SELECT * FROM sync_logs
-      ORDER BY started_at DESC
-      LIMIT 10
-    `);
-    const lastSync = lastSyncResult.rows[0] || null;
-    const recentLogs = recentLogsResult.rows;
+    // Try to get sync logs - handle case where table columns might differ in production
+    let lastSync = null;
+    let recentLogs: Array<Record<string, unknown>> = [];
+    try {
+      // Try with id-based ordering first (most compatible)
+      const lastSyncResult = await client.execute(`
+        SELECT * FROM sync_logs
+        ORDER BY id DESC
+        LIMIT 1
+      `);
+      lastSync = lastSyncResult.rows[0] || null;
+      const recentLogsResult = await client.execute(`
+        SELECT * FROM sync_logs
+        ORDER BY id DESC
+        LIMIT 10
+      `);
+      recentLogs = recentLogsResult.rows as Array<Record<string, unknown>>;
+    } catch (syncLogsError) {
+      // sync_logs table might not exist or have different schema
+      console.log("Could not fetch sync_logs:", syncLogsError);
+    }
     return NextResponse.json({
       success: true,
       artists: Number(artistsCount.rows[0]?.count || 0),
       releases: Number(releasesCount.rows[0]?.count || 0),
       videos: Number(videosCount.rows[0]?.count || 0),
       events: Number(eventsCount.rows[0]?.count || 0),
-      lastSynced: lastSync?.completed_at || lastSync?.started_at || null,
+      lastSynced: lastSync?.completed_at || lastSync?.started_at || lastSync?.created_at || null,
       lastSync: lastSync
         ? {
             id: lastSync.id,
-            syncType: lastSync.sync_type,
-            status: lastSync.status,
-            itemsSynced: lastSync.items_synced,
-            artistsSynced: lastSync.artists_synced || 0,
-            releasesSynced: lastSync.releases_synced || 0,
-            errorMessage: lastSync.error_message,
-            startedAt: lastSync.started_at,
-            completedAt: lastSync.completed_at,
+            syncType: lastSync.sync_type || lastSync.syncType || "unknown",
+            status: lastSync.status || "unknown",
+            itemsSynced: lastSync.items_synced || lastSync.itemsSynced || 0,
+            artistsSynced: lastSync.artists_synced || lastSync.artistsSynced || 0,
+            releasesSynced: lastSync.releases_synced || lastSync.releasesSynced || 0,
+            errorMessage: lastSync.error_message || lastSync.errorMessage || null,
+            startedAt: lastSync.started_at || lastSync.startedAt || lastSync.created_at || null,
+            completedAt: lastSync.completed_at || lastSync.completedAt || null,
           }
         : null,
       recentLogs: recentLogs.map((log) => ({
         id: log.id,
-        syncType: log.sync_type,
-        status: log.status,
-        itemsSynced: log.items_synced,
-        artistsSynced: log.artists_synced || 0,
-        releasesSynced: log.releases_synced || 0,
-        errorMessage: log.error_message,
-        startedAt: log.started_at,
-        completedAt: log.completed_at,
+        syncType: log.sync_type || log.syncType || "unknown",
+        status: log.status || "unknown",
+        itemsSynced: log.items_synced || log.itemsSynced || 0,
+        artistsSynced: log.artists_synced || log.artistsSynced || 0,
+        releasesSynced: log.releases_synced || log.releasesSynced || 0,
+        errorMessage: log.error_message || log.errorMessage || null,
+        startedAt: log.started_at || log.startedAt || log.created_at || null,
+        completedAt: log.completed_at || log.completedAt || null,
       })),
     });
   } catch (error) {
