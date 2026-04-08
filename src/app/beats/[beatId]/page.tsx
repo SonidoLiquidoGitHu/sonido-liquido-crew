@@ -40,7 +40,7 @@ interface Beat {
 }
 
 interface DownloadGateAction {
-  beatId: string;
+  id: string;
   actionType: string;
   label: string;
   url: string | null;
@@ -54,7 +54,7 @@ async function getBeat(beatId: string): Promise<{ beat: Beat; actions: DownloadG
 
     const result = await client.execute({
       sql: "SELECT * FROM beats WHERE id = ?",
-      args: [id],
+      args: [beatId],
     });
 
     if (result.rows.length === 0) {
@@ -63,7 +63,7 @@ async function getBeat(beatId: string): Promise<{ beat: Beat; actions: DownloadG
 
     const row = result.rows[0];
     const beat: Beat = {
-      id: row.id as string,
+      beatId: row.id as string,
       title: row.title as string,
       producerName: row.producer_name as string,
       slug: row.slug as string | null,
@@ -89,7 +89,7 @@ async function getBeat(beatId: string): Promise<{ beat: Beat; actions: DownloadG
     // Get download gate actions
     const actionsResult = await client.execute({
       sql: "SELECT * FROM download_gate_actions WHERE beat_id = ? ORDER BY sort_order ASC",
-      args: [id],
+      args: [beatId],
     });
 
     const actions: DownloadGateAction[] = actionsResult.rows.map((a) => ({
@@ -145,7 +145,7 @@ export default async function BeatPage({
   params: Promise<{ beatId: string }>;
 }) {
   const { beatId } = await params;
-  const data = await getBeat(id);
+  const data = await getBeat(beatId);
 
   if (!data) {
     notFound();
