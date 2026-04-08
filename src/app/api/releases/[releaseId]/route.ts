@@ -13,10 +13,20 @@ export async function GET(
     await initializeDatabase();
     const client = await getClient();
 
-    const result = await client.execute({
+    // Try to find by ID first, then by slug
+    let result = await client.execute({
       sql: "SELECT * FROM releases WHERE id = ?",
       args: [releaseId],
     });
+
+    // If not found by ID, try by slug
+    if (result.rows.length === 0) {
+      result = await client.execute({
+        sql: "SELECT * FROM releases WHERE slug = ?",
+        args: [releaseId],
+      });
+    }
+
 
     if (result.rows.length === 0) {
       return NextResponse.json(
