@@ -64,7 +64,7 @@ async function getRelease(releaseId: string): Promise<{ release: Release; tracks
 
     const result = await client.execute({
       sql: "SELECT * FROM releases WHERE id = ?",
-      args: [id],
+      args: [releaseId],
     });
 
     if (result.rows.length === 0) {
@@ -73,7 +73,7 @@ async function getRelease(releaseId: string): Promise<{ release: Release; tracks
 
     const row = result.rows[0];
     const release: Release = {
-      id: row.id as string,
+      releaseId: row.id as string,
       title: row.title as string,
       titleEn: row.title_en as string | null,
       artistName: row.artist_name as string | null,
@@ -105,11 +105,11 @@ async function getRelease(releaseId: string): Promise<{ release: Release; tracks
     // Get tracks
     const tracksResult = await client.execute({
       sql: "SELECT * FROM release_tracks WHERE release_id = ? ORDER BY track_number ASC",
-      args: [id],
+      args: [releaseId],
     });
 
     const tracks: Track[] = tracksResult.rows.map((t) => ({
-      id: t.id as string,
+      releaseId: t.id as string,
       trackNumber: t.track_number as number,
       title: t.title as string,
       artistName: t.artist_name as string | null,
@@ -156,7 +156,7 @@ export default async function ReleasePage({
   params: Promise<{ releaseId: string }>;
 }) {
   const { releaseId } = await params;
-  const data = await getRelease(id);
+  const data = await getRelease(releaseId);
 
   if (!data) {
     notFound();
@@ -372,7 +372,7 @@ export default async function ReleasePage({
                   <h3 className="text-lg font-medium text-zinc-300 mb-4">Tracklist</h3>
                   {tracks.map((track) => (
                     <div
-                      key={track.id}
+                      key={track.releaseId}
                       className={`flex items-center gap-4 p-4 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors ${
                         track.isFeatured ? "border border-amber-500/30" : ""
                       }`}
