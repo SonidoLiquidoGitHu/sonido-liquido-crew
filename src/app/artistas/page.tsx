@@ -14,15 +14,6 @@ interface Artist {
   spotifyUrl: string;
 }
 
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
 function formatFollowers(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
@@ -86,61 +77,41 @@ export default function ArtistasPage() {
 
       {!loading && !error && artists.length > 0 && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {artists.map((artist) => {
-            const slug = slugify(artist.name);
-            const href = slug ? `/artistas/${slug}` : artist.spotifyUrl || "#";
-            const isExternal = !slug;
-
-            return (
-              <Link
-                key={artist.id}
-                href={href}
-                target={isExternal ? "_blank" : undefined}
-                rel={isExternal ? "noopener noreferrer" : undefined}
-                className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
-              >
-                <div className="relative aspect-square overflow-hidden">
-                  {artist.image ? (
-                    <Image
-                      src={artist.image}
-                      alt={artist.name}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-muted text-5xl font-bold text-muted-foreground">
-                      {artist.name.charAt(0)}
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-                  <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-                    <ArrowUpRight className="h-4 w-4" />
+          {artists.map((artist) => (
+            <Link
+              key={artist.id}
+              href={`/artistas/${artist.id}`}
+              className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
+            >
+              <div className="relative aspect-square overflow-hidden">
+                {artist.image ? (
+                  <Image
+                    src={artist.image}
+                    alt={artist.name}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-muted text-5xl font-bold text-muted-foreground">
+                    {artist.name.charAt(0)}
                   </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+                <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                  <ArrowUpRight className="h-4 w-4" />
                 </div>
+              </div>
 
-                <div className="flex flex-col gap-1.5 p-4">
-                  <h2 className="text-lg font-bold tracking-tight">{artist.name}</h2>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Users className="h-3.5 w-3.5" />
-                    <span>{formatFollowers(artist.followers)} followers</span>
-                  </div>
-                  {artist.genres.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      {artist.genres.slice(0, 3).map((genre) => (
-                        <span
-                          key={genre}
-                          className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                        >
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+              <div className="flex flex-col gap-1.5 p-4">
+                <h2 className="text-lg font-bold tracking-tight">{artist.name}</h2>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  <span>{formatFollowers(artist.followers)} followers</span>
                 </div>
-              </Link>
-            );
-          })}
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </main>
