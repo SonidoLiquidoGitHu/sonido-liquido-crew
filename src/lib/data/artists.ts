@@ -1,18 +1,16 @@
-export interface Socials {
-  instagram?: string;
-  spotify?: string;
-  soundcloud?: string;
-  youtube?: string;
-  twitter?: string;
-}
-
 export interface Artist {
   id: string;
   name: string;
   slug: string;
   bio: string;
   image: string;
-  socials: Socials;
+  socials: {
+    instagram?: string;
+    spotify?: string;
+    soundcloud?: string;
+    youtube?: string;
+    twitter?: string;
+  };
 }
 
 export const artists: Artist[] = [
@@ -32,7 +30,7 @@ export const artists: Artist[] = [
     id: "2",
     name: "Cero Grados",
     slug: "cero-grados",
-    bio: "Cero Grados is the moniker of producer and DJ Alejandro Vera, whose精密ly crafted techno sets have ignited dance floors from Tulum to Berlin. His productions pulse with cold, metallic energy — a sonic reflection of urban landscapes after midnight, where rhythm becomes architecture.",
+    bio: "Cero Grados is the moniker of producer and DJ Alejandro Vera, whose precisely crafted techno sets have ignited dance floors from Tulum to Berlin. His productions pulse with cold, metallic energy — a sonic reflection of urban landscapes after midnight, where rhythm becomes architecture.",
     image: "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=600&h=600&fit=crop",
     socials: {
       instagram: "https://instagram.com/cerogrados",
@@ -92,5 +90,5 @@ export const artists: Artist[] = [
 ];
 
 export function getArtistBySlug(slug: string): Artist | undefined {
-  return artists.find((artist) => artist.slug === slug);
+  return artists.find((a) => a.slug === slug);
 }
