@@ -2,20 +2,49 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { artists, getArtistBySlug } from "@/lib/data/artists";
 import { ArrowLeft, Instagram, Music, ExternalLink } from "lucide-react";
+
+interface Artist {
+  id: string;
+  name: string;
+  slug: string;
+  bio: string;
+  image: string;
+  socials: Record<string, string>;
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+function getBaseUrl(): string {
+  const base =
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    process.env.VERCEL_URL ??
+    process.env.NETLIFY_URL ??
+    "http://localhost:3000";
+  return base.startsWith("http") ? base : `https://${base}`;
+}
+
+async function fetchArtists(): Promise<Artist[]> {
+  const res = await fetch(`${getBaseUrl()}/api/artists`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+async function fetchArtistBySlug(slug: string): Promise<Artist | null> {
+  const artists = await fetchArtists();
+  return artists.find((a) => a.slug === slug) ?? null;
+}
+
 export async function generateStaticParams() {
+  const artists = await fetchArtists();
   return artists.map((artist) => ({ slug: artist.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const artist = getArtistBySlug(slug);
+  const artist = await fetchArtistBySlug(slug);
   if (!artist) return { title: "Not Found — Colectivo" };
 
   return {
@@ -26,7 +55,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArtistDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const artist = getArtistBySlug(slug);
+  const artist = await fetchArtistBySlug(slug);
 
   if (!artist) notFound();
 
@@ -46,7 +75,7 @@ export default async function ArtistDetailPage({ params }: PageProps) {
     artist.socials.twitter
       ? { label: "Twitter / X", href: artist.socials.twitter, icon: ExternalLink }
       : null,
-  ].filter(Boolean);
+  ].filter(Boolean) as { label: string; href: string; icon: typeof ExternalLink }[];
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
@@ -88,21 +117,18 @@ export default async function ArtistDetailPage({ params }: PageProps) {
                 Follow
               </h3>
               <div className="flex flex-wrap gap-3">
-                {socialLinks.map(
-                  (link) =>
-                    link && (
-                      <a
-                        key={link.label}
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-4 py-2 text-sm font-medium text-muted-foreground transition-all hover:border-border hover:bg-muted/50 hover:text-foreground"
-                      >
-                        <link.icon className="h-4 w-4" />
-                        {link.label}
-                      </a>
-                    )
-                )}
+                {socialLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-4 py-2 text-sm font-medium text-muted-foreground transition-all hover:border-border hover:bg-muted/50 hover:text-foreground"
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </a>
+                ))}
               </div>
             </div>
           )}
