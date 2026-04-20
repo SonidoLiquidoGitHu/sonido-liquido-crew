@@ -2,49 +2,20 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { artists, getArtistBySlug } from "@/lib/data/artists";
 import { ArrowLeft, Instagram, Music, ExternalLink } from "lucide-react";
-
-interface Artist {
-  id: string;
-  name: string;
-  slug: string;
-  bio: string;
-  image: string;
-  socials: Record<string, string>;
-}
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-function getBaseUrl(): string {
-  const base =
-    process.env.NEXT_PUBLIC_BASE_URL ??
-    process.env.VERCEL_URL ??
-    process.env.NETLIFY_URL ??
-    "http://localhost:3000";
-  return base.startsWith("http") ? base : `https://${base}`;
-}
-
-async function fetchArtists(): Promise<Artist[]> {
-  const res = await fetch(`${getBaseUrl()}/api/artists`, { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
-}
-
-async function fetchArtistBySlug(slug: string): Promise<Artist | null> {
-  const artists = await fetchArtists();
-  return artists.find((a) => a.slug === slug) ?? null;
-}
-
-export async function generateStaticParams() {
-  const artists = await fetchArtists();
+export function generateStaticParams() {
   return artists.map((artist) => ({ slug: artist.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const artist = await fetchArtistBySlug(slug);
+  const artist = getArtistBySlug(slug);
   if (!artist) return { title: "Not Found — Colectivo" };
 
   return {
@@ -55,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArtistDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const artist = await fetchArtistBySlug(slug);
+  const artist = getArtistBySlug(slug);
 
   if (!artist) notFound();
 
@@ -88,7 +59,6 @@ export default async function ArtistDetailPage({ params }: PageProps) {
       </Link>
 
       <div className="grid gap-10 lg:grid-cols-[400px_1fr] lg:gap-16">
-        {/* Image */}
         <div className="relative aspect-square overflow-hidden rounded-2xl">
           <Image
             src={artist.image}
@@ -101,7 +71,6 @@ export default async function ArtistDetailPage({ params }: PageProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-background/30 to-transparent" />
         </div>
 
-        {/* Info */}
         <div className="flex flex-col justify-center">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
             {artist.name}

@@ -1,6 +1,7 @@
-import { Metadata, headers } from "next";
+import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { artists } from "@/lib/data/artists";
 import { ArrowUpRight } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -8,29 +9,7 @@ export const metadata: Metadata = {
   description: "Discover the artists of our music collective.",
 };
 
-interface Artist {
-  id: string;
-  name: string;
-  slug: string;
-  bio: string;
-  image: string;
-  socials: Record<string, string>;
-}
-
-async function getArtists(): Promise<Artist[]> {
-  const base = process.env.NEXT_PUBLIC_BASE_URL
-    ?? process.env.VERCEL_URL
-    ?? process.env.NETLIFY_URL
-    ?? "http://localhost:3000";
-  const url = base.startsWith("http") ? base : `https://${base}`;
-  const res = await fetch(`${url}/api/artists`, { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
-}
-
-export default async function ArtistasPage() {
-  const artists = await getArtists();
-
+export default function ArtistasPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
       <div className="mb-12">
