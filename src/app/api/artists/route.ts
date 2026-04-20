@@ -1,51 +1,34 @@
 import { NextResponse } from "next/server";
 
 const SPOTIFY_IDS = [
-  "4Z8W4fKeB5YxbusRsdQVPb",   // Radiohead
-  "4uFZsG1vXrPbvSnA1cNRsG",   // Bajofondo
-  "1r1uxoy19fzMxunt3ONm3V",   // Mon Laferte
-  "4S7lEjH0bKt0pOdZ5m9lDJ",   // Nortec Collective
-  "7ltDVBr6mKbRvohxheJ9h1",   // Jorge Drexler
-  "3wc4l4TzM6w3qLwOQV0Qke",   // Bomba Estéreo
+  "2jJmTEMkGQfH3BxoG3MQvF",
+  "4fNQqyvcM71IyF2EitEtCj",
+  "3RAg8fPmZ8RnacJO8MhLP1",
+  "2zrv1oduhIYh29vvQZwI5r",
+  "3eCEorgAoZkvnAQLdy4x38",
+  "5urer15JPbCELf17LVia7w",
+  "5TMoczTLclVyzzDY5qf3Yb",
+  "6AN9ek9RwrLbSp9rT2lcDG",
+  "0QdRhOmiqAcV1dPCoiSIQJ",
+  "16YScXC67nAnFDcA2LGdY0",
+  "5HrBwfVDf0HXzGDrJ6Znqc",
+  "4T4Z7jvUcMV16VsslRRuC5",
+  "4UqFXhJVb9zy2SbNx4ycJQ",
+  "2Apt0MjZGqXAd1pl4LNQrR",
+  "4WQmw3fIx9F7iPKL5v8SCN",
 ];
 
-interface SpotifyImage {
-  url: string;
-  height: number;
-  width: number;
-}
-
-interface SpotifyArtist {
-  id: string;
-  name: string;
-  images: SpotifyImage[];
-  genres: string[];
-  followers: { total: number };
-  external_urls: { spotify: string };
-}
-
-interface ArtistOutput {
-  id: string;
-  name: string;
-  image: string;
-  genres: string[];
-  followers: number;
-  spotifyUrl: string;
-}
-
 async function getAccessToken(): Promise<string> {
-  const clientId = process.env.CLIENT_ID;
-  const clientSecret = process.env.CLIENT_SECRET;
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error("Missing CLIENT_ID or CLIENT_SECRET environment variables");
+    throw new Error("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET");
   }
 
   const res = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "client_credentials",
       client_id: clientId,
@@ -54,35 +37,24 @@ async function getAccessToken(): Promise<string> {
   });
 
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Spotify token request failed (${res.status}): ${body}`);
+    const detail = await res.text();
+    throw new Error(`Spotify auth failed (${res.status}): ${detail}`);
   }
 
-  const data = await res.json();
-  return data.access_token;
+  const { access_token } = await res.json();
+  return access_token;
 }
 
-async function fetchSpotifyArtist(
+async function fetchArtist(
   token: string,
   id: string
-): Promise<ArtistOutput | null> {
+): Promise<Record<string, unknown> | null> {
   try {
     const res = await fetch(`https://api.spotify.com/v1/artists/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-
     if (!res.ok) return null;
-
-    const a: SpotifyArtist = await res.json();
-
-    return {
-      id: a.id,
-      name: a.name,
-      image: a.images?.[0]?.url ?? "",
-      genres: a.genres ?? [],
-      followers: a.followers?.total ?? 0,
-      spotifyUrl: a.external_urls?.spotify ?? "",
-    };
+    return res.json();
   } catch {
     return null;
   }
@@ -91,17 +63,22 @@ async function fetchSpotifyArtist(
 export async function GET() {
   try {
     const token = await getAccessToken();
+    const raw = await Promise.all(SPOTIFY_IDS.map((id) => fetchArtist(token, id)));
 
-    const results = await Promise.all(
-      SPOTIFY_IDS.map((id) => fetchSpotifyArtist(token, id))
-    );
-
-    const artists = results.filter((a): a is ArtistOutput => a !== null);
+    const artists = raw
+      .filter((a): a is Record<string, unknown> => a !== null)
+      .map((a) => ({
+        id: a.id as string,
+        name: a.name as string,
+        image: (a.images as { url: string }[])?.[0]?.url ?? "",
+        genres: a.genres as string[],
+        followers: (a.followers as { total: number })?.total ?? 0,
+        spotifyUrl: (a.external_urls as { spotify: string })?.spotify ?? "",
+      }));
 
     return NextResponse.json(artists);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Unknown server error";
+    const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
