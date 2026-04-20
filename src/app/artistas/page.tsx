@@ -77,41 +77,45 @@ export default function ArtistasPage() {
 
       {!loading && !error && artists.length > 0 && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {artists.map((artist) => (
-            <Link
-              key={artist.id}
-              href={`/artistas/${artist.id}`}
-              className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
-            >
-              <div className="relative aspect-square overflow-hidden">
-                {artist.image ? (
-                  <Image
-                    src={artist.image}
-                    alt={artist.name}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-muted text-5xl font-bold text-muted-foreground">
-                    {artist.name.charAt(0)}
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-                <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-                  <ArrowUpRight className="h-4 w-4" />
-                </div>
-              </div>
+          {artists.map((artist) => {
+            const slug = artist.id;
 
-              <div className="flex flex-col gap-1.5 p-4">
-                <h2 className="text-lg font-bold tracking-tight">{artist.name}</h2>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Users className="h-3.5 w-3.5" />
-                  <span>{formatFollowers(artist.followers)} followers</span>
+            return (
+              <Link
+                key={artist.id}
+                href={`/artistas/${slug}`}
+                className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
+              >
+                <div className="relative aspect-square overflow-hidden bg-muted">
+                  {artist.image ? (
+                    <Image
+                      src={artist.image}
+                      alt={artist.name}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-5xl font-bold text-muted-foreground">
+                      {artist.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+                  <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                    <ArrowUpRight className="h-4 w-4" />
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+
+                <div className="flex flex-col gap-1.5 p-4">
+                  <h2 className="text-lg font-bold tracking-tight">{artist.name}</h2>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>{formatFollowers(artist.followers)} followers</span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </main>
