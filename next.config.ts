@@ -1,14 +1,26 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Netlify requires "standalone" output for serverless functions
   output: "standalone",
+
   images: {
-    domains: ["i.scdn.co", "images.unsplash.com"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "i.scdn.co",
+        pathname: "/image/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+    ],
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  reactStrictMode: false,
+
+  // Enable strict mode for catching issues early
+  reactStrictMode: true,
 };
 
 export default nextConfig;

@@ -2,32 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Loader2, AlertCircle, Users, ExternalLink } from "lucide-react";
-
-interface Artist {
-  id: string;
-  name: string;
-  image: string;
-  followers: number;
-  spotifyUrl: string;
-}
-
-function formatFollowers(n: number): string {
-  if (typeof n !== "number" || isNaN(n)) return "0";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return n.toString();
-}
-
-function safeString(val: unknown, fallback = ""): string {
-  if (typeof val === "string" && val.length > 0) return val;
-  return fallback;
-}
-
-function safeNumber(val: unknown, fallback = 0): number {
-  if (typeof val === "number" && !isNaN(val)) return val;
-  return fallback;
-}
+import { type Artist, formatFollowers, normalizeArtist } from "@/lib/types";
 
 export default function ArtistasPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -47,13 +24,9 @@ export default function ArtistasPage() {
         if (!Array.isArray(data)) {
           throw new Error("Invalid response format");
         }
-        const normalized: Artist[] = data.map((item: Record<string, unknown>) => ({
-          id: safeString(item.id, crypto.randomUUID?.() ?? String(Math.random())),
-          name: safeString(item.name, "Unknown Artist"),
-          image: safeString(item.image),
-          followers: safeNumber(item.followers),
-          spotifyUrl: safeString(item.spotifyUrl),
-        }));
+        const normalized = data.map((item: Record<string, unknown>) =>
+          normalizeArtist(item)
+        );
         setArtists(normalized);
       })
       .catch((err) => setError(err.message))
@@ -99,15 +72,12 @@ export default function ArtistasPage() {
       {!loading && !error && artists.length > 0 && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {artists.map((artist) => {
-            const href = artist.spotifyUrl || "#";
             const hasImage = typeof artist.image === "string" && artist.image.length > 0;
 
             return (
-              <a
+              <Link
                 key={artist.id}
-                href={href}
-                target={artist.spotifyUrl ? "_blank" : undefined}
-                rel={artist.spotifyUrl ? "noopener noreferrer" : undefined}
+                href={`/artistas/${artist.id}`}
                 className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
               >
                 <div className="relative aspect-square overflow-hidden bg-muted">
@@ -126,7 +96,14 @@ export default function ArtistasPage() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
                   {artist.spotifyUrl && (
-                    <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                    <div
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer");
+                      }}
+                      className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100 cursor-pointer"
+                    >
                       <ExternalLink className="h-4 w-4" />
                     </div>
                   )}
@@ -139,7 +116,7 @@ export default function ArtistasPage() {
                     <span>{formatFollowers(artist.followers)} followers</span>
                   </div>
                 </div>
-              </a>
+              </Link>
             );
           })}
         </div>

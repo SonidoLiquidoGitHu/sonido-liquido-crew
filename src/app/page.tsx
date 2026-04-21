@@ -1,9 +1,35 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { artists } from "@/lib/data/artists";
-import { ArrowRight, Music2, Users, Disc3 } from "lucide-react";
+import { ArrowRight, Music2, Users, Disc3, Loader2 } from "lucide-react";
+import { type Artist, normalizeArtist } from "@/lib/types";
 
 export default function HomePage() {
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/artists")
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);
+        return res.json();
+      })
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const normalized = data.map((item: Record<string, unknown>) =>
+          normalizeArtist(item)
+        );
+        setArtists(normalized);
+      })
+      .catch(() => {
+        // Silently fail on homepage — the /artistas page shows a proper error
+        setArtists([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   const featured = artists.slice(0, 3);
 
   return (
@@ -52,7 +78,9 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-6xl grid-cols-3 gap-4 px-4 py-10 sm:px-6">
           <div className="flex flex-col items-center gap-2 text-center">
             <Users className="h-5 w-5 text-primary" />
-            <span className="text-2xl font-bold sm:text-3xl">{artists.length}</span>
+            <span className="text-2xl font-bold sm:text-3xl">
+              {loading ? "—" : artists.length}
+            </span>
             <span className="text-xs text-muted-foreground sm:text-sm">Artists</span>
           </div>
           <div className="flex flex-col items-center gap-2 text-center">
@@ -86,32 +114,59 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((artist) => (
-            <Link
-              key={artist.id}
-              href={`/artistas/${artist.slug}`}
-              className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
-            >
-              <div className="relative aspect-[4/3] overflow-hidden">
-                <Image
-                  src={artist.image}
-                  alt={artist.name}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-              </div>
-              <div className="p-5">
-                <h3 className="text-lg font-bold tracking-tight">{artist.name}</h3>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                  {artist.bio}
-                </p>
-              </div>
+        {loading && (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {!loading && featured.length === 0 && (
+          <p className="py-16 text-center text-muted-foreground">
+            Could not load featured artists.{" "}
+            <Link href="/artistas" className="text-primary hover:opacity-80">
+              View all artists
             </Link>
-          ))}
-        </div>
+          </p>
+        )}
+
+        {!loading && featured.length > 0 && (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((artist) => {
+              const hasImage = typeof artist.image === "string" && artist.image.length > 0;
+
+              return (
+                <Link
+                  key={artist.id}
+                  href={`/artistas/${artist.id}`}
+                  className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-muted">
+                    {hasImage ? (
+                      <Image
+                        src={artist.image}
+                        alt={artist.name}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-5xl font-bold text-muted-foreground">
+                        {artist.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold tracking-tight">{artist.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {artist.followers.toLocaleString()} followers
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
         <div className="mt-8 text-center sm:hidden">
           <Link

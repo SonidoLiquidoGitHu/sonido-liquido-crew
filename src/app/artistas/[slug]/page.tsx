@@ -4,23 +4,9 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Loader2, AlertCircle, Users, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Users, ExternalLink } from "lucide-react";
 import { reporter, parseApiError } from "@/lib/error-reporter";
-
-interface Artist {
-  id: string;
-  name: string;
-  image: string;
-  genres: string[];
-  followers: number;
-  spotifyUrl: string;
-}
-
-function formatFollowers(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return n.toString();
-}
+import { type Artist, formatFollowers, safeString, safeNumber } from "@/lib/types";
 
 export default function ArtistDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -37,7 +23,21 @@ export default function ArtistDetailPage() {
       .then((data) => {
         const apiError = parseApiError(data, "");
         if (apiError) throw new Error(apiError);
-        const list: Artist[] = Array.isArray(data) ? data : [];
+
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid response format");
+        }
+
+        // Normalize every item to a safe Artist object
+        const list: Artist[] = data.map((item: Record<string, unknown>) => ({
+          id: safeString(item.id, ""),
+          name: safeString(item.name, "Unknown Artist"),
+          image: safeString(item.image),
+          followers: safeNumber(item.followers),
+          spotifyUrl: safeString(item.spotifyUrl),
+        }));
+
+        // Match by Spotify id (the slug param IS the Spotify artist id)
         const found = list.find((a) => a.id === params.slug) ?? null;
 
         if (!found) {
@@ -117,6 +117,8 @@ export default function ArtistDetailPage() {
     );
   }
 
+  const hasImage = typeof artist.image === "string" && artist.image.length > 0;
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
       <Link
@@ -129,7 +131,7 @@ export default function ArtistDetailPage() {
 
       <div className="grid gap-10 lg:grid-cols-[400px_1fr] lg:gap-16">
         <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted">
-          {artist.image ? (
+          {hasImage ? (
             <Image
               src={artist.image}
               alt={artist.name}
@@ -156,19 +158,6 @@ export default function ArtistDetailPage() {
             <Users className="h-4 w-4" />
             <span>{formatFollowers(artist.followers)} followers</span>
           </div>
-
-          {artist.genres.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {artist.genres.map((genre) => (
-                <span
-                  key={genre}
-                  className="rounded-full bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
-          )}
 
           {artist.spotifyUrl && (
             <div className="mt-8">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Artist } from "@/lib/types";
 
 const SPOTIFY_IDS = [
   "2jJmTEMkGQfH3BxoG3MQvF",
@@ -48,7 +49,7 @@ async function getAccessToken(): Promise<string> {
 async function fetchArtist(
   token: string,
   id: string
-): Promise<{ id: string; name: string; image: string; followers: number; spotifyUrl: string } | null> {
+): Promise<Artist | null> {
   try {
     const res = await fetch(`https://api.spotify.com/v1/artists/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -61,9 +62,10 @@ async function fetchArtist(
     return {
       id: String(data.id ?? ""),
       name: String(data.name ?? "Unknown"),
-      image: Array.isArray(data.images) && data.images.length > 0 && data.images[0]?.url
-        ? String(data.images[0].url)
-        : "",
+      image:
+        Array.isArray(data.images) && data.images.length > 0 && data.images[0]?.url
+          ? String(data.images[0].url)
+          : "",
       followers: typeof data.followers?.total === "number" ? data.followers.total : 0,
       spotifyUrl: data.external_urls?.spotify ? String(data.external_urls.spotify) : "",
     };
@@ -77,10 +79,7 @@ export async function GET() {
     const token = await getAccessToken();
     const results = await Promise.all(SPOTIFY_IDS.map((id) => fetchArtist(token, id)));
 
-    const artists = results.filter(
-      (a): a is { id: string; name: string; image: string; followers: number; spotifyUrl: string } =>
-        a !== null
-    );
+    const artists = results.filter((a): a is Artist => a !== null);
 
     return NextResponse.json(artists);
   } catch (err) {
