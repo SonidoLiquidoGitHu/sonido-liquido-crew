@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Disc3 } from "lucide-react";
+import { NewsletterForm } from "@/components/newsletter-form";
 
 const NAV_LINKS = [
   { href: "/", label: "Inicio" },
@@ -70,19 +71,7 @@ export function Footer() {
             <p className="mb-3 text-sm text-muted-foreground">
               Obtén remixes exclusivos, beats e información actualizada.
             </p>
-            <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
-              <input
-                type="email"
-                placeholder="tu@email.com"
-                className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button
-                type="submit"
-                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                Suscribirse
-              </button>
-            </form>
+            <NewsletterForm variant="footer" />
           </div>
         </div>
 

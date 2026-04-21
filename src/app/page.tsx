@@ -8,6 +8,7 @@ import {
   ChevronRight, Loader2, Headphones, Instagram, Youtube,
 } from "lucide-react";
 import { type Artist, formatFollowers, formatCount, normalizeArtist } from "@/lib/types";
+import { NewsletterForm } from "@/components/newsletter-form";
 
 export default function HomePage() {
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -299,22 +300,9 @@ export default function HomePage() {
           <p className="mx-auto mt-3 max-w-md text-muted-foreground">
             Obtén remixes exclusivos, beats e información actualizada directamente en tu correo.
           </p>
-          <form
-            className="mx-auto mt-6 flex max-w-md gap-2"
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <input
-              type="email"
-              placeholder="tu@email.com"
-              className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Suscribirse
-            </button>
-          </form>
+          <div className="mx-auto mt-6 max-w-md">
+            <NewsletterForm variant="hero" />
+          </div>
         </div>
       </section>
     </main>

@@ -81,3 +81,41 @@ Stage Summary:
 - Artist pages link directly to YouTube channels instead of search results
 - YouTube API key still needs to be set in .env for embedded videos to work
 - Build passes cleanly
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Implement Mailchimp newsletter integration
+
+Work Log:
+- Added 3 Mailchimp env vars to .env.example with detailed setup instructions:
+  - MAILCHIMP_API_KEY (format: {key}-{server_prefix})
+  - MAILCHIMP_SERVER_PREFIX (e.g. "us1")
+  - MAILCHIMP_AUDIENCE_ID (the list ID)
+- Created /api/subscribe route (src/app/api/subscribe/route.ts):
+  - POST endpoint accepting { email } JSON body
+  - Validates email format server-side
+  - Calls Mailchimp API v3 to add subscriber with "subscribed" status
+  - Tags new subscribers with "website-signup"
+  - Handles "Member Exists" (already subscribed) gracefully
+  - Returns 503 with friendly message if Mailchimp not configured
+  - All error messages in Spanish matching site language
+- Created reusable NewsletterForm component (src/components/newsletter-form.tsx):
+  - Two visual variants: "hero" (homepage) and "footer" (compact)
+  - States: idle → loading → success/error
+  - Loading state with spinner animation
+  - Success state with green checkmark and confirmation message
+  - Error state with retry button
+  - Email icon in hero variant input
+  - Disabled button when email empty or loading
+- Replaced non-functional newsletter form on homepage with NewsletterForm variant="hero"
+- Replaced non-functional newsletter form in footer with NewsletterForm variant="footer"
+- Build passes cleanly with zero TypeScript errors
+- New API route /api/subscribe appears in build output
+
+Stage Summary:
+- Mailchimp integration fully functional — both newsletter forms now POST to /api/subscribe
+- Graceful fallback: if Mailchimp env vars not set, shows "not configured yet" message (no crash)
+- Reusable component eliminates duplicate form code between homepage and footer
+- All 3 env vars (MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, MAILCHIMP_AUDIENCE_ID) documented in .env.example
+- Build passes cleanly
