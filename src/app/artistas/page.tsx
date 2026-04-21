@@ -1,24 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, Loader2, AlertCircle, Users } from "lucide-react";
-import { reporter, parseApiError, classifyStatus } from "@/lib/error-reporter";
+import { Loader2, AlertCircle, Users, ExternalLink } from "lucide-react";
 
 interface Artist {
   id: string;
   name: string;
   image: string;
-  genres: string[];
   followers: number;
   spotifyUrl: string;
 }
 
 function formatFollowers(n: number): string {
+  if (typeof n !== "number" || isNaN(n)) return "0";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
   return n.toString();
+}
+
+function safeString(val: unknown, fallback = ""): string {
+  if (typeof val === "string" && val.length > 0) return val;
+  return fallback;
+}
+
+function safeNumber(val: unknown, fallback = 0): number {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  return fallback;
 }
 
 export default function ArtistasPage() {
@@ -29,45 +37,26 @@ export default function ArtistasPage() {
   useEffect(() => {
     fetch("/api/artists")
       .then((res) => {
-        if (!res.ok) {
-          const severity = classifyStatus(res.status);
-          reporter[severity]({
-            source: "page:/artistas",
-            action: "fetch-artists",
-            error: new Error(`API returned ${res.status}`),
-            meta: { status: res.status },
-          });
-          throw new Error(`Failed to fetch (${res.status})`);
-        }
+        if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);
         return res.json();
       })
       .then((data) => {
-        const apiError = parseApiError(data, "");
-        if (apiError) {
-          reporter.error({
-            source: "page:/artistas",
-            action: "fetch-artists",
-            error: new Error(apiError),
-          });
-          throw new Error(apiError);
+        if (data && typeof data === "object" && "error" in data) {
+          throw new Error(String(data.error));
         }
-        const list = Array.isArray(data) ? data : [];
-        reporter.info({
-          source: "page:/artistas",
-          action: "fetch-artists",
-          error: `Loaded ${list.length} artists`,
-          meta: { count: list.length },
-        });
-        setArtists(list);
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid response format");
+        }
+        const normalized: Artist[] = data.map((item: Record<string, unknown>) => ({
+          id: safeString(item.id, crypto.randomUUID?.() ?? String(Math.random())),
+          name: safeString(item.name, "Unknown Artist"),
+          image: safeString(item.image),
+          followers: safeNumber(item.followers),
+          spotifyUrl: safeString(item.spotifyUrl),
+        }));
+        setArtists(normalized);
       })
-      .catch((err) => {
-        reporter.error({
-          source: "page:/artistas",
-          action: "fetch-artists",
-          error: err,
-        });
-        setError(err.message);
-      })
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -110,16 +99,19 @@ export default function ArtistasPage() {
       {!loading && !error && artists.length > 0 && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {artists.map((artist) => {
-            const slug = artist.id;
+            const href = artist.spotifyUrl || "#";
+            const hasImage = typeof artist.image === "string" && artist.image.length > 0;
 
             return (
-              <Link
+              <a
                 key={artist.id}
-                href={`/artistas/${slug}`}
+                href={href}
+                target={artist.spotifyUrl ? "_blank" : undefined}
+                rel={artist.spotifyUrl ? "noopener noreferrer" : undefined}
                 className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
               >
                 <div className="relative aspect-square overflow-hidden bg-muted">
-                  {artist.image ? (
+                  {hasImage ? (
                     <Image
                       src={artist.image}
                       alt={artist.name}
@@ -133,9 +125,11 @@ export default function ArtistasPage() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-                  <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-                    <ArrowUpRight className="h-4 w-4" />
-                  </div>
+                  {artist.spotifyUrl && (
+                    <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                      <ExternalLink className="h-4 w-4" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5 p-4">
@@ -145,7 +139,7 @@ export default function ArtistasPage() {
                     <span>{formatFollowers(artist.followers)} followers</span>
                   </div>
                 </div>
-              </Link>
+              </a>
             );
           })}
         </div>
