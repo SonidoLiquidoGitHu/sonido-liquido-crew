@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Disc3, Users, Calendar, Music2, Play, ExternalLink,
-  ChevronRight, Loader2, Headphones,
+  ChevronRight, Loader2, Headphones, Instagram, Youtube,
 } from "lucide-react";
 import { type Artist, formatFollowers, formatCount, normalizeArtist } from "@/lib/types";
 
@@ -355,14 +355,27 @@ function ArtistCard({ artist }: { artist: Artist }) {
             <span>{artist.releases} lanzamientos</span>
           </div>
         </div>
-        {artist.spotifyUrl && (
-          <div
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {artist.instagram && (
+            <a
+              href={artist.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.instagram!, "_blank", "noopener,noreferrer"); }}
+              className="text-pink-500/60 hover:text-pink-500"
+            >
+              <Instagram className="h-4 w-4" />
+            </a>
+          )}
+          {artist.spotifyUrl && (
+            <div
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </div>
+          )}
+        </div>
       </div>
     </Link>
   );

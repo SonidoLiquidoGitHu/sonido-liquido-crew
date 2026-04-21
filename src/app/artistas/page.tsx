@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2, Users, ExternalLink, Disc3 } from "lucide-react";
+import { Loader2, Users, ExternalLink, Disc3, Instagram } from "lucide-react";
 import { type Artist, formatFollowers, normalizeArtist } from "@/lib/types";
 
 export default function ArtistasPage() {
@@ -137,7 +137,18 @@ export default function ArtistasPage() {
 
                   {/* Popularity bar */}
                   <div className="flex items-center gap-1.5">
-                    <div className="h-1 w-16 overflow-hidden rounded-full bg-[#2a2a2a]">
+                    {artist.instagram && (
+                      <a
+                        href={artist.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.instagram!, "_blank", "noopener,noreferrer"); }}
+                        className="text-pink-500 hover:text-pink-400"
+                      >
+                        <Instagram className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    <div className="h-1 w-12 overflow-hidden rounded-full bg-[#2a2a2a]">
                       <div
                         className="h-full rounded-full bg-primary transition-all"
                         style={{ width: `${artist.popularity}%` }}

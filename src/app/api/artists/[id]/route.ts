@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import type { Artist, Track, Release } from "@/lib/types";
+import type { Artist, Track, Release, YouTubeVideo } from "@/lib/types";
+import { getArtistConfig } from "@/lib/artist-config";
 
 let tokenCache: { token: string; expires: number } | null = null;
 
@@ -37,6 +38,42 @@ async function getAccessToken(): Promise<string> {
   return tokenCache.token;
 }
 
+async function searchYouTubeVideos(artistName: string): Promise<YouTubeVideo[]> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return [];
+
+  try {
+    const query = encodeURIComponent(`${artistName} Sonido Líquido`);
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${query}&type=video&key=${apiKey}`
+    );
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    if (!Array.isArray(data.items)) return [];
+
+    return (data.items as Record<string, unknown>[] ?? [])
+      .filter((item) => {
+        const idObj = item.id as Record<string, unknown> | undefined;
+        return idObj && typeof idObj.videoId === "string";
+      })
+      .map((item) => {
+        const idObj = item.id as Record<string, string>;
+        const snippet = item.snippet as Record<string, unknown>;
+        const thumbnails = snippet.thumbnails as Record<string, Record<string, string>> | undefined;
+        return {
+          videoId: idObj.videoId ?? "",
+          title: String(snippet.title ?? ""),
+          thumbnail: thumbnails?.medium?.url ?? thumbnails?.default?.url ?? "",
+          channelTitle: String(snippet.channelTitle ?? ""),
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -44,8 +81,8 @@ export async function GET(
   try {
     const { id } = await params;
     const token = await getAccessToken();
+    const config = getArtistConfig(id);
 
-    // Fetch artist + albums + top tracks in parallel
     const [artistRes, albumsRes, tracksRes] = await Promise.all([
       fetch(`https://api.spotify.com/v1/artists/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -79,6 +116,9 @@ export async function GET(
       spotifyUrl: artistData.external_urls?.spotify ? String(artistData.external_urls.spotify) : "",
       popularity: typeof artistData.popularity === "number" ? artistData.popularity : 0,
       releases: typeof albumsData?.total === "number" ? albumsData.total : 0,
+      instagram: config?.instagram ?? null,
+      youtubeChannelId: config?.youtubeChannelId ?? null,
+      youtubeHandle: config?.youtubeHandle ?? null,
     };
 
     const tracks: Track[] = Array.isArray(tracksData?.tracks)
@@ -114,7 +154,10 @@ export async function GET(
         }))
       : [];
 
-    return NextResponse.json({ artist, tracks, releases });
+    // Search YouTube videos (non-blocking — returns [] if no API key)
+    const videos = await searchYouTubeVideos(artist.name);
+
+    return NextResponse.json({ artist, tracks, releases, videos });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

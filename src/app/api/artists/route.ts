@@ -1,23 +1,8 @@
 import { NextResponse } from "next/server";
 import type { Artist } from "@/lib/types";
+import { ARTIST_CONFIGS } from "@/lib/artist-config";
 
-const SPOTIFY_IDS = [
-  "2jJmTEMkGQfH3BxoG3MQvF",
-  "4fNQqyvcM71IyF2EitEtCj",
-  "3RAg8fPmZ8RnacJO8MhLP1",
-  "2zrv1oduhIYh29vvQZwI5r",
-  "3eCEorgAoZkvnAQLdy4x38",
-  "5urer15JPbCELf17LVia7w",
-  "5TMoczTLclVyzzDY5qf3Yb",
-  "6AN9ek9RwrLbSp9rT2lcDG",
-  "0QdRhOmiqAcV1dPCoiSIQJ",
-  "16YScXC67nAnFDcA2LGdY0",
-  "5HrBwfVDf0HXzGDrJ6Znqc",
-  "4T4Z7jvUcMV16VsslRRuC5",
-  "4UqFXhJVb9zy2SbNx4ycJQ",
-  "2Apt0MjZGqXAd1pl4LNQrR",
-  "4WQmw3fIx9F7iPKL5v8SCN",
-];
+const SPOTIFY_IDS = ARTIST_CONFIGS.map((c) => c.spotifyId);
 
 let tokenCache: { token: string; expires: number } | null = null;
 
@@ -50,7 +35,7 @@ async function getAccessToken(): Promise<string> {
   const data = await res.json();
   tokenCache = {
     token: data.access_token,
-    expires: now + (data.expires_in - 60) * 1000, // 60s safety margin
+    expires: now + (data.expires_in - 60) * 1000,
   };
   return tokenCache.token;
 }
@@ -60,7 +45,6 @@ async function fetchArtist(
   id: string
 ): Promise<Artist | null> {
   try {
-    // Fetch artist profile + albums in parallel
     const [artistRes, albumsRes] = await Promise.all([
       fetch(`https://api.spotify.com/v1/artists/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -76,6 +60,9 @@ async function fetchArtist(
     const data = await artistRes.json();
     const albumsData = albumsRes.ok ? await albumsRes.json() : null;
 
+    // Merge Spotify data with static config
+    const config = ARTIST_CONFIGS.find((c) => c.spotifyId === id);
+
     return {
       id: String(data.id ?? ""),
       name: String(data.name ?? "Unknown"),
@@ -87,6 +74,9 @@ async function fetchArtist(
       spotifyUrl: data.external_urls?.spotify ? String(data.external_urls.spotify) : "",
       popularity: typeof data.popularity === "number" ? data.popularity : 0,
       releases: typeof albumsData?.total === "number" ? albumsData.total : 0,
+      instagram: config?.instagram ?? null,
+      youtubeChannelId: config?.youtubeChannelId ?? null,
+      youtubeHandle: config?.youtubeHandle ?? null,
     };
   } catch {
     return null;

@@ -1,20 +1,22 @@
 /**
- * Shared types and utilities for the Colectivo music collective app.
+ * Shared types and utilities for the Sonido Líquido Crew app.
  * All artist-related code must import from this single source of truth.
  */
 
 // ── Artist Type ─────────────────────────────────────────────────────
-// Matches the Spotify API data shape used by /api/artists.
-// DO NOT add fields like "genres", "slug", "bio", or "socials" here.
+// Merges Spotify API data with static config data (Instagram, YouTube).
 
 export interface Artist {
-  id: string;
+  id: string;             // Spotify artist ID
   name: string;
-  image: string;
+  image: string;          // Spotify artist image URL
   followers: number;
   spotifyUrl: string;
   popularity: number;     // 0-100 from Spotify
   releases: number;       // album/single/EP count from Spotify
+  instagram: string | null;   // Instagram profile URL (from config)
+  youtubeChannelId: string | null; // YouTube channel ID (from config)
+  youtubeHandle: string | null;    // YouTube @handle (from config)
 }
 
 // ── Track Type (for artist detail page) ──────────────────────────────
@@ -41,12 +43,17 @@ export interface Release {
   spotifyUrl: string;
 }
 
+// ── YouTube Video Type ──────────────────────────────────────────────
+
+export interface YouTubeVideo {
+  videoId: string;
+  title: string;
+  thumbnail: string;
+  channelTitle: string;
+}
+
 // ── Utilities ───────────────────────────────────────────────────────
 
-/**
- * Format a follower count for display.
- * 1234567 → "1.2M", 12345 → "12.3K", 999 → "999"
- */
 export function formatFollowers(n: number): string {
   if (typeof n !== "number" || isNaN(n)) return "0";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
@@ -54,9 +61,6 @@ export function formatFollowers(n: number): string {
   return n.toString();
 }
 
-/**
- * Format a large number for display (releases, videos, etc.)
- */
 export function formatCount(n: number): string {
   if (typeof n !== "number" || isNaN(n)) return "0";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
@@ -64,25 +68,16 @@ export function formatCount(n: number): string {
   return n.toString();
 }
 
-/**
- * Safely coerce an unknown value to a string.
- */
 export function safeString(val: unknown, fallback = ""): string {
   if (typeof val === "string" && val.length > 0) return val;
   return fallback;
 }
 
-/**
- * Safely coerce an unknown value to a number.
- */
 export function safeNumber(val: unknown, fallback = 0): number {
   if (typeof val === "number" && !isNaN(val)) return val;
   return fallback;
 }
 
-/**
- * Normalize a raw API item into a safe Artist object.
- */
 export function normalizeArtist(item: Record<string, unknown>): Artist {
   return {
     id: safeString(item.id, crypto.randomUUID?.() ?? String(Math.random())),
@@ -92,12 +87,12 @@ export function normalizeArtist(item: Record<string, unknown>): Artist {
     spotifyUrl: safeString(item.spotifyUrl),
     popularity: safeNumber(item.popularity),
     releases: safeNumber(item.releases),
+    instagram: typeof item.instagram === "string" ? item.instagram : null,
+    youtubeChannelId: typeof item.youtubeChannelId === "string" ? item.youtubeChannelId : null,
+    youtubeHandle: typeof item.youtubeHandle === "string" ? item.youtubeHandle : null,
   };
 }
 
-/**
- * Format track duration from milliseconds to M:SS
- */
 export function formatDuration(ms: number): string {
   if (typeof ms !== "number" || isNaN(ms)) return "0:00";
   const totalSeconds = Math.floor(ms / 1000);

@@ -6,20 +6,25 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft, Loader2, AlertCircle, Users, ExternalLink,
-  Disc3, Play, Clock, Music2,
+  Disc3, Play, Clock, Music2, Instagram, Youtube,
 } from "lucide-react";
 import { reporter, parseApiError } from "@/lib/error-reporter";
-import { type Artist, type Track, type Release, formatFollowers, formatDuration, safeString, safeNumber } from "@/lib/types";
+import {
+  type Artist, type Track, type Release, type YouTubeVideo,
+  formatFollowers, formatDuration, safeString, safeNumber,
+} from "@/lib/types";
 
 interface ArtistDetail {
   artist: Artist;
   tracks: Track[];
   releases: Release[];
+  videos: YouTubeVideo[];
 }
 
 export default function ArtistDetailPage() {
   const params = useParams<{ slug: string }>();
   const [data, setData] = useState<ArtistDetail | null>(null);
+  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +46,9 @@ export default function ArtistDetailPage() {
           spotifyUrl: safeString(json.artist?.spotifyUrl),
           popularity: safeNumber(json.artist?.popularity),
           releases: safeNumber(json.artist?.releases),
+          instagram: json.artist?.instagram ?? null,
+          youtubeChannelId: json.artist?.youtubeChannelId ?? null,
+          youtubeHandle: json.artist?.youtubeHandle ?? null,
         };
 
         const tracks: Track[] = Array.isArray(json.tracks)
@@ -67,16 +75,19 @@ export default function ArtistDetailPage() {
             }))
           : [];
 
+        const videos: YouTubeVideo[] = Array.isArray(json.videos)
+          ? json.videos.map((v: Record<string, unknown>) => ({
+              videoId: safeString(v.videoId),
+              title: safeString(v.title),
+              thumbnail: safeString(v.thumbnail),
+              channelTitle: safeString(v.channelTitle),
+            }))
+          : [];
+
         if (!artist.id) {
-          reporter.warn({
-            source: "page:/artistas/[slug]",
-            action: "find-artist",
-            error: new Error("Artist not found for slug"),
-            meta: { slug: params.slug },
-          });
           setData(null);
         } else {
-          setData({ artist, tracks, releases });
+          setData({ artist, tracks, releases, videos });
         }
       })
       .catch((err) => {
@@ -138,7 +149,7 @@ export default function ArtistDetailPage() {
     );
   }
 
-  const { artist, tracks, releases } = data;
+  const { artist, tracks, releases, videos } = data;
   const hasImage = typeof artist.image === "string" && artist.image.length > 0;
 
   return (
@@ -151,7 +162,7 @@ export default function ArtistDetailPage() {
         Volver a Artistas
       </Link>
 
-      {/* Artist Header */}
+      {/* ── Artist Header ── */}
       <div className="grid gap-8 lg:grid-cols-[360px_1fr] lg:gap-12">
         {/* Image */}
         <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#2a2a2a]">
@@ -178,11 +189,10 @@ export default function ArtistDetailPage() {
             {artist.name}
           </h1>
           <div className="mt-2 text-sm text-muted-foreground">Sonido Líquido Crew</div>
-
           <div className="mt-6 h-px w-16 bg-primary" />
 
           {/* Stats Grid */}
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 text-center">
               <Users className="mx-auto mb-1 h-4 w-4 text-primary" />
               <p className="text-lg font-black">{formatFollowers(artist.followers)}</p>
@@ -199,7 +209,7 @@ export default function ArtistDetailPage() {
               <p className="text-[10px] text-muted-foreground uppercase">Popularidad</p>
             </div>
             <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 text-center">
-              <div className="mx-auto mb-1 h-4 w-4 flex items-center justify-center">
+              <div className="mx-auto mb-1 h-4 flex items-center justify-center">
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#2a2a2a]">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${artist.popularity}%` }} />
                 </div>
@@ -209,43 +219,81 @@ export default function ArtistDetailPage() {
             </div>
           </div>
 
-          {/* Spotify CTA */}
-          {artist.spotifyUrl && (
-            <div className="mt-8 flex gap-3">
+          {/* Social + Spotify CTAs */}
+          <div className="mt-8 flex flex-wrap gap-3">
+            {artist.spotifyUrl && (
               <a
                 href={artist.spotifyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                className="inline-flex items-center gap-2 rounded-full bg-[#1DB954] px-6 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
               >
                 <Play className="h-4 w-4" />
                 Abrir en Spotify
               </a>
+            )}
+            {artist.instagram && (
+              <a
+                href={artist.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-pink-500"
+              >
+                <Instagram className="h-4 w-4 text-pink-500" />
+                Instagram
+              </a>
+            )}
+            <a
+              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
+            >
+              <Youtube className="h-4 w-4 text-red-500" />
+              YouTube
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Spotify Embed (Full Artist Player) ── */}
+      {artist.id && (
+        <section className="mt-16">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-black tracking-tight">Escuchar en Spotify</h2>
+            {artist.spotifyUrl && (
               <a
                 href={artist.spotifyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:opacity-80"
               >
-                <ExternalLink className="h-4 w-4" />
-                Perfil completo
+                Ver perfil completo <ExternalLink className="h-3 w-3" />
               </a>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+          <div className="mt-6">
+            <iframe
+              src={`https://open.spotify.com/embed/artist/${artist.id}?utm_source=generator&theme=0`}
+              width="100%"
+              height="400"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              className="rounded-xl border border-[#2a2a2a]"
+              style={{ backgroundColor: "#1a1a1a" }}
+            />
+          </div>
+        </section>
+      )}
 
-      {/* Top Tracks */}
+      {/* ── Top Tracks ── */}
       {tracks.length > 0 && (
         <section className="mt-16">
           <h2 className="mb-6 text-2xl font-black tracking-tight">Canciones Populares</h2>
           <div className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]">
             {tracks.map((track, i) => (
-              <a
+              <div
                 key={track.id}
-                href={track.spotifyUrl || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
                 className={`flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#2a2a2a] ${
                   i < tracks.length - 1 ? "border-b border-[#2a2a2a]" : ""
                 }`}
@@ -272,20 +320,51 @@ export default function ArtistDetailPage() {
                   {formatDuration(track.durationMs)}
                 </div>
 
+                {/* Play preview button */}
                 {track.previewUrl ? (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full text-primary">
-                    <Play className="h-3.5 w-3.5" />
-                  </div>
+                  <button
+                    onClick={() => {
+                      const audio = document.getElementById(`preview-${track.id}`) as HTMLAudioElement;
+                      if (playingTrack === track.id) {
+                        audio?.pause();
+                        setPlayingTrack(null);
+                      } else {
+                        document.querySelectorAll("audio").forEach((a) => a.pause());
+                        audio?.play();
+                        setPlayingTrack(track.id);
+                      }
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                  >
+                    <Play className={`h-3.5 w-3.5 ${playingTrack === track.id ? "animate-pulse" : ""}`} />
+                  </button>
                 ) : (
-                  <div className="h-8 w-8" />
+                  <a
+                    href={track.spotifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 )}
-              </a>
+
+                {/* Hidden audio element for preview */}
+                {track.previewUrl && (
+                  <audio
+                    id={`preview-${track.id}`}
+                    src={track.previewUrl}
+                    onEnded={() => setPlayingTrack(null)}
+                    className="hidden"
+                  />
+                )}
+              </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Latest Releases */}
+      {/* ── Latest Releases ── */}
       {releases.length > 0 && (
         <section className="mt-16">
           <h2 className="mb-6 text-2xl font-black tracking-tight">Lanzamientos</h2>
@@ -322,21 +401,62 @@ export default function ArtistDetailPage() {
         </section>
       )}
 
-      {/* Spotify Embed */}
-      {artist.id && (
-        <section className="mt-16">
-          <h2 className="mb-6 text-2xl font-black tracking-tight">Escuchar en Spotify</h2>
-          <iframe
-            src={`https://open.spotify.com/embed/artist/${artist.id}?utm_source=generator&theme=0`}
-            width="100%"
-            height="400"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            className="rounded-xl border border-[#2a2a2a]"
-            style={{ backgroundColor: "#1a1a1a" }}
-          />
-        </section>
-      )}
+      {/* ── YouTube Videos ── */}
+      <section className="mt-16">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-black tracking-tight">Videos</h2>
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:opacity-80"
+          >
+            Ver más en YouTube <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        {videos.length > 0 ? (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {videos.map((video) => (
+              <div
+                key={video.videoId}
+                className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-red-500/30"
+              >
+                <div className="relative aspect-video overflow-hidden bg-[#2a2a2a]">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${video.videoId}`}
+                    title={video.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full"
+                  />
+                </div>
+                <div className="p-3">
+                  <p className="line-clamp-2 text-sm font-medium">{video.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{video.channelTitle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center">
+            <Youtube className="mx-auto mb-3 h-10 w-10 text-red-500/50" />
+            <p className="text-sm text-muted-foreground">
+              Videos de {artist.name} en YouTube
+            </p>
+            <a
+              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
+            >
+              <Youtube className="h-4 w-4" />
+              Buscar en YouTube
+            </a>
+          </div>
+        )}
+      </section>
     </main>
   );
 }
