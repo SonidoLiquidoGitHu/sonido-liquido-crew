@@ -38,14 +38,94 @@ async function getAccessToken(): Promise<string> {
   return tokenCache.token;
 }
 
-async function searchYouTubeVideos(artistName: string): Promise<YouTubeVideo[]> {
+/**
+ * Search YouTube videos using the YouTube Data API v3.
+ *
+ * Strategy:
+ * 1. If the artist has a dedicated YouTube channel ID → search within that channel
+ * 2. Also search the main SonidoLíquido Crew channel for the artist
+ * 3. Deduplicate and return up to 6 results
+ *
+ * If YOUTUBE_API_KEY is not set, returns [] (UI shows fallback link).
+ */
+async function searchYouTubeVideos(
+  artistName: string,
+  channelId?: string | null
+): Promise<YouTubeVideo[]> {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) return [];
 
   try {
-    const query = encodeURIComponent(`${artistName} Sonido Líquido`);
+    const searchQueries: Promise<YouTubeVideo[]>[] = [];
+
+    // Search 1: Within the artist's configured channel (or SLC crew channel)
+    if (channelId) {
+      searchQueries.push(
+        fetchYouTubeSearch(apiKey, artistName, channelId)
+      );
+    }
+
+    // Search 2: Always search the main SLC crew channel for this artist
+    const SLC_CHANNEL_ID = "UCy6tHVzGmZ_ehIBWcdrTuRA";
+    if (channelId !== SLC_CHANNEL_ID) {
+      searchQueries.push(
+        fetchYouTubeSearch(apiKey, artistName, SLC_CHANNEL_ID)
+      );
+    }
+
+    // Search 3: Generic YouTube search (broader results)
+    searchQueries.push(
+      fetchYouTubeSearch(apiKey, `${artistName} Sonido Líquido`, undefined)
+    );
+
+    const results = await Promise.all(searchQueries);
+
+    // Flatten, deduplicate by videoId, and limit to 6
+    const seen = new Set<string>();
+    const deduped: YouTubeVideo[] = [];
+
+    for (const batch of results) {
+      for (const video of batch) {
+        if (!seen.has(video.videoId)) {
+          seen.add(video.videoId);
+          deduped.push(video);
+          if (deduped.length >= 6) break;
+        }
+      }
+      if (deduped.length >= 6) break;
+    }
+
+    return deduped;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Execute a single YouTube Data API v3 search request.
+ */
+async function fetchYouTubeSearch(
+  apiKey: string,
+  query: string,
+  channelId?: string | null
+): Promise<YouTubeVideo[]> {
+  try {
+    const params = new URLSearchParams({
+      part: "snippet",
+      maxResults: channelId ? "4" : "3",
+      q: query,
+      type: "video",
+      key: apiKey,
+      // Prefer recent videos
+      order: channelId ? "date" : "relevance",
+    });
+
+    if (channelId) {
+      params.set("channelId", channelId);
+    }
+
     const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${query}&type=video&key=${apiKey}`
+      `https://www.googleapis.com/youtube/v3/search?${params.toString()}`
     );
 
     if (!res.ok) return [];
@@ -53,7 +133,7 @@ async function searchYouTubeVideos(artistName: string): Promise<YouTubeVideo[]> 
     const data = await res.json();
     if (!Array.isArray(data.items)) return [];
 
-    return (data.items as Record<string, unknown>[] ?? [])
+    return (data.items as Record<string, unknown>[])
       .filter((item) => {
         const idObj = item.id as Record<string, unknown> | undefined;
         return idObj && typeof idObj.videoId === "string";
@@ -154,8 +234,11 @@ export async function GET(
         }))
       : [];
 
-    // Search YouTube videos (non-blocking — returns [] if no API key)
-    const videos = await searchYouTubeVideos(artist.name);
+    // Search YouTube videos using channel-aware strategy
+    const videos = await searchYouTubeVideos(
+      artist.name,
+      config?.youtubeChannelId
+    );
 
     return NextResponse.json({ artist, tracks, releases, videos });
   } catch (err) {

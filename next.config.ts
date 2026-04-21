@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
         hostname: "dl.dropboxusercontent.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "i.ytimg.com",
+        pathname: "/**",
+      },
     ],
   },
 

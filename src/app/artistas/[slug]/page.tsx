@@ -243,15 +243,27 @@ export default function ArtistDetailPage() {
                 Instagram
               </a>
             )}
-            <a
-              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
-            >
-              <Youtube className="h-4 w-4 text-red-500" />
-              YouTube
-            </a>
+            {artist.youtubeChannelId ? (
+              <a
+                href={`https://www.youtube.com/channel/${artist.youtubeChannelId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
+              >
+                <Youtube className="h-4 w-4 text-red-500" />
+                {artist.youtubeHandle ? `${artist.youtubeHandle}` : "YouTube"}
+              </a>
+            ) : (
+              <a
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
+              >
+                <Youtube className="h-4 w-4 text-red-500" />
+                YouTube
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -405,14 +417,25 @@ export default function ArtistDetailPage() {
       <section className="mt-16">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-black tracking-tight">Videos</h2>
-          <a
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:opacity-80"
-          >
-            Ver más en YouTube <ExternalLink className="h-3 w-3" />
-          </a>
+          {artist.youtubeChannelId ? (
+            <a
+              href={`https://www.youtube.com/channel/${artist.youtubeChannelId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:opacity-80"
+            >
+              {artist.youtubeHandle ? `${artist.youtubeHandle} en YouTube` : "Ver canal en YouTube"} <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : (
+            <a
+              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:opacity-80"
+            >
+              Ver más en YouTube <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
 
         {videos.length > 0 ? (
@@ -445,15 +468,27 @@ export default function ArtistDetailPage() {
             <p className="text-sm text-muted-foreground">
               Videos de {artist.name} en YouTube
             </p>
-            <a
-              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
-            >
-              <Youtube className="h-4 w-4" />
-              Buscar en YouTube
-            </a>
+            {artist.youtubeChannelId ? (
+              <a
+                href={`https://www.youtube.com/channel/${artist.youtubeChannelId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
+              >
+                <Youtube className="h-4 w-4" />
+                Ver canal en YouTube
+              </a>
+            ) : (
+              <a
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90"
+              >
+                <Youtube className="h-4 w-4" />
+                Buscar en YouTube
+              </a>
+            )}
           </div>
         )}
       </section>

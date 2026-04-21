@@ -46,3 +46,38 @@ Work Log:
 Stage Summary:
 - All 15 artists now have Instagram links (previously 12/15, now 15/15)
 - Build passes cleanly
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Implement YouTube Data API v3 integration with channel-aware video search
+
+Work Log:
+- Searched for YouTube channel IDs for all 15 SLC artists via web search
+- Found 5 dedicated channels: Zaque, Brez, Doctor Destino, Latin Geisha, SLC Crew
+- Updated artist-config.ts with YouTube channel IDs and handles for all 15 artists
+  - Zaque: UCXLJPF4RRLT4aoVJkXG80bg (@ZaqueSonidoLiquido)
+  - Brez: UCxVg9-xrVGfjtRd_N32EuTA (@brezhiphopmexicoslc25)
+  - Doctor Destino: UCGXC-OtIZ7PHOHBKZTE4mIw (@doctordestinohiphop)
+  - Latin Geisha: UCZvZ8tbIZKt9IzO42Y8_gtw (@LatinGeisha)
+  - Pepe Levine: uses Zaque's channel (releases published there)
+  - All other artists: use SLC crew channel UCy6tHVzGmZ_ehIBWcdrTuRA (@sonidoliquidocrew)
+- Enhanced searchYouTubeVideos() with 3-tier channel-aware strategy:
+  1. Search within artist's configured YouTube channel
+  2. Search within the SLC crew channel
+  3. Generic YouTube search as fallback
+  - Deduplicates results by videoId, returns max 6
+- Updated artist detail page (/artistas/[slug]) YouTube section:
+  - YouTube button links to actual channel when channelId exists
+  - Shows @handle as button text when available
+  - "Ver canal en YouTube" fallback button when no videos returned
+- Added i.ytimg.com to next.config.ts images.remotePatterns
+- Updated .env.example with detailed YouTube API key setup instructions
+- Build passes cleanly with zero errors
+
+Stage Summary:
+- All 15 artists now have YouTube channel IDs configured (was 0/15)
+- YouTube API searches within artist channels first, then SLC crew channel, then generic
+- Artist pages link directly to YouTube channels instead of search results
+- YouTube API key still needs to be set in .env for embedded videos to work
+- Build passes cleanly
