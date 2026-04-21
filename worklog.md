@@ -119,3 +119,45 @@ Stage Summary:
 - Reusable component eliminates duplicate form code between homepage and footer
 - All 3 env vars (MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, MAILCHIMP_AUDIENCE_ID) documented in .env.example
 - Build passes cleanly
+---
+Task ID: 1
+Agent: Main Agent
+Task: Implement Spotify Authorization Code Flow + Playlist Curation Feature
+
+Work Log:
+- Added SPOTIFY_REDIRECT_URI to .env (http://127.0.0.1:3000/api/auth/spotify/callback)
+- Created src/lib/spotify-auth.ts — OAuth utilities (token exchange, refresh, user profile, encrypted cookie session)
+- Created src/lib/spotify-playlists.ts — Playlist CRUD helpers (create, update, add/remove tracks, search, cover upload, artist top tracks)
+- Created auth API routes:
+  - /api/auth/spotify/login — Redirects to Spotify consent screen with 6 scopes
+  - /api/auth/spotify/callback — Handles OAuth callback, stores session in encrypted cookies
+  - /api/auth/spotify/refresh — Refreshes expired access tokens
+  - /api/auth/spotify/me — Returns current auth status (auto-refreshes if expired)
+  - /api/auth/spotify/logout — Clears session cookies
+- Created playlist API routes:
+  - /api/playlists — List user playlists or get single playlist with tracks
+  - /api/playlists/create — Create new playlist
+  - /api/playlists/update — Update details, add/remove/replace tracks
+  - /api/playlists/cover — Upload playlist cover image
+  - /api/playlists/search — Search for tracks on Spotify
+  - /api/playlists/artist-tracks — Get top tracks for roster artists
+- Created public playlists page (/playlists) with Spotify embeds and CTA
+- Created admin playlist creator (/playlists/admin) with:
+  - Spotify login screen
+  - Playlist dashboard (grid of user playlists)
+  - Playlist editor (track list, remove tracks)
+  - Create playlist modal (name, description, public/private)
+  - Search tracks modal (search any track on Spotify)
+  - Roster tracks modal (top tracks from all 15 SLC artists)
+  - Edit details modal (name, description, visibility)
+- Updated types.ts with Playlist, PlaylistTrack, SearchResultTrack types
+- Updated header and footer navigation to include "Playlists" link
+- Fixed lint error (setState in effect → useMemo)
+- Verified all pages return 200 and OAuth redirect works correctly
+
+Stage Summary:
+- Spotify Authorization Code Flow fully implemented with encrypted cookie sessions
+- Playlist CRUD operations fully functional via API
+- Admin UI allows creating playlists, searching tracks, adding roster artist tracks, removing tracks, editing details
+- Public page shows embedded SLC playlist with link to admin creator
+- OAuth redirect confirmed working: redirects to accounts.spotify.com/authorize with correct scopes

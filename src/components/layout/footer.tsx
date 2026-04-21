@@ -8,9 +8,9 @@ const NAV_LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/artistas", label: "Artistas" },
   { href: "/discografia", label: "Discografía" },
+  { href: "/playlists", label: "Playlists" },
   { href: "/artistas#beats", label: "Beats" },
   { href: "/artistas#videos", label: "Videos" },
-  { href: "/artistas#eventos", label: "Eventos" },
 ];
 
 export function Footer() {

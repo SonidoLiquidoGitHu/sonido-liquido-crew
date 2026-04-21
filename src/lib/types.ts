@@ -93,6 +93,42 @@ export function normalizeArtist(item: Record<string, unknown>): Artist {
   };
 }
 
+// ── Playlist Types (for Spotify playlist curation) ────────────────
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description: string;
+  public: boolean;
+  snapshotId: string;
+  tracks: { total: number };
+  images: { url: string; height: number; width: number }[];
+  spotifyUrl: string;
+  owner: { id: string; displayName: string };
+}
+
+export interface PlaylistTrack {
+  addedAt: string;
+  id: string;
+  name: string;
+  uri: string;
+  durationMs: number;
+  artists: { id: string; name: string; spotifyUrl: string }[];
+  album: { id: string; name: string; images: { url: string }[]; spotifyUrl: string };
+  spotifyUrl: string;
+  previewUrl: string | null;
+}
+
+export interface SearchResultTrack {
+  id: string;
+  name: string;
+  uri: string;
+  durationMs: number;
+  artists: { id: string; name: string }[];
+  album: { id: string; name: string; images: { url: string }[] };
+  previewUrl: string | null;
+}
+
 export function formatDuration(ms: number): string {
   if (typeof ms !== "number" || isNaN(ms)) return "0:00";
   const totalSeconds = Math.floor(ms / 1000);
