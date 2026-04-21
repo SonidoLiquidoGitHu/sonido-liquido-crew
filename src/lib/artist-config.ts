@@ -40,7 +40,7 @@ export const ARTIST_CONFIGS: ArtistConfig[] = [
   },
   {
     spotifyId: "2zrv1oduhIYh29vvQZwI5r",
-    instagram: null,
+    instagram: "https://www.instagram.com/ilikebigbuds_i_canot_lie/",
     youtubeChannelId: null,
     youtubeHandle: null,
   },
@@ -64,7 +64,7 @@ export const ARTIST_CONFIGS: ArtistConfig[] = [
   },
   {
     spotifyId: "6AN9ek9RwrLbSp9rT2lcDG",
-    instagram: null,
+    instagram: "https://www.instagram.com/hassyel_s.l.c/",
     youtubeChannelId: null,
     youtubeHandle: null,
   },
@@ -94,7 +94,7 @@ export const ARTIST_CONFIGS: ArtistConfig[] = [
   },
   {
     spotifyId: "4UqFXhJVb9zy2SbNx4ycJQ",
-    instagram: null,
+    instagram: "https://www.instagram.com/reickuno/",
     youtubeChannelId: null,
     youtubeHandle: null,
   },
