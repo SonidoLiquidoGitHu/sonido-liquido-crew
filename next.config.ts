@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Netlify requires "standalone" output for serverless functions
-  output: "standalone",
+  // NOTE: Commented out for dev/preview. Uncomment before deploying to Netlify.
+  // output: "standalone",
 
   images: {
     remotePatterns: [

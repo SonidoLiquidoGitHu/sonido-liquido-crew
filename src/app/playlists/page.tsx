@@ -175,9 +175,9 @@ export default function PlaylistsPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {tracks?.total ?? 0} tracks
                     </p>
-                    {pl.description && String(pl.description).length > 0 && (
+                    {typeof pl.description === "string" && pl.description.length > 0 && (
                       <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-                        {String(pl.description)}
+                        {pl.description}
                       </p>
                     )}
                   </div>
