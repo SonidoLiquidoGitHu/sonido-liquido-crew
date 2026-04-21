@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, Loader2, AlertCircle, Users } from "lucide-react";
+import { reporter, parseApiError, classifyStatus } from "@/lib/error-reporter";
 
 interface Artist {
   id: string;
@@ -28,14 +29,45 @@ export default function ArtistasPage() {
   useEffect(() => {
     fetch("/api/artists")
       .then((res) => {
-        if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);
+        if (!res.ok) {
+          const severity = classifyStatus(res.status);
+          reporter[severity]({
+            source: "page:/artistas",
+            action: "fetch-artists",
+            error: new Error(`API returned ${res.status}`),
+            meta: { status: res.status },
+          });
+          throw new Error(`Failed to fetch (${res.status})`);
+        }
         return res.json();
       })
       .then((data) => {
-        if (data.error) throw new Error(data.error);
-        setArtists(Array.isArray(data) ? data : []);
+        const apiError = parseApiError(data, "");
+        if (apiError) {
+          reporter.error({
+            source: "page:/artistas",
+            action: "fetch-artists",
+            error: new Error(apiError),
+          });
+          throw new Error(apiError);
+        }
+        const list = Array.isArray(data) ? data : [];
+        reporter.info({
+          source: "page:/artistas",
+          action: "fetch-artists",
+          error: `Loaded ${list.length} artists`,
+          meta: { count: list.length },
+        });
+        setArtists(list);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        reporter.error({
+          source: "page:/artistas",
+          action: "fetch-artists",
+          error: err,
+        });
+        setError(err.message);
+      })
       .finally(() => setLoading(false));
   }, []);
 

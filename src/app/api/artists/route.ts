@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { reporter } from "@/lib/error-reporter";
 
 const SPOTIFY_IDS = [
   "2jJmTEMkGQfH3BxoG3MQvF",
@@ -23,7 +24,13 @@ async function getAccessToken(): Promise<string> {
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET");
+    const msg = "Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET";
+    reporter.error({
+      source: "api:/api/artists",
+      action: "getAccessToken",
+      error: new Error(msg),
+    });
+    throw new Error(msg);
   }
 
   const res = await fetch("https://accounts.spotify.com/api/token", {
@@ -38,7 +45,14 @@ async function getAccessToken(): Promise<string> {
 
   if (!res.ok) {
     const detail = await res.text();
-    throw new Error(`Spotify auth failed (${res.status}): ${detail}`);
+    const msg = `Spotify auth failed (${res.status}): ${detail}`;
+    reporter.error({
+      source: "api:/api/artists",
+      action: "getAccessToken",
+      error: new Error(msg),
+      meta: { status: res.status },
+    });
+    throw new Error(msg);
   }
 
   const { access_token } = await res.json();
@@ -53,17 +67,49 @@ async function fetchArtist(
     const res = await fetch(`https://api.spotify.com/v1/artists/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) return null;
+
+    if (!res.ok) {
+      reporter.warn({
+        source: "api:/api/artists",
+        action: "fetchArtist",
+        error: new Error(`Spotify artist fetch failed (${res.status})`),
+        meta: { artistId: id, status: res.status },
+      });
+      return null;
+    }
+
     return res.json();
-  } catch {
+  } catch (err) {
+    reporter.warn({
+      source: "api:/api/artists",
+      action: "fetchArtist",
+      error: err,
+      meta: { artistId: id },
+    });
     return null;
   }
 }
 
 export async function GET() {
   try {
+    reporter.info({
+      source: "api:/api/artists",
+      action: "GET",
+      error: `Fetching ${SPOTIFY_IDS.length} artists from Spotify`,
+    });
+
     const token = await getAccessToken();
     const raw = await Promise.all(SPOTIFY_IDS.map((id) => fetchArtist(token, id)));
+
+    const failed = raw.filter((a) => a === null).length;
+    if (failed > 0) {
+      reporter.warn({
+        source: "api:/api/artists",
+        action: "GET",
+        error: `${failed} artist(s) failed to fetch`,
+        meta: { total: SPOTIFY_IDS.length, failed },
+      });
+    }
 
     const artists = raw
       .filter((a): a is Record<string, unknown> => a !== null)
@@ -79,6 +125,11 @@ export async function GET() {
     return NextResponse.json(artists);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    reporter.fatal({
+      source: "api:/api/artists",
+      action: "GET",
+      error: err,
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
