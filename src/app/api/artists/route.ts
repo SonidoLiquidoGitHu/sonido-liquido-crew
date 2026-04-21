@@ -19,7 +19,12 @@ const SPOTIFY_IDS = [
   "4WQmw3fIx9F7iPKL5v8SCN",
 ];
 
+let tokenCache: { token: string; expires: number } | null = null;
+
 async function getAccessToken(): Promise<string> {
+  const now = Date.now();
+  if (tokenCache && tokenCache.expires > now) return tokenCache.token;
+
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
@@ -42,8 +47,12 @@ async function getAccessToken(): Promise<string> {
     throw new Error(`Spotify auth failed (${res.status}): ${detail}`);
   }
 
-  const { access_token } = await res.json();
-  return access_token;
+  const data = await res.json();
+  tokenCache = {
+    token: data.access_token,
+    expires: now + (data.expires_in - 60) * 1000, // 60s safety margin
+  };
+  return tokenCache.token;
 }
 
 async function fetchArtist(
@@ -51,13 +60,21 @@ async function fetchArtist(
   id: string
 ): Promise<Artist | null> {
   try {
-    const res = await fetch(`https://api.spotify.com/v1/artists/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // Fetch artist profile + albums in parallel
+    const [artistRes, albumsRes] = await Promise.all([
+      fetch(`https://api.spotify.com/v1/artists/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch(
+        `https://api.spotify.com/v1/artists/${id}/albums?include_groups=album,single,compilation&limit=1`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      ),
+    ]);
 
-    if (!res.ok) return null;
+    if (!artistRes.ok) return null;
 
-    const data = await res.json();
+    const data = await artistRes.json();
+    const albumsData = albumsRes.ok ? await albumsRes.json() : null;
 
     return {
       id: String(data.id ?? ""),
@@ -68,6 +85,8 @@ async function fetchArtist(
           : "",
       followers: typeof data.followers?.total === "number" ? data.followers.total : 0,
       spotifyUrl: data.external_urls?.spotify ? String(data.external_urls.spotify) : "",
+      popularity: typeof data.popularity === "number" ? data.popularity : 0,
+      releases: typeof albumsData?.total === "number" ? albumsData.total : 0,
     };
   } catch {
     return null;

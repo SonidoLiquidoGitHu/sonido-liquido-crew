@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Music2, Users, Disc3, Loader2 } from "lucide-react";
-import { type Artist, normalizeArtist } from "@/lib/types";
+import {
+  Disc3, Users, Calendar, Music2, Play, ExternalLink,
+  ChevronRight, Loader2, Headphones,
+} from "lucide-react";
+import { type Artist, formatFollowers, formatCount, normalizeArtist } from "@/lib/types";
 
 export default function HomePage() {
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -18,153 +21,137 @@ export default function HomePage() {
       })
       .then((data) => {
         if (!Array.isArray(data)) return;
-        const normalized = data.map((item: Record<string, unknown>) =>
-          normalizeArtist(item)
-        );
-        setArtists(normalized);
+        setArtists(data.map((item: Record<string, unknown>) => normalizeArtist(item)));
       })
-      .catch(() => {
-        // Silently fail on homepage — the /artistas page shows a proper error
-        setArtists([]);
-      })
+      .catch(() => setArtists([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const featured = artists.slice(0, 3);
+  const totalFollowers = artists.reduce((sum, a) => sum + a.followers, 0);
+  const totalReleases = artists.reduce((sum, a) => sum + a.releases, 0);
+  const featured = artists.slice(0, 6);
 
   return (
     <main className="flex flex-col">
-      {/* Hero */}
-      <section className="relative flex min-h-[85vh] items-center justify-center overflow-hidden px-4">
-        <div className="absolute inset-0 -z-10">
-          <Image
-            src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1920&h=1080&fit=crop"
-            alt="Music collective background"
-            fill
-            className="object-cover opacity-20"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background" />
-        </div>
+      {/* ── Hero Section ── */}
+      <section className="relative flex min-h-[80vh] items-center justify-center overflow-hidden px-4">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
 
         <div className="mx-auto max-w-4xl text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/40 bg-muted/30 px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase backdrop-blur-sm">
-            <Music2 className="h-3.5 w-3.5" />
-            Music Collective
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+            <Headphones className="h-3.5 w-3.5 text-primary" />
+            Hip Hop Mexicano desde 1999
           </div>
-          <h1 className="mb-6 text-5xl font-bold leading-[1.1] tracking-tight sm:text-6xl md:text-7xl">
-            Where Sound
-            <br />
-            <span className="text-primary">Meets Soul</span>
+
+          <h1 className="mb-2 text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
+            SONIDO
           </h1>
-          <p className="mx-auto mb-10 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            A collective of artists pushing boundaries across electronic,
-            ambient, and experimental music from Latin America and beyond.
+          <h1 className="mb-6 text-5xl font-black leading-[1.05] tracking-tight text-primary sm:text-6xl md:text-7xl lg:text-8xl">
+            LÍQUIDO
+          </h1>
+
+          <p className="mx-auto mb-8 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Lo más avanzado del Hip Hop mexicano. El colectivo más representativo de México, fundado en 1999 en la CDMX por Zaque.
           </p>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <a
+              href="https://open.spotify.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              <Play className="h-4 w-4" />
+              Escuchar en Spotify
+            </a>
             <Link
               href="/artistas"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-[#1a1a1a]"
             >
-              Explore Artists
-              <ArrowRight className="h-4 w-4" />
+              Explorar Artistas
+              <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="border-y border-border/40 bg-muted/20">
-        <div className="mx-auto grid max-w-6xl grid-cols-3 gap-4 px-4 py-10 sm:px-6">
+      {/* ── Artist Name Marquee ── */}
+      {!loading && artists.length > 0 && (
+        <section className="overflow-hidden border-y border-[#2a2a2a] bg-[#1a1a1a] py-4">
+          <div className="animate-marquee flex whitespace-nowrap">
+            {[...artists, ...artists, ...artists, ...artists].map((artist, i) => (
+              <span
+                key={`${artist.id}-${i}`}
+                className="mx-6 inline-block text-sm font-bold tracking-wider text-muted-foreground uppercase transition-colors hover:text-primary"
+              >
+                {artist.name}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Stats Section ── */}
+      <section className="border-b border-[#2a2a2a] bg-[#0a0a0a]">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-10 sm:px-6 lg:grid-cols-4">
           <div className="flex flex-col items-center gap-2 text-center">
             <Users className="h-5 w-5 text-primary" />
-            <span className="text-2xl font-bold sm:text-3xl">
-              {loading ? "—" : artists.length}
+            <span className="text-3xl font-black sm:text-4xl">
+              {loading ? "—" : `${artists.length}+`}
             </span>
-            <span className="text-xs text-muted-foreground sm:text-sm">Artists</span>
+            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">Artistas</span>
           </div>
           <div className="flex flex-col items-center gap-2 text-center">
             <Disc3 className="h-5 w-5 text-primary" />
-            <span className="text-2xl font-bold sm:text-3xl">24</span>
-            <span className="text-xs text-muted-foreground sm:text-sm">Releases</span>
+            <span className="text-3xl font-black sm:text-4xl">
+              {loading ? "—" : `${totalReleases}+`}
+            </span>
+            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">Lanzamientos</span>
           </div>
           <div className="flex flex-col items-center gap-2 text-center">
-            <Music2 className="h-5 w-5 text-primary" />
-            <span className="text-2xl font-bold sm:text-3xl">8</span>
-            <span className="text-xs text-muted-foreground sm:text-sm">Events</span>
+            <Headphones className="h-5 w-5 text-primary" />
+            <span className="text-3xl font-black sm:text-4xl">
+              {loading ? "—" : formatFollowers(totalFollowers)}
+            </span>
+            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">Seguidores</span>
+          </div>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Calendar className="h-5 w-5 text-primary" />
+            <span className="text-3xl font-black sm:text-4xl">27+</span>
+            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">Años de Historia</span>
           </div>
         </div>
       </section>
 
-      {/* Featured Artists */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
+      {/* ── Artists Section ── */}
+      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
         <div className="mb-10 flex items-end justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Featured Artists</h2>
+            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Artistas</h2>
             <p className="mt-2 text-muted-foreground">
-              Discover the voices shaping our collective.
+              El roster más representativo del Hip Hop mexicano — {artists.length} artistas
             </p>
           </div>
           <Link
             href="/artistas"
             className="hidden items-center gap-1 text-sm font-medium text-primary transition-opacity hover:opacity-80 sm:inline-flex"
           >
-            View all
-            <ArrowRight className="h-4 w-4" />
+            Ver perfiles
+            <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
 
         {loading && (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
-        {!loading && featured.length === 0 && (
-          <p className="py-16 text-center text-muted-foreground">
-            Could not load featured artists.{" "}
-            <Link href="/artistas" className="text-primary hover:opacity-80">
-              View all artists
-            </Link>
-          </p>
-        )}
-
         {!loading && featured.length > 0 && (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.map((artist) => {
-              const hasImage = typeof artist.image === "string" && artist.image.length > 0;
-
-              return (
-                <Link
-                  key={artist.id}
-                  href={`/artistas/${artist.id}`}
-                  className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
-                >
-                  <div className="relative aspect-square overflow-hidden bg-muted">
-                    {hasImage ? (
-                      <Image
-                        src={artist.image}
-                        alt={artist.name}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-5xl font-bold text-muted-foreground">
-                        {artist.name.charAt(0)}
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-                  </div>
-                  <div className="p-5">
-                    <h3 className="text-lg font-bold tracking-tight">{artist.name}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {artist.followers.toLocaleString()} followers
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((artist) => (
+              <ArtistCard key={artist.id} artist={artist} />
+            ))}
           </div>
         )}
 
@@ -173,11 +160,210 @@ export default function HomePage() {
             href="/artistas"
             className="inline-flex items-center gap-1 text-sm font-medium text-primary"
           >
-            View all artists
-            <ArrowRight className="h-4 w-4" />
+            Ver todos los artistas
+            <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
       </section>
+
+      {/* ── Now Playing Section ── */}
+      {!loading && artists.length > 0 && (
+        <section className="border-y border-[#2a2a2a] bg-[#1a1a1a]">
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+            <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-muted-foreground uppercase">
+              <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse-green" />
+              En Reproducción
+            </div>
+            <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-4">
+                <div className="relative h-16 w-16 overflow-hidden rounded-lg bg-[#2a2a2a]">
+                  {artists[0].image ? (
+                    <Image
+                      src={artists[0].image}
+                      alt={artists[0].name}
+                      fill
+                      className="object-cover"
+                      sizes="64px"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-muted-foreground">
+                      {artists[0].name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-lg font-bold">{artists[0].name}</p>
+                  <p className="text-sm text-muted-foreground">Sonido Líquido Crew</p>
+                </div>
+              </div>
+              <a
+                href={artists[0].spotifyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#0a0a0a] px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary"
+              >
+                <Play className="h-4 w-4 text-primary" />
+                Abrir en Spotify
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Latest Releases ── */}
+      {!loading && artists.length > 0 && (
+        <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="mb-10 flex items-end justify-between">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Últimos Lanzamientos</h2>
+              <p className="mt-2 text-muted-foreground">Lo más nuevo del crew en todas las plataformas</p>
+            </div>
+            <Link
+              href="/discografia"
+              className="hidden items-center gap-1 text-sm font-medium text-primary transition-opacity hover:opacity-80 sm:inline-flex"
+            >
+              Ver todo
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {artists.slice(0, 8).map((artist) => (
+              <a
+                key={artist.id}
+                href={artist.spotifyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30 hover:bg-[#1a1a1a]"
+              >
+                <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+                  {artist.image ? (
+                    <Image
+                      src={artist.image}
+                      alt={artist.name}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-muted-foreground">
+                      {artist.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Play className="h-5 w-5" />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="truncate text-sm font-bold">{artist.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {artist.releases} lanzamientos · {formatFollowers(artist.followers)} seguidores
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Spotify Playlist Embed ── */}
+      <section className="border-y border-[#2a2a2a] bg-[#1a1a1a]">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+          <div className="mb-8 text-center">
+            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Playlist Oficial</h2>
+            <p className="mt-2 text-muted-foreground">
+              Escucha lo mejor del colectivo en una sola playlist. Actualizada constantemente.
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <iframe
+              src="https://open.spotify.com/embed/playlist/5qHTKCZIwi3GM3mhPq45Ab?utm_source=generator&theme=0"
+              width="100%"
+              height="380"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              className="max-w-2xl rounded-xl border border-[#2a2a2a]"
+              style={{ backgroundColor: "#1a1a1a" }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Newsletter CTA ── */}
+      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+        <div className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center sm:p-12">
+          <Music2 className="mx-auto mb-4 h-8 w-8 text-primary" />
+          <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Anótate</h2>
+          <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+            Obtén remixes exclusivos, beats e información actualizada directamente en tu correo.
+          </p>
+          <form
+            className="mx-auto mt-6 flex max-w-md gap-2"
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <input
+              type="email"
+              placeholder="tu@email.com"
+              className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Suscribirse
+            </button>
+          </form>
+        </div>
+      </section>
     </main>
+  );
+}
+
+// ── Artist Card Component ──
+function ArtistCard({ artist }: { artist: Artist }) {
+  const hasImage = typeof artist.image === "string" && artist.image.length > 0;
+
+  return (
+    <Link
+      href={`/artistas/${artist.id}`}
+      className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30"
+    >
+      <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+        {hasImage ? (
+          <Image
+            src={artist.image}
+            alt={artist.name}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-5xl font-bold text-muted-foreground">
+            {artist.name.charAt(0)}
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/80 via-transparent to-transparent" />
+      </div>
+
+      <div className="flex items-center justify-between p-4">
+        <div>
+          <h3 className="text-base font-bold">{artist.name}</h3>
+          <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+            <span>{formatFollowers(artist.followers)} seguidores</span>
+            <span>{artist.releases} lanzamientos</span>
+          </div>
+        </div>
+        {artist.spotifyUrl && (
+          <div
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </div>
+        )}
+      </div>
+    </Link>
   );
 }

@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Colectivo — Music Collective",
+  title: "Sonido Líquido Crew | Hip Hop Mexicano desde 1999",
   description:
-    "A collective of artists pushing boundaries across electronic, ambient, and experimental music from Latin America and beyond.",
+    "Sonido Líquido Crew es el colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México por Zaque. +160 lanzamientos, +25 años de historia.",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="es" className="dark" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased bg-background text-foreground`}
       >

@@ -16,10 +16,19 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "mosaic.scdn.co",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "dl.dropboxusercontent.com",
+        pathname: "/**",
+      },
     ],
   },
 
-  // Enable strict mode for catching issues early
   reactStrictMode: true,
 };
 

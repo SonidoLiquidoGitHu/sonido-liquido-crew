@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { type Artist, formatFollowers } from "@/lib/types";
-import { Users, ExternalLink } from "lucide-react";
+import { Users, Disc3, ExternalLink } from "lucide-react";
 
 interface ArtistCardProps {
   artist: Artist;
@@ -13,9 +13,9 @@ export function ArtistCard({ artist }: ArtistCardProps) {
   return (
     <Link
       href={`/artistas/${artist.id}`}
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-border/40 bg-card transition-all duration-300 hover:border-border hover:shadow-lg hover:shadow-primary/5"
+      className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30"
     >
-      <div className="relative aspect-square overflow-hidden bg-muted">
+      <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
         {hasImage ? (
           <Image
             src={artist.image}
@@ -29,28 +29,24 @@ export function ArtistCard({ artist }: ArtistCardProps) {
             {artist.name.charAt(0)}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
-        <div className="absolute bottom-4 left-4 right-4">
-          <h3 className="text-xl font-bold tracking-tight">{artist.name}</h3>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/80 via-transparent to-transparent" />
+      </div>
+      <div className="flex items-center justify-between p-4">
+        <div>
+          <h3 className="text-base font-bold">{artist.name}</h3>
+          <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><Users className="h-3 w-3" />{formatFollowers(artist.followers)}</span>
+            <span className="flex items-center gap-1"><Disc3 className="h-3 w-3" />{artist.releases} releases</span>
+          </div>
         </div>
         {artist.spotifyUrl && (
           <div
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer");
-            }}
-            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100 cursor-pointer"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
           >
-            <ExternalLink className="h-4 w-4" />
+            <ExternalLink className="h-3.5 w-3.5" />
           </div>
         )}
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Users className="h-3.5 w-3.5" />
-          <span>{formatFollowers(artist.followers)} followers</span>
-        </div>
       </div>
     </Link>
   );

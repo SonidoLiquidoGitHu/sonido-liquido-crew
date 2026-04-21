@@ -78,38 +78,39 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* ── Sonido Liquido-inspired dark theme ── */
 .dark {
-  --background: oklch(0.1 0.005 280);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.14 0.005 280);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.14 0.005 280);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.75 0.15 310);
-  --primary-foreground: oklch(0.1 0.005 280);
-  --secondary: oklch(0.2 0.005 280);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.2 0.005 280);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.2 0.01 280);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.75 0.15 310);
-  --chart-1: oklch(0.75 0.15 310);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.14 0.005 280);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.75 0.15 310);
-  --sidebar-primary-foreground: oklch(0.1 0.005 280);
-  --sidebar-accent: oklch(0.2 0.01 280);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.75 0.15 310);
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --popover: #1a1a1a;
+  --popover-foreground: #ffffff;
+  --primary: #22c55e;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #888888;
+  --accent: #22c55e;
+  --accent-foreground: #0a0a0a;
+  --destructive: #ef4444;
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --ring: #22c55e;
+  --chart-1: #22c55e;
+  --chart-2: #3b82f6;
+  --chart-3: #a855f7;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #22c55e;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #22c55e;
 }
 
 @layer base {
@@ -121,26 +122,55 @@
   }
 }
 
-/* Smooth scrolling */
+/* ── Smooth scrolling ── */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar for dark theme */
+/* ── Marquee animation for artist ticker ── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ── Pulse animation for "Now Playing" ── */
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-green {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+/* ── Custom scrollbar ── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0a0a0a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.3 0 0);
+  background: #2a2a2a;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.4 0 0);
+  background: #3a3a3a;
+}
+
+/* ── Spotify embed responsive ── */
+.spotify-embed-container iframe {
+  border-radius: 12px;
 }
