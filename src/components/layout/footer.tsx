@@ -17,7 +17,7 @@ const NAV_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-[#2a2a2a] bg-[#0a0a0a]">
+    <footer className="border-t border-border bg-[#0a0a0a]">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
@@ -30,7 +30,7 @@ export function Footer() {
               </div>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              El colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México por Zaque.
+              El colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México.
               +160 lanzamientos, +25 años de historia.
             </p>
           </div>
@@ -77,7 +77,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-[#2a2a2a] pt-6 text-center">
+        <div className="mt-10 border-t border-border pt-6 text-center">
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Sonido Líquido Crew. Todos los derechos reservados.
           </p>

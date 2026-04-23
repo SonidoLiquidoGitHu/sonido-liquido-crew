@@ -38,7 +38,7 @@ export default function NewsletterPage() {
     <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
       {/* Hero */}
       <div className="mb-16 text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
           <Mail className="h-3.5 w-3.5 text-primary" />
           Newsletter
         </div>
@@ -53,7 +53,7 @@ export default function NewsletterPage() {
 
       {/* Sign-up form */}
       <div className="mx-auto mb-16 max-w-lg">
-        <div className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 sm:p-8">
+        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
           <h2 className="mb-2 text-center text-xl font-bold">Suscríbete</h2>
           <p className="mb-6 text-center text-sm text-muted-foreground">
             Ingresa tu correo y únete a la comunidad de SLC.
@@ -69,7 +69,7 @@ export default function NewsletterPage() {
           {PERKS.map((perk) => (
             <div
               key={perk.title}
-              className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 transition-all hover:border-primary/30"
+              className="rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/30"
             >
               <perk.icon className="mb-3 h-6 w-6 text-primary" />
               <h3 className="mb-2 text-base font-bold">{perk.title}</h3>
@@ -80,7 +80,7 @@ export default function NewsletterPage() {
       </div>
 
       {/* Bottom CTA */}
-      <div className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 text-center sm:p-10">
+      <div className="rounded-2xl border border-border bg-card p-6 text-center sm:p-10">
         <h2 className="mb-3 text-2xl font-black">¿Qué Esperas?</h2>
         <p className="mx-auto mb-6 max-w-md text-muted-foreground">
           Únete a miles de fans del Hip Hop mexicano que ya reciben contenido exclusivo del crew.

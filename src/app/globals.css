@@ -6,7 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-barlow);
+  --font-heading: var(--font-oswald);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -78,39 +79,39 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* ── Sonido Liquido-inspired dark theme ── */
+/* ── Sonido Liquido official colorway (matching sonidoliquido.com) ── */
 .dark {
-  --background: #121212;
-  --foreground: #ffffff;
-  --card: #1a1a1a;
-  --card-foreground: #ffffff;
-  --popover: #1a1a1a;
-  --popover-foreground: #ffffff;
-  --primary: #FF6600;
-  --primary-foreground: #121212;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #ffffff;
-  --muted: #1a1a1a;
-  --muted-foreground: #888888;
-  --accent: #FF6600;
-  --accent-foreground: #121212;
+  --background: #0a0a0a;
+  --foreground: #e6e6e6;
+  --card: #121212;
+  --card-foreground: #e6e6e6;
+  --popover: #121212;
+  --popover-foreground: #e6e6e6;
+  --primary: #f97316;
+  --primary-foreground: #ffffff;
+  --secondary: #262626;
+  --secondary-foreground: #e6e6e6;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #f97316;
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --border: #2a2a2a;
-  --input: #2a2a2a;
-  --ring: #FF6600;
-  --chart-1: #FF6600;
+  --border: #292929;
+  --input: #292929;
+  --ring: #f97316;
+  --chart-1: #f97316;
   --chart-2: #3b82f6;
   --chart-3: #a855f7;
-  --chart-4: #f59e0b;
+  --chart-4: #eab308;
   --chart-5: #ef4444;
-  --sidebar: #1a1a1a;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #FF6600;
-  --sidebar-primary-foreground: #121212;
-  --sidebar-accent: #1a1a1a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #2a2a2a;
-  --sidebar-ring: #FF6600;
+  --sidebar: #121212;
+  --sidebar-foreground: #e6e6e6;
+  --sidebar-primary: #f97316;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #e6e6e6;
+  --sidebar-border: #292929;
+  --sidebar-ring: #f97316;
 }
 
 @layer base {
@@ -151,26 +152,62 @@ html {
   animation: pulse-green 2s ease-in-out infinite;
 }
 
-/* ── Custom scrollbar ── */
+/* ── Custom scrollbar (matching sonidoliquido.com) ── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #121212;
+  background: #111111;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #2a2a2a;
-  border-radius: 4px;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a3a;
+  background: #a3a3a3;
 }
 
 /* ── Spotify embed responsive ── */
 .spotify-embed-container iframe {
   border-radius: 12px;
+}
+
+/* ── Oswald headings (matching sonidoliquido.com) ── */
+h1, h2, h3 {
+  font-family: var(--font-oswald), var(--font-heading), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* ── Section title styling (matching sonidoliquido.com) ── */
+.section-title {
+  text-align: center;
+  font-family: var(--font-oswald), sans-serif;
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.section-subtitle {
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.5rem;
+  max-width: 42rem;
+  text-align: center;
+  color: #a3a3a3;
+}
+
+.section-divider {
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1rem;
+  height: 0.25rem;
+  width: 4rem;
+  border-radius: 9999px;
+  background-color: var(--primary);
 }

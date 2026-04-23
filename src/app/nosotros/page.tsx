@@ -24,7 +24,7 @@ interface Stats {
 
 /* ── Timeline milestones ───────────────────────────────── */
 const MILESTONES = [
-  { year: "1999", title: "Fundación", desc: "Zaque funda Sonido Líquido Crew en la Ciudad de México, sentando las bases del Hip Hop independiente mexicano." },
+  { year: "1999", title: "Fundación", desc: "Sonido Líquido Crew se funda en la Ciudad de México, sentando las bases del Hip Hop independiente mexicano." },
   { year: "2002", title: "Primeros Lanzamientos", desc: "El crew comienza a producir y distribuir su música de forma independiente, rompiendo esquemas de la industria." },
   { year: "2006", title: "Expansión del Colectivo", desc: "Nuevos talentos se integran al crew, diversificando los estilos y alcanzando nuevas audiencias." },
   { year: "2010", title: "Consolidación Nacional", desc: "SLC se posiciona como referente del Hip Hop mexicano con giras y presentaciones por todo el país." },
@@ -50,7 +50,7 @@ export default function NosotrosPage() {
     <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
       {/* ── Hero ── */}
       <div className="mb-16 text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
           <Star className="h-3.5 w-3.5 text-primary" />
           Desde 1999
         </div>
@@ -58,13 +58,13 @@ export default function NosotrosPage() {
           Sonido Líquido <span className="text-primary">Crew</span>
         </h1>
         <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">
-          El colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México
-          por Zaque, SLC ha sido pilar de la cultura hip hop nacional por más de 25 años.
+          El colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México,
+          SLC ha sido pilar de la cultura hip hop nacional por más de 25 años.
         </p>
       </div>
 
       {/* ── Mission ── */}
-      <section className="mb-16 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 sm:p-10">
+      <section className="mb-16 rounded-2xl border border-border bg-card p-6 sm:p-10">
         <div className="grid gap-8 lg:grid-cols-2">
           <div>
             <h2 className="mb-4 text-2xl font-black">Nuestra Misión</h2>
@@ -123,7 +123,7 @@ export default function NosotrosPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="flex flex-col items-center gap-2 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 text-center"
+              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-5 text-center"
             >
               <stat.icon className="h-5 w-5 text-primary" />
               <span className="text-2xl font-black sm:text-3xl">
@@ -164,7 +164,7 @@ export default function NosotrosPage() {
           ].map((value) => (
             <div
               key={value.title}
-              className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-6"
+              className="rounded-xl border border-border bg-card p-6"
             >
               <value.icon className="mb-3 h-6 w-6 text-primary" />
               <h3 className="mb-2 text-lg font-bold">{value.title}</h3>
@@ -179,7 +179,7 @@ export default function NosotrosPage() {
         <h2 className="mb-8 text-center text-2xl font-black">Nuestra Historia</h2>
         <div className="relative">
           {/* Vertical line */}
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-[#2a2a2a] sm:left-1/2" />
+          <div className="absolute left-4 top-0 bottom-0 w-px bg-border sm:left-1/2" />
 
           <div className="flex flex-col gap-8">
             {MILESTONES.map((milestone, i) => (
@@ -214,7 +214,7 @@ export default function NosotrosPage() {
       </section>
 
       {/* ── Collective description ── */}
-      <section className="rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 text-center sm:p-10">
+      <section className="rounded-2xl border border-border bg-card p-6 text-center sm:p-10">
         <h2 className="mb-4 text-2xl font-black">Más que Música</h2>
         <p className="mx-auto max-w-2xl leading-relaxed text-muted-foreground">
           Sonido Líquido Crew es un movimiento cultural. Además de producir música, organizamos

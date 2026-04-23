@@ -81,7 +81,7 @@ export default function VideosPage() {
 
       {/* Embedded player */}
       {embedId && (
-        <div className="mb-8 overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a]">
+        <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="relative aspect-video w-full">
             <iframe
               src={`https://www.youtube.com/embed/${embedId}?autoplay=1`}
@@ -103,7 +103,7 @@ export default function VideosPage() {
             placeholder="Buscar videos o artistas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 border-[#2a2a2a] bg-[#1a1a1a] placeholder:text-muted-foreground/50 focus:border-primary"
+            className="pl-10 border-border bg-card placeholder:text-muted-foreground/50 focus:border-primary"
           />
         </div>
         <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
@@ -116,7 +116,7 @@ export default function VideosPage() {
               className={
                 artistFilter === name
                   ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "border-[#2a2a2a] bg-[#1a1a1a] text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50"
               }
             >
               {name}
@@ -135,7 +135,7 @@ export default function VideosPage() {
 
       {/* Empty */}
       {!loading && filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] px-6 py-20 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card px-6 py-20 text-center">
           <Youtube className="h-12 w-12 text-primary/50" />
           <h2 className="text-xl font-bold">Próximamente</h2>
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -192,10 +192,10 @@ function VideoCard({
     : null;
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30">
+    <div className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30">
       {/* Thumbnail */}
       <div
-        className="relative aspect-video cursor-pointer overflow-hidden bg-[#2a2a2a]"
+        className="relative aspect-video cursor-pointer overflow-hidden bg-border"
         onClick={onPlay}
       >
         {thumbnail ? (
@@ -244,7 +244,7 @@ function VideoCard({
 
       {/* YouTube link */}
       {video.youtubeId && (
-        <div className="border-t border-[#2a2a2a] px-4 py-2">
+        <div className="border-t border-border px-4 py-2">
           <a
             href={`https://www.youtube.com/watch?v=${video.youtubeId}`}
             target="_blank"

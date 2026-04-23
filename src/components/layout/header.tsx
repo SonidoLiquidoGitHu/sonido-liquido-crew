@@ -19,7 +19,7 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#2a2a2a] bg-[#0a0a0a]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-[#0a0a0a]/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
           <Disc3 className="h-7 w-7 text-primary" />
@@ -34,7 +34,7 @@ export function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-[#1a1a1a] hover:text-foreground"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
             >
               {item.label}
             </Link>
@@ -61,13 +61,13 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-[#2a2a2a] bg-[#0a0a0a] lg:hidden">
+        <div className="border-t border-border bg-[#0a0a0a] lg:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-[#1a1a1a] hover:text-foreground"
+                className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
                 onClick={() => setMobileOpen(false)}
               >
                 {item.label}

@@ -102,7 +102,7 @@ export default function DiscografiaPage() {
               className={
                 typeFilter === tab
                   ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "border-[#2a2a2a] bg-[#1a1a1a] text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50"
               }
             >
               {tab}
@@ -119,7 +119,7 @@ export default function DiscografiaPage() {
               className={
                 sortOrder === order
                   ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "border-[#2a2a2a] bg-[#1a1a1a] text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50"
               }
             >
               {order}
@@ -138,7 +138,7 @@ export default function DiscografiaPage() {
 
       {/* Empty */}
       {!loading && filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] px-6 py-20 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card px-6 py-20 text-center">
           <Disc3 className="h-12 w-12 text-primary/50" />
           <h2 className="text-xl font-bold">Próximamente</h2>
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -180,9 +180,9 @@ function ReleaseCard({ release }: { release: Release }) {
     : null;
 
   const content = (
-    <div className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30">
+    <div className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30">
       {/* Cover */}
-      <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+      <div className="relative aspect-square overflow-hidden bg-border">
         {hasCover ? (
           <Image
             src={release.coverUrl!}

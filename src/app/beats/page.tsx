@@ -92,7 +92,7 @@ export default function BeatsPage() {
             placeholder="Buscar beats o artistas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 border-[#2a2a2a] bg-[#1a1a1a] placeholder:text-muted-foreground/50 focus:border-primary"
+            className="pl-10 border-border bg-card placeholder:text-muted-foreground/50 focus:border-primary"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -105,7 +105,7 @@ export default function BeatsPage() {
               className={
                 activeTag === tag
                   ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "border-[#2a2a2a] bg-[#1a1a1a] text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50"
               }
             >
               {tag}
@@ -124,7 +124,7 @@ export default function BeatsPage() {
 
       {/* Empty */}
       {!loading && filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] px-6 py-20 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card px-6 py-20 text-center">
           <Music2 className="h-12 w-12 text-primary/50" />
           <h2 className="text-xl font-bold">Próximamente</h2>
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -151,9 +151,9 @@ function BeatCard({ beat }: { beat: Beat }) {
   const hasArtistImage = typeof beat.artist.image === "string" && beat.artist.image.length > 0;
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30">
+    <div className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30">
       {/* Cover */}
-      <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+      <div className="relative aspect-square overflow-hidden bg-border">
         {hasCover ? (
           <Image
             src={beat.coverUrl!}
@@ -188,7 +188,7 @@ function BeatCard({ beat }: { beat: Beat }) {
         <h3 className="truncate text-sm font-bold">{beat.title}</h3>
         <div className="mt-1 flex items-center gap-2">
           {hasArtistImage && (
-            <div className="relative h-5 w-5 overflow-hidden rounded-full bg-[#2a2a2a]">
+            <div className="relative h-5 w-5 overflow-hidden rounded-full bg-border">
               <Image
                 src={beat.artist.image!}
                 alt={beat.artist.name}

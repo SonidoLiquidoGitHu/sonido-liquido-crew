@@ -55,7 +55,7 @@ export default function PlaylistsPage() {
       <section className="relative flex items-center justify-center overflow-hidden px-4 py-16 sm:py-20">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
         <div className="mx-auto max-w-3xl text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium tracking-wider text-muted-foreground uppercase">
             <ListMusic className="h-3.5 w-3.5 text-primary" />
             Curated by SLC
           </div>
@@ -95,7 +95,7 @@ export default function PlaylistsPage() {
           </div>
           <Link
             href="/playlists/admin"
-            className="hidden items-center gap-1.5 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground sm:inline-flex"
+            className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground sm:inline-flex"
           >
             <Settings className="h-3.5 w-3.5" />
             Gestionar Playlists
@@ -104,14 +104,14 @@ export default function PlaylistsPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           {FEATURED_PLAYLIST_IDS.map((id) => (
-            <div key={id} className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]">
+            <div key={id} className="overflow-hidden rounded-xl border border-border bg-card">
               <iframe
                 src={`https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0`}
                 width="100%"
                 height="380"
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy"
-                style={{ backgroundColor: "#1a1a1a" }}
+                style={{ backgroundColor: "var(--card)" }}
               />
             </div>
           ))}
@@ -136,9 +136,9 @@ export default function PlaylistsPage() {
               return (
                 <div
                   key={String(pl.id)}
-                  className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30"
+                  className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30"
                 >
-                  <div className="relative aspect-video overflow-hidden bg-[#2a2a2a]">
+                  <div className="relative aspect-video overflow-hidden bg-border">
                     {images && images.length > 0 ? (
                       <Image
                         src={images[0].url}
@@ -189,7 +189,7 @@ export default function PlaylistsPage() {
       )}
 
       {/* CTA to Admin */}
-      <section className="border-y border-[#2a2a2a] bg-[#1a1a1a]">
+      <section className="border-y border-border bg-card">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
           <Headphones className="mx-auto mb-4 h-8 w-8 text-primary" />
           <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Crea tus propias playlists</h2>

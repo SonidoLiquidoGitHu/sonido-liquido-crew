@@ -13,9 +13,9 @@ export function ArtistCard({ artist }: ArtistCardProps) {
   return (
     <Link
       href={`/artistas/${artist.id}`}
-      className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30"
+      className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30"
     >
-      <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+      <div className="relative aspect-square overflow-hidden bg-border">
         {hasImage ? (
           <Image
             src={artist.image}
@@ -60,7 +60,7 @@ export function ArtistCard({ artist }: ArtistCardProps) {
           {artist.spotifyUrl && (
             <div
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
             >
               <ExternalLink className="h-3 w-3" />
             </div>

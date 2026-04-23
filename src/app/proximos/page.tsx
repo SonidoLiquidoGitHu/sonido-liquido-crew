@@ -155,7 +155,7 @@ export default function ProximosPage() {
 
       {/* Empty */}
       {!loading && releases.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] px-6 py-20 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border bg-card px-6 py-20 text-center">
           <Music2 className="h-12 w-12 text-primary/50" />
           <h2 className="text-xl font-bold">Sin lanzamientos próximos</h2>
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -166,10 +166,10 @@ export default function ProximosPage() {
 
       {/* Featured upcoming release */}
       {!loading && featured && (
-        <div className="mb-12 overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a]">
+        <div className="mb-12 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-col lg:flex-row">
             {/* Cover art */}
-            <div className="relative aspect-square w-full lg:w-1/2 overflow-hidden bg-[#2a2a2a]">
+            <div className="relative aspect-square w-full lg:w-1/2 overflow-hidden bg-border">
               {featured.coverUrl ? (
                 <Image
                   src={featured.coverUrl}
@@ -183,7 +183,7 @@ export default function ProximosPage() {
                   <Music2 className="h-20 w-20 text-muted-foreground/20" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a]/80 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-[#1a1a1a]/80" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-card/80" />
             </div>
 
             {/* Info */}
@@ -224,7 +224,7 @@ export default function ProximosPage() {
                     href={featured.spotifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#0a0a0a] px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-[#0a0a0a] px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Spotify
@@ -259,7 +259,7 @@ export default function ProximosPage() {
                         }))
                       }
                       disabled={subscribeStatus[featured.id] === "loading"}
-                      className="pl-10 border-[#2a2a2a] bg-[#0a0a0a] placeholder:text-muted-foreground/50 focus:border-primary"
+                      className="pl-10 border-border bg-[#0a0a0a] placeholder:text-muted-foreground/50 focus:border-primary"
                     />
                   </div>
                   <Button
@@ -291,9 +291,9 @@ export default function ProximosPage() {
             {others.map((release) => (
               <div
                 key={release.id}
-                className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30"
+                className="overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30"
               >
-                <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+                <div className="relative aspect-square overflow-hidden bg-border">
                   {release.coverUrl ? (
                     <Image
                       src={release.coverUrl}
@@ -351,7 +351,7 @@ export default function ProximosPage() {
                           }))
                         }
                         disabled={subscribeStatus[release.id] === "loading"}
-                        className="h-8 text-xs border-[#2a2a2a] bg-[#0a0a0a] placeholder:text-muted-foreground/50 focus:border-primary"
+                        className="h-8 text-xs border-border bg-[#0a0a0a] placeholder:text-muted-foreground/50 focus:border-primary"
                       />
                       <Button
                         type="submit"

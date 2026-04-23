@@ -62,7 +62,7 @@ export default function ArtistasPage() {
           <p className="max-w-md text-xs text-muted-foreground">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 rounded-lg border border-[#2a2a2a] px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-[#1a1a1a] hover:text-foreground"
+            className="mt-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
           >
             Intentar de nuevo
           </button>
@@ -87,10 +87,10 @@ export default function ArtistasPage() {
               <Link
                 key={artist.id}
                 href={`/artistas/${artist.id}`}
-                className="group relative block overflow-hidden rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+                className="group relative block overflow-hidden rounded-lg border border-border bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
               >
                 {/* Square image container */}
-                <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+                <div className="relative aspect-square overflow-hidden bg-border">
                   {hasImage ? (
                     <Image
                       src={artist.image}

@@ -109,7 +109,7 @@ export default function ArtistDetailPage() {
           <p className="max-w-md text-xs text-muted-foreground">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 rounded-lg border border-[#2a2a2a] px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-[#1a1a1a] hover:text-foreground"
+            className="mt-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
           >
             Intentar de nuevo
           </button>
@@ -152,7 +152,7 @@ export default function ArtistDetailPage() {
       {/* ── Artist Header ── */}
       <div className="grid gap-8 lg:grid-cols-[360px_1fr] lg:gap-12">
         {/* Image */}
-        <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#2a2a2a]">
+        <div className="relative aspect-square overflow-hidden rounded-2xl bg-border">
           {hasImage ? (
             <Image
               src={artist.image}
@@ -195,12 +195,12 @@ export default function ArtistDetailPage() {
 
           {/* Stats — only show releases count (which works) */}
           <div className="mt-6 flex flex-wrap gap-3">
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-3 text-center">
+            <div className="rounded-xl border border-border bg-card px-5 py-3 text-center">
               <Disc3 className="mx-auto mb-1 h-4 w-4 text-primary" />
               <p className="text-lg font-black">{artist.releases}</p>
               <p className="text-[10px] text-muted-foreground uppercase">Lanzamientos</p>
             </div>
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-3 text-center">
+            <div className="rounded-xl border border-border bg-card px-5 py-3 text-center">
               <Music className="mx-auto mb-1 h-4 w-4 text-primary" />
               <p className="text-lg font-black">SLC</p>
               <p className="text-[10px] text-muted-foreground uppercase">Sonido Líquido</p>
@@ -225,7 +225,7 @@ export default function ArtistDetailPage() {
                 href={artist.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-pink-500"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-pink-500"
               >
                 <Instagram className="h-4 w-4 text-pink-500" />
                 Instagram
@@ -236,7 +236,7 @@ export default function ArtistDetailPage() {
                 href={`https://www.youtube.com/channel/${artist.youtubeChannelId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
               >
                 <Youtube className="h-4 w-4 text-red-500" />
                 {artist.youtubeHandle ? `${artist.youtubeHandle}` : "YouTube"}
@@ -246,7 +246,7 @@ export default function ArtistDetailPage() {
                 href={`https://www.youtube.com/results?search_query=${encodeURIComponent(artist.name + " Sonido Líquido")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500"
               >
                 <Youtube className="h-4 w-4 text-red-500" />
                 YouTube
@@ -279,8 +279,8 @@ export default function ArtistDetailPage() {
               height="400"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
               loading="lazy"
-              className="rounded-xl border border-[#2a2a2a]"
-              style={{ backgroundColor: "#1a1a1a" }}
+              className="rounded-xl border border-border"
+              style={{ backgroundColor: "var(--card)" }}
             />
           </div>
         </section>
@@ -297,9 +297,9 @@ export default function ArtistDetailPage() {
                 href={release.spotifyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30"
+                className="group overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30"
               >
-                <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
+                <div className="relative aspect-square overflow-hidden bg-border">
                   {release.image ? (
                     <Image src={release.image} alt={release.name} fill className="object-cover" sizes="200px" />
                   ) : (
@@ -353,9 +353,9 @@ export default function ArtistDetailPage() {
             {videos.map((video) => (
               <div
                 key={video.videoId}
-                className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-red-500/30"
+                className="overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-red-500/30"
               >
-                <div className="relative aspect-video overflow-hidden bg-[#2a2a2a]">
+                <div className="relative aspect-video overflow-hidden bg-border">
                   <iframe
                     src={`https://www.youtube.com/embed/${video.videoId}`}
                     title={video.title}
@@ -373,7 +373,7 @@ export default function ArtistDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-8 text-center">
+          <div className="mt-6 rounded-xl border border-border bg-card p-8 text-center">
             <Youtube className="mx-auto mb-3 h-10 w-10 text-red-500/50" />
             <p className="text-sm text-muted-foreground">
               Videos de {artist.name} en YouTube
