@@ -1,12 +1,12 @@
 // ── Sonido Líquido Crew — Prisma Schema ──────────────────
-// SQLite for dev; swap provider to "postgresql" + Neon URL for prod.
+// Uses PostgreSQL (Neon) for both dev and prod.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
