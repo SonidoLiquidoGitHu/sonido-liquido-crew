@@ -8,9 +8,11 @@ const NAV_ITEMS = [
   { href: "/", label: "Inicio" },
   { href: "/artistas", label: "Artistas" },
   { href: "/discografia", label: "Discografía" },
+  { href: "/beats", label: "Beats" },
+  { href: "/proximos", label: "Próximos" },
+  { href: "/videos", label: "Videos" },
+  { href: "/nosotros", label: "Nosotros" },
   { href: "/playlists", label: "Playlists" },
-  { href: "/artistas#beats", label: "Beats" },
-  { href: "/artistas#videos", label: "Videos" },
 ];
 
 export function Header() {

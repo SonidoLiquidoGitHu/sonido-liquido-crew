@@ -8,9 +8,11 @@ const NAV_LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/artistas", label: "Artistas" },
   { href: "/discografia", label: "Discografía" },
+  { href: "/beats", label: "Beats" },
+  { href: "/proximos", label: "Próximos" },
+  { href: "/videos", label: "Videos" },
+  { href: "/nosotros", label: "Nosotros" },
   { href: "/playlists", label: "Playlists" },
-  { href: "/artistas#beats", label: "Beats" },
-  { href: "/artistas#videos", label: "Videos" },
 ];
 
 export function Footer() {
@@ -53,14 +55,14 @@ export function Footer() {
           <div>
             <h3 className="mb-4 text-xs font-bold tracking-widest text-muted-foreground uppercase">Más</h3>
             <nav className="flex flex-col gap-2">
-              <Link href="/artistas" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+              <Link href="/nosotros" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                 Nosotros
               </Link>
-              <Link href="/artistas" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                Contacto
+              <Link href="/newsletter" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                Newsletter
               </Link>
-              <Link href="/artistas" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                Prensa
+              <Link href="/proximos" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                Próximos
               </Link>
             </nav>
           </div>

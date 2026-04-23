@@ -1,0 +1,254 @@
+// ── Sonido Líquido Crew — Prisma Schema ──────────────────
+// SQLite for dev; swap provider to "postgresql" + Neon URL for prod.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Artists ─────────────────────────────────────────────
+model Artist {
+  id              String   @id @default(cuid())
+  spotifyId       String?  @unique
+  name            String
+  slug            String?  @unique
+  image           String?
+  bio             String?
+  followers       Int      @default(0)
+  popularity      Int      @default(0)
+  releaseCount    Int      @default(0)
+  spotifyUrl      String?
+  instagram       String?
+  youtubeChannelId String?
+  youtubeHandle   String?
+  isFeatured      Boolean  @default(false)
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  releases        Release[]
+  beats           Beat[]
+  events          EventArtist[]
+  videos          Video[]
+  pressKits       PressKit[]
+  galleryItems    GalleryItem[]
+}
+
+// ── Releases (Albums / Singles / EPs) ───────────────────
+model Release {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String?  @unique
+  type          String   @default("single")  // album | single | ep | compilation
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  coverUrl      String?
+  releaseDate   DateTime?
+  spotifyUrl    String?
+  description   String?
+  isUpcoming    Boolean  @default(false)
+  presaveUrl    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  upcomingSubscribers UpcomingReleaseSubscriber[]
+}
+
+// ── Beats ───────────────────────────────────────────────
+model Beat {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String?  @unique
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  bpm           Int?
+  key           String?
+  coverUrl      String?
+  audioUrl      String?
+  previewUrl    String?
+  price         Float?
+  isFree        Boolean  @default(false)
+  tags          String?  // comma-separated
+  description   String?
+  playCount     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Events ──────────────────────────────────────────────
+model Event {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String?  @unique
+  description   String?
+  date          DateTime
+  endDate       DateTime?
+  venue         String?
+  city          String?
+  country       String?
+  imageUrl      String?
+  ticketUrl     String?
+  isFeatured    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  artists       EventArtist[]
+}
+
+model EventArtist {
+  id        String  @id @default(cuid())
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  artistId  String
+  artist    Artist  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, artistId])
+}
+
+// ── Products (Tienda) ───────────────────────────────────
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String?  @unique
+  description   String?
+  price         Float
+  comparePrice  Float?
+  imageUrl      String?
+  category      String?  // merch | music | digital
+  stock         Int      @default(0)
+  isFeatured    Boolean  @default(false)
+  isDigital     Boolean  @default(false)
+  downloadUrl   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Videos ──────────────────────────────────────────────
+model Video {
+  id            String   @id @default(cuid())
+  title         String
+  youtubeId     String?
+  artistId      String?
+  artist        Artist?  @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  thumbnail     String?
+  description   String?
+  duration      String?
+  viewCount     Int      @default(0)
+  isFeatured    Boolean  @default(false)
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Gallery ─────────────────────────────────────────────
+model GalleryItem {
+  id            String   @id @default(cuid())
+  title         String?
+  imageUrl      String
+  thumbnailUrl  String?
+  artistId      String?
+  artist        Artist?  @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  album         String?
+  tags          String?  // comma-separated
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Subscribers ─────────────────────────────────────────
+model Subscriber {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  status        String   @default("active")  // active | unsubscribed | bounced
+  source        String?  // website | popup | manual
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model UpcomingReleaseSubscriber {
+  id          String   @id @default(cuid())
+  email       String
+  releaseId   String
+  release     Release  @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([email, releaseId])
+}
+
+// ── Newsletter ──────────────────────────────────────────
+model Newsletter {
+  id            String   @id @default(cuid())
+  subject       String
+  body          String
+  status        String   @default("draft")  // draft | sent | scheduled
+  sentAt        DateTime?
+  scheduledAt   DateTime?
+  openCount     Int      @default(0)
+  clickCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Press Kit ───────────────────────────────────────────
+model PressKit {
+  id            String   @id @default(cuid())
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  bio           String?
+  highResPhoto  String?
+  logoUrl       String?
+  contactEmail  String?
+  socialLinks   String?  // JSON string
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Campaigns ───────────────────────────────────────────
+model Campaign {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String?  @unique
+  subject       String
+  body          String
+  status        String   @default("draft")  // draft | sent | scheduled
+  targetList    String?  // all | subscribers | custom
+  sentAt        DateTime?
+  scheduledAt   DateTime?
+  openCount     Int      @default(0)
+  clickCount    Int      @default(0)
+  bounceCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Dropbox Tokens ──────────────────────────────────────
+model DropboxToken {
+  id            String   @id @default(cuid())
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Settings (key-value store) ──────────────────────────
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+// ── Push Subscriptions ─────────────────────────────────
+model PushSubscription {
+  id          String   @id @default(cuid())
+  endpoint    String   @unique
+  p256dh      String?
+  auth        String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
