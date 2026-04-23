@@ -5,18 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  ArrowLeft, Loader2, AlertCircle, Users, ExternalLink,
-  Disc3, Play, Clock, Music2, Instagram, Youtube,
+  ArrowLeft, Loader2, AlertCircle, ExternalLink,
+  Play, Instagram, Youtube, Disc3, Music,
 } from "lucide-react";
 import { reporter, parseApiError } from "@/lib/error-reporter";
 import {
-  type Artist, type Track, type Release, type YouTubeVideo,
-  formatFollowers, formatDuration, safeString, safeNumber,
+  type Artist, type Release, type YouTubeVideo,
+  safeString, safeNumber,
 } from "@/lib/types";
 
 interface ArtistDetail {
   artist: Artist;
-  tracks: Track[];
   releases: Release[];
   videos: YouTubeVideo[];
 }
@@ -24,7 +23,6 @@ interface ArtistDetail {
 export default function ArtistDetailPage() {
   const params = useParams<{ slug: string }>();
   const [data, setData] = useState<ArtistDetail | null>(null);
-  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,26 +40,15 @@ export default function ArtistDetailPage() {
           id: safeString(json.artist?.id, ""),
           name: safeString(json.artist?.name, "Unknown Artist"),
           image: safeString(json.artist?.image),
-          followers: safeNumber(json.artist?.followers),
+          followers: json.artist?.followers ?? null,
           spotifyUrl: safeString(json.artist?.spotifyUrl),
-          popularity: safeNumber(json.artist?.popularity),
+          popularity: json.artist?.popularity ?? null,
           releases: safeNumber(json.artist?.releases),
+          genres: Array.isArray(json.artist?.genres) ? json.artist.genres : [],
           instagram: json.artist?.instagram ?? null,
           youtubeChannelId: json.artist?.youtubeChannelId ?? null,
           youtubeHandle: json.artist?.youtubeHandle ?? null,
         };
-
-        const tracks: Track[] = Array.isArray(json.tracks)
-          ? json.tracks.map((t: Record<string, unknown>) => ({
-              id: safeString(t.id),
-              name: safeString(t.name, "Unknown"),
-              album: safeString(t.album),
-              albumImage: safeString(t.albumImage),
-              durationMs: safeNumber(t.durationMs),
-              spotifyUrl: safeString(t.spotifyUrl),
-              previewUrl: t.previewUrl ? String(t.previewUrl) : null,
-            }))
-          : [];
 
         const releases: Release[] = Array.isArray(json.releases)
           ? json.releases.map((r: Record<string, unknown>) => ({
@@ -87,7 +74,7 @@ export default function ArtistDetailPage() {
         if (!artist.id) {
           setData(null);
         } else {
-          setData({ artist, tracks, releases, videos });
+          setData({ artist, releases, videos });
         }
       })
       .catch((err) => {
@@ -149,7 +136,7 @@ export default function ArtistDetailPage() {
     );
   }
 
-  const { artist, tracks, releases, videos } = data;
+  const { artist, releases, videos } = data;
   const hasImage = typeof artist.image === "string" && artist.image.length > 0;
 
   return (
@@ -188,34 +175,35 @@ export default function ArtistDetailPage() {
           <h1 className="text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
             {artist.name}
           </h1>
-          <div className="mt-2 text-sm text-muted-foreground">Sonido Líquido Crew</div>
+          <div className="mt-1 text-sm text-muted-foreground">Sonido Líquido Crew</div>
+
+          {/* Genres */}
+          {artist.genres.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {artist.genres.map((genre) => (
+                <span
+                  key={genre}
+                  className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary"
+                >
+                  {genre}
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="mt-6 h-px w-16 bg-primary" />
 
-          {/* Stats Grid */}
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 text-center">
-              <Users className="mx-auto mb-1 h-4 w-4 text-primary" />
-              <p className="text-lg font-black">{formatFollowers(artist.followers)}</p>
-              <p className="text-[10px] text-muted-foreground uppercase">Seguidores</p>
-            </div>
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 text-center">
+          {/* Stats — only show releases count (which works) */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-3 text-center">
               <Disc3 className="mx-auto mb-1 h-4 w-4 text-primary" />
               <p className="text-lg font-black">{artist.releases}</p>
               <p className="text-[10px] text-muted-foreground uppercase">Lanzamientos</p>
             </div>
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 text-center">
-              <Music2 className="mx-auto mb-1 h-4 w-4 text-primary" />
-              <p className="text-lg font-black">{artist.popularity}</p>
-              <p className="text-[10px] text-muted-foreground uppercase">Popularidad</p>
-            </div>
-            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 text-center">
-              <div className="mx-auto mb-1 h-4 flex items-center justify-center">
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#2a2a2a]">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${artist.popularity}%` }} />
-                </div>
-              </div>
-              <p className="text-lg font-black">{artist.popularity}/100</p>
-              <p className="text-[10px] text-muted-foreground uppercase">Spotify Score</p>
+            <div className="rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-5 py-3 text-center">
+              <Music className="mx-auto mb-1 h-4 w-4 text-primary" />
+              <p className="text-lg font-black">SLC</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Sonido Líquido</p>
             </div>
           </div>
 
@@ -298,89 +286,11 @@ export default function ArtistDetailPage() {
         </section>
       )}
 
-      {/* ── Top Tracks ── */}
-      {tracks.length > 0 && (
-        <section className="mt-16">
-          <h2 className="mb-6 text-2xl font-black tracking-tight">Canciones Populares</h2>
-          <div className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a]">
-            {tracks.map((track, i) => (
-              <div
-                key={track.id}
-                className={`flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#2a2a2a] ${
-                  i < tracks.length - 1 ? "border-b border-[#2a2a2a]" : ""
-                }`}
-              >
-                <span className="w-6 text-right text-sm text-muted-foreground">{i + 1}</span>
-
-                <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded bg-[#2a2a2a]">
-                  {track.albumImage ? (
-                    <Image src={track.albumImage} alt={track.album} fill className="object-cover" sizes="40px" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-bold text-muted-foreground">
-                      {track.name.charAt(0)}
-                    </div>
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{track.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{track.album}</p>
-                </div>
-
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {formatDuration(track.durationMs)}
-                </div>
-
-                {/* Play preview button */}
-                {track.previewUrl ? (
-                  <button
-                    onClick={() => {
-                      const audio = document.getElementById(`preview-${track.id}`) as HTMLAudioElement;
-                      if (playingTrack === track.id) {
-                        audio?.pause();
-                        setPlayingTrack(null);
-                      } else {
-                        document.querySelectorAll("audio").forEach((a) => a.pause());
-                        audio?.play();
-                        setPlayingTrack(track.id);
-                      }
-                    }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-                  >
-                    <Play className={`h-3.5 w-3.5 ${playingTrack === track.id ? "animate-pulse" : ""}`} />
-                  </button>
-                ) : (
-                  <a
-                    href={track.spotifyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-
-                {/* Hidden audio element for preview */}
-                {track.previewUrl && (
-                  <audio
-                    id={`preview-${track.id}`}
-                    src={track.previewUrl}
-                    onEnded={() => setPlayingTrack(null)}
-                    className="hidden"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* ── Latest Releases ── */}
       {releases.length > 0 && (
         <section className="mt-16">
           <h2 className="mb-6 text-2xl font-black tracking-tight">Lanzamientos</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             {releases.map((release) => (
               <a
                 key={release.id}

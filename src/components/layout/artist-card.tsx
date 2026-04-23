@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { type Artist, formatFollowers } from "@/lib/types";
-import { Users, Disc3, ExternalLink, Instagram } from "lucide-react";
+import { type Artist } from "@/lib/types";
+import { ExternalLink, Instagram } from "lucide-react";
 
 interface ArtistCardProps {
   artist: Artist;
@@ -30,15 +30,21 @@ export function ArtistCard({ artist }: ArtistCardProps) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/80 via-transparent to-transparent" />
-      </div>
-      <div className="flex items-center justify-between p-4">
-        <div>
-          <h3 className="text-base font-bold">{artist.name}</h3>
-          <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Users className="h-3 w-3" />{formatFollowers(artist.followers)}</span>
-            <span className="flex items-center gap-1"><Disc3 className="h-3 w-3" />{artist.releases} releases</span>
-          </div>
+
+        {/* Artist name overlay on image */}
+        <div className="absolute bottom-0 left-0 right-0 p-3">
+          <h3 className="text-sm font-bold sm:text-base">{artist.name}</h3>
+          {artist.genres.length > 0 && (
+            <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground/80">
+              {artist.genres.slice(0, 2).join(" · ")}
+            </p>
+          )}
         </div>
+      </div>
+      <div className="flex items-center justify-between p-3">
+        <span className="text-xs text-muted-foreground">
+          {artist.releases} lanzamientos
+        </span>
         <div className="flex items-center gap-2">
           {artist.instagram && (
             <a
@@ -54,9 +60,9 @@ export function ArtistCard({ artist }: ArtistCardProps) {
           {artist.spotifyUrl && (
             <div
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2a2a2a] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="h-3 w-3" />
             </div>
           )}
         </div>

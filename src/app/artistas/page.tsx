@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2, Users, ExternalLink, Disc3, Instagram } from "lucide-react";
-import { type Artist, formatFollowers, normalizeArtist } from "@/lib/types";
+import { Loader2, ArrowRight } from "lucide-react";
+import { type Artist, normalizeArtist } from "@/lib/types";
 
 export default function ArtistasPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -28,31 +28,23 @@ export default function ArtistasPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalFollowers = artists.reduce((sum, a) => sum + a.followers, 0);
-  const totalReleases = artists.reduce((sum, a) => sum + a.releases, 0);
-
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
-      {/* Header */}
-      <div className="mb-12">
-        <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Artistas</h1>
-        <p className="mt-3 max-w-xl text-lg text-muted-foreground">
-          El roster más representativo del Hip Hop mexicano — {artists.length} artistas
-        </p>
-
-        {/* Collective stats bar */}
-        {!loading && artists.length > 0 && (
-          <div className="mt-6 flex flex-wrap gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Users className="h-4 w-4 text-primary" />
-              <span><span className="font-bold text-foreground">{formatFollowers(totalFollowers)}</span> seguidores totales</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Disc3 className="h-4 w-4 text-primary" />
-              <span><span className="font-bold text-foreground">{totalReleases}</span> lanzamientos totales</span>
-            </div>
-          </div>
-        )}
+      {/* Header — matches reference site */}
+      <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">ARTISTAS</h1>
+          <p className="mt-2 max-w-xl text-base text-muted-foreground">
+            El roster más representativo del Hip Hop mexicano — {artists.length} artistas
+          </p>
+        </div>
+        <Link
+          href="#artistas-grid"
+          className="inline-flex items-center gap-2 self-start rounded-full border border-primary/30 px-5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary hover:text-primary-foreground sm:self-auto"
+        >
+          Ver perfiles
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
 
       {/* Loading */}
@@ -82,9 +74,12 @@ export default function ArtistasPage() {
         <p className="py-20 text-center text-muted-foreground">No se encontraron artistas.</p>
       )}
 
-      {/* Artist Grid */}
+      {/* Artist Grid — 5 columns like reference site */}
       {!loading && !error && artists.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div
+          id="artistas-grid"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+        >
           {artists.map((artist) => {
             const hasImage = typeof artist.image === "string" && artist.image.length > 0;
 
@@ -92,69 +87,42 @@ export default function ArtistasPage() {
               <Link
                 key={artist.id}
                 href={`/artistas/${artist.id}`}
-                className="group overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] transition-all hover:border-primary/30"
+                className="group relative block overflow-hidden rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
               >
+                {/* Square image container */}
                 <div className="relative aspect-square overflow-hidden bg-[#2a2a2a]">
                   {hasImage ? (
                     <Image
                       src={artist.image}
                       alt={artist.name}
                       fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-5xl font-bold text-muted-foreground">
+                    <div className="flex h-full w-full items-center justify-center text-5xl font-bold text-muted-foreground/30">
                       {artist.name.charAt(0)}
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/90 via-[#0a0a0a]/20 to-transparent" />
 
-                  {/* Play overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <ExternalLink className="h-5 w-5" />
+                  {/* Gradient overlay at bottom */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lg transition-transform duration-300 group-hover:scale-100 scale-75">
+                      <ArrowRight className="h-5 w-5" />
                     </div>
                   </div>
 
-                  {/* Name overlay at bottom of image */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h2 className="text-lg font-black">{artist.name}</h2>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      <span>{formatFollowers(artist.followers)}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Disc3 className="h-3 w-3" />
-                      <span>{artist.releases} releases</span>
-                    </div>
-                  </div>
-
-                  {/* Popularity bar */}
-                  <div className="flex items-center gap-1.5">
-                    {artist.instagram && (
-                      <a
-                        href={artist.instagram}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.instagram!, "_blank", "noopener,noreferrer"); }}
-                        className="text-pink-500 hover:text-pink-400"
-                      >
-                        <Instagram className="h-3.5 w-3.5" />
-                      </a>
+                  {/* Artist name overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <h2 className="text-sm font-black tracking-wide sm:text-base">{artist.name}</h2>
+                    {artist.genres.length > 0 && (
+                      <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground/80 sm:text-xs">
+                        {artist.genres.slice(0, 2).join(" · ")}
+                      </p>
                     )}
-                    <div className="h-1 w-12 overflow-hidden rounded-full bg-[#2a2a2a]">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${artist.popularity}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{artist.popularity}</span>
                   </div>
                 </div>
               </Link>

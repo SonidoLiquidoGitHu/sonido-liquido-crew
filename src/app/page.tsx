@@ -7,7 +7,7 @@ import {
   Disc3, Users, Calendar, Music2, Play, ExternalLink,
   ChevronRight, Loader2, Headphones, Instagram, Youtube,
 } from "lucide-react";
-import { type Artist, formatFollowers, formatCount, normalizeArtist } from "@/lib/types";
+import { type Artist, normalizeArtist } from "@/lib/types";
 import { NewsletterForm } from "@/components/newsletter-form";
 
 export default function HomePage() {
@@ -28,7 +28,6 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalFollowers = artists.reduce((sum, a) => sum + a.followers, 0);
   const totalReleases = artists.reduce((sum, a) => sum + a.releases, 0);
   const featured = artists.slice(0, 6);
 
@@ -112,9 +111,9 @@ export default function HomePage() {
           <div className="flex flex-col items-center gap-2 text-center">
             <Headphones className="h-5 w-5 text-primary" />
             <span className="text-3xl font-black sm:text-4xl">
-              {loading ? "—" : formatFollowers(totalFollowers)}
+              {loading ? "—" : `${artists.length}+`}
             </span>
-            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">Seguidores</span>
+            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">Integrantes</span>
           </div>
           <div className="flex flex-col items-center gap-2 text-center">
             <Calendar className="h-5 w-5 text-primary" />
@@ -260,7 +259,7 @@ export default function HomePage() {
                 <div className="p-3">
                   <p className="truncate text-sm font-bold">{artist.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {artist.releases} lanzamientos · {formatFollowers(artist.followers)} seguidores
+                    {artist.releases} lanzamientos
                   </p>
                 </div>
               </a>
@@ -339,7 +338,6 @@ function ArtistCard({ artist }: { artist: Artist }) {
         <div>
           <h3 className="text-base font-bold">{artist.name}</h3>
           <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-            <span>{formatFollowers(artist.followers)} seguidores</span>
             <span>{artist.releases} lanzamientos</span>
           </div>
         </div>

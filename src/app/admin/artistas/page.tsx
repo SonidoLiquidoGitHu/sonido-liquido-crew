@@ -48,7 +48,7 @@ interface Artist {
   name: string;
   spotifyId: string | null;
   bio: string | null;
-  followers: number;
+  followers: number | null;
   isFeatured: boolean;
   instagram: string | null;
   youtubeChannelId: string | null;
@@ -240,7 +240,7 @@ export default function AdminArtistasPage() {
                         "—"
                       )}
                     </TableCell>
-                    <TableCell>{artist.followers.toLocaleString()}</TableCell>
+                    <TableCell>{artist.followers != null ? artist.followers.toLocaleString() : "—"}</TableCell>
                     <TableCell>{artist._count?.releases ?? 0}</TableCell>
                     <TableCell>
                       {artist.isFeatured ? (

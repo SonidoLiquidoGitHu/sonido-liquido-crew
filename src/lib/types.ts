@@ -10,10 +10,11 @@ export interface Artist {
   id: string;             // Spotify artist ID
   name: string;
   image: string;          // Spotify artist image URL
-  followers: number;
+  followers: number | null;  // null when Spotify API doesn't return it
   spotifyUrl: string;
-  popularity: number;     // 0-100 from Spotify
+  popularity: number | null;  // null when Spotify API doesn't return it (0-100)
   releases: number;       // album/single/EP count from Spotify
+  genres: string[];       // genres from Spotify
   instagram: string | null;   // Instagram profile URL (from config)
   youtubeChannelId: string | null; // YouTube channel ID (from config)
   youtubeHandle: string | null;    // YouTube @handle (from config)
@@ -83,10 +84,11 @@ export function normalizeArtist(item: Record<string, unknown>): Artist {
     id: safeString(item.id, crypto.randomUUID?.() ?? String(Math.random())),
     name: safeString(item.name, "Unknown Artist"),
     image: safeString(item.image),
-    followers: safeNumber(item.followers),
+    followers: item.followers == null ? null : safeNumber(item.followers),
     spotifyUrl: safeString(item.spotifyUrl),
-    popularity: safeNumber(item.popularity),
+    popularity: item.popularity == null ? null : safeNumber(item.popularity),
     releases: safeNumber(item.releases),
+    genres: Array.isArray(item.genres) ? item.genres.filter((g: unknown) => typeof g === "string") : [],
     instagram: typeof item.instagram === "string" ? item.instagram : null,
     youtubeChannelId: typeof item.youtubeChannelId === "string" ? item.youtubeChannelId : null,
     youtubeHandle: typeof item.youtubeHandle === "string" ? item.youtubeHandle : null,

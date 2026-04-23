@@ -63,6 +63,8 @@ async function fetchArtist(
     // Merge Spotify data with static config
     const config = ARTIST_CONFIGS.find((c) => c.spotifyId === id);
 
+    // Spotify removed `followers` and `popularity` from the API in 2025.
+    // These fields will be null unless Spotify re-enables them.
     return {
       id: String(data.id ?? ""),
       name: String(data.name ?? "Unknown"),
@@ -70,10 +72,11 @@ async function fetchArtist(
         Array.isArray(data.images) && data.images.length > 0 && data.images[0]?.url
           ? String(data.images[0].url)
           : "",
-      followers: typeof data.followers?.total === "number" ? data.followers.total : 0,
+      followers: typeof data.followers?.total === "number" ? data.followers.total : null,
       spotifyUrl: data.external_urls?.spotify ? String(data.external_urls.spotify) : "",
-      popularity: typeof data.popularity === "number" ? data.popularity : 0,
+      popularity: typeof data.popularity === "number" ? data.popularity : null,
       releases: typeof albumsData?.total === "number" ? albumsData.total : 0,
+      genres: config?.genres ?? [],
       instagram: config?.instagram ?? null,
       youtubeChannelId: config?.youtubeChannelId ?? null,
       youtubeHandle: config?.youtubeHandle ?? null,

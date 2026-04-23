@@ -1,7 +1,10 @@
 /**
  * Static artist configuration that supplements Spotify API data.
- * Spotify provides: name, image, followers, popularity, releases, top tracks, albums.
- * This config provides: Instagram URLs, YouTube channel IDs, and handles.
+ * Spotify provides: name, image, releases (albums count).
+ * This config provides: Instagram URLs, YouTube channel IDs, handles, and genres.
+ *
+ * Note: Spotify removed followers, popularity, and genres from the API in 2025.
+ * Genres below are curated based on the artists' actual musical styles.
  */
 
 export interface ArtistConfig {
@@ -13,6 +16,8 @@ export interface ArtistConfig {
   youtubeChannelId: string | null;
   /** YouTube channel handle (e.g. @zakeuno) */
   youtubeHandle: string | null;
+  /** Musical genres — curated since Spotify removed this from API */
+  genres: string[];
 }
 
 /**
@@ -34,90 +39,105 @@ export const ARTIST_CONFIGS: ArtistConfig[] = [
     instagram: "https://www.instagram.com/brez_idc?igsh=MTk0azBwaDl0N2pweg==",
     youtubeChannelId: "UCxVg9-xrVGfjtRd_N32EuTA",
     youtubeHandle: "@brezhiphopmexicoslc25",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "4fNQqyvcM71IyF2EitEtCj",
     instagram: "https://www.instagram.com/brunograssosl?igsh=MWd3YWNxcGVkemJmMQ==",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "3RAg8fPmZ8RnacJO8MhLP1",
     instagram: "https://www.instagram.com/chas7pecados?igsh=MTdhbTM3bDlsYnBkNg==",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "trap"],
   },
   {
     spotifyId: "2zrv1oduhIYh29vvQZwI5r",
     instagram: "https://www.instagram.com/ilikebigbuds_i_canot_lie/",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "3eCEorgAoZkvnAQLdy4x38",
     instagram: "https://www.instagram.com/dilema_ladee?igsh=amw5ZGluNjI3ZW1k&utm_source=qr",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "5urer15JPbCELf17LVia7w",
     instagram: "https://www.instagram.com/estoesdoctordestino?igsh=MTVubWk1ZG0xMjBkNA==",
     youtubeChannelId: "UCGXC-OtIZ7PHOHBKZTE4mIw",
     youtubeHandle: "@doctordestinohiphop",
+    genres: ["hip hop mexicano", "rap", "conscious hip hop"],
   },
   {
     spotifyId: "5TMoczTLclVyzzDY5qf3Yb",
     instagram: "https://www.instagram.com/fancyfreakcorp?igsh=MXNhenBpZWJvbDczdg==",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "trap"],
   },
   {
     spotifyId: "6AN9ek9RwrLbSp9rT2lcDG",
     instagram: "https://www.instagram.com/hassyel_s.l.c/",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "0QdRhOmiqAcV1dPCoiSIQJ",
     instagram: "https://www.instagram.com/kev.cabrone?igsh=bTdqMG5ndjV6bWx1",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "16YScXC67nAnFDcA2LGdY0",
     instagram: "https://www.instagram.com/latingeishamx?igsh=aXU3ODdjc3lhOG9t",
     youtubeChannelId: "UCZvZ8tbIZKt9IzO42Y8_gtw",
     youtubeHandle: "@LatinGeisha",
+    genres: ["hip hop mexicano", "trap", "reggaeton"],
   },
   {
     spotifyId: "5HrBwfVDf0HXzGDrJ6Znqc",
     instagram: "https://www.instagram.com/pepelevineonline?igsh=eGw5dzNxa2F4aDll",
     youtubeChannelId: "UCXLJPF4RRLT4aoVJkXG80bg", // Zaque's channel (Pepe Levine releases here)
     youtubeHandle: "@ZaqueSonidoLiquido",
+    genres: ["hip hop mexicano", "rap", "boom bap"],
   },
   {
     spotifyId: "4T4Z7jvUcMV16VsslRRuC5",
     instagram: "https://www.instagram.com/q.masterw?igsh=MXg5YWt0cXk0cjJ5aA==",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "4UqFXhJVb9zy2SbNx4ycJQ",
     instagram: "https://www.instagram.com/reickuno/",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "2Apt0MjZGqXAd1pl4LNQrR",
     instagram: "https://www.instagram.com/x_santa_ana?igsh=dGFyMWoxcm5sNWg4",
     youtubeChannelId: "UCy6tHVzGmZ_ehIBWcdrTuRA", // SLC crew channel
     youtubeHandle: "@sonidoliquidocrew",
+    genres: ["hip hop mexicano", "rap"],
   },
   {
     spotifyId: "4WQmw3fIx9F7iPKL5v8SCN",
     instagram: "https://www.instagram.com/zaqueslc?igsh=emFhcDRmaXQ2eDUx",
     youtubeChannelId: "UCXLJPF4RRLT4aoVJkXG80bg",
     youtubeHandle: "@ZaqueSonidoLiquido",
+    genres: ["hip hop mexicano", "rap", "boom bap"],
   },
 ];
 

@@ -1,66 +1,26 @@
-# SLC Project Worklog
-
 ---
-Task ID: 1-3
-Agent: Main Agent
-Task: Set up .env, Prisma schema, and database
+Task ID: 1
+Agent: main
+Task: Redesign artistas section to match reference site, remove non-functional stats
 
 Work Log:
-- Created root `.env` with all API credentials (Spotify, YouTube, Mailchimp, Dropbox, NextAuth)
-- Created `prisma/schema.prisma` with 17 models: Artist, Release, Beat, Event, EventArtist, Product, Video, GalleryItem, Subscriber, UpcomingReleaseSubscriber, Newsletter, PressKit, Campaign, DropboxToken, Setting, PushSubscription
-- Created `src/lib/db.ts` Prisma client singleton
-- Ran `prisma generate` and `prisma db push` successfully (SQLite)
+- Analyzed uploaded image showing current artistas page with broken stats
+- Tested Spotify API and confirmed followers, popularity, genres, and top-tracks have been removed from API (2025 change)
+- Updated Artist type: made followers/popularity nullable (number | null), added genres: string[]
+- Updated /api/artists route: return null for followers/popularity, use config genres instead of API genres
+- Updated /api/artists/[id] route: same changes, also removed top-tracks fetch (403 Forbidden), return empty tracks array
+- Updated artist-config.ts: added static genres array for each artist (curated based on their actual style)
+- Redesigned /artistas/page.tsx: clean 5-column grid matching reference site (sonidoliquido.com), removed broken stats
+- Redesigned /artistas/[slug]/page.tsx: removed followers/popularity/Spotify Score stats, kept releases count, genres, Spotify embed, releases grid, YouTube videos
+- Updated homepage: replaced broken "Seguidores" stat with "Integrantes", removed formatFollowers calls
+- Updated shared ArtistCard component: removed followers display, added genre tags
+- Updated admin/artistas/page.tsx: made followers nullable in local interface
+- TypeScript compilation: ✅ clean
+- ESLint: ✅ clean
 
 Stage Summary:
-- Database schema fully defined and pushed
-- Prisma client available via `import { db } from "@/lib/db"`
-
----
-Task ID: 4-10
-Agent: Subagent (full-stack-developer)
-Task: Build all public pages and API routes
-
-Work Log:
-- Updated header.tsx navigation (8 items: Inicio, Artistas, Discografía, Beats, Próximos, Videos, Nosotros, Playlists)
-- Updated footer.tsx navigation to match
-- Created 12 public API routes (beats, releases, videos, events, products, gallery, stats, health, upcoming-releases, subscribe)
-- Created 6 public pages (beats, discografia, proximos, nosotros, videos, newsletter)
-- All pages use SLC dark theme, Spanish text, loading/error states
-
-Stage Summary:
-- All public pages functional with API backing
-- TypeScript compilation: 0 errors
-
----
-Task ID: 11-13
-Agent: Subagent (full-stack-developer)
-Task: Build admin layout, dashboard, and CRUD pages
-
-Work Log:
-- Created admin layout with sidebar (10 nav links with icons, mobile responsive)
-- Created admin dashboard with stat cards and quick actions
-- Created 7 CRUD pages (Artistas, Releases, Beats, Events, Products, Videos, Subscribers)
-- Created 13 admin API routes (CRUD for all entities + dashboard summary)
-
-Stage Summary:
-- Full admin panel functional
-- TypeScript compilation: 0 errors
-
----
-Task ID: 14-16
-Agent: Main Agent
-Task: Dropbox integration, config fixes, final verification
-
-Work Log:
-- Created Dropbox OAuth flow (auth + callback routes)
-- Created Dropbox token management API
-- Created Dropbox upload API with auto-refresh
-- Created Campaigns API and Settings API
-- Fixed db:push script in package.json
-- Updated next.config.ts (added img.youtube.com to image domains)
-- Added upload/** and download/** to eslint ignores
-- Final verification: tsc --noEmit = 0 errors, lint = clean
-
-Stage Summary:
-- Project fully functional with 22 pages, 47 API routes, 17 Prisma models
-- Ready for Netlify deployment (uncomment `output: "standalone"` in next.config.ts)
+- Spotify API no longer provides followers, popularity, genres, or top-tracks
+- All non-functional stats removed from UI
+- Artistas listing page now matches reference site style (clean 5-col grid with genre tags)
+- Artist detail page focuses on working features: Spotify embed, releases, YouTube, social links
+- Curated genres added to artist-config as static data

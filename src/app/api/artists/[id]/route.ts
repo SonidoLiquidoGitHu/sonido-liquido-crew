@@ -163,16 +163,13 @@ export async function GET(
     const token = await getAccessToken();
     const config = getArtistConfig(id);
 
-    const [artistRes, albumsRes, tracksRes] = await Promise.all([
+    // Spotify removed top-tracks (403) — only fetch artist + albums
+    const [artistRes, albumsRes] = await Promise.all([
       fetch(`https://api.spotify.com/v1/artists/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       }),
       fetch(
         `https://api.spotify.com/v1/artists/${id}/albums?include_groups=album,single,compilation&limit=10&market=US`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      ),
-      fetch(
-        `https://api.spotify.com/v1/artists/${id}/top-tracks?market=US`,
         { headers: { Authorization: `Bearer ${token}` } }
       ),
     ]);
@@ -183,8 +180,9 @@ export async function GET(
 
     const artistData = await artistRes.json();
     const albumsData = albumsRes.ok ? await albumsRes.json() : null;
-    const tracksData = tracksRes.ok ? await tracksRes.json() : null;
 
+    // Spotify removed `followers` and `popularity` from the API in 2025.
+    // These fields will be null unless Spotify re-enables them.
     const artist: Artist = {
       id: String(artistData.id ?? ""),
       name: String(artistData.name ?? "Unknown"),
@@ -192,30 +190,18 @@ export async function GET(
         Array.isArray(artistData.images) && artistData.images.length > 0 && artistData.images[0]?.url
           ? String(artistData.images[0].url)
           : "",
-      followers: typeof artistData.followers?.total === "number" ? artistData.followers.total : 0,
+      followers: typeof artistData.followers?.total === "number" ? artistData.followers.total : null,
       spotifyUrl: artistData.external_urls?.spotify ? String(artistData.external_urls.spotify) : "",
-      popularity: typeof artistData.popularity === "number" ? artistData.popularity : 0,
+      popularity: typeof artistData.popularity === "number" ? artistData.popularity : null,
       releases: typeof albumsData?.total === "number" ? albumsData.total : 0,
+      genres: config?.genres ?? [],
       instagram: config?.instagram ?? null,
       youtubeChannelId: config?.youtubeChannelId ?? null,
       youtubeHandle: config?.youtubeHandle ?? null,
     };
 
-    const tracks: Track[] = Array.isArray(tracksData?.tracks)
-      ? tracksData.tracks.map((t: Record<string, unknown>) => ({
-          id: String(t.id ?? ""),
-          name: String(t.name ?? "Unknown"),
-          album: String((t.album as Record<string, unknown>)?.name ?? ""),
-          albumImage:
-            Array.isArray((t.album as Record<string, unknown>)?.images) &&
-            ((t.album as Record<string, unknown>).images as Record<string, unknown>[])[0]?.url
-              ? String(((t.album as Record<string, unknown>).images as Record<string, unknown>[])[0].url)
-              : "",
-          durationMs: typeof t.duration_ms === "number" ? t.duration_ms : 0,
-          spotifyUrl: (t.external_urls as Record<string, string>)?.spotify ?? "",
-          previewUrl: t.preview_url ? String(t.preview_url) : null,
-        }))
-      : [];
+    // Tracks: Spotify removed top-tracks endpoint (403). Return empty array.
+    const tracks: Track[] = [];
 
     const releases: Release[] = Array.isArray(albumsData?.items)
       ? albumsData.items.map((a: Record<string, unknown>) => ({
