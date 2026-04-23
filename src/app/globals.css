@@ -80,37 +80,37 @@
 
 /* ── Sonido Liquido-inspired dark theme ── */
 .dark {
-  --background: #0a0a0a;
+  --background: #121212;
   --foreground: #ffffff;
   --card: #1a1a1a;
   --card-foreground: #ffffff;
   --popover: #1a1a1a;
   --popover-foreground: #ffffff;
-  --primary: #22c55e;
-  --primary-foreground: #0a0a0a;
+  --primary: #FF6600;
+  --primary-foreground: #121212;
   --secondary: #1a1a1a;
   --secondary-foreground: #ffffff;
   --muted: #1a1a1a;
   --muted-foreground: #888888;
-  --accent: #22c55e;
-  --accent-foreground: #0a0a0a;
+  --accent: #FF6600;
+  --accent-foreground: #121212;
   --destructive: #ef4444;
   --border: #2a2a2a;
   --input: #2a2a2a;
-  --ring: #22c55e;
-  --chart-1: #22c55e;
+  --ring: #FF6600;
+  --chart-1: #FF6600;
   --chart-2: #3b82f6;
   --chart-3: #a855f7;
   --chart-4: #f59e0b;
   --chart-5: #ef4444;
   --sidebar: #1a1a1a;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #22c55e;
-  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-primary: #FF6600;
+  --sidebar-primary-foreground: #121212;
   --sidebar-accent: #1a1a1a;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #2a2a2a;
-  --sidebar-ring: #22c55e;
+  --sidebar-ring: #FF6600;
 }
 
 @layer base {
@@ -158,7 +158,7 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #121212;
 }
 
 ::-webkit-scrollbar-thumb {
