@@ -186,7 +186,7 @@ export default function HomePage() {
 
               {/* Carousel indicators */}
               {artists.length > 1 && (
-                <div className="mt-8 flex items-center justify-center gap-1.5">
+                <div className="mt-8 flex items-center justify-center gap-1">
                   {artists.slice(0, Math.min(artists.length, 10)).map((_, i) => (
                     <button
                       key={i}
@@ -198,13 +198,17 @@ export default function HomePage() {
                           setHeroFade(true);
                         }, 300);
                       }}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        i === heroIndex
-                          ? "w-6 bg-primary"
-                          : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"
-                      }`}
+                      className="relative flex items-center justify-center p-2.5"
                       aria-label={`Ver ${artists[i]?.name}`}
-                    />
+                    >
+                      <span
+                        className={`block h-1.5 rounded-full transition-all duration-300 ${
+                          i === heroIndex
+                            ? "w-6 bg-primary"
+                            : "w-1.5 bg-muted-foreground/30"
+                        }`}
+                      />
+                    </button>
                   ))}
                 </div>
               )}
@@ -298,7 +302,7 @@ export default function HomePage() {
                     </div>
                     <Link
                       href="/proximos"
-                      className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                      className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-4 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20 min-h-[44px]"
                     >
                       <Bell className="h-3 w-3" />
                       Notificarme
@@ -576,7 +580,7 @@ function ArtistCard({ artist }: { artist: Artist }) {
           {artist.spotifyUrl && (
             <div
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground opacity-70 sm:opacity-0 transition-all sm:group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </div>

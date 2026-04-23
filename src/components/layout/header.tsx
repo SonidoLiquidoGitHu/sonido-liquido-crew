@@ -51,7 +51,7 @@ export function Header() {
             Escuchar en Spotify
           </a>
           <button
-            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:text-foreground lg:hidden"
+            className="inline-flex items-center justify-center rounded-md p-2.5 text-muted-foreground transition-colors hover:text-foreground lg:hidden min-h-[44px] min-w-[44px]"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
@@ -67,7 +67,7 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                className="rounded-md px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
                 onClick={() => setMobileOpen(false)}
               >
                 {item.label}
@@ -77,7 +77,7 @@ export function Header() {
               href="https://open.spotify.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 rounded-full bg-primary px-4 py-2 text-center text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90"
+              className="mt-2 rounded-full bg-primary px-4 py-2.5 text-center text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 min-h-[44px]"
             >
               Escuchar en Spotify
             </a>

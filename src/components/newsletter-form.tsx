@@ -76,7 +76,7 @@ export function NewsletterForm({ variant = "hero" }: NewsletterFormProps) {
             setStatus("idle");
             setMessage("");
           }}
-          className={`text-sm font-medium text-primary hover:underline ${
+          className={`text-sm font-medium text-primary hover:underline min-h-[44px] ${
             isHero ? "mx-auto block" : ""
           }`}
         >
@@ -89,7 +89,7 @@ export function NewsletterForm({ variant = "hero" }: NewsletterFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className={`flex gap-2 ${isHero ? "mx-auto max-w-md" : ""}`}
+      className={`flex flex-col gap-2 sm:flex-row ${isHero ? "mx-auto max-w-md" : ""}`}
     >
       <div className="relative flex-1">
         {isHero && (
@@ -102,15 +102,15 @@ export function NewsletterForm({ variant = "hero" }: NewsletterFormProps) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="tu@email.com"
           disabled={status === "loading"}
-          className={`w-full rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 ${
-            isHero ? "pl-10 pr-4 py-2.5" : "px-3 py-2"
+          className={`w-full rounded-lg border border-border bg-[#0a0a0a] text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 min-h-[44px] ${
+            isHero ? "pl-10 pr-4 py-2.5" : "px-3 py-2.5"
           }`}
         />
       </div>
       <button
         type="submit"
         disabled={status === "loading" || !email.trim()}
-        className="flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
       >
         {status === "loading" ? (
           <>

@@ -52,7 +52,7 @@ export function ArtistCard({ artist }: ArtistCardProps) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.instagram!, "_blank", "noopener,noreferrer"); }}
-              className="text-pink-500/60 hover:text-pink-500"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-pink-500/60 hover:text-pink-500"
             >
               <Instagram className="h-4 w-4" />
             </a>
@@ -60,9 +60,9 @@ export function ArtistCard({ artist }: ArtistCardProps) {
           {artist.spotifyUrl && (
             <div
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(artist.spotifyUrl, "_blank", "noopener,noreferrer"); }}
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground opacity-70 sm:opacity-0 transition-all sm:group-hover:opacity-100 hover:border-primary hover:text-primary cursor-pointer"
             >
-              <ExternalLink className="h-3 w-3" />
+              <ExternalLink className="h-3.5 w-3.5" />
             </div>
           )}
         </div>
