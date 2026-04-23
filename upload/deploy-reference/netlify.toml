@@ -1,0 +1,86 @@
+[images]
+remote_images = [
+  "https://source.unsplash.com/.*",
+  "https://images.unsplash.com/.*",
+  "https://ext.same-assets.com/.*",
+  "https://ugc.same-assets.com/.*",
+  "https://i.scdn.co/.*",
+  "https://mosaic.scdn.co/.*",
+  "https://image-cdn-fa.spotifycdn.com/.*",
+  "https://image-cdn-ak.spotifycdn.com/.*",
+  "https://wrapped-images.spotifycdn.com/.*",
+  "https://seeded-session-images.scdn.co/.*",
+  "https://lineup-images.scdn.co/.*",
+  "https://daily-mix.scdn.co/.*",
+  "https://newjams-images.scdn.co/.*",
+  "https://thisis-images.scdn.co/.*",
+  "https://t.scdn.co/.*",
+  "https://img.youtube.com/.*",
+  "https://i.ytimg.com/.*",
+  "https://yt3.ggpht.com/.*",
+  "https://yt3.googleusercontent.com/.*",
+  "https://dl.dropboxusercontent.com/.*",
+  "https://placehold.co/.*"
+]
+
+[functions]
+
+  [functions."api/*"]
+  included_files = [
+    "node_modules/**"
+  ]
+
+[build]
+command = "bun install && bun run build"
+publish = ".next"
+
+  [build.environment]
+  NETLIFY_NEXT_PLUGIN_SKIP = "false"
+  NODE_VERSION = "20"
+
+[[plugins]]
+package = "@netlify/plugin-nextjs"
+
+[[headers]]
+for = "/_next/static/*"
+
+  [headers.values]
+  Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+from = "/_next/image"
+to = "/.netlify/images?url=:url&w=:width&q=:quality"
+status = 200
+
+  [redirects.query]
+  url = ":url"
+  w = ":width"
+  q = ":quality"
+
+[[redirects]]
+from = "/_ipx/*"
+to = "/.netlify/images?url=:url&w=:width&q=:quality"
+status = 200
+
+  [redirects.query]
+  url = ":url"
+  w = ":width"
+  q = ":quality"
+
+[context]
+
+  [context.production]
+
+    [[context.production.headers]]
+    for = "/_next/static/*"
+
+      [context.production.headers.values]
+      Cache-Control = "public, max-age=31536000, immutable"
+
+  [context.master]
+
+    [[context.master.headers]]
+    for = "/_next/static/*"
+
+      [context.master.headers.values]
+      Cache-Control = "public, max-age=31536000, immutable"

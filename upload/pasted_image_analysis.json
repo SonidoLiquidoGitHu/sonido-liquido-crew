@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "The image shows a **Dropbox App Console** page (for a Dropbox developer app) displaying configuration details for an application. Here’s a breakdown of visible credentials and configuration:  \n\n### 1. App Status & Team/User Settings  \n- **Status**: Disabled (with an “Apply for production” button).  \n- **Development teams**: `0 / 1` (with “Enable additional teams” / “Unlink all teams” options).  \n- **Development users**: `Only you` (with “Enable additional users” option).  \n\n\n### 2. Credentials (API Keys)  \n- **App key**: `80c5jywddkzsa44`  \n- **App secret**: `gqohsn9fhnjs9ea`  \n\n\n### 3. OAuth 2 Configuration  \n- **Redirect URIs**:  \n  - One configured URI: `https://sonidoliquido.com/api/dropbox/callback` (with a delete “×” button).  \n  - A text field for adding new URIs: `https:// (http allowed for localhost)` (with an “Add” button).  \n- **Allow public clients (Implicit Grant & PKCE)**: Set to `Allow` (via a dropdown menu).  \n\n\n### 4. Permission Type  \n- **Permission type**: `Scoped App` (with an info icon for details).  \n\n\nNo other sensitive credentials (e.g., access tokens, client secrets beyond the “App secret”) are visible, but the **App key** and **App secret** are clearly displayed (these are critical for authenticating the app with Dropbox’s API).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1776836085,
+  "id": "20260422133429a63f339f926445d9",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260422133429a63f339f926445d9",
+  "usage": {
+    "completion_tokens": 333,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2514,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 2847
+  }
+}
