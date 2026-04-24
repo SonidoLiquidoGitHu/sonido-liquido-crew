@@ -25,6 +25,7 @@ model Artist {
   instagram       String?
   youtubeChannelId String?
   youtubeHandle   String?
+  genres          String?  // comma-separated, curated
   isFeatured      Boolean  @default(false)
   order           Int      @default(0)
   createdAt       DateTime @default(now())

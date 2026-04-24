@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, COOKIE_NAME } from "@/lib/admin-auth";
 
+const COOKIE_NAME = "slc_admin_token";
 const ADMIN_API_PREFIX = "/api/admin";
 const AUTH_ROUTES = [
   "/api/admin/auth/login",
@@ -20,7 +20,8 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Verify admin token from cookie
+    // Check if admin token cookie exists
+    // Full token verification happens in the API routes using Node.js crypto
     const token = request.cookies.get(COOKIE_NAME)?.value;
 
     if (!token) {
@@ -30,14 +31,13 @@ export function middleware(request: NextRequest) {
       );
     }
 
-    const payload = verifyToken(token);
-
-    if (!payload) {
+    // Basic token format check (must be base64.signature)
+    const parts = token.split(".");
+    if (parts.length !== 2) {
       const response = NextResponse.json(
         { error: "Sesión expirada. Inicia sesión de nuevo." },
         { status: 401 }
       );
-      // Clear invalid cookie
       response.cookies.set(COOKIE_NAME, "", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -48,15 +48,7 @@ export function middleware(request: NextRequest) {
       return response;
     }
 
-    // Add user info to request headers for downstream use
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-admin-user", payload.user);
-
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    return NextResponse.next();
   }
 
   return NextResponse.next();

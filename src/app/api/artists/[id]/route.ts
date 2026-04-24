@@ -1,53 +1,14 @@
 import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
 import type { Artist, Track, Release, YouTubeVideo } from "@/lib/types";
-import { getArtistConfig } from "@/lib/artist-config";
-
-let tokenCache: { token: string; expires: number } | null = null;
-
-async function getAccessToken(): Promise<string> {
-  const now = Date.now();
-  if (tokenCache && tokenCache.expires > now) return tokenCache.token;
-
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET");
-  }
-
-  const res = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Spotify auth failed (${res.status}): ${detail}`);
-  }
-
-  const data = await res.json();
-  tokenCache = {
-    token: data.access_token,
-    expires: now + (data.expires_in - 60) * 1000,
-  };
-  return tokenCache.token;
-}
 
 /**
- * Search YouTube videos using the YouTube Data API v3.
- *
- * Strategy:
- * 1. If the artist has a dedicated YouTube channel ID → search within that channel
- * 2. Also search the main SonidoLíquido Crew channel for the artist
- * 3. Deduplicate and return up to 6 results
- *
- * If YOUTUBE_API_KEY is not set, returns [] (UI shows fallback link).
+ * GET /api/artists/[id] — Returns artist detail from the database.
+ * The `id` param can be either a slug (e.g. "zaque") or a Spotify ID.
+ * YouTube videos are still fetched from the YouTube Data API at runtime
+ * since they change frequently.
  */
+
 async function searchYouTubeVideos(
   artistName: string,
   channelId?: string | null
@@ -58,32 +19,23 @@ async function searchYouTubeVideos(
   try {
     const searchQueries: Promise<YouTubeVideo[]>[] = [];
 
-    // Search 1: Within the artist's configured channel (or SLC crew channel)
     if (channelId) {
-      searchQueries.push(
-        fetchYouTubeSearch(apiKey, artistName, channelId)
-      );
+      searchQueries.push(fetchYouTubeSearch(apiKey, artistName, channelId));
     }
 
-    // Search 2: Always search the main SLC crew channel for this artist
     const SLC_CHANNEL_ID = "UCy6tHVzGmZ_ehIBWcdrTuRA";
     if (channelId !== SLC_CHANNEL_ID) {
-      searchQueries.push(
-        fetchYouTubeSearch(apiKey, artistName, SLC_CHANNEL_ID)
-      );
+      searchQueries.push(fetchYouTubeSearch(apiKey, artistName, SLC_CHANNEL_ID));
     }
 
-    // Search 3: Generic YouTube search (broader results)
     searchQueries.push(
       fetchYouTubeSearch(apiKey, `${artistName} Sonido Líquido`, undefined)
     );
 
     const results = await Promise.all(searchQueries);
 
-    // Flatten, deduplicate by videoId, and limit to 6
     const seen = new Set<string>();
     const deduped: YouTubeVideo[] = [];
-
     for (const batch of results) {
       for (const video of batch) {
         if (!seen.has(video.videoId)) {
@@ -94,16 +46,12 @@ async function searchYouTubeVideos(
       }
       if (deduped.length >= 6) break;
     }
-
     return deduped;
   } catch {
     return [];
   }
 }
 
-/**
- * Execute a single YouTube Data API v3 search request.
- */
 async function fetchYouTubeSearch(
   apiKey: string,
   query: string,
@@ -116,18 +64,13 @@ async function fetchYouTubeSearch(
       q: query,
       type: "video",
       key: apiKey,
-      // Prefer recent videos
       order: channelId ? "date" : "relevance",
     });
-
-    if (channelId) {
-      params.set("channelId", channelId);
-    }
+    if (channelId) params.set("channelId", channelId);
 
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/search?${params.toString()}`
     );
-
     if (!res.ok) return [];
 
     const data = await res.json();
@@ -160,70 +103,57 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const token = await getAccessToken();
-    const config = getArtistConfig(id);
 
-    // Spotify removed top-tracks (403) — only fetch artist + albums
-    const [artistRes, albumsRes] = await Promise.all([
-      fetch(`https://api.spotify.com/v1/artists/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-      fetch(
-        `https://api.spotify.com/v1/artists/${id}/albums?include_groups=album,single,compilation&limit=10&market=US`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      ),
-    ]);
+    // Find by slug first, then by Spotify ID
+    const dbArtist = await db.artist.findFirst({
+      where: {
+        OR: [{ slug: id }, { spotifyId: id }],
+      },
+      include: {
+        releases: {
+          orderBy: { releaseDate: "desc" },
+          take: 20,
+        },
+        _count: { select: { releases: true } },
+      },
+    });
 
-    if (!artistRes.ok) {
+    if (!dbArtist) {
       return NextResponse.json({ error: "Artist not found" }, { status: 404 });
     }
 
-    const artistData = await artistRes.json();
-    const albumsData = albumsRes.ok ? await albumsRes.json() : null;
-
-    // Spotify removed `followers` and `popularity` from the API in 2025.
-    // These fields will be null unless Spotify re-enables them.
     const artist: Artist = {
-      id: String(artistData.id ?? ""),
-      name: String(artistData.name ?? "Unknown"),
-      image:
-        Array.isArray(artistData.images) && artistData.images.length > 0 && artistData.images[0]?.url
-          ? String(artistData.images[0].url)
-          : "",
-      followers: typeof artistData.followers?.total === "number" ? artistData.followers.total : null,
-      spotifyUrl: artistData.external_urls?.spotify ? String(artistData.external_urls.spotify) : "",
-      popularity: typeof artistData.popularity === "number" ? artistData.popularity : null,
-      releases: typeof albumsData?.total === "number" ? albumsData.total : 0,
-      genres: config?.genres ?? [],
-      instagram: config?.instagram ?? null,
-      youtubeChannelId: config?.youtubeChannelId ?? null,
-      youtubeHandle: config?.youtubeHandle ?? null,
+      id: dbArtist.slug ?? dbArtist.id,
+      name: dbArtist.name,
+      image: dbArtist.image ?? "",
+      followers: dbArtist.followers || null,
+      spotifyUrl: dbArtist.spotifyUrl ?? "",
+      popularity: dbArtist.popularity || null,
+      releases: dbArtist.releaseCount || dbArtist._count.releases,
+      genres: dbArtist.genres ? dbArtist.genres.split(",").map((g) => g.trim()) : [],
+      instagram: dbArtist.instagram,
+      youtubeChannelId: dbArtist.youtubeChannelId,
+      youtubeHandle: dbArtist.youtubeHandle,
     };
 
-    // Tracks: Spotify removed top-tracks endpoint (403). Return empty array.
-    const tracks: Track[] = [];
+    const tracks: Track[] = []; // Spotify removed top-tracks endpoint
 
-    const releases: Release[] = Array.isArray(albumsData?.items)
-      ? albumsData.items.map((a: Record<string, unknown>) => ({
-          id: String(a.id ?? ""),
-          name: String(a.name ?? "Unknown"),
-          artistName: Array.isArray(a.artists) && a.artists[0]?.name ? String(a.artists[0].name) : "",
-          image:
-            Array.isArray(a.images) && a.images[0]?.url
-              ? String(a.images[0].url)
-              : "",
-          releaseDate: String(a.release_date ?? ""),
-          type: (["album", "single", "compilation"].includes(a.album_type as string)
-            ? a.album_type
-            : "album") as Release["type"],
-          spotifyUrl: (a.external_urls as Record<string, string>)?.spotify ?? "",
-        }))
-      : [];
+    const releases: Release[] = dbArtist.releases.map((r) => ({
+      id: r.id,
+      name: r.title,
+      artistName: dbArtist.name,
+      image: r.coverUrl ?? "",
+      releaseDate: r.releaseDate ? r.releaseDate.toISOString().split("T")[0] : "",
+      type: (["album", "single", "compilation"].includes(r.type)
+        ? r.type
+        : "album") as Release["type"],
+      spotifyUrl: r.spotifyUrl ?? "",
+    }));
 
     // Search YouTube videos using channel-aware strategy
     const videos = await searchYouTubeVideos(
       artist.name,
-      config?.youtubeChannelId
+      dbArtist.youtubeChannelId
     );
 
     return NextResponse.json({ artist, tracks, releases, videos });
