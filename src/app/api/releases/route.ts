@@ -14,7 +14,6 @@ export async function GET(request: Request) {
         artist: { select: { id: true, name: true, slug: true, image: true } },
       },
       orderBy: { releaseDate: "desc" },
-      take: 100,
     });
 
     return NextResponse.json(releases);

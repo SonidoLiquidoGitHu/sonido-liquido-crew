@@ -34,3 +34,25 @@ Stage Summary:
 - Two admin API endpoints ready for on-demand Spotify sync
 - Routes support individual artist sync or full roster sync
 - Rate limit handling built in
+
+---
+Task ID: 3
+Agent: main
+Task: Ensure discografía shows ALL releases sorted by release date
+
+Work Log:
+- Removed `take: 100` limit from /api/releases endpoint so ALL releases are returned
+- Verified API returns 229 releases sorted by releaseDate DESC
+- Confirmed releases span from 2006-06-06 to 2026-04-20
+- All releases have cover art (real Spotify images)
+- Missing ~143 releases due to Spotify API rate limit on /albums endpoint
+- Created fetch-all-releases.sh script that will fetch remaining releases when rate limit resets
+- Rate limit resets ~April 25 at 19:27 UTC
+
+Stage Summary:
+- /api/releases now returns ALL releases (no limit), sorted by date DESC
+- 229 releases currently in database
+- 143 more releases needed (mostly Zaque: 92 missing)
+- Rate-limited on Spotify /albums endpoint for ~23 hours
+- Created fetch-all-releases.sh and quick-seed-releases.js for post-reset fetching
+- Also created admin API endpoints: /api/admin/spotify/sync-releases and /api/admin/spotify/sync-artists
