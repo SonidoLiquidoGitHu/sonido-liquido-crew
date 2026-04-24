@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Netlify requires "standalone" output for serverless functions
-  // Uncomment before deploying to Netlify:
+  // When deploying to Netlify with @netlify/plugin-nextjs, do NOT use "standalone" output.
+  // The plugin handles serverless function generation automatically.
+  // Keep this commented out for Netlify deployments.
   // output: "standalone",
 
   images: {

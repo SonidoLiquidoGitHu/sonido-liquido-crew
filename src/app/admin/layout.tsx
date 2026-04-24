@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -15,6 +16,7 @@ import {
   Mail,
   Settings,
   Headphones,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -132,10 +134,61 @@ function AppSidebar() {
   );
 }
 
-export default function AdminLayout({
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [status, setStatus] = useState<"loading" | "ok" | "denied">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/auth/check")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setStatus(data.authenticated ? "ok" : "denied");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStatus("denied");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (status === "denied") {
+      router.push("/admin/login");
+    }
+  }, [status, router]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f97316] text-white animate-pulse">
+            <Headphones className="h-6 w-6" />
+          </div>
+          <p className="text-sm text-[#888]">Verificando acceso...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status !== "ok") {
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
+function AdminContent({
   children,
+  onLogout,
 }: {
   children: React.ReactNode;
+  onLogout: () => void;
 }) {
   return (
     <SidebarProvider>
@@ -145,6 +198,14 @@ export default function AdminLayout({
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5 bg-[#2a2a2a]" />
           <div className="flex-1" />
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[#f97316] transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Salir
+          </button>
+          <Separator orientation="vertical" className="h-5 bg-[#2a2a2a]" />
           <Link
             href="/"
             className="text-xs text-muted-foreground hover:text-primary transition-colors"
@@ -157,5 +218,34 @@ export default function AdminLayout({
         </main>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isLoginPage = pathname === "/admin/login";
+
+  // Login page: render children directly without sidebar layout or auth check
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
+  return (
+    <AuthGuard>
+      <AdminContent
+        onLogout={() => {
+          fetch("/api/admin/auth/logout", { method: "POST" }).finally(() => {
+            router.push("/admin/login");
+          });
+        }}
+      >
+        {children}
+      </AdminContent>
+    </AuthGuard>
   );
 }

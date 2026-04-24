@@ -1,0 +1,4 @@
+# Handle www to non-www redirect (or vice versa - depends on preference)
+# For now, let Netlify handle this via domain settings
+
+# SPA fallback - let the Next.js plugin handle this
