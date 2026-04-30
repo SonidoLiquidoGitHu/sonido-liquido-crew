@@ -1,4 +1,4 @@
-import { createClient, type Client } from "@libsql/client/web";
+import { createClient, type Client } from "@libsql/client";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 import * as relations from "./relations";
@@ -22,7 +22,13 @@ export function isDatabaseConfigured(): boolean {
                 process.env.TURSO_AUTH_TOKEN ||
                 process.env.LIBSQL_AUTH_TOKEN || "").trim();
 
-  // Both URL and token are required for Turso
+  // For local SQLite (file: URLs), no auth token is needed
+  const isLocalSQLite = url.startsWith("file:");
+  if (isLocalSQLite && url) {
+    return true;
+  }
+
+  // For remote Turso, both URL and token are required
   const isConfigured = Boolean(url && token);
 
   if (!isConfigured && (url || token)) {
