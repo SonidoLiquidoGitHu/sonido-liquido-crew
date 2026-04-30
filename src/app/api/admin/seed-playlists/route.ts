@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { curatedPlaylists, playlistTracks, curatedTracks } from "@/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { curatedPlaylists, playlistTracks, curatedTracks, releases } from "@/db/schema";
+import { eq, sql, desc, asc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +60,7 @@ const DEFAULT_PLAYLISTS = [
   },
 ];
 
-// POST - Seed playlists and auto-populate with tracks from curated_tracks
+// POST - Seed playlists and auto-populate with tracks
 export async function POST() {
   try {
     if (!isDatabaseConfigured()) {
@@ -75,6 +75,7 @@ export async function POST() {
       playlistsExisting: 0,
       tracksAdded: 0,
       tracksSkipped: 0,
+      source: "none" as string,
       errors: [] as string[],
     };
 
@@ -96,7 +97,6 @@ export async function POST() {
         )
       `);
     } catch (e: any) {
-      // Table may already exist, that's fine
       if (!e.message?.includes("already exists")) {
         results.errors.push(`Create table: ${e.message}`);
       }
@@ -136,128 +136,44 @@ export async function POST() {
       }
     }
 
-    // Step 3: Auto-populate playlists from curated_tracks
-    // Get all available curated tracks
-    const allCuratedTracks = await db
-      .select()
-      .from(curatedTracks)
-      .where(eq(curatedTracks.isAvailableForPlaylist, true));
-
-    if (allCuratedTracks.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "Playlists seeded but no curated tracks found. Sync tracks from Spotify first via /admin/curated-channels",
-        results,
-      });
-    }
-
-    // Get existing playlist tracks to avoid duplicates
+    // Step 3: Get existing playlist tracks to avoid duplicates
     const existingPlaylistTracks = await db.select().from(playlistTracks);
     const existingKeys = new Set(
       existingPlaylistTracks.map((t) => `${t.playlistId}:${t.spotifyTrackId}`)
     );
 
-    // Distribute tracks across playlists:
-    // - gran-reserva: featured tracks (is_featured = true) + high popularity
-    // - weekly-picks: most recent tracks
-    // - new-releases: tracks from recent releases (by releaseDate)
-    // - classics: oldest tracks
-    // - collaborations: tracks with multiple artist_ids (features)
+    // If already have tracks, skip seeding
+    if (existingPlaylistTracks.length > 0) {
+      return NextResponse.json({
+        success: true,
+        message: `Playlists already have ${existingPlaylistTracks.length} tracks. Skipping auto-seed.`,
+        results: { ...results, tracksSkipped: existingPlaylistTracks.length },
+      });
+    }
 
-    const featuredTracks = allCuratedTracks.filter((t) => t.isFeatured);
-    const tracksByPopularity = [...allCuratedTracks].sort(
-      (a, b) => (b.popularity || 0) - (a.popularity || 0)
-    );
-    const tracksByDate = [...allCuratedTracks].sort(
-      (a, b) => (b.releaseDate || "").localeCompare(a.releaseDate || "")
-    );
-    const tracksByOldest = [...allCuratedTracks].sort(
-      (a, b) => (a.releaseDate || "").localeCompare(b.releaseDate || "")
-    );
+    // Step 4: Try to populate from curated_tracks first, then fall back to releases
+    let curatedTracksCount = 0;
+    try {
+      const ctResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(curatedTracks);
+      curatedTracksCount = ctResult[0]?.count || 0;
+    } catch {
+      // Table may not exist
+    }
 
-    // Tracks with multiple artists (collaborations)
-    const collabTracks = allCuratedTracks.filter((t) => {
-      try {
-        const ids = t.artistIds ? JSON.parse(t.artistIds) : [];
-        return Array.isArray(ids) && ids.length > 1;
-      } catch {
-        return false;
-      }
-    });
-
-    // Build the assignments
-    const assignments: Array<{ playlistId: string; tracks: typeof allCuratedTracks }> = [
-      {
-        playlistId: "gran-reserva",
-        tracks: featuredTracks.length > 0
-          ? featuredTracks
-          : tracksByPopularity.slice(0, 30),
-      },
-      {
-        playlistId: "weekly-picks",
-        tracks: tracksByDate.slice(0, 20),
-      },
-      {
-        playlistId: "new-releases",
-        tracks: tracksByDate.slice(0, 40),
-      },
-      {
-        playlistId: "classics",
-        tracks: tracksByOldest.slice(0, 30),
-      },
-      {
-        playlistId: "collaborations",
-        tracks: collabTracks.length > 0
-          ? collabTracks
-          : tracksByPopularity.slice(0, 20),
-      },
-    ];
-
-    // Add tracks to playlists
-    for (const assignment of assignments) {
-      let position = 1;
-
-      // Get current max position for this playlist
-      const currentTracks = existingPlaylistTracks.filter(
-        (t) => t.playlistId === assignment.playlistId
-      );
-      position = currentTracks.length + 1;
-
-      for (const track of assignment.tracks) {
-        const key = `${assignment.playlistId}:${track.spotifyTrackId}`;
-        if (existingKeys.has(key)) {
-          results.tracksSkipped++;
-          continue;
-        }
-
-        try {
-          await db.insert(playlistTracks).values({
-            id: generateUUID(),
-            playlistId: assignment.playlistId,
-            playlistName: DEFAULT_PLAYLISTS.find((p) => p.id === assignment.playlistId)?.name || null,
-            spotifyTrackId: track.spotifyTrackId,
-            curatedTrackId: track.id,
-            trackName: track.name,
-            artistName: track.artistName,
-            albumImageUrl: track.albumImageUrl,
-            position: position++,
-            isActive: true,
-          });
-          existingKeys.add(key);
-          results.tracksAdded++;
-        } catch (e: any) {
-          if (e.message?.includes("UNIQUE constraint")) {
-            results.tracksSkipped++;
-          } else {
-            results.errors.push(`Track ${track.name}: ${e.message}`);
-          }
-        }
-      }
+    if (curatedTracksCount > 0) {
+      results.source = "curated_tracks";
+      await seedFromCuratedTracks(results, existingKeys);
+    } else {
+      // Fall back to releases table
+      results.source = "releases";
+      await seedFromReleases(results, existingKeys);
     }
 
     return NextResponse.json({
       success: true,
-      message: `Playlists seeded: ${results.playlistsCreated} created, ${results.playlistsExisting} existing. ${results.tracksAdded} tracks added, ${results.tracksSkipped} skipped.`,
+      message: `Playlists seeded: ${results.playlistsCreated} created, ${results.playlistsExisting} existing. ${results.tracksAdded} tracks added from ${results.source}.`,
       results,
     });
   } catch (error: any) {
@@ -266,6 +182,173 @@ export async function POST() {
       { success: false, error: error.message || "Error seeding playlists" },
       { status: 500 }
     );
+  }
+}
+
+async function seedFromCuratedTracks(
+  results: { tracksAdded: number; tracksSkipped: number; errors: string[] },
+  existingKeys: Set<string>
+) {
+  const allCuratedTracks = await db
+    .select()
+    .from(curatedTracks)
+    .where(eq(curatedTracks.isAvailableForPlaylist, true));
+
+  const featuredTracks = allCuratedTracks.filter((t) => t.isFeatured);
+  const tracksByPopularity = [...allCuratedTracks].sort(
+    (a, b) => (b.popularity || 0) - (a.popularity || 0)
+  );
+  const tracksByDate = [...allCuratedTracks].sort(
+    (a, b) => (b.releaseDate || "").localeCompare(a.releaseDate || "")
+  );
+  const tracksByOldest = [...allCuratedTracks].sort(
+    (a, b) => (a.releaseDate || "").localeCompare(b.releaseDate || "")
+  );
+
+  const collabTracks = allCuratedTracks.filter((t) => {
+    try {
+      const ids = t.artistIds ? JSON.parse(t.artistIds) : [];
+      return Array.isArray(ids) && ids.length > 1;
+    } catch {
+      return false;
+    }
+  });
+
+  const assignments = [
+    { playlistId: "gran-reserva", tracks: featuredTracks.length > 0 ? featuredTracks : tracksByPopularity.slice(0, 30) },
+    { playlistId: "weekly-picks", tracks: tracksByDate.slice(0, 20) },
+    { playlistId: "new-releases", tracks: tracksByDate.slice(0, 40) },
+    { playlistId: "classics", tracks: tracksByOldest.slice(0, 30) },
+    { playlistId: "collaborations", tracks: collabTracks.length > 0 ? collabTracks : tracksByPopularity.slice(0, 20) },
+  ];
+
+  for (const assignment of assignments) {
+    let position = 1;
+    for (const track of assignment.tracks) {
+      const key = `${assignment.playlistId}:${track.spotifyTrackId}`;
+      if (existingKeys.has(key)) {
+        results.tracksSkipped++;
+        continue;
+      }
+      try {
+        await db.insert(playlistTracks).values({
+          id: generateUUID(),
+          playlistId: assignment.playlistId,
+          playlistName: DEFAULT_PLAYLISTS.find((p) => p.id === assignment.playlistId)?.name || null,
+          spotifyTrackId: track.spotifyTrackId,
+          curatedTrackId: track.id,
+          trackName: track.name,
+          artistName: track.artistName,
+          albumImageUrl: track.albumImageUrl,
+          position: position++,
+          isActive: true,
+        });
+        existingKeys.add(key);
+        results.tracksAdded++;
+      } catch (e: any) {
+        if (e.message?.includes("UNIQUE constraint")) {
+          results.tracksSkipped++;
+        } else {
+          results.errors.push(`Track ${track.name}: ${e.message}`);
+        }
+      }
+    }
+  }
+}
+
+async function seedFromReleases(
+  results: { tracksAdded: number; tracksSkipped: number; errors: string[] },
+  existingKeys: Set<string>
+) {
+  // Get all releases that have a Spotify ID
+  const allReleases = await db
+    .select()
+    .from(releases)
+    .orderBy(desc(releases.releaseDate));
+
+  // Filter to releases with Spotify IDs
+  const releasesWithSpotify = allReleases.filter((r) => r.spotifyId);
+
+  if (releasesWithSpotify.length === 0) {
+    results.errors.push("No releases with Spotify IDs found");
+    return;
+  }
+
+  // Sort releases for different playlists
+  const featuredReleases = releasesWithSpotify.filter((r) => r.isFeatured);
+  const recentReleases = [...releasesWithSpotify].sort(
+    (a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+  );
+  const oldestReleases = [...releasesWithSpotify].sort(
+    (a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()
+  );
+
+  // Build assignments using releases (as albums in the playlist)
+  const assignments = [
+    {
+      playlistId: "gran-reserva",
+      items: featuredReleases.length > 0 ? featuredReleases : recentReleases.slice(0, 25),
+    },
+    {
+      playlistId: "weekly-picks",
+      items: recentReleases.slice(0, 15),
+    },
+    {
+      playlistId: "new-releases",
+      items: recentReleases.slice(0, 30),
+    },
+    {
+      playlistId: "classics",
+      items: oldestReleases.slice(0, 25),
+    },
+    {
+      playlistId: "collaborations",
+      items: recentReleases.slice(0, 20), // Will be refined later with collab detection
+    },
+  ];
+
+  for (const assignment of assignments) {
+    let position = 1;
+    for (const release of assignment.items) {
+      // Use the album Spotify ID — when saving to Spotify, these become album URIs
+      const key = `${assignment.playlistId}:${release.spotifyId}`;
+      if (existingKeys.has(key)) {
+        results.tracksSkipped++;
+        continue;
+      }
+
+      // Extract artist name from description (format: "Album by ArtistName" or "Single by ArtistName")
+      let artistName = "Sonido Líquido Crew";
+      if (release.description) {
+        const byMatch = release.description.match(/by\s+(.+)$/i);
+        if (byMatch) {
+          artistName = byMatch[1].trim();
+        }
+      }
+
+      try {
+        await db.insert(playlistTracks).values({
+          id: generateUUID(),
+          playlistId: assignment.playlistId,
+          playlistName: DEFAULT_PLAYLISTS.find((p) => p.id === assignment.playlistId)?.name || null,
+          spotifyTrackId: release.spotifyId!, // Album ID, used for Spotify URI construction
+          curatedTrackId: null,
+          trackName: release.title,
+          artistName,
+          albumImageUrl: release.coverImageUrl,
+          position: position++,
+          isActive: true,
+        });
+        existingKeys.add(key);
+        results.tracksAdded++;
+      } catch (e: any) {
+        if (e.message?.includes("UNIQUE constraint")) {
+          results.tracksSkipped++;
+        } else {
+          results.errors.push(`Release ${release.title}: ${e.message}`);
+        }
+      }
+    }
   }
 }
 
@@ -280,7 +363,6 @@ export async function GET() {
       });
     }
 
-    // Check if curated_playlists table has data
     let playlists: any[] = [];
     try {
       playlists = await db.select().from(curatedPlaylists);
@@ -288,7 +370,6 @@ export async function GET() {
       // Table doesn't exist yet
     }
 
-    // Check playlist_tracks count
     let trackCount = 0;
     try {
       const result = await db
@@ -299,7 +380,6 @@ export async function GET() {
       // Table doesn't exist yet
     }
 
-    // Check curated_tracks count
     let curatedTrackCount = 0;
     try {
       const result = await db
@@ -310,13 +390,24 @@ export async function GET() {
       // Table doesn't exist yet
     }
 
+    let releaseCount = 0;
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(releases);
+      releaseCount = result[0]?.count || 0;
+    } catch {
+      // Table doesn't exist yet
+    }
+
     return NextResponse.json({
       success: true,
       seeded: playlists.length > 0 && trackCount > 0,
       playlistsInDb: playlists.length,
       playlistTrackCount: trackCount,
       curatedTrackCount,
-      needsSeeding: curatedTrackCount > 0 && trackCount === 0,
+      releaseCount,
+      needsSeeding: (curatedTrackCount > 0 || releaseCount > 0) && trackCount === 0,
     });
   } catch (error: any) {
     return NextResponse.json(
