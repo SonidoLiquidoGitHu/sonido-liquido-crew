@@ -79,7 +79,19 @@ export async function POST() {
       errors: [] as string[],
     };
 
-    // Step 1: Ensure curated_playlists table exists
+    // Step 1: Drop old curated_playlists table if it has wrong schema, then recreate
+    try {
+      // Check if the table has the correct schema by trying to select
+      const testRow = await db.run(sql`SELECT cover_color FROM curated_playlists LIMIT 1`);
+    } catch {
+      // Schema mismatch - drop and recreate
+      try {
+        await db.run(sql`DROP TABLE IF EXISTS "curated_playlists"`);
+      } catch {
+        // Ignore
+      }
+    }
+
     try {
       await db.run(sql`
         CREATE TABLE IF NOT EXISTS "curated_playlists" (
@@ -99,20 +111,6 @@ export async function POST() {
     } catch (e: any) {
       if (!e.message?.includes("already exists")) {
         results.errors.push(`Create table: ${e.message}`);
-      }
-    }
-
-    // Step 1b: Add missing columns if they don't exist (migration fix for older schema)
-    const alterStatements = [
-      `ALTER TABLE "curated_playlists" ADD COLUMN "cover_color" text`,
-      `ALTER TABLE "curated_playlists" ADD COLUMN "is_public" integer DEFAULT 1 NOT NULL`,
-      `ALTER TABLE "curated_playlists" ADD COLUMN "cover_image_url" text`,
-    ];
-    for (const stmt of alterStatements) {
-      try {
-        await db.run(sql.raw(stmt));
-      } catch {
-        // Column already exists, that's fine
       }
     }
 
