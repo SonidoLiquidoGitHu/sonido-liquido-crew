@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { playlistTracks } from "@/db/schema";
+import { playlistTracks, curatedPlaylists } from "@/db/schema";
 import { eq, asc, desc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-// Predefined playlists
-const PLAYLISTS = [
-  { id: "gran-reserva", name: "Gran Reserva", description: "Los mejores tracks del roster" },
-  { id: "weekly-picks", name: "Picks de la Semana", description: "Selección semanal" },
-  { id: "new-releases", name: "Nuevos Lanzamientos", description: "Lo más reciente" },
-  { id: "classics", name: "Clásicos", description: "Tracks clásicos del crew" },
-  { id: "collaborations", name: "Colaboraciones", description: "Featurings y colaboraciones" },
-] as const;
 
 // GET - List all playlists with track counts
 export async function GET(request: NextRequest) {
@@ -33,20 +24,48 @@ export async function GET(request: NextRequest) {
         .where(eq(playlistTracks.playlistId, playlistId))
         .orderBy(asc(playlistTracks.position));
 
+      // Get playlist info from DB
+      const playlistRows = await db
+        .select()
+        .from(curatedPlaylists)
+        .where(eq(curatedPlaylists.id, playlistId))
+        .limit(1);
+
+      const playlist = playlistRows[0] || null;
+
       return NextResponse.json({
         success: true,
         data: tracks,
-        playlist: PLAYLISTS.find(p => p.id === playlistId),
+        playlist: playlist ? {
+          id: playlist.id,
+          name: playlist.name,
+          description: playlist.description,
+        } : getFallbackPlaylist(playlistId),
       });
     }
 
     // Get all playlists with track counts
+    let dbPlaylists = await db
+      .select()
+      .from(curatedPlaylists)
+      .orderBy(desc(curatedPlaylists.priority));
+
+    // If no playlists in DB, use fallback
+    if (!dbPlaylists || dbPlaylists.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: getFallbackPlaylists().map(p => ({ id: p.id, name: p.name, description: p.description, trackCount: 0 })),
+      });
+    }
+
     const allTracks = await db.select().from(playlistTracks);
 
-    const playlistsWithCounts = PLAYLISTS.map(playlist => {
+    const playlistsWithCounts = dbPlaylists.map(playlist => {
       const playlistTracksFiltered = allTracks.filter(t => t.playlistId === playlist.id && t.isActive);
       return {
-        ...playlist,
+        id: playlist.id,
+        name: playlist.name,
+        description: playlist.description || "",
         trackCount: playlistTracksFiltered.length,
       };
     });
@@ -57,10 +76,23 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Playlists API] Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Error fetching playlists" },
-      { status: 500 }
-    );
+
+    // If curated_playlists table doesn't exist, return fallback
+    const { searchParams } = new URL(request.url);
+    const playlistIdParam = searchParams.get("playlistId");
+
+    if (playlistIdParam) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        playlist: getFallbackPlaylist(playlistIdParam),
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: getFallbackPlaylists().map(p => ({ id: p.id, name: p.name, description: p.description, trackCount: 0 })),
+    });
   }
 }
 
@@ -108,12 +140,24 @@ export async function POST(request: NextRequest) {
     // Get the next position
     const maxPosition = Math.max(0, ...existingTracks.map(t => t.position));
 
-    const playlist = PLAYLISTS.find(p => p.id === playlistId);
+    // Get playlist name from DB or fallback
+    let playlistName: string | null = null;
+    try {
+      const playlistRows = await db
+        .select()
+        .from(curatedPlaylists)
+        .where(eq(curatedPlaylists.id, playlistId))
+        .limit(1);
+      playlistName = playlistRows[0]?.name || null;
+    } catch {
+      const fallback = getFallbackPlaylists().find(p => p.id === playlistId);
+      playlistName = fallback?.name || null;
+    }
 
     const newTrack = {
       id: generateUUID(),
       playlistId,
-      playlistName: playlist?.name || null,
+      playlistName,
       spotifyTrackId,
       curatedTrackId: curatedTrackId || null,
       trackName,
@@ -128,7 +172,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: newTrack,
-      message: `"${trackName}" added to ${playlist?.name}`,
+      message: `"${trackName}" added to ${playlistName || playlistId}`,
     });
   } catch (error) {
     console.error("[Playlists API] Error adding track:", error);
@@ -137,4 +181,19 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Fallback hardcoded playlists (used if curated_playlists table is empty)
+function getFallbackPlaylists() {
+  return [
+    { id: "gran-reserva", name: "Gran Reserva", slug: "gran-reserva", description: "Los mejores tracks del roster" },
+    { id: "weekly-picks", name: "Picks de la Semana", slug: "picks-de-la-semana", description: "Selección semanal" },
+    { id: "new-releases", name: "Nuevos Lanzamientos", slug: "nuevos-lanzamientos", description: "Lo más reciente" },
+    { id: "classics", name: "Clásicos", slug: "clasicos", description: "Tracks clásicos del crew" },
+    { id: "collaborations", name: "Colaboraciones", slug: "colaboraciones", description: "Featurings y colaboraciones" },
+  ];
+}
+
+function getFallbackPlaylist(playlistId: string) {
+  return getFallbackPlaylists().find(p => p.id === playlistId) || null;
 }

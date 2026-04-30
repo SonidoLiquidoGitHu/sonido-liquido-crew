@@ -174,8 +174,7 @@ export function HeroSection() {
           El colectivo de Hip Hop más representativo de{" "}
           <span className="text-primary font-medium">México</span>.
           <br className="hidden sm:block" />
-          Fundado en <span className="text-white font-medium">1999</span> en la Ciudad de México por{" "}
-          <span className="text-primary font-medium">Zaque</span>.
+          Fundado en <span className="text-white font-medium">1999</span> en la Ciudad de México.
         </p>
 
         {/* Stats with Glow Effect */}

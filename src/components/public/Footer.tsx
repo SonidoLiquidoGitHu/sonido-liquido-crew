@@ -93,7 +93,7 @@ export function Footer() {
             </div>
             <p className="text-slc-muted text-sm max-w-md mb-6">
               El colectivo de Hip Hop más representativo de México.
-              Fundado en 1999 en la Ciudad de México por Zaque.
+              Fundado en 1999 en la Ciudad de México.
               +160 lanzamientos, +25 años de historia.
             </p>
             {/* Social Links */}

@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Sonido Líquido Crew | Hip Hop Mexicano desde 1999 | CDMX",
   description:
-    "Sonido Líquido Crew es el colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México por Zaque. +160 lanzamientos, +25 años de historia. Lo más avanzado del Hip Hop mexicano.",
+    "Sonido Líquido Crew es el colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México. +160 lanzamientos, +25 años de historia. Lo más avanzado del Hip Hop mexicano.",
   keywords: [
     "hip hop",
     "hip hop mexicano",

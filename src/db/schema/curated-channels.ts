@@ -112,6 +112,31 @@ export const playlistTracks = sqliteTable("playlist_tracks", {
 });
 
 // ===========================================
+// CURATED PLAYLISTS TABLE
+// Admin-managed playlists (replaces hardcoded playlist arrays)
+// ===========================================
+
+export const curatedPlaylists = sqliteTable("curated_playlists", {
+  id: text("id").primaryKey(),
+
+  // Display Info
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  coverImageUrl: text("cover_image_url"),
+  coverColor: text("cover_color"), // Hex color for UI cards
+
+  // Status & Ordering
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  priority: integer("priority").notNull().default(0), // Higher = shown first
+
+  // Timestamps
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+// ===========================================
 // TYPE EXPORTS
 // ===========================================
 
@@ -121,6 +146,8 @@ export type CuratedTrack = typeof curatedTracks.$inferSelect;
 export type NewCuratedTrack = typeof curatedTracks.$inferInsert;
 export type PlaylistTrack = typeof playlistTracks.$inferSelect;
 export type NewPlaylistTrack = typeof playlistTracks.$inferInsert;
+export type CuratedPlaylist = typeof curatedPlaylists.$inferSelect;
+export type NewCuratedPlaylist = typeof curatedPlaylists.$inferInsert;
 
 // Category labels for UI
 export const channelCategoryLabels: Record<string, string> = {

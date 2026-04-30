@@ -55,7 +55,7 @@ export default function NosotrosPage() {
             </h1>
             <p className="text-slc-muted text-lg mt-6 leading-relaxed">
               Sonido Líquido Crew es el colectivo de Hip Hop más representativo de México.
-              Fundado en 1999 en la Ciudad de México por Zaque, hemos construido una comunidad
+              Fundado en 1999 en la Ciudad de México, hemos construido una comunidad
               de artistas que han definido el sonido del rap mexicano por más de dos décadas.
             </p>
           </div>

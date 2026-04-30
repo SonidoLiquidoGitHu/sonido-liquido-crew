@@ -1,42 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { playlistTracks, curatedTracks } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { playlistTracks, curatedPlaylists } from "@/db/schema";
+import { eq, asc, desc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-// Predefined playlists (public info)
-const PLAYLISTS = [
-  {
-    id: "gran-reserva",
-    name: "Gran Reserva",
-    description: "Los mejores tracks del roster",
-    coverColor: "#f97316", // Orange
-  },
-  {
-    id: "weekly-picks",
-    name: "Picks de la Semana",
-    description: "Selección semanal",
-    coverColor: "#22c55e", // Green
-  },
-  {
-    id: "new-releases",
-    name: "Nuevos Lanzamientos",
-    description: "Lo más reciente",
-    coverColor: "#3b82f6", // Blue
-  },
-  {
-    id: "classics",
-    name: "Clásicos",
-    description: "Tracks clásicos del crew",
-    coverColor: "#8b5cf6", // Purple
-  },
-  {
-    id: "collaborations",
-    name: "Colaboraciones",
-    description: "Featurings y colaboraciones",
-    coverColor: "#eab308", // Yellow
-  },
+// Default cover colors for playlists without one
+const DEFAULT_COVER_COLORS = [
+  "#f97316", // Orange
+  "#22c55e", // Green
+  "#3b82f6", // Blue
+  "#8b5cf6", // Purple
+  "#eab308", // Yellow
+];
+
+// Fallback hardcoded playlists (used if curated_playlists table is empty)
+const FALLBACK_PLAYLISTS = [
+  { id: "gran-reserva", name: "Gran Reserva", description: "Los mejores tracks del roster", coverColor: "#f97316" },
+  { id: "weekly-picks", name: "Picks de la Semana", description: "Selección semanal", coverColor: "#22c55e" },
+  { id: "new-releases", name: "Nuevos Lanzamientos", description: "Lo más reciente", coverColor: "#3b82f6" },
+  { id: "classics", name: "Clásicos", description: "Tracks clásicos del crew", coverColor: "#8b5cf6" },
+  { id: "collaborations", name: "Colaboraciones", description: "Featurings y colaboraciones", coverColor: "#eab308" },
 ];
 
 // GET - Get public playlists with track counts
@@ -46,18 +30,43 @@ export async function GET(request: NextRequest) {
     const playlistId = searchParams.get("id");
 
     if (!isDatabaseConfigured()) {
-      // Return playlists with 0 tracks if DB not configured
       return NextResponse.json({
         success: true,
-        data: playlistId
-          ? { ...PLAYLISTS.find((p) => p.id === playlistId), tracks: [] }
-          : PLAYLISTS.map((p) => ({ ...p, trackCount: 0 })),
+        data: playlistId ? { id: playlistId, name: "", description: "", tracks: [], trackCount: 0 } : [],
       });
     }
 
+    // Try to get playlists from the curated_playlists table
+    let useFallback = false;
+    let dbPlaylistRows: any[] = [];
+
+    try {
+      dbPlaylistRows = await db
+        .select()
+        .from(curatedPlaylists)
+        .where(eq(curatedPlaylists.isPublic, true))
+        .orderBy(desc(curatedPlaylists.priority));
+    } catch {
+      useFallback = true;
+    }
+
+    if (dbPlaylistRows.length === 0) {
+      useFallback = true;
+    }
+
+    // Build unified playlist list
+    const playlistList = useFallback
+      ? FALLBACK_PLAYLISTS
+      : dbPlaylistRows.map((p, i) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || "",
+          coverColor: p.coverColor || DEFAULT_COVER_COLORS[i % DEFAULT_COVER_COLORS.length],
+        }));
+
     if (playlistId) {
       // Get specific playlist with tracks
-      const playlist = PLAYLISTS.find((p) => p.id === playlistId);
+      const playlist = playlistList.find((p) => p.id === playlistId);
       if (!playlist) {
         return NextResponse.json(
           { success: false, error: "Playlist not found" },
@@ -91,12 +100,17 @@ export async function GET(request: NextRequest) {
     // Get all playlists with track counts
     const allTracks = await db.select().from(playlistTracks);
 
-    const playlistsWithCounts = PLAYLISTS.map((playlist) => {
-      const count = allTracks.filter(
-        (t) => t.playlistId === playlist.id && t.isActive
-      ).length;
-      return { ...playlist, trackCount: count };
-    }).filter((p) => p.trackCount > 0); // Only show non-empty playlists
+    const playlistsWithCounts = playlistList
+      .map((playlist) => {
+        const count = allTracks.filter(
+          (t) => t.playlistId === playlist.id && t.isActive
+        ).length;
+        return {
+          ...playlist,
+          trackCount: count,
+        };
+      })
+      .filter((p) => p.trackCount > 0); // Only show non-empty playlists
 
     return NextResponse.json({
       success: true,
@@ -104,9 +118,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Public Playlists API] Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Error fetching playlists" },
-      { status: 500 }
-    );
+
+    // If DB query fails (e.g., table doesn't exist), return empty
+    return NextResponse.json({
+      success: true,
+      data: [],
+    });
   }
 }
