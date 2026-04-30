@@ -1,7 +1,62 @@
-import { createClient, type Client } from "@libsql/client";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 import * as relations from "./relations";
+
+// ===========================================
+// DYNAMIC CLIENT IMPORT
+// ===========================================
+// For local dev (file: URLs), we need the Node.js client which supports SQLite files.
+// For production (libsql: URLs on Netlify), we need the /web client which is
+// edge/serverless compatible. The /web client does NOT support file: URLs.
+
+type Client = import("@libsql/client").Client;
+type ClientConfig = Parameters<typeof import("@libsql/client").createClient>[0];
+
+let _createClientFn: ((config: ClientConfig) => Client) | null = null;
+
+/**
+ * Initialize the correct client based on the DATABASE_URL scheme.
+ * This must be called before getClient().
+ */
+function initClientFactory(): void {
+  if (_createClientFn) return; // Already initialized
+
+  const url = (process.env.DATABASE_URL ||
+              process.env.TURSO_DATABASE_URL ||
+              process.env.LIBSQL_URL || "").trim();
+
+  const isLocalSQLite = url.startsWith("file:");
+
+  if (isLocalSQLite) {
+    // Local dev: use Node.js client (supports file: URLs)
+    try {
+      const nodeModule = require("@libsql/client");
+      _createClientFn = nodeModule.createClient;
+      console.log("[DB] Using @libsql/client (Node.js) for local SQLite");
+    } catch (err) {
+      console.error("[DB] Failed to load @libsql/client:", err);
+      throw err;
+    }
+  } else {
+    // Production/remote: use /web client (edge/serverless compatible)
+    try {
+      const webModule = require("@libsql/client/web");
+      _createClientFn = webModule.createClient;
+      console.log("[DB] Using @libsql/client/web for remote Turso");
+    } catch (err) {
+      // Fallback to Node.js client if /web is not available
+      console.warn("[DB] @libsql/client/web not available, falling back to @libsql/client:", err);
+      try {
+        const nodeModule = require("@libsql/client");
+        _createClientFn = nodeModule.createClient;
+        console.log("[DB] Using @libsql/client (Node.js) as fallback");
+      } catch (err2) {
+        console.error("[DB] Failed to load any @libsql/client:", err2);
+        throw err2;
+      }
+    }
+  }
+}
 
 // ===========================================
 // DATABASE CONNECTION - LAZY INITIALIZATION
@@ -73,7 +128,8 @@ function getClient(): Client {
   if (!_client) {
     console.log("[DB] Initializing database client...");
     try {
-      _client = createClient({
+      initClientFactory();
+      _client = _createClientFn!({
         url: getDatabaseUrl(),
         authToken: getAuthToken(),
       });

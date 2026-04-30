@@ -144,7 +144,7 @@ const nextConfig = {
     unoptimized: true,
   },
   // Required for @libsql/client in serverless
-  serverExternalPackages: ["@libsql/client"],
+  serverExternalPackages: ["@libsql/client", "@libsql/client/web"],
   // Improve build performance
   typescript: {
     ignoreBuildErrors: false,

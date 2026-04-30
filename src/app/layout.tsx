@@ -71,7 +71,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" className="dark dark-mode" style={{"--slc-background": "#0a0a0a", "--slc-card": "#1a1a1a", "--slc-border": "#2a2a2a", "--slc-text": "#ffffff", "--slc-muted": "#888888"} as React.CSSProperties}>
       <head>
         {/* DNS Prefetch for external resources */}
         <link rel="dns-prefetch" href="https://i.scdn.co" />

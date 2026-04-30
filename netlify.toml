@@ -35,7 +35,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["music-metadata-browser", "@libsql/client"]
+  external_node_modules = ["music-metadata-browser", "@libsql/client", "@libsql/client/web"]
 
 [functions."api/*"]
   included_files = ["node_modules/**"]
