@@ -118,7 +118,7 @@ export async function POST() {
       }
     }
 
-    // Step 2: Seed default playlists
+    // Step 2: Seed default playlists and ensure all have correct flags
     for (const playlist of DEFAULT_PLAYLISTS) {
       try {
         const existing = await db
@@ -128,6 +128,18 @@ export async function POST() {
           .limit(1);
 
         if (existing.length > 0) {
+          // Update the existing playlist to ensure correct values
+          await db
+            .update(curatedPlaylists)
+            .set({
+              name: playlist.name,
+              description: playlist.description,
+              coverColor: playlist.coverColor,
+              isPublic: playlist.isPublic,
+              isActive: playlist.isActive,
+              priority: playlist.priority,
+            })
+            .where(eq(curatedPlaylists.id, playlist.id));
           results.playlistsExisting++;
           continue;
         }
@@ -150,6 +162,20 @@ export async function POST() {
           results.errors.push(`Playlist ${playlist.name}: ${e.message}`);
         }
       }
+    }
+
+    // Step 2b: Remove old migration playlists that aren't in our default list
+    const defaultIds = DEFAULT_PLAYLISTS.map((p) => p.id);
+    try {
+      const allPlaylists = await db.select().from(curatedPlaylists);
+      for (const p of allPlaylists) {
+        if (!defaultIds.includes(p.id)) {
+          // Delete this old playlist
+          await db.delete(curatedPlaylists).where(eq(curatedPlaylists.id, p.id));
+        }
+      }
+    } catch {
+      // Ignore
     }
 
     // Step 3: Get existing playlist tracks to avoid duplicates
