@@ -1,0 +1,54 @@
+[images]
+  remote_images = [
+    "https://source.unsplash.com/.*",
+    "https://images.unsplash.com/.*",
+    "https://ext.same-assets.com/.*",
+    "https://ugc.same-assets.com/.*",
+    "https://i.scdn.co/.*",
+    "https://mosaic.scdn.co/.*",
+    "https://image-cdn-fa.spotifycdn.com/.*",
+    "https://image-cdn-ak.spotifycdn.com/.*",
+    "https://wrapped-images.spotifycdn.com/.*",
+    "https://seeded-session-images.scdn.co/.*",
+    "https://lineup-images.scdn.co/.*",
+    "https://daily-mix.scdn.co/.*",
+    "https://newjams-images.scdn.co/.*",
+    "https://thisis-images.scdn.co/.*",
+    "https://t.scdn.co/.*",
+    "https://img.youtube.com/.*",
+    "https://i.ytimg.com/.*",
+    "https://yt3.ggpht.com/.*",
+    "https://yt3.googleusercontent.com/.*",
+    "https://dl.dropboxusercontent.com/.*",
+    "https://placehold.co/.*"
+  ]
+
+[build]
+  command = "bun install && bun run build"
+  publish = ".next"
+
+[build.environment]
+  NETLIFY_NEXT_PLUGIN_SKIP = "false"
+  NODE_VERSION = "20"
+  BUN_VERSION = "1"
+  NODE_OPTIONS = "--max-old-space-size=4096"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["music-metadata-browser", "@libsql/client"]
+
+[functions."api/*"]
+  included_files = ["node_modules/**"]
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Note: The following environment variables must be set in Netlify's dashboard:
+# - DATABASE_URL (Turso database URL)
+# - DATABASE_AUTH_TOKEN (Turso auth token)
+# - SPOTIFY_CLIENT_ID (optional, for Spotify sync)
+# - SPOTIFY_CLIENT_SECRET (optional, for Spotify sync)
+# - YOUTUBE_API_KEY (required for roster videos sync)
+# - MAILCHIMP_API_KEY (optional, for newsletter integration)
+# - DROPBOX_APP_KEY (optional, for Dropbox integration)
+# - DROPBOX_APP_SECRET (optional, for Dropbox integration)
