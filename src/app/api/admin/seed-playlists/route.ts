@@ -102,6 +102,16 @@ export async function POST() {
       }
     }
 
+    // Step 1b: Add cover_color column if it doesn't exist (migration fix)
+    try {
+      await db.run(sql`ALTER TABLE "curated_playlists" ADD COLUMN "cover_color" text`);
+    } catch (e: any) {
+      // Column already exists, that's fine
+      if (!e.message?.includes("duplicate column")) {
+        // Ignore - column exists
+      }
+    }
+
     // Step 2: Seed default playlists
     for (const playlist of DEFAULT_PLAYLISTS) {
       try {
