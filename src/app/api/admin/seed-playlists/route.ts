@@ -102,13 +102,17 @@ export async function POST() {
       }
     }
 
-    // Step 1b: Add cover_color column if it doesn't exist (migration fix)
-    try {
-      await db.run(sql`ALTER TABLE "curated_playlists" ADD COLUMN "cover_color" text`);
-    } catch (e: any) {
-      // Column already exists, that's fine
-      if (!e.message?.includes("duplicate column")) {
-        // Ignore - column exists
+    // Step 1b: Add missing columns if they don't exist (migration fix for older schema)
+    const alterStatements = [
+      `ALTER TABLE "curated_playlists" ADD COLUMN "cover_color" text`,
+      `ALTER TABLE "curated_playlists" ADD COLUMN "is_public" integer DEFAULT 1 NOT NULL`,
+      `ALTER TABLE "curated_playlists" ADD COLUMN "cover_image_url" text`,
+    ];
+    for (const stmt of alterStatements) {
+      try {
+        await db.run(sql.raw(stmt));
+      } catch {
+        // Column already exists, that's fine
       }
     }
 
