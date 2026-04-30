@@ -283,7 +283,7 @@ export default function AdminPressKitsPage() {
 
     let markdown = `# SONIDO LÍQUIDO CREW - PRESS KIT\n\n`;
     markdown += `**El colectivo de Hip Hop más representativo de México**\n`;
-    markdown += `Fundado en 1999 en la Ciudad de México por Zaque.\n\n`;
+    markdown += `Fundado en 1999 en la Ciudad de México.\n\n`;
     markdown += `---\n\n`;
     markdown += `## ROSTER DE ARTISTAS (${data.length})\n\n`;
 

@@ -12,7 +12,7 @@ export const pressKit = sqliteTable("press_kit", {
   // Hero Section
   heroTitle: text("hero_title").default("Sonido Líquido Crew"),
   heroSubtitle: text("hero_subtitle").default("El colectivo de Hip Hop más representativo de México"),
-  heroTagline: text("hero_tagline").default("Fundado en 1999 en la Ciudad de México por Zaque."),
+  heroTagline: text("hero_tagline").default("Fundado en 1999 en la Ciudad de México."),
   heroCoverImageUrl: text("hero_cover_image_url"),
   heroBannerImageUrl: text("hero_banner_image_url"),
 

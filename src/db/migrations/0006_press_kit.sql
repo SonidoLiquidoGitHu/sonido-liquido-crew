@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS press_kit (
   -- Hero Section
   hero_title TEXT DEFAULT 'Sonido Líquido Crew',
   hero_subtitle TEXT DEFAULT 'El colectivo de Hip Hop más representativo de México',
-  hero_tagline TEXT DEFAULT 'Fundado en 1999 en la Ciudad de México por Zaque.',
+  hero_tagline TEXT DEFAULT 'Fundado en 1999 en la Ciudad de México.',
   hero_cover_image_url TEXT,
   hero_banner_image_url TEXT,
 

@@ -11,7 +11,7 @@ export const metadata = {
 };
 
 const timeline = [
-  { year: "1999", event: "Fundación de Sonido Líquido Crew por Zaque en CDMX" },
+  { year: "1999", event: "Fundación de Sonido Líquido Crew en CDMX" },
   { year: "2002", event: "Primeros lanzamientos independientes y presentaciones en vivo" },
   { year: "2005", event: "Consolidación del roster con artistas clave" },
   { year: "2010", event: "Expansión digital y presencia en plataformas de streaming" },

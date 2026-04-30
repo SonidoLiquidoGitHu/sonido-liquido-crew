@@ -23,6 +23,7 @@ import {
   Smartphone,
   Monitor,
   Play,
+  Download,
 } from "lucide-react";
 
 export default function NewUpcomingReleasePage() {
@@ -49,6 +50,12 @@ export default function NewUpcomingReleasePage() {
     tidalPresaveUrl: "",
     amazonMusicPresaveUrl: "",
     youtubeMusicPresaveUrl: "",
+    distrokidHyperfollowUrl: "",
+    downloadGateEnabled: false,
+    downloadGateFiles: [] as Array<{name: string; type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other"; url: string; fileName: string; fileSize?: string}>,
+    requirePresaveForDownload: true,
+    requireHyperfollowForDownload: false,
+    requireEmailForDownload: true,
     teaserVideoUrl: "",
     verticalVideoUrl: "",
     audioPreviewUrl: "",
@@ -488,6 +495,23 @@ export default function NewUpcomingReleasePage() {
               </p>
             </div>
 
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-2">
+                DistroKid HyperFollow URL
+              </label>
+              <input
+                type="url"
+                name="distrokidHyperfollowUrl"
+                value={formData.distrokidHyperfollowUrl}
+                onChange={handleChange}
+                placeholder="https://distrokid.com/hyperfollow/..."
+                className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
+              />
+              <p className="text-xs text-slc-muted mt-1">
+                Link de DistroKid HyperFollow para pre-save automático en todas las plataformas
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium mb-2">
                 Spotify Presave URL
@@ -571,6 +595,141 @@ export default function NewUpcomingReleasePage() {
                 className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
               />
             </div>
+          </div>
+        </section>
+
+        {/* Download Gate */}
+        <section className="bg-slc-card border border-slc-border rounded-xl p-6">
+          <h2 className="font-oswald text-xl uppercase mb-2 flex items-center gap-2">
+            <Download className="w-5 h-5 text-primary" />
+            Download Gate
+          </h2>
+          <p className="text-sm text-slc-muted mb-6">
+            Ofrece contenido exclusivo (remixes, wallpapers, acapellas) a cambio de presaves y hyperfollows.
+          </p>
+
+          <div className="space-y-6">
+            {/* Enable/Disable */}
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="downloadGateEnabled"
+                checked={formData.downloadGateEnabled}
+                onChange={handleChange}
+                className="w-5 h-5 rounded border-slc-border bg-slc-dark text-primary focus:ring-primary"
+              />
+              <div>
+                <span className="font-medium">Activar Download Gate</span>
+                <p className="text-sm text-slc-muted">
+                  Los fans deben completar acciones antes de descargar contenido exclusivo
+                </p>
+              </div>
+            </label>
+
+            {formData.downloadGateEnabled && (
+              <>
+                {/* Required Actions */}
+                <div className="bg-slc-dark rounded-lg p-4 space-y-3">
+                  <h3 className="font-medium text-sm mb-3">Acciones requeridas para desbloquear</h3>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="requirePresaveForDownload"
+                      checked={formData.requirePresaveForDownload}
+                      onChange={handleChange}
+                      className="w-4 h-4 rounded border-slc-border bg-slc-dark text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">Requerir Pre-save</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="requireHyperfollowForDownload"
+                      checked={formData.requireHyperfollowForDownload}
+                      onChange={handleChange}
+                      className="w-4 h-4 rounded border-slc-border bg-slc-dark text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">Requerir HyperFollow (DistroKid)</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="requireEmailForDownload"
+                      checked={formData.requireEmailForDownload}
+                      onChange={handleChange}
+                      className="w-4 h-4 rounded border-slc-border bg-slc-dark text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">Requerir Email</span>
+                  </label>
+                </div>
+
+                {/* Download Files */}
+                <div>
+                  <h3 className="font-medium text-sm mb-3">Archivos de descarga</h3>
+                  {(formData.downloadGateFiles || []).map((file, index) => (
+                    <div key={index} className="flex items-center gap-2 mb-2 bg-slc-dark rounded-lg p-3">
+                      <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded-full">{file.type}</span>
+                      <span className="text-sm flex-1 truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const files = [...(formData.downloadGateFiles || [])];
+                          files.splice(index, 1);
+                          setFormData(prev => ({ ...prev, downloadGateFiles: files }));
+                        }}
+                        className="text-red-400 hover:text-red-300 text-xs"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  ))}
+                  <div className="grid gap-3 sm:grid-cols-2 mt-3">
+                    <input
+                      type="text"
+                      placeholder="Nombre (ej: Remix Oficial)"
+                      id="dg-file-name"
+                      className="px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
+                    />
+                    <select
+                      id="dg-file-type"
+                      className="px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
+                    >
+                      <option value="remix">Remix</option>
+                      <option value="wallpaper">Wallpaper</option>
+                      <option value="acapella">Acapella</option>
+                      <option value="beat">Beat</option>
+                      <option value="stems">Stems</option>
+                      <option value="other">Otro</option>
+                    </select>
+                    <input
+                      type="url"
+                      placeholder="URL del archivo"
+                      id="dg-file-url"
+                      className="px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary sm:col-span-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = (document.getElementById('dg-file-name') as HTMLInputElement).value;
+                        const type = (document.getElementById('dg-file-type') as HTMLSelectElement).value as "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
+                        const url = (document.getElementById('dg-file-url') as HTMLInputElement).value;
+                        if (name && url) {
+                          setFormData(prev => ({
+                            ...prev,
+                            downloadGateFiles: [...(prev.downloadGateFiles || []), { name, type, url, fileName: name }]
+                          }));
+                          (document.getElementById('dg-file-name') as HTMLInputElement).value = '';
+                          (document.getElementById('dg-file-url') as HTMLInputElement).value = '';
+                        }
+                      }}
+                      className="px-4 py-2 bg-primary/20 text-primary rounded-lg text-sm hover:bg-primary/30 transition-colors"
+                    >
+                      + Agregar Archivo
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </section>
 

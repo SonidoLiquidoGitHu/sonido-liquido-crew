@@ -131,6 +131,11 @@ export const curatedPlaylists = sqliteTable("curated_playlists", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   priority: integer("priority").notNull().default(0), // Higher = shown first
 
+  // Spotify Embed
+  spotifyPlaylistId: text("spotify_playlist_id"), // Spotify playlist ID for embed
+  spotifyPlaylistUrl: text("spotify_playlist_url"), // Full Spotify URL
+  trackCount: integer("track_count").default(0), // Cached track count from Spotify
+
   // Timestamps
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),

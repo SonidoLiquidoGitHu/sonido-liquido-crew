@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Calendar, ExternalLink, Rocket } from "lucide-react";
 import { CountdownTimer } from "@/components/public/CountdownTimer";
 import { PresaveButtons } from "@/components/public/PresaveButtons";
+import { DownloadGate } from "@/components/public/DownloadGate";
 
 export const dynamic = "force-dynamic";
 
@@ -215,6 +216,20 @@ export default async function UpcomingReleasePage({ params }: PageProps) {
                     </a>
                   </Button>
                 </div>
+              )}
+
+              {/* Download Gate */}
+              {release.downloadGateEnabled && release.downloadGateFiles && Array.isArray(release.downloadGateFiles) && release.downloadGateFiles.length > 0 && (
+                <DownloadGate
+                  releaseId={release.id}
+                  releaseTitle={release.title}
+                  files={release.downloadGateFiles as Array<{name: string; type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other"; url: string; fileName: string; fileSize?: string}>}
+                  spotifyPresaveUrl={release.spotifyPresaveUrl}
+                  hyperfollowUrl={release.distrokidHyperfollowUrl}
+                  requirePresave={release.requirePresaveForDownload ?? true}
+                  requireHyperfollow={release.requireHyperfollowForDownload ?? false}
+                  requireEmail={release.requireEmailForDownload ?? true}
+                />
               )}
             </div>
           </div>

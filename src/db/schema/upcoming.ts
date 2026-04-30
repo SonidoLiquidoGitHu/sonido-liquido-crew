@@ -37,6 +37,22 @@ export const upcomingReleases = sqliteTable("upcoming_releases", {
   amazonMusicPresaveUrl: text("amazon_music_presave_url"),
   youtubeMusicPresaveUrl: text("youtube_music_presave_url"),
 
+  // DistroKid HyperFollow
+  distrokidHyperfollowUrl: text("distrokid_hyperfollow_url"),
+
+  // Download Gate
+  downloadGateEnabled: integer("download_gate_enabled", { mode: "boolean" }).notNull().default(false),
+  downloadGateFiles: text("download_gate_files", { mode: "json" }).$type<Array<{
+    name: string;
+    type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
+    url: string;
+    fileName: string;
+    fileSize?: string;
+  }>>(),
+  requirePresaveForDownload: integer("require_presave_for_download", { mode: "boolean" }).notNull().default(true),
+  requireHyperfollowForDownload: integer("require_hyperfollow_for_download", { mode: "boolean" }).notNull().default(false),
+  requireEmailForDownload: integer("require_email_for_download", { mode: "boolean" }).notNull().default(true),
+
   // Media
   teaserVideoUrl: text("teaser_video_url"), // Horizontal video (YouTube, web)
   verticalVideoUrl: text("vertical_video_url"), // Vertical video (Reels, TikTok, Stories)

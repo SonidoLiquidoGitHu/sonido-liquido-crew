@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     const defaultPressKit = {
       heroTitle: "Sonido Líquido Crew",
       heroSubtitle: "El colectivo de Hip Hop más representativo de México",
-      heroTagline: "Fundado en 1999 en la Ciudad de México por Zaque.",
+      heroTagline: "Fundado en 1999 en la Ciudad de México.",
       heroCoverImageUrl: undefined,
       heroBannerImageUrl: undefined,
       statsArtists: `${artistsRoster.length}+`,

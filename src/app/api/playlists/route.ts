@@ -5,25 +5,19 @@ import { eq, asc, desc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-// Default cover colors for playlists without one
 const DEFAULT_COVER_COLORS = [
-  "#f97316", // Orange
-  "#22c55e", // Green
-  "#3b82f6", // Blue
-  "#8b5cf6", // Purple
-  "#eab308", // Yellow
+  "#f97316", "#22c55e", "#3b82f6", "#8b5cf6", "#eab308",
 ];
 
-// Fallback hardcoded playlists (used if curated_playlists table is empty)
-const FALLBACK_PLAYLISTS = [
-  { id: "gran-reserva", name: "Gran Reserva", description: "Los mejores tracks del roster", coverColor: "#f97316" },
-  { id: "weekly-picks", name: "Picks de la Semana", description: "Selección semanal", coverColor: "#22c55e" },
-  { id: "new-releases", name: "Nuevos Lanzamientos", description: "Lo más reciente", coverColor: "#3b82f6" },
-  { id: "classics", name: "Clásicos", description: "Tracks clásicos del crew", coverColor: "#8b5cf6" },
-  { id: "collaborations", name: "Colaboraciones", description: "Featurings y colaboraciones", coverColor: "#eab308" },
+// Fallback playlists with placeholder Spotify IDs (admin can replace via admin panel)
+const FALLBACK_PLAYLISTS: Array<{ id: string; name: string; description: string; coverColor: string; spotifyPlaylistId: string | null; spotifyPlaylistUrl: string | null; trackCount?: number }> = [
+  { id: "gran-reserva", name: "Gran Reserva", description: "Los mejores tracks del roster", coverColor: "#f97316", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
+  { id: "weekly-picks", name: "Picks de la Semana", description: "Selección semanal", coverColor: "#22c55e", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
+  { id: "new-releases", name: "Nuevos Lanzamientos", description: "Lo más reciente", coverColor: "#3b82f6", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
+  { id: "classics", name: "Clásicos", description: "Tracks clásicos del crew", coverColor: "#8b5cf6", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
+  { id: "collaborations", name: "Colaboraciones", description: "Featurings y colaboraciones", coverColor: "#eab308", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
 ];
 
-// GET - Get public playlists with track counts
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -32,11 +26,10 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json({
         success: true,
-        data: playlistId ? { id: playlistId, name: "", description: "", tracks: [], trackCount: 0 } : [],
+        data: playlistId ? { id: playlistId, name: "", description: "", tracks: [], trackCount: 0 } : FALLBACK_PLAYLISTS,
       });
     }
 
-    // Try to get playlists from the curated_playlists table
     let useFallback = false;
     let dbPlaylistRows: any[] = [];
 
@@ -54,7 +47,6 @@ export async function GET(request: NextRequest) {
       useFallback = true;
     }
 
-    // Build unified playlist list
     const playlistList = useFallback
       ? FALLBACK_PLAYLISTS
       : dbPlaylistRows.map((p, i) => ({
@@ -62,10 +54,13 @@ export async function GET(request: NextRequest) {
           name: p.name,
           description: p.description || "",
           coverColor: p.coverColor || DEFAULT_COVER_COLORS[i % DEFAULT_COVER_COLORS.length],
+          coverImageUrl: p.coverImageUrl || null,
+          spotifyPlaylistId: p.spotifyPlaylistId || null,
+          spotifyPlaylistUrl: p.spotifyPlaylistUrl || null,
+          trackCount: p.trackCount || 0,
         }));
 
     if (playlistId) {
-      // Get specific playlist with tracks
       const playlist = playlistList.find((p) => p.id === playlistId);
       if (!playlist) {
         return NextResponse.json(
@@ -74,11 +69,17 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const tracks = await db
-        .select()
-        .from(playlistTracks)
-        .where(eq(playlistTracks.playlistId, playlistId))
-        .orderBy(asc(playlistTracks.position));
+      // Try to get tracks from DB, but don't fail if empty
+      let tracks: any[] = [];
+      try {
+        tracks = await db
+          .select()
+          .from(playlistTracks)
+          .where(eq(playlistTracks.playlistId, playlistId))
+          .orderBy(asc(playlistTracks.position));
+      } catch {
+        // Table may not exist or be empty
+      }
 
       return NextResponse.json({
         success: true,
@@ -92,25 +93,31 @@ export async function GET(request: NextRequest) {
             spotifyId: t.spotifyTrackId,
             position: t.position,
           })),
-          trackCount: tracks.length,
+          trackCount: tracks.length || playlist.trackCount || 0,
         },
       });
     }
 
-    // Get all playlists with track counts
-    const allTracks = await db.select().from(playlistTracks);
+    // Return all playlists - DON'T filter out empty ones
+    // Get track counts from DB for non-fallback playlists
+    let allTracks: any[] = [];
+    if (!useFallback) {
+      try {
+        allTracks = await db.select().from(playlistTracks);
+      } catch {
+        // ignore
+      }
+    }
 
-    const playlistsWithCounts = playlistList
-      .map((playlist) => {
-        const count = allTracks.filter(
-          (t) => t.playlistId === playlist.id && t.isActive
-        ).length;
-        return {
-          ...playlist,
-          trackCount: count,
-        };
-      })
-      .filter((p) => p.trackCount > 0); // Only show non-empty playlists
+    const playlistsWithCounts = playlistList.map((playlist) => {
+      const count = useFallback
+        ? playlist.trackCount || 0
+        : allTracks.filter((t) => t.playlistId === playlist.id && t.isActive).length;
+      return {
+        ...playlist,
+        trackCount: count || playlist.trackCount || 0,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -118,11 +125,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Public Playlists API] Error:", error);
-
-    // If DB query fails (e.g., table doesn't exist), return empty
     return NextResponse.json({
       success: true,
-      data: [],
+      data: FALLBACK_PLAYLISTS,
     });
   }
 }

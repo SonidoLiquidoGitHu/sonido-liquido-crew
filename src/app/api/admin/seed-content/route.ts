@@ -218,7 +218,7 @@ Sonido Líquido Crew, el colectivo de Hip Hop más influyente de México, celebr
 
 ## Una Historia de Perseverancia
 
-Fundado en 1999 en la Ciudad de México por Zaque, el crew ha sido testigo y protagonista de la evolución del Hip Hop en Latinoamérica. Con más de 160 lanzamientos y 15 artistas activos, SLC representa la esencia del movimiento.
+Fundado en 1999 en la Ciudad de México, el crew ha sido testigo y protagonista de la evolución del Hip Hop en Latinoamérica. Con más de 160 lanzamientos y 15 artistas activos, SLC representa la esencia del movimiento.
 
 ## Gira Nacional 2026
 

@@ -240,7 +240,7 @@ function buildGeneralData(kit: typeof pressKit.$inferSelect | undefined): Genera
   return {
     title: kit?.heroTitle || "Sonido Líquido Crew",
     subtitle: kit?.heroSubtitle || "El colectivo de Hip Hop más representativo de México",
-    tagline: kit?.heroTagline || "Fundado en 1999 en la Ciudad de México por Zaque.",
+    tagline: kit?.heroTagline || "Fundado en 1999 en la Ciudad de México.",
     coverImageUrl: kit?.heroCoverImageUrl || null,
     bannerImageUrl: kit?.heroBannerImageUrl || null,
     stats: {
