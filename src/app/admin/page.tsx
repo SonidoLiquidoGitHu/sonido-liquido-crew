@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CalendarDashboard } from "@/components/admin/CalendarDashboard";
 import { SpotifySyncButton } from "@/components/admin/SpotifySyncButton";
+import { EnsureTablesButton } from "@/components/admin/EnsureTablesButton";
 
 export const dynamic = "force-dynamic";
 
@@ -414,6 +415,20 @@ export default async function AdminDashboardPage() {
           <RefreshCw className="w-5 h-5 text-primary" />
           <span>Sincronizar Todo</span>
         </Link>
+      </div>
+
+      {/* Database Maintenance */}
+      <div className="mt-8 bg-slc-dark border border-slc-border rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Eye className="w-5 h-5 text-primary" />
+            <h2 className="font-oswald text-xl uppercase">Mantenimiento de Base de Datos</h2>
+          </div>
+          <EnsureTablesButton connected={dbConnected} />
+        </div>
+        <p className="text-sm text-slc-muted">
+          Si alguna función no funciona (playlists, galería, etc.), ejecuta "Asegurar Tablas" para crear las tablas faltantes.
+        </p>
       </div>
     </div>
   );

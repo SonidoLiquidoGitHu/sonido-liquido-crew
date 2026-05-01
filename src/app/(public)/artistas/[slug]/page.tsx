@@ -282,13 +282,12 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
           />
         )}
 
-        {/* Gallery Section */}
-        {artist?.id && (
-          <ArtistGallerySection
-            artistId={artist.id}
-            artistName={artistName}
-          />
-        )}
+        {/* Gallery Section - Shows both artist gallery assets and tagged galeria photos */}
+        <ArtistGallerySection
+          artistId={artist?.id}
+          artistSlug={slug}
+          artistName={artistName}
+        />
 
         {/* Releases Section */}
         {artist?.releases && artist.releases.length > 0 && (
