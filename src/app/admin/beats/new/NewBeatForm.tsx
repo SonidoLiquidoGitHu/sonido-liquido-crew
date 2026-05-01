@@ -226,7 +226,6 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                     onChange={(v) => setFormData(prev => ({ ...prev, producerId: Array.isArray(v) ? v[0] || "" : v }))}
                     label="Productor"
                     placeholder="Seleccionar productor..."
-                    filterRole="producer"
                     initialArtists={artists}
                   />
                 </div>
