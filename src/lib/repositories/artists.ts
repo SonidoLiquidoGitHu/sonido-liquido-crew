@@ -44,7 +44,7 @@ export const artistsRepository = {
       .select()
       .from(artists)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(asc(artists.sortOrder), asc(artists.name));
+      .orderBy(asc(artists.name));
 
     if (options.limit) {
       query = query.limit(options.limit) as typeof query;
@@ -155,7 +155,7 @@ export const artistsRepository = {
         eq(artists.isActive, true),
         eq(artists.isFeatured, true)
       ))
-      .orderBy(asc(artists.sortOrder))
+      .orderBy(asc(artists.name))
       .limit(limit);
   },
 
