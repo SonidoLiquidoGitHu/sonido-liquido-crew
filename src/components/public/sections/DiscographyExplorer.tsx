@@ -4,181 +4,37 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Music2, ExternalLink, Disc3, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface Artist {
-  id?: string;
+// Type for artist data from /api/artists/roster
+interface RosterArtist {
+  id: string;
   name: string;
   slug: string;
   role: string;
-  spotifyId?: string;
-  spotifyUrl?: string;
-  profileImageUrl?: string;
+  tintColor: string | null;
+  profileImageUrl: string | null;
+  isFeatured: boolean;
+  spotifyId: string | null;
+  spotifyUrl: string | null;
+  youtubeUrl: string | null;
+  youtubeHandle: string | null;
+  instagramUrl: string | null;
+  instagramHandle: string | null;
+  mixcloudUrl: string | null;
+  mixcloudHandle: string | null;
+  externalProfiles: Array<{
+    platform: string;
+    externalId: string | null;
+    externalUrl: string;
+    handle: string | null;
+    isVerified: boolean;
+  }>;
 }
 
-// Fallback artist data with Spotify info
-const fallbackArtists = [
-  {
-    name: "Zaque",
-    slug: "zaque",
-    spotifyId: "4WQmw3fIx9F7iPKL5v8SCN",
-    spotifyUrl: "https://open.spotify.com/artist/4WQmw3fIx9F7iPKL5v8SCN",
-    role: "Fundador / MC",
-    color: "#1DB954",
-  },
-  {
-    name: "Doctor Destino",
-    slug: "doctor-destino",
-    spotifyId: "5urer15JPbCELf17LVia7w",
-    spotifyUrl: "https://open.spotify.com/artist/5urer15JPbCELf17LVia7w",
-    role: "MC / Productor",
-    color: "#D4A520",
-  },
-  {
-    name: "Brez",
-    slug: "brez",
-    spotifyId: "2jJmTEMkGQfH3BxoG3MQvF",
-    spotifyUrl: "https://open.spotify.com/artist/2jJmTEMkGQfH3BxoG3MQvF",
-    role: "MC",
-    color: "#5A7590",
-  },
-  {
-    name: "Bruno Grasso",
-    slug: "bruno-grasso",
-    spotifyId: "4fNQqyvcM71IyF2EitEtCj",
-    spotifyUrl: "https://open.spotify.com/artist/4fNQqyvcM71IyF2EitEtCj",
-    role: "MC / Productor",
-    color: "#C09020",
-  },
-  {
-    name: "Dilema",
-    slug: "dilema",
-    spotifyId: "3eCEorgAoZkvnAQLdy4x38",
-    spotifyUrl: "https://open.spotify.com/artist/3eCEorgAoZkvnAQLdy4x38",
-    role: "MC",
-    color: "#C45A3A",
-  },
-  {
-    name: "Codak",
-    slug: "codak",
-    spotifyId: "2zrv1oduhIYh29vvQZwI5r",
-    spotifyUrl: "https://open.spotify.com/artist/2zrv1oduhIYh29vvQZwI5r",
-    role: "MC Fundador",
-    color: "#4A4A90",
-  },
-  {
-    name: "Kev Cabrone",
-    slug: "kev-cabrone",
-    spotifyId: "0QdRhOmiqAcV1dPCoiSIQJ",
-    spotifyUrl: "https://open.spotify.com/artist/0QdRhOmiqAcV1dPCoiSIQJ",
-    role: "MC",
-    color: "#B54A30",
-  },
-  {
-    name: "Hassyel",
-    slug: "hassyel",
-    spotifyId: "6AN9ek9RwrLbSp9rT2lcDG",
-    spotifyUrl: "https://open.spotify.com/artist/6AN9ek9RwrLbSp9rT2lcDG",
-    role: "MC",
-    color: "#908050",
-  },
-  {
-    name: "X Santa-Ana",
-    slug: "x-santa-ana",
-    spotifyId: "2Apt0MjZGqXAd1pl4LNQrR",
-    spotifyUrl: "https://open.spotify.com/artist/2Apt0MjZGqXAd1pl4LNQrR",
-    role: "DJ / Lado B",
-    color: "#7A4A4A",
-  },
-  {
-    name: "Fancy Freak",
-    slug: "fancy-freak",
-    spotifyId: "5TMoczTLclVyzzDY5qf3Yb",
-    spotifyUrl: "https://open.spotify.com/artist/5TMoczTLclVyzzDY5qf3Yb",
-    role: "DJ / Productor",
-    color: "#3A6090",
-  },
-  {
-    name: "Q Master Weed",
-    slug: "q-master-weed",
-    spotifyId: "4T4Z7jvUcMV16VsslRRuC5",
-    spotifyUrl: "https://open.spotify.com/artist/4T4Z7jvUcMV16VsslRRuC5",
-    role: "DJ / Productor",
-    color: "#4A9070",
-  },
-  {
-    name: "Chas 7P",
-    slug: "chas-7p",
-    spotifyId: "3RAg8fPmZ8RnacJO8MhLP1",
-    spotifyUrl: "https://open.spotify.com/artist/3RAg8fPmZ8RnacJO8MhLP1",
-    role: "DJ",
-    color: "#8A4A7A",
-  },
-  {
-    name: "Reick One",
-    slug: "reick-one",
-    spotifyId: "4UqFXhJVb9zy2SbNx4ycJQ",
-    spotifyUrl: "https://open.spotify.com/artist/4UqFXhJVb9zy2SbNx4ycJQ",
-    role: "DJ / Productor",
-    color: "#4A8A60",
-  },
-  {
-    name: "Latin Geisha",
-    slug: "latin-geisha",
-    spotifyId: "16YScXC67nAnFDcA2LGdY0",
-    spotifyUrl: "https://open.spotify.com/artist/16YScXC67nAnFDcA2LGdY0",
-    role: "Cantante",
-    color: "#C06A50",
-  },
-  {
-    name: "Pepe Levine",
-    slug: "pepe-levine",
-    spotifyId: "5HrBwfVDf0HXzGDrJ6Znqc",
-    spotifyUrl: "https://open.spotify.com/artist/5HrBwfVDf0HXzGDrJ6Znqc",
-    role: "El Divo",
-    color: "#904040",
-  },
-];
-
-// Color map for each artist
-const artistColors: Record<string, string> = {
-  "zaque": "#1DB954",
-  "doctor-destino": "#D4A520",
-  "brez": "#5A7590",
-  "bruno-grasso": "#C09020",
-  "dilema": "#C45A3A",
-  "codak": "#4A4A90",
-  "kev-cabrone": "#B54A30",
-  "hassyel": "#908050",
-  "x-santa-ana": "#7A4A4A",
-  "fancy-freak": "#3A6090",
-  "q-master-weed": "#4A9070",
-  "chas-7p": "#8A4A7A",
-  "reick-one": "#4A8A60",
-  "latin-geisha": "#C06A50",
-  "pepe-levine": "#904040",
-};
-
-// Gradient map for each artist
-const artistGradients: Record<string, string> = {
-  "zaque": "from-emerald-900/50 to-transparent",
-  "doctor-destino": "from-amber-900/50 to-transparent",
-  "brez": "from-slate-800/50 to-transparent",
-  "bruno-grasso": "from-yellow-900/50 to-transparent",
-  "dilema": "from-orange-900/50 to-transparent",
-  "codak": "from-indigo-900/50 to-transparent",
-  "kev-cabrone": "from-red-900/50 to-transparent",
-  "hassyel": "from-stone-800/50 to-transparent",
-  "x-santa-ana": "from-rose-900/50 to-transparent",
-  "fancy-freak": "from-blue-900/50 to-transparent",
-  "q-master-weed": "from-teal-900/50 to-transparent",
-  "chas-7p": "from-purple-900/50 to-transparent",
-  "reick-one": "from-green-900/50 to-transparent",
-  "latin-geisha": "from-pink-900/50 to-transparent",
-  "pepe-levine": "from-red-800/50 to-transparent",
-};
+const DEFAULT_COLOR = "#1DB954";
 
 export function DiscographyExplorer() {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [artists, setArtists] = useState<Artist[]>([]);
+  const [artists, setArtists] = useState<RosterArtist[]>([]);
   const [loading, setLoading] = useState(true);
   const [artistImages, setArtistImages] = useState<Record<string, string>>({});
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
@@ -200,34 +56,19 @@ export function DiscographyExplorer() {
     return null;
   }, []);
 
-  // Fetch artists from API and then fetch all images
+  // Fetch artists from roster API
   useEffect(() => {
     async function fetchArtists() {
       try {
-        const res = await fetch("/api/artists");
+        const res = await fetch("/api/artists/roster");
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.data?.length > 0) {
-            // Merge with fallback data to get Spotify info
-            const mergedArtists = data.data.map((artist: Artist) => {
-              const fallback = fallbackArtists.find(f => f.slug === artist.slug);
-              return {
-                ...artist,
-                spotifyId: artist.spotifyId || fallback?.spotifyId,
-                spotifyUrl: artist.spotifyUrl || fallback?.spotifyUrl,
-              };
-            });
-            setArtists(mergedArtists);
-          } else {
-            // Use fallback
-            setArtists(fallbackArtists as Artist[]);
+            setArtists(data.data);
           }
-        } else {
-          setArtists(fallbackArtists as Artist[]);
         }
       } catch (error) {
         console.error("Failed to fetch artists:", error);
-        setArtists(fallbackArtists as Artist[]);
       } finally {
         setLoading(false);
       }
@@ -245,9 +86,8 @@ export function DiscographyExplorer() {
       // Fetch images in parallel
       await Promise.all(
         artists.map(async (artist) => {
-          const spotifyId = artist.spotifyId || fallbackArtists.find(f => f.slug === artist.slug)?.spotifyId;
-          if (spotifyId) {
-            const imageUrl = await fetchArtistImage(spotifyId);
+          if (artist.spotifyId) {
+            const imageUrl = await fetchArtistImage(artist.spotifyId);
             if (imageUrl) {
               images[artist.slug] = imageUrl;
             }
@@ -261,12 +101,15 @@ export function DiscographyExplorer() {
     fetchAllImages();
   }, [artists, fetchArtistImage]);
 
-  const selectedArtist = artists[selectedIndex] || fallbackArtists[0];
-  const selectedColor = artistColors[selectedArtist.slug] || "#1DB954";
-  const selectedGradient = artistGradients[selectedArtist.slug] || "from-emerald-900/50 to-transparent";
-  const selectedSpotifyId = selectedArtist.spotifyId || fallbackArtists.find(f => f.slug === selectedArtist.slug)?.spotifyId;
-  const selectedSpotifyUrl = selectedArtist.spotifyUrl || fallbackArtists.find(f => f.slug === selectedArtist.slug)?.spotifyUrl || "#";
-  const selectedImage = artistImages[selectedArtist.slug];
+  if (artists.length === 0 && !loading) {
+    return null;
+  }
+
+  const selectedArtist = artists[selectedIndex];
+  const selectedColor = selectedArtist?.tintColor || DEFAULT_COLOR;
+  const selectedSpotifyId = selectedArtist?.spotifyId || null;
+  const selectedSpotifyUrl = selectedArtist?.spotifyUrl || "#";
+  const selectedImage = selectedArtist ? artistImages[selectedArtist.slug] : undefined;
 
   const handleImageError = (slug: string) => {
     setImageErrors(prev => ({ ...prev, [slug]: true }));
@@ -294,6 +137,10 @@ export function DiscographyExplorer() {
         </div>
       </section>
     );
+  }
+
+  if (!selectedArtist) {
+    return null;
   }
 
   return (
@@ -350,16 +197,18 @@ export function DiscographyExplorer() {
                     <p className="text-gray-400">{selectedArtist.role}</p>
                   </div>
                 </div>
-                <Button
-                  asChild
-                  className="bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold"
-                >
-                  <a href={selectedSpotifyUrl} target="_blank" rel="noopener noreferrer">
-                    <Music2 className="w-4 h-4 mr-2" />
-                    Abrir en Spotify
-                    <ExternalLink className="w-3 h-3 ml-2" />
-                  </a>
-                </Button>
+                {selectedSpotifyUrl !== "#" && (
+                  <Button
+                    asChild
+                    className="bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold"
+                  >
+                    <a href={selectedSpotifyUrl} target="_blank" rel="noopener noreferrer">
+                      <Music2 className="w-4 h-4 mr-2" />
+                      Abrir en Spotify
+                      <ExternalLink className="w-3 h-3 ml-2" />
+                    </a>
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -387,7 +236,7 @@ export function DiscographyExplorer() {
         {/* Artist List - BELOW PLAYER */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {artists.map((artist, index) => {
-            const color = artistColors[artist.slug] || "#1DB954";
+            const color = artist.tintColor || DEFAULT_COLOR;
             const artistImage = artistImages[artist.slug];
             const hasImage = artistImage && !imageErrors[artist.slug];
             const isSelected = selectedIndex === index;
@@ -451,8 +300,8 @@ export function DiscographyExplorer() {
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {artists.map((artist) => {
-              const color = artistColors[artist.slug] || "#1DB954";
-              const spotifyUrl = artist.spotifyUrl || fallbackArtists.find(f => f.slug === artist.slug)?.spotifyUrl || "#";
+              const color = artist.tintColor || DEFAULT_COLOR;
+              const spotifyUrl = artist.spotifyUrl || "#";
               const artistImage = artistImages[artist.slug];
               const hasImage = artistImage && !imageErrors[artist.slug];
 

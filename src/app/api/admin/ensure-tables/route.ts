@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { executeRaw, isDatabaseConfigured, checkConnection } from "@/db/client";
+import { db } from "@/db/client";
+import { artists, artistExternalProfiles } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -485,6 +490,133 @@ export async function POST() {
         const msg = error instanceof Error ? error.message : String(error);
         results.push({ table: "data_fix", status: "error", error: msg });
       }
+    }
+
+    // === SEED ARTIST EXTERNAL PROFILES ===
+    try {
+      // Check how many artists already have profiles using drizzle
+      const [profileCountRow] = await db
+        .select({ count: sql<number>`COUNT(DISTINCT ${artistExternalProfiles.artistId})` })
+        .from(artistExternalProfiles);
+      const profileCount = profileCountRow?.count ?? 0;
+
+      // Get total active artists
+      const [artistCountRow] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(artists)
+        .where(eq(artists.isActive, true));
+      const artistCount = artistCountRow?.count ?? 0;
+
+      // If some artists don't have profiles, seed them
+      if (profileCount < artistCount) {
+        // Read social URLs from JSON file
+        const socialUrlsPath = join(process.cwd(), "data", "artist-social-urls.json");
+        let socialData: Record<string, {
+          name?: string;
+          spotify?: string;
+          spotifyId?: string;
+          instagram?: string | null;
+        }> = {};
+        try {
+          const fileContents = readFileSync(socialUrlsPath, "utf-8");
+          socialData = JSON.parse(fileContents).artists || {};
+        } catch {
+          results.push({ table: "artist_profiles_seed", status: "skipped", error: "Could not read artist-social-urls.json" });
+        }
+
+        // YouTube channel data from components (RosterSocials.tsx / ArtistChannels.tsx)
+        const youtubeData: Record<string, { channelUrl: string; channelHandle: string }> = {
+          "brez": { channelUrl: "https://youtube.com/@brezhiphopmexicoslc25", channelHandle: "@brezhiphopmexicoslc25" },
+          "bruno-grasso": { channelUrl: "https://youtube.com/@brunograssosl", channelHandle: "@brunograssosl" },
+          "chas-7p": { channelUrl: "https://youtube.com/@chas7p347", channelHandle: "@chas7p347" },
+          "codak": { channelUrl: "https://youtube.com/@codak", channelHandle: "@codak" },
+          "dilema": { channelUrl: "https://youtube.com/@dilema999", channelHandle: "@dilema999" },
+          "doctor-destino": { channelUrl: "https://youtube.com/@doctordestinohiphop", channelHandle: "@doctordestinohiphop" },
+          "fancy-freak": { channelUrl: "https://youtube.com/@fancyfreakdj", channelHandle: "@fancyfreakdj" },
+          "hassyel": { channelUrl: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A", channelHandle: "Hassyel" },
+          "kev-cabrone": { channelUrl: "https://youtube.com/@kevcabrone", channelHandle: "@kevcabrone" },
+          "latin-geisha": { channelUrl: "https://youtube.com/@latingeishamx", channelHandle: "@latingeishamx" },
+          "pepe-levine": { channelUrl: "https://youtube.com/@pepelevineonline", channelHandle: "@pepelevineonline" },
+          "q-master-weed": { channelUrl: "https://youtube.com/@qmasterw", channelHandle: "@qmasterw" },
+          "reick-one": { channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA", channelHandle: "Reick Uno" },
+          "x-santa-ana": { channelUrl: "https://youtube.com/@xsanta-ana", channelHandle: "@xsanta-ana" },
+          "zaque": { channelUrl: "https://youtube.com/@zakeuno", channelHandle: "@zakeuno" },
+        };
+
+        // Mixcloud data from RosterSocials.tsx
+        const mixcloudData: Record<string, { url: string; handle: string }> = {
+          "doctor-destino": { url: "https://www.mixcloud.com/doctinho/", handle: "doctinho" },
+          "fancy-freak": { url: "https://www.mixcloud.com/fancyfreak1/", handle: "fancyfreak1" },
+          "q-master-weed": { url: "https://www.mixcloud.com/q-masterw/", handle: "q-masterw" },
+          "reick-one": { url: "https://www.mixcloud.com/reickuno/", handle: "reickuno" },
+        };
+
+        // Get all active artists
+        const artistsRows = await db
+          .select({ id: artists.id, slug: artists.slug, name: artists.name })
+          .from(artists)
+          .where(eq(artists.isActive, true));
+
+        let seededCount = 0;
+        for (const artist of artistsRows) {
+          const slug = artist.slug;
+          const socialInfo = socialData[slug];
+          const ytInfo = youtubeData[slug];
+          const mcInfo = mixcloudData[slug];
+
+          // Spotify profile
+          if (socialInfo?.spotify && socialInfo?.spotifyId) {
+            try {
+              await executeRaw(
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_id, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
+                `VALUES ('sp-${slug}', '${artist.id}', 'spotify', '${socialInfo.spotifyId}', '${socialInfo.spotify}', '${socialInfo.spotifyId}', 1, 1, unixepoch(), unixepoch())`
+              );
+              seededCount++;
+            } catch { /* ignore duplicate */ }
+          }
+
+          // Instagram profile
+          if (socialInfo?.instagram) {
+            const igHandle = socialInfo.instagram.replace("https://www.instagram.com/", "").replace("/", "");
+            try {
+              await executeRaw(
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
+                `VALUES ('ig-${slug}', '${artist.id}', 'instagram', '${socialInfo.instagram}', '${igHandle}', 0, 1, unixepoch(), unixepoch())`
+              );
+              seededCount++;
+            } catch { /* ignore duplicate */ }
+          }
+
+          // YouTube profile
+          if (ytInfo) {
+            try {
+              await executeRaw(
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
+                `VALUES ('yt-${slug}', '${artist.id}', 'youtube', '${ytInfo.channelUrl}', '${ytInfo.channelHandle}', 0, 1, unixepoch(), unixepoch())`
+              );
+              seededCount++;
+            } catch { /* ignore duplicate */ }
+          }
+
+          // Mixcloud profile
+          if (mcInfo) {
+            try {
+              await executeRaw(
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
+                `VALUES ('mc-${slug}', '${artist.id}', 'mixcloud', '${mcInfo.url}', '${mcInfo.handle}', 0, 1, unixepoch(), unixepoch())`
+              );
+              seededCount++;
+            } catch { /* ignore duplicate */ }
+          }
+        }
+
+        results.push({ table: "artist_profiles_seed", status: "seeded", error: `${seededCount} profiles inserted for ${artistsRows.length} artists` });
+      } else {
+        results.push({ table: "artist_profiles_seed", status: "exists", error: `All ${artistCount} artists already have profiles` });
+      }
+    } catch (seedError) {
+      const msg = seedError instanceof Error ? seedError.message : String(seedError);
+      results.push({ table: "artist_profiles_seed", status: "error", error: msg });
     }
 
     const hasErrors = results.some((r) => r.status === "error");

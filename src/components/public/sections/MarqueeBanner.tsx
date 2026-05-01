@@ -1,24 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-const marqueeItems = [
-  { text: "ZAQUE", slug: "zaque", highlight: true },
-  { text: "DOCTOR DESTINO", slug: "doctor-destino", highlight: false },
-  { text: "BREZ", slug: "brez", highlight: false },
-  { text: "BRUNO GRASSO", slug: "bruno-grasso", highlight: false },
-  { text: "DILEMA", slug: "dilema", highlight: false },
-  { text: "CODAK", slug: "codak", highlight: true },
-  { text: "KEV CABRONE", slug: "kev-cabrone", highlight: false },
-  { text: "HASSYEL", slug: "hassyel", highlight: false },
-  { text: "LATIN GEISHA", slug: "latin-geisha", highlight: true },
-  { text: "FANCY FREAK", slug: "fancy-freak", highlight: false },
-  { text: "Q MASTER WEED", slug: "q-master-weed", highlight: false },
-  { text: "X SANTA-ANA", slug: "x-santa-ana", highlight: false },
-  { text: "CHAS7P", slug: "chas7p", highlight: false },
-  { text: "REICK ONE", slug: "reick-one", highlight: false },
-  { text: "PEPE LEVINE", slug: "pepe-levine", highlight: false },
+interface MarqueeItem {
+  text: string;
+  slug: string;
+  highlight: boolean;
+}
+
+const FALLBACK_ITEMS: MarqueeItem[] = [
+  { text: "SONIDO LÍQUIDO CREW", slug: "", highlight: true },
 ];
 
 interface MarqueeBannerProps {
@@ -27,6 +19,32 @@ interface MarqueeBannerProps {
 
 export function MarqueeBanner({ speed = 40 }: MarqueeBannerProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [marqueeItems, setMarqueeItems] = useState<MarqueeItem[]>(FALLBACK_ITEMS);
+
+  // Fetch roster data from API
+  useEffect(() => {
+    async function fetchRoster() {
+      try {
+        const res = await fetch("/api/artists/roster");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data?.length > 0) {
+            const items: MarqueeItem[] = data.data.map(
+              (artist: { name: string; slug: string; isFeatured: boolean }) => ({
+                text: artist.name.toUpperCase(),
+                slug: artist.slug,
+                highlight: artist.isFeatured,
+              })
+            );
+            setMarqueeItems(items);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch roster for marquee:", error);
+      }
+    }
+    fetchRoster();
+  }, []);
 
   useEffect(() => {
     if (!scrollerRef.current) return;
@@ -42,7 +60,7 @@ export function MarqueeBanner({ speed = 40 }: MarqueeBannerProps) {
         scroller.appendChild(duplicated);
       });
     }
-  }, []);
+  }, [marqueeItems]);
 
   return (
     <div className="relative py-4 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-y border-primary/20 overflow-hidden">
@@ -65,7 +83,7 @@ export function MarqueeBanner({ speed = 40 }: MarqueeBannerProps) {
         {marqueeItems.map((item, index) => (
           <Link
             key={index}
-            href={`/artistas/${item.slug}`}
+            href={item.slug ? `/artistas/${item.slug}` : "#"}
             className={`inline-flex items-center mx-6 sm:mx-10 font-oswald text-lg sm:text-2xl md:text-3xl uppercase tracking-wider transition-all duration-300 hover:scale-110 ${
               item.highlight
                 ? "text-primary glow-orange hover:text-primary"

@@ -40,6 +40,17 @@ export const artistsService = {
     }
   },
 
+  async getAllWithProfiles() {
+    try {
+      return await artistsRepository.findAllWithProfiles();
+    } catch (error) {
+      errorLogger.log(
+        DatabaseError.queryFailed("fetch", "artists with profiles", getErrorMessage(error), error as Error)
+      );
+      return [];
+    }
+  },
+
   async getById(id: string) {
     try {
       if (!id || typeof id !== "string") {

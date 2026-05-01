@@ -5,13 +5,24 @@ import Image from "next/image";
 import { Youtube, ChevronLeft, ChevronRight, Play, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface Artist {
+// Type for artist data from /api/artists/roster
+interface RosterArtist {
   id: string;
   name: string;
   slug: string;
   role: string;
-  profileImageUrl?: string;
-  youtubeUrl?: string;
+  tintColor: string | null;
+  profileImageUrl: string | null;
+  isFeatured: boolean;
+  youtubeUrl: string | null;
+  youtubeHandle: string | null;
+  externalProfiles: Array<{
+    platform: string;
+    externalId: string | null;
+    externalUrl: string;
+    handle: string | null;
+    isVerified: boolean;
+  }>;
 }
 
 interface Video {
@@ -21,115 +32,29 @@ interface Video {
   thumbnailUrl?: string;
 }
 
-// Real artist YouTube channel URLs - these link directly to each artist's channel
-const artistChannelsData: Record<string, { channelUrl: string; channelHandle: string; color: string }> = {
-  "zaque": {
-    channelUrl: "https://youtube.com/@zakeuno",
-    channelHandle: "@zakeuno",
-    color: "#3D7A7A",
-  },
-  "doctor-destino": {
-    channelUrl: "https://youtube.com/@doctordestinohiphop",
-    channelHandle: "@doctordestinohiphop",
-    color: "#D4A520",
-  },
-  "brez": {
-    channelUrl: "https://youtube.com/@brezhiphopmexicoslc25",
-    channelHandle: "@brezhiphopmexicoslc25",
-    color: "#5A7590",
-  },
-  "dilema": {
-    channelUrl: "https://youtube.com/@dilema999",
-    channelHandle: "@dilema999",
-    color: "#C45A3A",
-  },
-  "bruno-grasso": {
-    channelUrl: "https://youtube.com/@brunograssosl",
-    channelHandle: "@brunograssosl",
-    color: "#C09020",
-  },
-  "kev-cabrone": {
-    channelUrl: "https://youtube.com/@kevcabrone",
-    channelHandle: "@kevcabrone",
-    color: "#B54A30",
-  },
-  "x-santa-ana": {
-    channelUrl: "https://youtube.com/@xsanta-ana",
-    channelHandle: "@xsanta-ana",
-    color: "#7A4A4A",
-  },
-  "latin-geisha": {
-    channelUrl: "https://youtube.com/@latingeishamx",
-    channelHandle: "@latingeishamx",
-    color: "#4A9070",
-  },
-  "q-master-weed": {
-    channelUrl: "https://youtube.com/@qmasterw",
-    channelHandle: "@qmasterw",
-    color: "#C06A50",
-  },
-  "chas-7p": {
-    channelUrl: "https://youtube.com/@chas7p347",
-    channelHandle: "@chas7p347",
-    color: "#8A4A7A",
-  },
-  "fancy-freak": {
-    channelUrl: "https://youtube.com/@fancyfreakdj",
-    channelHandle: "@fancyfreakdj",
-    color: "#3A6090",
-  },
-  "hassyel": {
-    channelUrl: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A",
-    channelHandle: "Hassyel",
-    color: "#908050",
-  },
-  "reick-one": {
-    channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA",
-    channelHandle: "Reick Uno",
-    color: "#4A8A60",
-  },
-  "pepe-levine": {
-    channelUrl: "https://youtube.com/@pepelevineonline",
-    channelHandle: "@pepelevineonline",
-    color: "#904040",
-  },
-  "codak": {
-    channelUrl: "https://youtube.com/@codak",
-    channelHandle: "@codak",
-    color: "#4A4A90",
-  },
-};
-
-// Fallback artist order
-const artistOrder = [
-  "zaque", "doctor-destino", "brez", "dilema", "bruno-grasso",
-  "kev-cabrone", "x-santa-ana", "latin-geisha", "q-master-weed",
-  "chas-7p", "fancy-freak", "hassyel", "reick-one", "pepe-levine", "codak"
-];
+const DEFAULT_COLOR = "#666666";
 
 export function ArtistChannels() {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [artists, setArtists] = useState<Artist[]>([]);
+  const [artists, setArtists] = useState<RosterArtist[]>([]);
   const [loading, setLoading] = useState(true);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [artistVideos, setArtistVideos] = useState<Record<string, Video[]>>({});
   const [loadingVideos, setLoadingVideos] = useState(false);
 
-  // Fetch artists from API
+  // Fetch artists from roster API
   useEffect(() => {
     async function fetchArtists() {
       try {
-        const res = await fetch("/api/artists");
+        const res = await fetch("/api/artists/roster");
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.data?.length > 0) {
-            // Sort artists by the predefined order
-            const sortedArtists = [...data.data].sort((a: Artist, b: Artist) => {
-              const indexA = artistOrder.indexOf(a.slug);
-              const indexB = artistOrder.indexOf(b.slug);
-              return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-            });
-            setArtists(sortedArtists);
+            // Only include artists that have YouTube channels
+            const withYouTube = data.data.filter(
+              (artist: RosterArtist) => artist.youtubeUrl
+            );
+            setArtists(withYouTube);
           }
         }
       } catch (error) {
@@ -186,7 +111,9 @@ export function ArtistChannels() {
   }, [selectedIndex, artists, fetchArtistVideos]);
 
   const selectedArtist = artists[selectedIndex];
-  const channelData = selectedArtist ? artistChannelsData[selectedArtist.slug] : null;
+  const channelUrl = selectedArtist?.youtubeUrl || null;
+  const channelHandle = selectedArtist?.youtubeHandle || selectedArtist?.name || "";
+  const color = selectedArtist?.tintColor || DEFAULT_COLOR;
   const currentVideos = selectedArtist ? artistVideos[selectedArtist.slug] : undefined;
   const featuredVideo = currentVideos?.[0];
 
@@ -212,7 +139,7 @@ export function ArtistChannels() {
     );
   }
 
-  if (!selectedArtist || !channelData) {
+  if (!selectedArtist || !channelUrl) {
     return null;
   }
 
@@ -253,8 +180,7 @@ export function ArtistChannels() {
           {/* Artist Pills with Images */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide px-10 py-2">
             {artists.map((artist, index) => {
-              const data = artistChannelsData[artist.slug];
-              const color = data?.color || "#666";
+              const artistColor = artist.tintColor || DEFAULT_COLOR;
               const hasImage = artist.profileImageUrl && !imageErrors[artist.slug];
 
               return (
@@ -269,14 +195,14 @@ export function ArtistChannels() {
                     }
                   `}
                   style={{
-                    backgroundColor: selectedIndex === index ? color : undefined,
-                    boxShadow: selectedIndex === index ? `0 4px 20px ${color}40` : undefined,
+                    backgroundColor: selectedIndex === index ? artistColor : undefined,
+                    boxShadow: selectedIndex === index ? `0 4px 20px ${artistColor}40` : undefined,
                   }}
                 >
                   {/* Profile Image */}
                   <div
                     className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ backgroundColor: !hasImage ? color : undefined }}
+                    style={{ backgroundColor: !hasImage ? artistColor : undefined }}
                   >
                     {hasImage ? (
                       <Image
@@ -304,22 +230,22 @@ export function ArtistChannels() {
           {/* Decorative border */}
           <div
             className="absolute -inset-1 rounded-xl opacity-50 blur-sm"
-            style={{ background: `linear-gradient(135deg, ${channelData.color}, transparent)` }}
+            style={{ background: `linear-gradient(135deg, ${color}, transparent)` }}
           />
 
           <div className="relative bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/10">
             {/* Channel Header with Profile Image */}
             <div
               className="flex items-center justify-between p-4 border-b border-white/10"
-              style={{ background: `linear-gradient(90deg, ${channelData.color}20, transparent)` }}
+              style={{ background: `linear-gradient(90deg, ${color}20, transparent)` }}
             >
               <div className="flex items-center gap-3">
                 {/* Profile Image in Header */}
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center font-oswald font-bold text-white text-lg overflow-hidden ring-2 ring-offset-2 ring-offset-[#0a0a0a]"
                   style={{
-                    backgroundColor: channelData.color,
-                    boxShadow: `0 0 0 2px ${channelData.color}`
+                    backgroundColor: color,
+                    boxShadow: `0 0 0 2px ${color}`
                   }}
                 >
                   {selectedArtist.profileImageUrl && !imageErrors[selectedArtist.slug] ? (
@@ -338,7 +264,7 @@ export function ArtistChannels() {
                 </div>
                 <div>
                   <h3 className="font-oswald text-xl text-white uppercase">{selectedArtist.name}</h3>
-                  <p className="text-gray-400 text-sm">{channelData.channelHandle}</p>
+                  <p className="text-gray-400 text-sm">{channelHandle}</p>
                 </div>
               </div>
               <Button
@@ -347,7 +273,7 @@ export function ArtistChannels() {
                 size="sm"
                 className="border-red-600/50 text-red-500 hover:bg-red-600/20"
               >
-                <a href={channelData.channelUrl} target="_blank" rel="noopener noreferrer">
+                <a href={channelUrl} target="_blank" rel="noopener noreferrer">
                   <Youtube className="w-4 h-4 mr-2" />
                   Ver Canal
                 </a>
@@ -371,11 +297,11 @@ export function ArtistChannels() {
               ) : (
                 /* No videos - show channel link placeholder */
                 <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8"
-                  style={{ background: `linear-gradient(135deg, ${channelData.color}20, transparent)` }}
+                  style={{ background: `linear-gradient(135deg, ${color}20, transparent)` }}
                 >
                   <div
                     className="w-24 h-24 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${channelData.color}40` }}
+                    style={{ backgroundColor: `${color}40` }}
                   >
                     <Youtube className="w-12 h-12 text-red-500" />
                   </div>
@@ -390,7 +316,7 @@ export function ArtistChannels() {
                       asChild
                       className="bg-red-600 hover:bg-red-700"
                     >
-                      <a href={channelData.channelUrl} target="_blank" rel="noopener noreferrer">
+                      <a href={channelUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="w-4 h-4 mr-2" />
                         Ir al Canal
                       </a>
@@ -446,13 +372,14 @@ export function ArtistChannels() {
           <h4 className="text-gray-400 text-sm uppercase tracking-wider mb-4">Todos los canales</h4>
           <div className="flex flex-wrap gap-2">
             {artists.map((artist) => {
-              const data = artistChannelsData[artist.slug];
+              const artistColor = artist.tintColor || DEFAULT_COLOR;
               const hasImage = artist.profileImageUrl && !imageErrors[artist.slug];
+              const ytUrl = artist.youtubeUrl;
 
               return (
                 <a
                   key={artist.slug}
-                  href={data?.channelUrl || "#"}
+                  href={ytUrl || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full text-sm text-gray-300 hover:bg-red-600/20 hover:text-red-400 transition-colors"
@@ -460,7 +387,7 @@ export function ArtistChannels() {
                   {/* Small Profile Image */}
                   <div
                     className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold shrink-0 group-hover:scale-110 transition-transform"
-                    style={{ backgroundColor: data?.color || "#666" }}
+                    style={{ backgroundColor: artistColor }}
                   >
                     {hasImage ? (
                       <Image

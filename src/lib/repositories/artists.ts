@@ -19,6 +19,38 @@ import { generateUUID, slugify } from "@/lib/utils";
 
 export const artistsRepository = {
   /**
+   * Get all active artists with their external profiles
+   */
+  async findAllWithProfiles(): Promise<(Artist & { externalProfiles: ArtistExternalProfile[] })[]> {
+    const allArtists = await db
+      .select()
+      .from(artists)
+      .where(eq(artists.isActive, true))
+      .orderBy(asc(artists.name));
+
+    const allProfiles = await db
+      .select()
+      .from(artistExternalProfiles)
+      .innerJoin(artists, eq(artistExternalProfiles.artistId, artists.id))
+      .where(eq(artists.isActive, true));
+
+    // Group profiles by artistId
+    const profilesByArtistId = new Map<string, ArtistExternalProfile[]>();
+    for (const row of allProfiles) {
+      const artistId = row.artists.id;
+      if (!profilesByArtistId.has(artistId)) {
+        profilesByArtistId.set(artistId, []);
+      }
+      profilesByArtistId.get(artistId)!.push(row.artist_external_profiles);
+    }
+
+    return allArtists.map((artist) => ({
+      ...artist,
+      externalProfiles: profilesByArtistId.get(artist.id) || [],
+    }));
+  },
+
+  /**
    * Get all artists
    */
   async findAll(options: {
