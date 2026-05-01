@@ -102,6 +102,9 @@ export async function PUT(
     if (body.isActive !== undefined) updates.isActive = body.isActive;
     if (body.priority !== undefined) updates.priority = body.priority;
 
+    // Always update the timestamp when making changes
+    updates.updatedAt = new Date();
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { success: false, error: "No fields to update" },

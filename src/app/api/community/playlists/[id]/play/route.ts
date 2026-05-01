@@ -18,7 +18,7 @@ export async function POST(
     await db
       .update(userPlaylists)
       .set({
-        playCount: sql`${userPlaylists.playCount} + 1`,
+        playCount: sql`COALESCE(${userPlaylists.playCount}, 0) + 1`,
       })
       .where(eq(userPlaylists.id, id));
 

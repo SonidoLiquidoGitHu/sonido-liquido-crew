@@ -290,6 +290,99 @@ const ENSURE_TABLES_SQL = [
     relation_type TEXT NOT NULL DEFAULT 'collaborator',
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+
+  // === CURATED PLAYLISTS ===
+  `CREATE TABLE IF NOT EXISTS curated_playlists (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    description TEXT,
+    cover_image_url TEXT,
+    cover_color TEXT,
+    is_public INTEGER DEFAULT 1 NOT NULL,
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    priority INTEGER DEFAULT 0 NOT NULL,
+    spotify_playlist_id TEXT,
+    spotify_playlist_url TEXT,
+    track_count INTEGER DEFAULT 0,
+    created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+    updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+  )`,
+
+  // === PLAYLIST TRACKS ===
+  `CREATE TABLE IF NOT EXISTS playlist_tracks (
+    id TEXT PRIMARY KEY,
+    playlist_id TEXT NOT NULL,
+    playlist_name TEXT,
+    spotify_track_id TEXT NOT NULL,
+    curated_track_id TEXT,
+    track_name TEXT NOT NULL,
+    artist_name TEXT NOT NULL,
+    album_image_url TEXT,
+    position INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    added_by TEXT,
+    added_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+
+  // === CURATED SPOTIFY CHANNELS ===
+  `CREATE TABLE IF NOT EXISTS curated_spotify_channels (
+    id TEXT PRIMARY KEY,
+    spotify_artist_id TEXT NOT NULL UNIQUE,
+    spotify_artist_url TEXT NOT NULL,
+    name TEXT NOT NULL,
+    image_url TEXT,
+    genres TEXT,
+    popularity INTEGER,
+    followers INTEGER,
+    category TEXT NOT NULL DEFAULT 'roster',
+    priority INTEGER NOT NULL DEFAULT 0,
+    description TEXT,
+    auto_sync INTEGER DEFAULT 1 NOT NULL,
+    sync_new_releases INTEGER DEFAULT 1 NOT NULL,
+    sync_top_tracks INTEGER DEFAULT 1 NOT NULL,
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    last_synced_at INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+
+  // === CURATED TRACKS ===
+  `CREATE TABLE IF NOT EXISTS curated_tracks (
+    id TEXT PRIMARY KEY,
+    spotify_track_id TEXT NOT NULL UNIQUE,
+    spotify_track_url TEXT NOT NULL,
+    spotify_album_id TEXT,
+    name TEXT NOT NULL,
+    artist_name TEXT NOT NULL,
+    artist_ids TEXT,
+    album_name TEXT,
+    album_image_url TEXT,
+    duration_ms INTEGER,
+    preview_url TEXT,
+    release_date TEXT,
+    popularity INTEGER,
+    explicit INTEGER DEFAULT 0 NOT NULL,
+    curated_channel_id TEXT,
+    is_available_for_playlist INTEGER DEFAULT 1 NOT NULL,
+    is_featured INTEGER DEFAULT 0 NOT NULL,
+    admin_notes TEXT,
+    added_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+];
+
+// SQL statements to add missing columns to existing tables
+const ADD_COLUMNS_SQL = [
+  // Missing columns in curated_playlists (migration 0015 only created basic columns)
+  `ALTER TABLE curated_playlists ADD COLUMN cover_color TEXT`,
+  `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_id TEXT`,
+  `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_url TEXT`,
+  `ALTER TABLE curated_playlists ADD COLUMN track_count INTEGER DEFAULT 0`,
+
+  // Missing columns in playlist_tracks (some installs may lack these)
+  `ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT`,
+  `ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT`,
 ];
 
 const ENSURE_INDEXES_SQL = [
@@ -309,6 +402,12 @@ const ENSURE_INDEXES_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_gallery_photos_published ON gallery_photos(is_published)`,
   `CREATE INDEX IF NOT EXISTS idx_artist_gallery_assets_artist ON artist_gallery_assets(artist_id)`,
   `CREATE INDEX IF NOT EXISTS idx_artist_external_profiles_artist ON artist_external_profiles(artist_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_curated_playlists_slug ON curated_playlists(slug)`,
+  `CREATE INDEX IF NOT EXISTS idx_curated_playlists_public ON curated_playlists(is_public)`,
+  `CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlist_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_playlist_tracks_active ON playlist_tracks(is_active)`,
+  `CREATE INDEX IF NOT EXISTS idx_curated_tracks_channel ON curated_tracks(curated_channel_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_curated_spotify_channels_active ON curated_spotify_channels(is_active)`,
 ];
 
 // Data fixes
@@ -346,6 +445,25 @@ export async function POST() {
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         results.push({ table: tableName, status: "error", error: msg });
+      }
+    }
+
+    // Add missing columns to existing tables (safe - ignores "duplicate column" errors)
+    for (const sql of ADD_COLUMNS_SQL) {
+      const colMatch = sql.match(/ALTER TABLE (\w+) ADD COLUMN (\w+)/);
+      const tableName = colMatch ? colMatch[1] : "unknown";
+      const colName = colMatch ? colMatch[2] : "unknown";
+
+      try {
+        await executeRaw(sql);
+        results.push({ table: `${tableName}.${colName}`, status: "added" });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (msg.includes("duplicate column name")) {
+          results.push({ table: `${tableName}.${colName}`, status: "exists" });
+        } else {
+          results.push({ table: `${tableName}.${colName}`, status: "error", error: msg });
+        }
       }
     }
 
