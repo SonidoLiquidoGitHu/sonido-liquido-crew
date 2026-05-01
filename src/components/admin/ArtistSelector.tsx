@@ -69,7 +69,7 @@ export function ArtistSelector({
   // Convert value to array for consistent handling
   const selectedIds = Array.isArray(value) ? value : value ? [value] : [];
 
-  // Fetch artists on mount - always fetch to ensure fresh data
+  // Fetch artists on mount
   useEffect(() => {
     // If we have initial artists from props, use them but still allow refresh
     if (initialArtists && initialArtists.length > 0) {
@@ -79,34 +79,50 @@ export function ArtistSelector({
       return;
     }
 
-    // Otherwise fetch from API
+    // Otherwise fetch from API - try multiple endpoints for reliability
     const fetchArtists = async () => {
       setLoading(true);
       console.log("[ArtistSelector] Fetching artists from API...");
       try {
-        // Try public endpoint first for broader compatibility
-        let res = await fetch("/api/artists");
-        let data = await res.json();
+        // Try admin endpoint first - it's simplest, has no validation, returns ALL artists
+        const endpoints = [
+          "/api/admin/artists",
+          "/api/artists/roster",
+          "/api/artists",
+        ];
 
-        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-          setArtists(data.data);
-          console.log(`[ArtistSelector] Loaded ${data.data.length} artists from public API`);
-        } else {
-          // Try admin endpoint as fallback
-          console.log("[ArtistSelector] Public endpoint empty, trying admin...");
-          res = await fetch("/api/admin/artists");
-          data = await res.json();
+        for (const endpoint of endpoints) {
+          try {
+            console.log(`[ArtistSelector] Trying ${endpoint}...`);
+            const res = await fetch(endpoint);
+            if (!res.ok) {
+              console.warn(`[ArtistSelector] ${endpoint} returned ${res.status}`);
+              continue;
+            }
 
-          if (data.success && Array.isArray(data.data)) {
-            setArtists(data.data);
-            console.log(`[ArtistSelector] Loaded ${data.data.length} artists from admin API`);
-          } else if (Array.isArray(data)) {
-            setArtists(data);
-            console.log(`[ArtistSelector] Loaded ${data.length} artists (direct array)`);
-          } else {
-            console.warn("[ArtistSelector] No artists found in response:", data);
+            const data = await res.json();
+
+            // Handle different response formats
+            let artistList: Artist[] = [];
+            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+              artistList = data.data;
+            } else if (Array.isArray(data) && data.length > 0) {
+              artistList = data;
+            }
+
+            if (artistList.length > 0) {
+              setArtists(artistList);
+              console.log(`[ArtistSelector] Loaded ${artistList.length} artists from ${endpoint}`);
+              return; // Success, stop trying
+            }
+
+            console.warn(`[ArtistSelector] ${endpoint} returned 0 artists`);
+          } catch (endpointError) {
+            console.warn(`[ArtistSelector] ${endpoint} failed:`, endpointError);
           }
         }
+
+        console.warn("[ArtistSelector] No artists found from any endpoint");
       } catch (error) {
         console.error("[ArtistSelector] Failed to fetch artists:", error);
       } finally {
