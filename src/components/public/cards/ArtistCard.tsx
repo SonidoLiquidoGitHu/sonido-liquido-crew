@@ -2,9 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { Artist } from "@/types";
 import { useSoundEffects } from "../effects/SoundEffects";
+
+// Detect touch devices for mobile-friendly interactions
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    setIsTouch(
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+    );
+  }, []);
+  return isTouch;
+}
 
 // Pop-art color palette matching classic Warhol-style prints
 // Each color has a background, highlight tint, and shadow for depth
@@ -52,6 +64,7 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
   const [transform, setTransform] = useState({ rotateX: 0, rotateY: 0, scale: 1 });
   const [glarePosition, setGlarePosition] = useState({ x: 50, y: 50 });
   const [isHovering, setIsHovering] = useState(false);
+  const isTouchDevice = useIsTouchDevice();
   const cardRef = useRef<HTMLAnchorElement>(null);
   const { playSound } = useSoundEffects();
 
@@ -89,6 +102,16 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
     playSound("click");
   }, [playSound]);
 
+  // Touch support: toggle hover state on tap for mobile
+  const handleTouchStart = useCallback(() => {
+    setIsHovering(true);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    // Small delay so user can see the hover state before navigating
+    setTimeout(() => setIsHovering(false), 300);
+  }, []);
+
   return (
     <Link
       ref={cardRef}
@@ -106,6 +129,8 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       onClick={handleClick}
     >
       {/* Artist Image with strong duotone pop-art effect */}
@@ -186,22 +211,25 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
         />
       )}
 
-      {/* Name overlay - appears on hover with subtle gradient */}
+      {/* Name overlay - always visible on touch devices, hover on desktop */}
       <div
         className="absolute inset-0 flex items-end justify-center pb-3 sm:pb-4 transition-all duration-300"
         style={{
-          opacity: isHovering ? 1 : 0,
+          opacity: isTouchDevice ? 1 : isHovering ? 1 : 0,
           transform: `translateZ(40px)`,
         }}
       >
-        {/* Gradient backdrop */}
+        {/* Gradient backdrop - always visible on mobile for readability */}
         <div
-          className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          className={isTouchDevice
+            ? "absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
+            : "absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          }
         />
         <h3
           className="font-oswald text-sm sm:text-lg md:text-xl uppercase tracking-wider text-white text-center px-2 relative z-10 drop-shadow-lg"
           style={{
-            transform: isHovering ? "translateY(0)" : "translateY(10px)",
+            transform: isTouchDevice || isHovering ? "translateY(0)" : "translateY(10px)",
             transition: "transform 0.3s ease-out",
           }}
         >
@@ -209,14 +237,16 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
         </h3>
       </div>
 
-      {/* Edge highlight for depth */}
-      <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-        style={{
-          opacity: isHovering ? 1 : 0,
-          background: `linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)`,
-        }}
-      />
+      {/* Edge highlight for depth - skip on touch devices */}
+      {!isTouchDevice && (
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+          style={{
+            opacity: isHovering ? 1 : 0,
+            background: `linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)`,
+          }}
+        />
+      )}
     </Link>
   );
 }

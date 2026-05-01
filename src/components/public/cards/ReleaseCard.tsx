@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Play, ExternalLink } from "lucide-react";
-import { cn, formatDate, getReleaseTypeDisplay } from "@/lib/utils";
+import { cn, getReleaseTypeDisplay } from "@/lib/utils";
 import type { Release } from "@/types";
 
 interface ReleaseCardProps {
@@ -35,7 +35,7 @@ export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseC
         )}
       </div>
 
-      {/* Hover Overlay with Actions */}
+      {/* Hover/Touch Overlay with Actions - visible on hover (desktop) and always on mobile */}
       <div className="release-card-overlay">
         <div className="flex flex-col items-center gap-3">
           {release.spotifyUrl && (
@@ -57,6 +57,20 @@ export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseC
           </Link>
         </div>
       </div>
+
+      {/* Mobile: always-visible play indicator + touch-friendly link */}
+      <Link
+        href={`/lanzamientos/${release.slug}`}
+        className="absolute inset-0 z-10 md:hidden"
+        aria-label={`Ver ${release.title}`}
+      >
+        {/* Small play icon always visible on mobile */}
+        {release.spotifyUrl && (
+          <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+            <Play className="w-4 h-4 text-white ml-0.5" fill="white" />
+          </div>
+        )}
+      </Link>
 
       {/* Info Below Card */}
       <div className="absolute -bottom-16 left-0 right-0 text-center">

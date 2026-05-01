@@ -130,6 +130,13 @@
     @apply absolute inset-0 bg-black/60 opacity-0 transition-opacity flex items-center justify-center;
   }
 
+  /* On touch devices, show a subtle overlay so users know cards are tappable */
+  @media (hover: none) and (pointer: coarse) {
+    .release-card-overlay {
+      @apply bg-black/30 opacity-100;
+    }
+  }
+
   /* Button variants */
   .btn-spotify {
     @apply bg-spotify hover:bg-spotify-dark text-white font-medium;

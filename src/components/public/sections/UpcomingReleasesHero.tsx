@@ -177,6 +177,7 @@ function CompactReleaseCard({
     getTimeRemaining(release.releaseDate)
   );
   const [isHovered, setIsHovered] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   // Real-time countdown update
   useEffect(() => {
@@ -187,6 +188,14 @@ function CompactReleaseCard({
     return () => clearInterval(interval);
   }, [release.releaseDate]);
 
+  // Detect touch device on mount
+  useEffect(() => {
+    setIsTouchDevice(
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+    );
+  }, []);
+
   const bgColor = release.backgroundColor || "#1a1a1a";
   const hasPresave = Boolean(release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl);
 
@@ -195,6 +204,8 @@ function CompactReleaseCard({
       className="group relative"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
     >
       <div className={cn(
         "bg-slc-card border border-slc-border rounded-xl overflow-hidden transition-all duration-300",
@@ -276,13 +287,15 @@ function CompactReleaseCard({
           )}
 
           {/* =============================================
-              HOVER OVERLAY - PRESAVE BUTTON
+              HOVER/TOUCH OVERLAY - PRESAVE BUTTON
+              On touch devices, show pre-save button below the card image
+              instead of as an overlay to avoid covering the countdown
               ============================================= */}
           <div className={cn(
             "absolute inset-0 flex flex-col items-center justify-center gap-3 transition-all duration-300",
             isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
-            {/* Live countdown on hover */}
+            {/* Live countdown on hover/tap */}
             {timeRemaining.total > 0 && (
               <div className="text-center mb-2">
                 <div className="flex items-center gap-1 text-white/80 text-xs mb-1">
@@ -345,7 +358,7 @@ function CompactReleaseCard({
               </Link>
             )}
 
-            {/* Multiple platform links on hover */}
+            {/* Multiple platform links */}
             {hasPresave && (
               <div className="flex gap-2 mt-1">
                 {release.spotifyPresaveUrl && (
@@ -403,9 +416,25 @@ function CompactReleaseCard({
             )}
           </p>
 
-          <div className="flex items-center gap-1.5 text-[10px] text-slc-muted">
-            <Calendar className="w-3 h-3" />
-            <span>{formatReleaseDate(release.releaseDate)}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[10px] text-slc-muted">
+              <Calendar className="w-3 h-3" />
+              <span>{formatReleaseDate(release.releaseDate)}</span>
+            </div>
+
+            {/* Mobile: always-visible pre-save button below card */}
+            {isTouchDevice && hasPresave && (
+              <Link
+                href={release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2 py-1 bg-primary/20 hover:bg-primary/30 rounded-full text-[10px] text-primary font-bold uppercase transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Bell className="w-3 h-3" />
+                Pre-save
+              </Link>
+            )}
           </div>
         </div>
       </div>
