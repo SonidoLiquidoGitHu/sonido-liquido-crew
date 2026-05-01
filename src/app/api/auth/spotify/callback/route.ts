@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { playlistTracks, curatedTracks, curatedSpotifyChannels } from "@/db/schema";
+import { artists, artistExternalProfiles, playlistTracks, curatedTracks, curatedSpotifyChannels } from "@/db/schema";
 import { eq, asc, inArray } from "drizzle-orm";
-import { artistsRoster } from "@/lib/data/artists-roster";
 
 // Spotify OAuth configuration
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
@@ -165,10 +164,18 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Method 2: Get ALL roster artist Spotify IDs directly from the roster data
+        // Method 2: Get ALL roster artist Spotify IDs from the database
         // This ensures all roster artists are followed even if tracks aren't synced yet
-        const rosterIds = artistsRoster.map(artist => artist.spotifyId).filter(Boolean);
-        artistSpotifyIds.push(...rosterIds);
+        try {
+          const dbArtists = await db.select().from(artists).where(eq(artists.isActive, true));
+          const dbProfiles = await db.select().from(artistExternalProfiles).where(eq(artistExternalProfiles.platform, "spotify"));
+          const rosterIds = dbArtists
+            .map(a => dbProfiles.find(p => p.artistId === a.id)?.externalId)
+            .filter((id): id is string => Boolean(id));
+          artistSpotifyIds.push(...rosterIds);
+        } catch (dbErr) {
+          console.warn("[Spotify Callback] Could not fetch artist IDs from DB:", dbErr);
+        }
 
         console.log(`[Spotify Callback] Following ${new Set(artistSpotifyIds).size} unique artists`);
       }

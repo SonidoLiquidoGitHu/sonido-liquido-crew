@@ -163,17 +163,17 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
                       <div className="h-px flex-1 bg-gradient-to-r from-gray-700 to-transparent" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {pastEvents.slice(0, 12).map((event) => (
+                      {pastEvents.slice(0, 18).map((event) => (
                         <PastEventCard key={event.id} event={event} />
                       ))}
                     </div>
-                    {pastEvents.length > 12 && (
+                    {pastEvents.length > 18 && (
                       <div className="text-center pt-6">
                         <Link
                           href="/eventos?filter=past"
                           className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
                         >
-                          Ver {pastEvents.length - 12} eventos más
+                          Ver {pastEvents.length - 18} eventos más
                           <ArrowRight className="w-4 h-4" />
                         </Link>
                       </div>
@@ -289,6 +289,7 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
 
 // Compact card for past events - with cover image support
 function PastEventCard({ event }: { event: Event }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const eventDate = new Date(event.eventDate);
 
   // Guard against invalid dates
@@ -303,25 +304,14 @@ function PastEventCard({ event }: { event: Event }) {
     <div className="group rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all overflow-hidden">
       {/* Cover Image */}
       <div className="relative aspect-[16/9] bg-gray-800">
-        {event.imageUrl ? (
+        {event.imageUrl && !imgFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={event.imageUrl}
             alt={event.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
             loading="lazy"
-            onError={(e) => {
-              // Replace failed image with fallback gradient
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-              const parent = target.parentElement;
-              if (parent) {
-                const fallback = document.createElement("div");
-                fallback.className = "w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800";
-                fallback.innerHTML = '<svg class="w-8 h-8 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
-                parent.appendChild(fallback);
-              }
-            }}
+            onError={() => setImgFailed(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">

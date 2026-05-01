@@ -12,7 +12,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 async function EventsList() {
-  const events = await eventsService.getAll({ limit: 20 });
+  const events = await eventsService.getAll({ limit: 50 });
 
   if (events.length === 0) {
     return (

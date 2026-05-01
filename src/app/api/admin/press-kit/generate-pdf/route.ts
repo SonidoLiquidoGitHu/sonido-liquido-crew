@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { pressKit, artists } from "@/db/schema";
+import { pressKit, artists, artistExternalProfiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generatePressKitPDF, generatePressKitFilename } from "@/lib/pdf/press-kit-generator";
-import { artistsRoster } from "@/lib/data/artists-roster";
 
 interface KeyPoint {
   icon: string;
@@ -83,6 +82,15 @@ export async function GET(request: NextRequest) {
     // Check if we should include Spotify data
     const includeSpotify = request.nextUrl.searchParams.get("spotify") === "true";
 
+    // Fetch artist count from DB, fallback to counting active artists
+    let artistCount = 15; // sensible fallback
+    try {
+      if (isDatabaseConfigured()) {
+        const activeArtists = await db.select().from(artists).where(eq(artists.isActive, true));
+        artistCount = activeArtists.length || artistCount;
+      }
+    } catch {}
+
     // Default press kit data
     const defaultPressKit = {
       heroTitle: "Sonido Líquido Crew",
@@ -90,7 +98,7 @@ export async function GET(request: NextRequest) {
       heroTagline: "Fundado en 1999 en la Ciudad de México.",
       heroCoverImageUrl: undefined,
       heroBannerImageUrl: undefined,
-      statsArtists: `${artistsRoster.length}+`,
+      statsArtists: `${artistCount}+`,
       statsReleases: "190+",
       statsYears: `${new Date().getFullYear() - 1999}+`,
       aboutTitle: "Sobre Nosotros",
@@ -100,7 +108,7 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m�
       keyPoints: [
         { icon: "calendar", title: "Fundado en 1999", description: "Más de 25 años de historia en el Hip Hop mexicano" },
         { icon: "disc", title: "190+ Lanzamientos", description: "Catálogo extenso de música original" },
-        { icon: "users", title: `${artistsRoster.length}+ Artistas`, description: "Roster activo de talento mexicano" },
+        { icon: "users", title: `${artistCount}+ Artistas`, description: "Roster activo de talento mexicano" },
       ],
       contactEmail: "prensasonidoliquido@gmail.com",
       contactPhone: "+52 55 2801 1881",
@@ -134,19 +142,29 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m�
 
     // Fetch Spotify data for roster artists if requested
     let spotifyArtists: SpotifyArtistData[] = [];
-    if (includeSpotify) {
-      console.log("[API] Fetching Spotify data for roster artists...");
+    if (includeSpotify && isDatabaseConfigured()) {
+      console.log("[API] Fetching Spotify data for roster artists from DB...");
 
-      const spotifyPromises = artistsRoster.slice(0, 10).map(async (artist) => {
-        const oembedData = await fetchSpotifyOembedData(artist.spotifyUrl);
-        return {
-          name: artist.name,
-          imageUrl: oembedData?.imageUrl,
-        };
-      });
+      // Get artists with their Spotify profiles from DB
+      try {
+        const dbArtists = await db.select().from(artists).where(eq(artists.isActive, true)).limit(10);
+        const dbProfiles = await db.select().from(artistExternalProfiles).where(eq(artistExternalProfiles.platform, "spotify"));
 
-      const results = await Promise.all(spotifyPromises);
-      spotifyArtists = results.filter(Boolean) as SpotifyArtistData[];
+        const spotifyPromises = dbArtists.map(async (artist) => {
+          const profile = dbProfiles.find(p => p.artistId === artist.id);
+          if (!profile?.externalUrl) return null;
+          const oembedData = await fetchSpotifyOembedData(profile.externalUrl);
+          return {
+            name: artist.name,
+            imageUrl: oembedData?.imageUrl,
+          };
+        });
+
+        const results = await Promise.all(spotifyPromises);
+        spotifyArtists = results.filter(Boolean) as SpotifyArtistData[];
+      } catch (dbErr) {
+        console.warn("[API] Could not fetch artist Spotify data from DB:", dbErr);
+      }
 
       console.log(`[API] Fetched data for ${spotifyArtists.length} artists`);
     }

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artists, artistExternalProfiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { artistsRoster } from "@/lib/data/artists-roster";
 import { generateUUID, slugify } from "@/lib/utils";
 import { spotifyClient } from "@/lib/clients";
 import {
@@ -125,148 +124,83 @@ export async function POST(request: NextRequest) {
 
     // Mode: seed - Create artists from roster if they don't exist
     if (mode === "seed") {
-      errorLogger.info(`[Spotify Sync] Seeding ${artistsRoster.length} artists from roster...`, { requestId });
+      // Fetch all existing artists from DB to check what's already there
+      let existingArtists: typeof artists.$inferSelect[] = [];
+      let existingProfiles: typeof artistExternalProfiles.$inferSelect[] = [];
+      try {
+        existingArtists = await db.select().from(artists).where(eq(artists.isActive, true));
+        existingProfiles = await db.select().from(artistExternalProfiles);
+      } catch (dbErr) {
+        errorLogger.warn(`Failed to fetch existing artists for seed`, { error: getErrorMessage(dbErr) });
+      }
 
-      for (const rosterArtist of artistsRoster) {
+      // Build a list of artists that are in the DB but missing Spotify profiles
+      const artistsNeedingProfiles = existingArtists.filter(a =>
+        !existingProfiles.some(p => p.artistId === a.id && p.platform === "spotify" && p.externalId)
+      );
+
+      errorLogger.info(`[Spotify Sync] Checking ${artistsNeedingProfiles.length} artists needing Spotify profiles`, { requestId });
+
+      for (const dbArtist of artistsNeedingProfiles) {
         try {
-          errorLogger.info(`Processing roster artist`, { name: rosterArtist.name, spotifyId: rosterArtist.spotifyId });
+          errorLogger.info(`Processing artist`, { name: dbArtist.name, slug: dbArtist.slug });
 
-          // Check if artist exists
-          const [existing] = await db
-            .select()
-            .from(artists)
-            .where(eq(artists.slug, rosterArtist.slug))
-            .limit(1);
+          // Try to find Spotify profile from existing external profiles that might have a URL but no ID
+          const existingSpotify = existingProfiles.find(p => p.artistId === dbArtist.id && p.platform === "spotify");
 
-          if (!existing) {
-            // Fetch image from Spotify
-            errorLogger.info(`Fetching image for new artist`, { name: rosterArtist.name });
-            const embedData = await fetchArtistEmbed(rosterArtist.spotifyId);
-
-            // Add delay to avoid rate limiting
-            await new Promise((resolve) => setTimeout(resolve, 100));
-
-            // Create artist
-            const artistId = generateUUID();
-
-            try {
-              await db.insert(artists).values({
-                id: artistId,
-                name: rosterArtist.name,
-                slug: rosterArtist.slug,
-                role: (rosterArtist.role as "mc" | "dj" | "producer" | "cantante") || "mc",
-                bio: rosterArtist.bio || null,
-                profileImageUrl: embedData?.imageUrl || null,
-                isActive: true,
-                verificationStatus: "verified",
-              });
-            } catch (dbError) {
-              const error = DatabaseError.queryFailed(
-                "insert",
-                "artist",
-                `Name: ${rosterArtist.name} - ${getErrorMessage(dbError)}`,
-                dbError as Error
-              );
-              errorLogger.log(error);
-              throw error;
-            }
-
-            // Add Spotify profile
-            try {
-              await db.insert(artistExternalProfiles).values({
-                id: generateUUID(),
-                artistId,
-                platform: "spotify",
-                externalId: rosterArtist.spotifyId,
-                externalUrl: rosterArtist.spotifyUrl,
-                isVerified: true,
-              });
-            } catch (dbError) {
-              errorLogger.warn(`Failed to add Spotify profile for ${rosterArtist.name}`, {
-                error: getErrorMessage(dbError),
-              });
-            }
-
-            // Add Instagram profile if available
-            if (rosterArtist.instagramUrl) {
+          if (existingSpotify?.externalUrl) {
+            // Extract Spotify ID from URL
+            const spotifyIdMatch = existingSpotify.externalUrl.match(/artist\/([a-zA-Z0-9]+)/);
+            if (spotifyIdMatch) {
               try {
-                await db.insert(artistExternalProfiles).values({
-                  id: generateUUID(),
-                  artistId,
-                  platform: "instagram",
-                  externalUrl: rosterArtist.instagramUrl,
-                  handle: rosterArtist.instagramHandle,
-                  isVerified: false,
-                });
+                await db
+                  .update(artistExternalProfiles)
+                  .set({ externalId: spotifyIdMatch[1], isVerified: true, updatedAt: new Date() })
+                  .where(eq(artistExternalProfiles.id, existingSpotify.id));
+                processed++;
+                errorLogger.info(`✓ Updated Spotify ID for ${dbArtist.name}`, { artistId: dbArtist.id });
               } catch (dbError) {
-                errorLogger.warn(`Failed to add Instagram profile for ${rosterArtist.name}`, {
-                  error: getErrorMessage(dbError),
-                });
+                errorLogger.warn(`Failed to update Spotify profile for ${dbArtist.name}`, { error: getErrorMessage(dbError) });
               }
-            }
-
-            // Add YouTube profile if available
-            if (rosterArtist.youtubeUrl) {
-              try {
-                await db.insert(artistExternalProfiles).values({
-                  id: generateUUID(),
-                  artistId,
-                  platform: "youtube",
-                  externalUrl: rosterArtist.youtubeUrl,
-                  handle: rosterArtist.youtubeHandle,
-                  isVerified: false,
-                });
-              } catch (dbError) {
-                errorLogger.warn(`Failed to add YouTube profile for ${rosterArtist.name}`, {
-                  error: getErrorMessage(dbError),
-                });
-              }
-            }
-
-            created++;
-            errorLogger.info(`✓ Created artist: ${rosterArtist.name}`, { artistId, hasImage: !!embedData?.imageUrl });
-          } else {
-            // Update existing artist with roster data
-            try {
-              await db
-                .update(artists)
-                .set({
-                  role: (rosterArtist.role as "mc" | "dj" | "producer" | "cantante") || existing.role,
-                  bio: rosterArtist.bio || existing.bio,
-                  updatedAt: new Date(),
-                })
-                .where(eq(artists.id, existing.id));
-              processed++;
-              errorLogger.info(`✓ Updated existing artist: ${rosterArtist.name}`, { artistId: existing.id });
-            } catch (dbError) {
-              errorLogger.warn(`Failed to update artist ${rosterArtist.name}`, {
-                error: getErrorMessage(dbError),
-              });
+              continue;
             }
           }
+
+          // No Spotify data found — try Spotify oembed search
+          const embedData = await fetchArtistEmbed(dbArtist.slug);
+          if (embedData) {
+            errorLogger.info(`Found Spotify data via oembed for ${dbArtist.name}`, { name: embedData.name });
+          }
+
+          // Update profile image if available
+          if (embedData?.imageUrl && !dbArtist.profileImageUrl) {
+            try {
+              await db.update(artists).set({ profileImageUrl: embedData.imageUrl, updatedAt: new Date() }).where(eq(artists.id, dbArtist.id));
+            } catch (dbError) {
+              errorLogger.warn(`Failed to update image for ${dbArtist.name}`, { error: getErrorMessage(dbError) });
+            }
+          }
+
+          processed++;
         } catch (error) {
           failed++;
           const errorMessage = getErrorMessage(error);
           const errorCode = error instanceof AppError ? error.code : ErrorCode.UNKNOWN_ERROR;
-          errors.push({
-            artist: rosterArtist.name,
-            error: errorMessage,
-            code: errorCode,
-          });
-          errorLogger.warn(`Failed to seed artist: ${rosterArtist.name}`, { error: errorMessage });
+          errors.push({ artist: dbArtist.name, error: errorMessage, code: errorCode });
+          errorLogger.warn(`Failed to seed artist: ${dbArtist.name}`, { error: errorMessage });
         }
       }
 
-      errorLogger.info(`Seed operation complete`, { created, processed, failed, requestId });
+      errorLogger.info(`Seed operation complete`, { processed, failed, requestId });
 
       return NextResponse.json({
         success: true,
         mode: "seed",
-        created,
+        created: 0,
         processed,
         failed,
         errors: errors.length > 0 ? errors : undefined,
-        message: `Seeded roster: ${created} created, ${processed} updated${failed > 0 ? `, ${failed} failed` : ""}`,
+        message: `Checked ${artistsNeedingProfiles.length} artists: ${processed} processed${failed > 0 ? `, ${failed} failed` : ""}`,
         requestId,
       });
     }
@@ -436,32 +370,12 @@ export async function POST(request: NextRequest) {
       );
 
       if (!spotifyProfile?.externalId) {
-        // Try to find in roster by slug
-        const rosterArtist = artistsRoster.find(r => r.slug === artist.slug);
-        if (rosterArtist) {
-          // Add missing Spotify profile
-          try {
-            await db.insert(artistExternalProfiles).values({
-              id: generateUUID(),
-              artistId: artist.id,
-              platform: "spotify",
-              externalId: rosterArtist.spotifyId,
-              externalUrl: rosterArtist.spotifyUrl,
-              isVerified: true,
-            });
-            errorLogger.info(`✓ Added Spotify profile for ${artist.name}`, { artistId: artist.id });
-          } catch (dbError) {
-            errorLogger.warn(`Failed to add Spotify profile for ${artist.name}`, {
-              error: getErrorMessage(dbError),
-            });
-          }
-        } else {
-          errorLogger.warn(`No Spotify ID found for artist`, {
-            artistName: artist.name,
-            artistId: artist.id,
-            help: "Add artist to artistsRoster or manually add Spotify profile",
-          });
-        }
+        // No Spotify profile in DB - skip this artist
+        errorLogger.warn(`No Spotify ID found for artist`, {
+          artistName: artist.name,
+          artistId: artist.id,
+          help: "Add Spotify profile via admin or seed endpoint",
+        });
         continue;
       }
 
@@ -550,7 +464,7 @@ export async function GET() {
           totalArtists: 0,
           artistsWithImages: 0,
           artistsWithoutImages: 0,
-          rosterCount: artistsRoster.length,
+          rosterCount: 0,
           lastSync: null,
           databaseConfigured: false,
         },
@@ -577,7 +491,7 @@ export async function GET() {
         artistsWithImages: artistsWithImages.length,
         artistsWithoutImages: artistsWithoutImages.length,
         artistsNeedingSync: artistsWithoutImages.map((a) => ({ id: a.id, name: a.name, slug: a.slug })),
-        rosterCount: artistsRoster.length,
+        rosterCount: allArtists.length,
         lastSync: null, // Will be enabled after migration
         databaseConfigured: true,
       },
