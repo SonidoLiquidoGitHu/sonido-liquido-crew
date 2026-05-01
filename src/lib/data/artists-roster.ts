@@ -227,6 +227,15 @@ export function getArtistBySlug(slug: string): ArtistRosterData | undefined {
 }
 
 /**
+ * Get artist by name (case-insensitive)
+ * Used as a fallback when DB slug doesn't match roster slug
+ */
+export function getArtistByName(name: string): ArtistRosterData | undefined {
+  const lowerName = name.toLowerCase().trim();
+  return artistsRoster.find((a) => a.name.toLowerCase() === lowerName);
+}
+
+/**
  * Get artist by Spotify ID
  */
 export function getArtistBySpotifyId(spotifyId: string): ArtistRosterData | undefined {

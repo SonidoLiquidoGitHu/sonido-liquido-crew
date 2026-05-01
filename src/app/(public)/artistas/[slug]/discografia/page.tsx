@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { artistsService } from "@/lib/services";
-import { getArtistBySlug } from "@/lib/data/artists-roster";
+import { getArtistBySlug, getArtistByName } from "@/lib/data/artists-roster";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Disc3, ExternalLink, Music2, Play } from "lucide-react";
 
@@ -14,9 +14,15 @@ interface DiscographyPageProps {
 
 export async function generateMetadata({ params }: DiscographyPageProps) {
   const { slug } = await params;
-  const artist = await artistsService.getBySlug(slug);
-  const rosterArtist = getArtistBySlug(slug);
 
+  let artist: Awaited<ReturnType<typeof artistsService.getBySlug>> = null;
+  try {
+    artist = await artistsService.getBySlug(slug);
+  } catch {
+    // DB error — fall through to roster lookup
+  }
+
+  const rosterArtist = getArtistBySlug(slug) || (artist ? getArtistByName(artist.name) : undefined);
   const name = artist?.name || rosterArtist?.name || "Artista";
 
   return {
@@ -27,8 +33,17 @@ export async function generateMetadata({ params }: DiscographyPageProps) {
 
 export default async function ArtistDiscographyPage({ params }: DiscographyPageProps) {
   const { slug } = await params;
-  const artist = await artistsService.getBySlug(slug);
-  const rosterArtist = getArtistBySlug(slug);
+
+  // Try DB lookup first, gracefully handle errors by falling back to roster
+  let artist: Awaited<ReturnType<typeof artistsService.getBySlug>> = null;
+  try {
+    artist = await artistsService.getBySlug(slug);
+  } catch (error) {
+    // DB error — fall through to roster lookup
+    console.warn(`[Discografia] DB lookup failed for slug "${slug}", using roster fallback:`, error instanceof Error ? error.message : error);
+  }
+
+  const rosterArtist = getArtistBySlug(slug) || (artist ? getArtistByName(artist.name) : undefined);
 
   if (!artist && !rosterArtist) {
     notFound();
