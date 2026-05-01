@@ -9,6 +9,7 @@ import { SpotifyEmbed } from "@/components/public/embeds/SpotifyEmbed";
 import { InstagramEmbed } from "@/components/public/embeds/InstagramEmbed";
 import { ArtistYouTubeSection } from "@/components/public/ArtistYouTubeSection";
 import { ArtistUpcomingReleases } from "@/components/public/ArtistUpcomingReleases";
+import { ArtistGallerySection } from "@/components/public/sections/ArtistGallerySection";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -278,6 +279,14 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
             channelUrl={youtubeChannels[0].url}
             channelHandle={youtubeChannels[0].handle}
             maxVideos={4}
+          />
+        )}
+
+        {/* Gallery Section */}
+        {artist?.id && (
+          <ArtistGallerySection
+            artistId={artist.id}
+            artistName={artistName}
           />
         )}
 

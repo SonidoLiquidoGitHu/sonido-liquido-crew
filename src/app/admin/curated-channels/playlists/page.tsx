@@ -1,25 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
-  Music,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { cn, generateUUID, slugify } from "@/lib/utils";
+import {
   ArrowLeft,
-  Loader2,
-  ListMusic,
-  Disc3,
-  Play,
-  Pause,
-  Trash2,
-  GripVertical,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
-  Clock,
+  Disc3,
+  ExternalLink,
+  ListMusic,
+  Loader2,
+  Music,
+  Palette,
+  Pencil,
+  Plus,
+  Trash2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+
+// ===========================================
+// Types
+// ===========================================
 
 interface PlaylistTrack {
   id: string;
@@ -35,21 +47,446 @@ interface PlaylistTrack {
   addedAt: string;
 }
 
-interface Playlist {
+interface CuratedPlaylist {
   id: string;
   name: string;
-  description: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  coverColor: string | null;
+  isPublic: boolean;
+  isActive: boolean;
+  priority: number;
+  spotifyPlaylistId: string | null;
+  spotifyPlaylistUrl: string | null;
   trackCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
+interface PlaylistFormData {
+  name: string;
+  slug: string;
+  description: string;
+  coverImageUrl: string;
+  coverColor: string;
+  spotifyPlaylistId: string;
+  spotifyPlaylistUrl: string;
+  isPublic: boolean;
+  isActive: boolean;
+  priority: number;
+}
+
+const defaultFormData: PlaylistFormData = {
+  name: "",
+  slug: "",
+  description: "",
+  coverImageUrl: "",
+  coverColor: "#f97316",
+  spotifyPlaylistId: "",
+  spotifyPlaylistUrl: "",
+  isPublic: true,
+  isActive: true,
+  priority: 0,
+};
+
+// ===========================================
+// Color Picker Component
+// ===========================================
+
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  const presetColors = [
+    "#f97316", // orange
+    "#ef4444", // red
+    "#22c55e", // green
+    "#3b82f6", // blue
+    "#8b5cf6", // purple
+    "#ec4899", // pink
+    "#eab308", // yellow
+    "#06b6d4", // cyan
+    "#14b8a6", // teal
+    "#6b7280", // gray
+    "#1e293b", // dark slate
+    "#000000", // black
+  ];
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {presetColors.map((color) => (
+          <button
+            key={color}
+            type="button"
+            onClick={() => onChange(color)}
+            className={cn(
+              "w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110",
+              value === color ? "border-white scale-110" : "border-transparent",
+            )}
+            style={{ backgroundColor: color }}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value || "#f97316"}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-8 h-8 rounded cursor-pointer bg-transparent border border-slc-border"
+        />
+        <Input
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#f97316"
+          className="flex-1 bg-slc-dark border-slc-border"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ===========================================
+// Playlist Form Dialog
+// ===========================================
+
+function PlaylistFormDialog({
+  open,
+  onClose,
+  onSubmit,
+  playlist,
+  isSubmitting,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (data: PlaylistFormData) => void;
+  playlist?: CuratedPlaylist | null;
+  isSubmitting: boolean;
+}) {
+  const [formData, setFormData] = useState<PlaylistFormData>(defaultFormData);
+
+  useEffect(() => {
+    if (playlist) {
+      setFormData({
+        name: playlist.name || "",
+        slug: playlist.slug || "",
+        description: playlist.description || "",
+        coverImageUrl: playlist.coverImageUrl || "",
+        coverColor: playlist.coverColor || "#f97316",
+        spotifyPlaylistId: playlist.spotifyPlaylistId || "",
+        spotifyPlaylistUrl: playlist.spotifyPlaylistUrl || "",
+        isPublic: playlist.isPublic !== undefined ? playlist.isPublic : true,
+        isActive: playlist.isActive !== undefined ? playlist.isActive : true,
+        priority: playlist.priority || 0,
+      });
+    } else {
+      setFormData(defaultFormData);
+    }
+  }, [playlist]);
+
+  const handleNameChange = (name: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      name,
+      slug: slugify(name),
+    }));
+  };
+
+  const isEditing = !!playlist;
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="bg-slc-dark border-slc-border text-white max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-oswald uppercase">
+            {isEditing ? "Editar Playlist" : "Crear Playlist"}
+          </DialogTitle>
+          <DialogDescription className="text-slc-muted">
+            {isEditing
+              ? "Modifica los detalles de la playlist"
+              : "Configura los detalles de la nueva playlist"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Name */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+              Nombre *
+            </label>
+            <Input
+              value={formData.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="Ej: Gran Reserva"
+              className="bg-slc-card border-slc-border"
+            />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+              Slug
+            </label>
+            <Input
+              value={formData.slug}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, slug: e.target.value }))
+              }
+              placeholder="gran-reserva"
+              className="bg-slc-card border-slc-border"
+            />
+            <p className="text-xs text-slc-muted mt-1">
+              Se genera automáticamente a partir del nombre
+            </p>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+              Descripción
+            </label>
+            <Input
+              value={formData.description}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="Los mejores tracks del roster"
+              className="bg-slc-card border-slc-border"
+            />
+          </div>
+
+          {/* Cover Color */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Color de Portada
+            </label>
+            <ColorPicker
+              value={formData.coverColor}
+              onChange={(color) =>
+                setFormData((prev) => ({ ...prev, coverColor: color }))
+              }
+            />
+          </div>
+
+          {/* Cover Image URL */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+              URL de Imagen de Portada
+            </label>
+            <Input
+              value={formData.coverImageUrl}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  coverImageUrl: e.target.value,
+                }))
+              }
+              placeholder="https://..."
+              className="bg-slc-card border-slc-border"
+            />
+          </div>
+
+          {/* Spotify Playlist ID */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+              Spotify Playlist ID
+            </label>
+            <Input
+              value={formData.spotifyPlaylistId}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  spotifyPlaylistId: e.target.value,
+                }))
+              }
+              placeholder="Ej: 37i9dQZF1DXcBWIGoYBM5M"
+              className="bg-slc-card border-slc-border"
+            />
+          </div>
+
+          {/* Spotify Playlist URL */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+              Spotify Playlist URL
+            </label>
+            <Input
+              value={formData.spotifyPlaylistUrl}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  spotifyPlaylistUrl: e.target.value,
+                }))
+              }
+              placeholder="https://open.spotify.com/playlist/..."
+              className="bg-slc-card border-slc-border"
+            />
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+              Prioridad
+            </label>
+            <Input
+              type="number"
+              value={formData.priority}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  priority: Number.parseInt(e.target.value) || 0,
+                }))
+              }
+              placeholder="0"
+              className="bg-slc-card border-slc-border"
+            />
+            <p className="text-xs text-slc-muted mt-1">
+              Mayor prioridad = se muestra primero
+            </p>
+          </div>
+
+          {/* Toggles */}
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isPublic}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    isPublic: e.target.checked,
+                  }))
+                }
+                className="w-4 h-4 rounded border-slc-border"
+              />
+              <span className="text-sm">Pública</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    isActive: e.target.checked,
+                  }))
+                }
+                className="w-4 h-4 rounded border-slc-border"
+              />
+              <span className="text-sm">Activa</span>
+            </label>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => onSubmit(formData)}
+            disabled={isSubmitting || !formData.name.trim()}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Guardando...
+              </>
+            ) : isEditing ? (
+              "Guardar Cambios"
+            ) : (
+              "Crear Playlist"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ===========================================
+// Delete Confirmation Dialog
+// ===========================================
+
+function DeleteConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  playlistName,
+  isSubmitting,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  playlistName: string;
+  isSubmitting: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="bg-slc-dark border-slc-border text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-oswald uppercase text-red-500">
+            Eliminar Playlist
+          </DialogTitle>
+          <DialogDescription className="text-slc-muted">
+            ¿Estás seguro de que quieres eliminar &quot;{playlistName}&quot;?
+            Esta acción no se puede deshacer y se eliminarán todos los tracks
+            asociados.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Eliminando...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ===========================================
+// Main Page Component
+// ===========================================
+
 export default function PlaylistsPage() {
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlists, setPlaylists] = useState<CuratedPlaylist[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
-  const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([]);
+  const [playlistTracksList, setPlaylistTracks] = useState<PlaylistTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingTracks, setLoadingTracks] = useState(false);
-  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
-  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
+
+  // Dialog states
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editPlaylist, setEditPlaylist] = useState<CuratedPlaylist | null>(
+    null,
+  );
+  const [deletePlaylist, setDeletePlaylist] = useState<CuratedPlaylist | null>(
+    null,
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchPlaylists();
@@ -61,19 +498,10 @@ export default function PlaylistsPage() {
     }
   }, [selectedPlaylist]);
 
-  useEffect(() => {
-    return () => {
-      if (audioRef) {
-        audioRef.pause();
-        audioRef.src = "";
-      }
-    };
-  }, [audioRef]);
-
-  const fetchPlaylists = async () => {
+  const fetchPlaylists = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/playlists");
+      const res = await fetch("/api/admin/curated-playlists");
       const data = await res.json();
       if (data.success) {
         setPlaylists(data.data);
@@ -86,7 +514,7 @@ export default function PlaylistsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPlaylist]);
 
   const fetchPlaylistTracks = async (playlistId: string) => {
     setLoadingTracks(true);
@@ -100,6 +528,89 @@ export default function PlaylistsPage() {
       console.error("Error fetching playlist tracks:", error);
     } finally {
       setLoadingTracks(false);
+    }
+  };
+
+  const handleCreatePlaylist = async (formData: PlaylistFormData) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/curated-playlists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowCreateDialog(false);
+        await fetchPlaylists();
+        setSelectedPlaylist(data.data.id);
+      } else {
+        alert(data.error || "Error creating playlist");
+      }
+    } catch (error) {
+      console.error("Error creating playlist:", error);
+      alert("Error creating playlist");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdatePlaylist = async (formData: PlaylistFormData) => {
+    if (!editPlaylist) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/admin/curated-playlists/${editPlaylist.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        },
+      );
+      const data = await res.json();
+      if (data.success) {
+        setEditPlaylist(null);
+        await fetchPlaylists();
+        if (selectedPlaylist) {
+          fetchPlaylistTracks(selectedPlaylist);
+        }
+      } else {
+        alert(data.error || "Error updating playlist");
+      }
+    } catch (error) {
+      console.error("Error updating playlist:", error);
+      alert("Error updating playlist");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!deletePlaylist) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/admin/curated-playlists/${deletePlaylist.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+      const data = await res.json();
+      if (data.success) {
+        if (selectedPlaylist === deletePlaylist.id) {
+          setSelectedPlaylist(null);
+          setPlaylistTracks([]);
+        }
+        setDeletePlaylist(null);
+        await fetchPlaylists();
+      } else {
+        alert(data.error || "Error deleting playlist");
+      }
+    } catch (error) {
+      console.error("Error deleting playlist:", error);
+      alert("Error deleting playlist");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -122,18 +633,17 @@ export default function PlaylistsPage() {
   };
 
   const handleMoveTrack = async (trackId: string, direction: "up" | "down") => {
-    const track = playlistTracks.find((t) => t.id === trackId);
+    const track = playlistTracksList.find((t) => t.id === trackId);
     if (!track) return;
 
-    const currentIndex = playlistTracks.findIndex((t) => t.id === trackId);
+    const currentIndex = playlistTracksList.findIndex((t) => t.id === trackId);
     const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
-    if (newIndex < 0 || newIndex >= playlistTracks.length) return;
+    if (newIndex < 0 || newIndex >= playlistTracksList.length) return;
 
-    const otherTrack = playlistTracks[newIndex];
+    const otherTrack = playlistTracksList[newIndex];
 
     try {
-      // Swap positions
       await Promise.all([
         fetch(`/api/admin/playlists/${track.id}`, {
           method: "PUT",
@@ -161,7 +671,10 @@ export default function PlaylistsPage() {
     <div className="min-h-screen bg-slc-black p-6">
       <div className="max-w-7xl mx-auto">
         {/* Back Link */}
-        <Link href="/admin/curated-channels" className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-6">
+        <Link
+          href="/admin/curated-channels"
+          className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-6"
+        >
           <ArrowLeft className="w-4 h-4" />
           Volver a Canales Curados
         </Link>
@@ -173,21 +686,41 @@ export default function PlaylistsPage() {
               Gestionar Playlists
             </h1>
             <p className="text-slc-muted">
-              Organiza los tracks curados en playlists
+              Crea, edita y organiza las playlists curadas
             </p>
           </div>
 
-          <Link href="/admin/curated-channels/tracks">
-            <Button>
-              <Music className="w-4 h-4 mr-2" />
-              Explorar Tracks
+          <div className="flex items-center gap-3">
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Playlist
             </Button>
-          </Link>
+            <Link href="/admin/curated-channels/tracks">
+              <Button variant="outline">
+                <Music className="w-4 h-4 mr-2" />
+                Explorar Tracks
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : playlists.length === 0 ? (
+          <div className="text-center py-20">
+            <ListMusic className="w-16 h-16 text-slc-muted mx-auto mb-4" />
+            <h3 className="font-oswald text-2xl uppercase mb-2">
+              No hay playlists
+            </h3>
+            <p className="text-slc-muted mb-6">
+              Crea tu primera playlist para empezar a organizar tracks
+            </p>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Primera Playlist
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -195,31 +728,69 @@ export default function PlaylistsPage() {
             <div className="lg:col-span-1">
               <div className="bg-slc-card border border-slc-border rounded-2xl overflow-hidden">
                 <div className="p-4 border-b border-slc-border">
-                  <h2 className="font-oswald uppercase">Playlists</h2>
+                  <h2 className="font-oswald uppercase">
+                    Playlists ({playlists.length})
+                  </h2>
                 </div>
                 <div className="divide-y divide-slc-border/50">
                   {playlists.map((playlist) => (
-                    <button
+                    <div
                       key={playlist.id}
-                      onClick={() => setSelectedPlaylist(playlist.id)}
                       className={cn(
-                        "w-full flex items-center gap-3 p-4 transition-colors text-left",
+                        "flex items-center gap-3 p-4 transition-colors group",
                         selectedPlaylist === playlist.id
                           ? "bg-primary/10 border-l-2 border-primary"
-                          : "hover:bg-slc-dark"
+                          : "hover:bg-slc-dark border-l-2 border-transparent",
                       )}
                     >
-                      <ListMusic
-                        className={cn(
-                          "w-5 h-5",
-                          selectedPlaylist === playlist.id ? "text-primary" : "text-slc-muted"
-                        )}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{playlist.name}</p>
-                        <p className="text-xs text-slc-muted">{playlist.trackCount} tracks</p>
+                      {/* Color indicator + Click area */}
+                      <button
+                        onClick={() => setSelectedPlaylist(playlist.id)}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      >
+                        <div
+                          className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center"
+                          style={{
+                            backgroundColor: playlist.coverColor || "#374151",
+                          }}
+                        >
+                          <ListMusic className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {playlist.name}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-slc-muted">
+                              {playlist.trackCount} tracks
+                            </p>
+                            {!playlist.isPublic && (
+                              <span className="text-xs text-yellow-500">
+                                Privada
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Edit / Delete buttons */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setEditPlaylist(playlist)}
+                          className="p-1.5 text-slc-muted hover:text-white transition-colors rounded hover:bg-slc-dark"
+                          title="Editar playlist"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeletePlaylist(playlist)}
+                          className="p-1.5 text-slc-muted hover:text-red-500 transition-colors rounded hover:bg-slc-dark"
+                          title="Eliminar playlist"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -230,14 +801,51 @@ export default function PlaylistsPage() {
               <div className="bg-slc-card border border-slc-border rounded-2xl overflow-hidden">
                 {/* Playlist Header */}
                 {currentPlaylist && (
-                  <div className="p-6 border-b border-slc-border bg-gradient-to-r from-primary/10 to-transparent">
-                    <h2 className="font-oswald text-2xl uppercase mb-1">
-                      {currentPlaylist.name}
-                    </h2>
-                    <p className="text-slc-muted">{currentPlaylist.description}</p>
-                    <p className="text-sm mt-2">
-                      <span className="font-oswald text-primary">{playlistTracks.length}</span> tracks
-                    </p>
+                  <div
+                    className="p-6 border-b border-slc-border"
+                    style={{
+                      background: `linear-gradient(to right, ${
+                        currentPlaylist.coverColor || "#f97316"
+                      }20, transparent)`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="font-oswald text-2xl uppercase mb-1">
+                          {currentPlaylist.name}
+                        </h2>
+                        <p className="text-slc-muted">
+                          {currentPlaylist.description || "Sin descripción"}
+                        </p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <p className="text-sm">
+                            <span className="font-oswald text-primary">
+                              {playlistTracksList.length}
+                            </span>{" "}
+                            tracks
+                          </p>
+                          {currentPlaylist.spotifyPlaylistUrl && (
+                            <a
+                              href={currentPlaylist.spotifyPlaylistUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-green-500 hover:text-green-400 flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Spotify
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditPlaylist(currentPlaylist)}
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -246,10 +854,12 @@ export default function PlaylistsPage() {
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
-                ) : playlistTracks.length === 0 ? (
+                ) : playlistTracksList.length === 0 ? (
                   <div className="text-center py-12">
                     <Disc3 className="w-12 h-12 text-slc-muted mx-auto mb-3" />
-                    <p className="text-slc-muted mb-4">Esta playlist está vacía</p>
+                    <p className="text-slc-muted mb-4">
+                      Esta playlist está vacía
+                    </p>
                     <Link href="/admin/curated-channels/tracks">
                       <Button>
                         <Music className="w-4 h-4 mr-2" />
@@ -259,7 +869,7 @@ export default function PlaylistsPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-slc-border/50">
-                    {playlistTracks
+                    {playlistTracksList
                       .sort((a, b) => a.position - b.position)
                       .map((track, index) => (
                         <div
@@ -280,7 +890,7 @@ export default function PlaylistsPage() {
                             </span>
                             <button
                               onClick={() => handleMoveTrack(track.id, "down")}
-                              disabled={index === playlistTracks.length - 1}
+                              disabled={index === playlistTracksList.length - 1}
                               className="p-1 text-slc-muted hover:text-white disabled:opacity-30"
                             >
                               <ChevronDown className="w-4 h-4" />
@@ -306,13 +916,19 @@ export default function PlaylistsPage() {
 
                           {/* Track Info */}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{track.trackName}</p>
-                            <p className="text-sm text-slc-muted truncate">{track.artistName}</p>
+                            <p className="font-medium truncate">
+                              {track.trackName}
+                            </p>
+                            <p className="text-sm text-slc-muted truncate">
+                              {track.artistName}
+                            </p>
                           </div>
 
                           {/* Added Date */}
                           <div className="hidden md:block text-xs text-slc-muted">
-                            {new Date(track.addedAt).toLocaleDateString("es-MX")}
+                            {new Date(track.addedAt).toLocaleDateString(
+                              "es-MX",
+                            )}
                           </div>
 
                           {/* Actions */}
@@ -341,6 +957,32 @@ export default function PlaylistsPage() {
           </div>
         )}
       </div>
+
+      {/* Create Playlist Dialog */}
+      <PlaylistFormDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onSubmit={handleCreatePlaylist}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* Edit Playlist Dialog */}
+      <PlaylistFormDialog
+        open={!!editPlaylist}
+        onClose={() => setEditPlaylist(null)}
+        onSubmit={handleUpdatePlaylist}
+        playlist={editPlaylist}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={!!deletePlaylist}
+        onClose={() => setDeletePlaylist(null)}
+        onConfirm={handleDeletePlaylist}
+        playlistName={deletePlaylist?.name || ""}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }

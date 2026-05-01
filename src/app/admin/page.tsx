@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalendarDashboard } from "@/components/admin/CalendarDashboard";
+import { SpotifySyncButton } from "@/components/admin/SpotifySyncButton";
 
 export const dynamic = "force-dynamic";
 
@@ -317,6 +318,12 @@ export default async function AdminDashboardPage() {
               lastSync={syncHealth.dropbox.lastSync}
               itemsProcessed={syncHealth.dropbox.itemsProcessed}
             />
+          </div>
+
+          {/* Spotify Quick Sync */}
+          <div className="mt-4 pt-4 border-t border-slc-border">
+            <p className="text-sm text-slc-muted mb-2">Sync Rápido de Spotify</p>
+            <SpotifySyncButton />
           </div>
         </div>
 

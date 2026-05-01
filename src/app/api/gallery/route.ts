@@ -13,10 +13,16 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const albumSlug = searchParams.get("album");
     const tagSlug = searchParams.get("tag");
+    const artistId = searchParams.get("artistId");
     const featured = searchParams.get("featured") === "true";
     const limit = parseInt(searchParams.get("limit") || "50");
 
     let conditions = [eq(galleryPhotos.isPublished, true)];
+
+    // Filter by artist ID
+    if (artistId) {
+      conditions.push(eq(galleryPhotos.artistId, artistId));
+    }
 
     // Filter by album slug
     if (albumSlug) {
