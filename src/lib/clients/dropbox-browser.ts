@@ -42,11 +42,11 @@ export async function getDropboxUploadToken(): Promise<{ token: string; error?: 
 
     const data = await response.json();
 
-    if (!data.success || !data.token) {
+    if (!data.success || !data.data?.token) {
       return { token: "", error: data.error || "No se pudo obtener el token de Dropbox" };
     }
 
-    return { token: data.token };
+    return { token: data.data.token };
   } catch (error) {
     console.error("[Dropbox Browser] Token fetch error:", error);
     return { token: "", error: (error as Error).message };

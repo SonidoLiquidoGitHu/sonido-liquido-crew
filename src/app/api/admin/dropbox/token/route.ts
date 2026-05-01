@@ -41,6 +41,15 @@ export async function GET() {
       }
     }
 
+    // Fallback to environment variable if no database token
+    if (!accessToken) {
+      const envToken = (process.env.DROPBOX_ACCESS_TOKEN || "").trim();
+      if (envToken) {
+        accessToken = envToken;
+        console.log("[Dropbox Token] Using DROPBOX_ACCESS_TOKEN from environment (no database token)");
+      }
+    }
+
     if (!accessToken) {
       return NextResponse.json(
         { success: false, error: "Dropbox not connected" },
@@ -58,7 +67,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        accessToken,
+        token: accessToken,       // Field name expected by all consumer components
+        accessToken,             // Keep for backward compatibility
         expiresAt: expiryTime,
       },
     });
