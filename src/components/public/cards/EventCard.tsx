@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Calendar, MapPin, Clock, Ticket } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import type { Event } from "@/types";
@@ -32,12 +31,16 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
         {/* Image */}
         <div className="aspect-[21/9] relative">
           {event.imageUrl ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={event.imageUrl}
               alt={event.title}
-              fill
-              className="object-cover"
-              unoptimized
+              className="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+              }}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/30 to-slc-dark flex items-center justify-center">
@@ -126,12 +129,16 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
       {/* Cover Image or Date */}
       {event.imageUrl ? (
         <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={event.imageUrl}
             alt={event.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            unoptimized
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+            }}
           />
           {/* Date overlay */}
           <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center">

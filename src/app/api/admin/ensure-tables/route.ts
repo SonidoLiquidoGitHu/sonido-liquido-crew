@@ -619,6 +619,32 @@ export async function POST() {
       results.push({ table: "artist_profiles_seed", status: "error", error: msg });
     }
 
+    // === SEED CREW SOCIAL LINKS IN SITE_SETTINGS ===
+    try {
+      const crewSocialSettings = [
+        { key: "spotify_playlist_url", value: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab", type: "string" },
+        { key: "youtube_channel_url", value: "https://www.youtube.com/@sonidoliquidocrew", type: "string" },
+        { key: "instagram_url", value: "https://www.instagram.com/sonidoliquido/", type: "string" },
+        { key: "facebook_url", value: "https://www.facebook.com/sonidoliquidocrew/", type: "string" },
+      ];
+
+      let seededSettings = 0;
+      for (const setting of crewSocialSettings) {
+        try {
+          await executeRaw(
+            `INSERT OR IGNORE INTO site_settings (id, key, value, type, created_at, updated_at) ` +
+            `VALUES ('crew-${setting.key}', '${setting.key}', '${setting.value}', '${setting.type}', unixepoch(), unixepoch())`
+          );
+          seededSettings++;
+        } catch { /* ignore duplicate */ }
+      }
+
+      results.push({ table: "crew_social_settings", status: "seeded", error: `${seededSettings} crew social settings ensured` });
+    } catch (settingsError) {
+      const msg = settingsError instanceof Error ? settingsError.message : String(settingsError);
+      results.push({ table: "crew_social_settings", status: "error", error: msg });
+    }
+
     const hasErrors = results.some((r) => r.status === "error");
 
     return NextResponse.json({

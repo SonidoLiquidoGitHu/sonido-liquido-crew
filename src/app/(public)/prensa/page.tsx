@@ -29,9 +29,22 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
-import { artistsRoster, type ArtistRosterData } from "@/lib/data/artists-roster";
+import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
 
-interface ArtistWithImage extends ArtistRosterData {
+interface ArtistFromRoster {
+  id: string;
+  name: string;
+  slug: string;
+  role: string | null;
+  profileImageUrl: string | null;
+  spotifyId: string | null;
+  spotifyUrl: string | null;
+  youtubeUrl: string | null;
+  youtubeHandle: string | null;
+  instagramUrl: string | null;
+  instagramHandle: string | null;
+  mixcloudUrl: string | null;
+  mixcloudHandle: string | null;
   imageUrl?: string;
 }
 
@@ -100,9 +113,9 @@ const defaultPressKit: PressKitData = {
   contactEmail: "prensasonidoliquido@gmail.com",
   contactPhone: "+52 55 2801 1881",
   contactLocation: "Ciudad de México, CDMX",
-  spotifyUrl: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab",
-  instagramUrl: "https://www.instagram.com/sonidoliquido/",
-  youtubeUrl: "https://www.youtube.com/@sonidoliquidocrew",
+  spotifyUrl: null,
+  instagramUrl: null,
+  youtubeUrl: null,
   twitterUrl: null,
   facebookUrl: null,
   downloads: [],
@@ -150,10 +163,13 @@ function extractYouTubeId(url: string): string {
 
 export default function PressPage() {
   const [pressKit, setPressKit] = useState<PressKitData>(defaultPressKit);
-  const [artists, setArtists] = useState<ArtistWithImage[]>([]);
+  const [artists, setArtists] = useState<ArtistFromRoster[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState<string>("all");
   const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  // Dynamic social links from DB
+  const { links: crewSocials } = useCrewSocialLinks();
 
   // Track page view
   usePageViewTracking({ section: "prensa" });
@@ -161,7 +177,6 @@ export default function PressPage() {
   // Generate Press Kit PDF with live Spotify data
   const handleGeneratePdf = async (withSpotify = false) => {
     setGeneratingPdf(true);
-    // Track download event
     Analytics.pressKitDownload(withSpotify ? "pdf-spotify" : "pdf");
 
     try {
@@ -202,7 +217,7 @@ export default function PressPage() {
 
   useEffect(() => {
     fetchPressKit();
-    fetchArtistImages();
+    fetchArtistRoster();
   }, []);
 
   const fetchPressKit = async () => {
@@ -244,34 +259,28 @@ export default function PressPage() {
     }
   };
 
-  const fetchArtistImages = async () => {
+  // Fetch artists from the roster API (DB-driven)
+  const fetchArtistRoster = async () => {
     setLoading(true);
-    const artistsWithImages: ArtistWithImage[] = [];
-
-    for (const artist of artistsRoster) {
-      try {
-        const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(artist.spotifyUrl)}`;
-        const response = await fetch(oembedUrl);
-
-        if (response.ok) {
-          const data = await response.json();
-          artistsWithImages.push({
-            ...artist,
-            imageUrl: data.thumbnail_url || undefined,
-          });
-        } else {
-          artistsWithImages.push(artist);
-        }
-      } catch (error) {
-        artistsWithImages.push(artist);
+    try {
+      const res = await fetch("/api/artists/roster");
+      const data = await res.json();
+      if (data.success && data.data) {
+        setArtists(data.data);
       }
+    } catch (error) {
+      console.error("Error fetching artist roster:", error);
     }
-
-    setArtists(artistsWithImages);
     setLoading(false);
   };
 
-  const getRoleLabel = (role?: string) => {
+  // Merge press kit social URLs with crew social links (DB-driven takes precedence)
+  const displaySpotifyUrl = pressKit.spotifyUrl || crewSocials.spotifyUrl;
+  const displayInstagramUrl = pressKit.instagramUrl || crewSocials.instagramUrl;
+  const displayYoutubeUrl = pressKit.youtubeUrl || crewSocials.youtubeUrl;
+  const displayFacebookUrl = pressKit.facebookUrl || crewSocials.facebookUrl;
+
+  const getRoleLabel = (role?: string | null) => {
     const labels: Record<string, string> = {
       mc: "MC / Rapero",
       dj: "DJ",
@@ -281,7 +290,7 @@ export default function PressPage() {
     return labels[role || ""] || "Artista";
   };
 
-  const getRoleBadgeColor = (role?: string) => {
+  const getRoleBadgeColor = (role?: string | null) => {
     const colors: Record<string, string> = {
       mc: "bg-orange-500/20 text-orange-400 border-orange-500/30",
       dj: "bg-purple-500/20 text-purple-400 border-purple-500/30",
@@ -307,7 +316,6 @@ export default function PressPage() {
   const formatAboutContent = (content: string | null) => {
     if (!content) return [];
     return content.split("\n\n").map((paragraph, i) => {
-      // Simple bold text replacement
       const formatted = paragraph.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>');
       return <p key={i} className="mb-4" dangerouslySetInnerHTML={{ __html: formatted }} />;
     });
@@ -451,7 +459,7 @@ export default function PressPage() {
                   >
                     <Quote className="absolute top-6 left-6 w-8 h-8 text-primary/20" />
                     <p className="text-lg md:text-xl text-white/90 italic pl-10 mb-4">
-                      "{quote.quote}"
+                      &ldquo;{quote.quote}&rdquo;
                     </p>
                     <footer className="pl-10 flex items-center gap-2">
                       <span className="text-primary font-medium">— {quote.source}</span>
@@ -501,9 +509,9 @@ export default function PressPage() {
                     fundamental en el desarrollo y profesionalización del Hip Hop en México.
                   </p>
                   <p>
-                    Bajo el liderazgo de <strong className="text-primary">Zaque</strong>, el colectivo ha reunido a
-                    algunos de los artistas más talentosos y comprometidos del género, abarcando MCs, DJs, productores
-                    y cantantes que representan la diversidad y riqueza del Hip Hop mexicano.
+                    El colectivo ha reunido a algunos de los artistas más talentosos y comprometidos del género,
+                    abarcando MCs, DJs, productores y cantantes que representan la diversidad y riqueza del Hip Hop
+                    mexicano.
                   </p>
                 </>
               )}
@@ -553,7 +561,7 @@ export default function PressPage() {
         </section>
       )}
 
-      {/* Roster Section */}
+      {/* Roster Section — dynamic from /api/artists/roster */}
       <section id="roster" className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
@@ -597,97 +605,99 @@ export default function PressPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredArtists.map((artist) => (
-                <div
-                  key={artist.slug}
-                  className="group bg-slc-card border border-slc-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300"
-                >
-                  {/* Image */}
-                  <div className="aspect-square relative bg-slc-border overflow-hidden">
-                    {artist.imageUrl ? (
-                      <Image
-                        src={artist.imageUrl}
-                        alt={artist.name}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slc-card to-slc-border">
-                        <User className="w-20 h-20 text-slc-muted" />
-                      </div>
-                    )}
+              {filteredArtists.map((artist) => {
+                const displayImageUrl = artist.imageUrl || artist.profileImageUrl;
+                return (
+                  <div
+                    key={artist.slug}
+                    className="group bg-slc-card border border-slc-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300"
+                  >
+                    {/* Image */}
+                    <div className="aspect-square relative bg-slc-border overflow-hidden">
+                      {displayImageUrl ? (
+                        <Image
+                          src={displayImageUrl}
+                          alt={artist.name}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slc-card to-slc-border">
+                          <User className="w-20 h-20 text-slc-muted" />
+                        </div>
+                      )}
 
-                    {/* Overlay with links */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-3">
-                        <a
-                          href={artist.spotifyUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-10 h-10 rounded-full bg-spotify flex items-center justify-center hover:scale-110 transition-transform"
+                      {/* Overlay with links */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-3">
+                          {artist.spotifyUrl && (
+                            <a
+                              href={artist.spotifyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-10 h-10 rounded-full bg-spotify flex items-center justify-center hover:scale-110 transition-transform"
+                            >
+                              <Music className="w-5 h-5 text-white" />
+                            </a>
+                          )}
+                          {artist.instagramUrl && (
+                            <a
+                              href={artist.instagramUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-500 flex items-center justify-center hover:scale-110 transition-transform"
+                            >
+                              <Instagram className="w-5 h-5 text-white" />
+                            </a>
+                          )}
+                          {artist.youtubeUrl && (
+                            <a
+                              href={artist.youtubeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition-transform"
+                            >
+                              <Youtube className="w-5 h-5 text-white" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Role Badge */}
+                      <div className="absolute top-3 left-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(artist.role)}`}>
+                          {getRoleLabel(artist.role)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-4">
+                      <h3 className="font-oswald text-xl uppercase mb-1">{artist.name}</h3>
+                      {artist.instagramHandle && (
+                        <p className="text-sm text-slc-muted">{artist.instagramHandle}</p>
+                      )}
+                      {/* Press Kit & EPK Links */}
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <Link
+                          href={`/prensa/artistas/${artist.slug}`}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                         >
-                          <Music className="w-5 h-5 text-white" />
-                        </a>
-                        {artist.instagramUrl && (
-                          <a
-                            href={artist.instagramUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-500 flex items-center justify-center hover:scale-110 transition-transform"
-                          >
-                            <Instagram className="w-5 h-5 text-white" />
-                          </a>
-                        )}
-                        {artist.youtubeUrl && (
-                          <a
-                            href={artist.youtubeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition-transform"
-                          >
-                            <Youtube className="w-5 h-5 text-white" />
-                          </a>
-                        )}
+                          Press Kit
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                        <Link
+                          href={`/epk/${artist.slug}`}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-primary/10 border border-primary/30 rounded-full text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          EPK Completo
+                        </Link>
                       </div>
                     </div>
-
-                    {/* Role Badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(artist.role)}`}>
-                        {getRoleLabel(artist.role)}
-                      </span>
-                    </div>
                   </div>
-
-                  {/* Info */}
-                  <div className="p-4">
-                    <h3 className="font-oswald text-xl uppercase mb-1">{artist.name}</h3>
-                    {artist.instagramHandle && (
-                      <p className="text-sm text-slc-muted">{artist.instagramHandle}</p>
-                    )}
-                    {artist.bio && (
-                      <p className="text-sm text-slc-muted mt-2 line-clamp-2">{artist.bio}</p>
-                    )}
-                    {/* Press Kit & EPK Links */}
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <Link
-                        href={`/prensa/artistas/${artist.slug}`}
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                      >
-                        Press Kit
-                        <ArrowRight className="w-3 h-3" />
-                      </Link>
-                      <Link
-                        href={`/epk/${artist.slug}`}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-primary/10 border border-primary/30 rounded-full text-primary hover:bg-primary/20 transition-colors"
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        EPK Completo
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -741,13 +751,13 @@ export default function PressPage() {
               </div>
             </div>
 
-            {/* Social Links */}
+            {/* Social Links — dynamic from DB */}
             <div className="text-center">
               <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">Redes Sociales</h3>
               <div className="flex justify-center gap-4">
-                {pressKit.spotifyUrl && (
+                {displaySpotifyUrl && (
                   <a
-                    href={pressKit.spotifyUrl}
+                    href={displaySpotifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-12 h-12 rounded-full bg-spotify/10 hover:bg-spotify/20 flex items-center justify-center transition-colors"
@@ -755,9 +765,9 @@ export default function PressPage() {
                     <Music className="w-6 h-6 text-spotify" />
                   </a>
                 )}
-                {pressKit.youtubeUrl && (
+                {displayYoutubeUrl && (
                   <a
-                    href={pressKit.youtubeUrl}
+                    href={displayYoutubeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-12 h-12 rounded-full bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center transition-colors"
@@ -765,9 +775,9 @@ export default function PressPage() {
                     <Youtube className="w-6 h-6 text-red-500" />
                   </a>
                 )}
-                {pressKit.instagramUrl && (
+                {displayInstagramUrl && (
                   <a
-                    href={pressKit.instagramUrl}
+                    href={displayInstagramUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-12 h-12 rounded-full bg-pink-500/10 hover:bg-pink-500/20 flex items-center justify-center transition-colors"
@@ -785,9 +795,9 @@ export default function PressPage() {
                     <Twitter className="w-6 h-6 text-blue-500" />
                   </a>
                 )}
-                {pressKit.facebookUrl && (
+                {displayFacebookUrl && (
                   <a
-                    href={pressKit.facebookUrl}
+                    href={displayFacebookUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-12 h-12 rounded-full bg-blue-600/10 hover:bg-blue-600/20 flex items-center justify-center transition-colors"

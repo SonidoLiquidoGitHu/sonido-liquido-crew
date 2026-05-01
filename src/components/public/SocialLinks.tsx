@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
 
 const socialIcons = {
   spotify: {
@@ -10,7 +13,7 @@ const socialIcons = {
       />
     ),
     color: "hover:text-spotify hover:border-spotify",
-    url: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab",
+    urlKey: "spotifyUrl" as const,
   },
   youtube: {
     name: "YouTube",
@@ -21,7 +24,7 @@ const socialIcons = {
       />
     ),
     color: "hover:text-youtube hover:border-youtube",
-    url: "https://www.youtube.com/@sonidoliquidocrew",
+    urlKey: "youtubeUrl" as const,
   },
   instagram: {
     name: "Instagram",
@@ -32,7 +35,7 @@ const socialIcons = {
       />
     ),
     color: "hover:text-instagram hover:border-instagram",
-    url: "https://www.instagram.com/sonidoliquido/",
+    urlKey: "instagramUrl" as const,
   },
   facebook: {
     name: "Facebook",
@@ -43,7 +46,7 @@ const socialIcons = {
       />
     ),
     color: "hover:text-blue-500 hover:border-blue-500",
-    url: "https://www.facebook.com/sonidoliquidocrew/",
+    urlKey: "facebookUrl" as const,
   },
 };
 
@@ -60,6 +63,8 @@ export function SocialLinks({
   variant = "default",
   className,
 }: SocialLinksProps) {
+  const { links } = useCrewSocialLinks();
+
   const sizeClasses = {
     sm: "w-8 h-8",
     md: "w-10 h-10",
@@ -81,7 +86,7 @@ export function SocialLinks({
         return (
           <a
             key={platform}
-            href={social.url}
+            href={links[social.urlKey]}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(

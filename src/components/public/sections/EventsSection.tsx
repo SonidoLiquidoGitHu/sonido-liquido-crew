@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, Calendar, Clock, MapPin, Ticket, History, CalendarDays, LayoutGrid } from "lucide-react";
+import { ArrowRight, Calendar, MapPin, History, CalendarDays, LayoutGrid } from "lucide-react";
 import { EventCard } from "../cards/EventCard";
 import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -291,23 +290,38 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
 // Compact card for past events - with cover image support
 function PastEventCard({ event }: { event: Event }) {
   const eventDate = new Date(event.eventDate);
-  const formattedDate = eventDate.toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+
+  // Guard against invalid dates
+  const isValidDate = !isNaN(eventDate.getTime());
+  const displayDay = isValidDate ? eventDate.getDate() : "?";
+  const displayMonth = isValidDate
+    ? eventDate.toLocaleDateString("es-MX", { month: "short" })
+    : "???";
+  const displayYear = isValidDate ? eventDate.getFullYear() : "????";
 
   return (
     <div className="group rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all overflow-hidden">
       {/* Cover Image */}
       <div className="relative aspect-[16/9] bg-gray-800">
         {event.imageUrl ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={event.imageUrl}
             alt={event.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
-            unoptimized
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
+            loading="lazy"
+            onError={(e) => {
+              // Replace failed image with fallback gradient
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+              const parent = target.parentElement;
+              if (parent) {
+                const fallback = document.createElement("div");
+                fallback.className = "w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800";
+                fallback.innerHTML = '<svg class="w-8 h-8 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+                parent.appendChild(fallback);
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
@@ -318,16 +332,16 @@ function PastEventCard({ event }: { event: Event }) {
         {/* Date overlay badge */}
         <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm rounded-lg px-2.5 py-1.5 flex flex-col items-center">
           <span className="font-oswald text-lg font-bold text-white leading-none">
-            {eventDate.getDate()}
+            {displayDay}
           </span>
           <span className="text-[10px] text-gray-300 uppercase">
-            {eventDate.toLocaleDateString("es-MX", { month: "short" })}
+            {displayMonth}
           </span>
         </div>
 
         {/* Year badge */}
         <div className="absolute top-3 right-3 px-2 py-0.5 bg-gray-900/80 backdrop-blur-sm rounded text-[10px] text-gray-400 font-medium">
-          {eventDate.getFullYear()}
+          {displayYear}
         </div>
 
         {/* Cancelled overlay */}

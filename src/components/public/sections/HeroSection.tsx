@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { ChevronDown, Volume2 } from "lucide-react";
 import { AudioVisualizer, FloatingParticles, ShimmerText, RevealText, useSoundEffects } from "../effects";
+import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
 
 interface Stats {
   artists: number;
@@ -22,6 +23,7 @@ export function HeroSection() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [stats, setStats] = useState<Stats>(defaultStats);
   const { playSound } = useSoundEffects();
+  const { links } = useCrewSocialLinks();
 
   useEffect(() => {
     setIsVisible(true);
@@ -206,7 +208,7 @@ export function HeroSection() {
           }`}
         >
           <a
-            href="https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab"
+            href={links.spotifyUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="group relative inline-flex items-center gap-3 px-8 py-4 bg-spotify hover:bg-spotify-dark text-white font-semibold rounded-full transition-all duration-300 overflow-hidden hover:scale-105 hover:shadow-[0_0_30px_rgba(30,215,96,0.4)]"
@@ -224,7 +226,7 @@ export function HeroSection() {
             <span className="relative">Escuchar en Spotify</span>
           </a>
           <a
-            href="https://www.youtube.com/@sonidoliquidocrew"
+            href={links.youtubeUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="group relative inline-flex items-center gap-3 px-8 py-4 bg-slc-card/80 backdrop-blur-sm hover:bg-youtube text-white font-semibold rounded-full border border-slc-border hover:border-youtube transition-all duration-300 overflow-hidden hover:scale-105 hover:shadow-[0_0_30px_rgba(255,0,0,0.3)]"

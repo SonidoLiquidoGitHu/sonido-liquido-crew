@@ -1,9 +1,12 @@
-import Link from "next/link";
+"use client";
 
-const socialLinks = [
+import Link from "next/link";
+import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
+
+const socialIcons = [
   {
+    key: "spotifyUrl" as const,
     name: "Spotify",
-    href: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab",
     icon: (
       <path
         fill="currentColor"
@@ -13,8 +16,8 @@ const socialLinks = [
     color: "hover:text-spotify",
   },
   {
+    key: "youtubeUrl" as const,
     name: "YouTube",
-    href: "https://www.youtube.com/@sonidoliquidocrew",
     icon: (
       <path
         fill="currentColor"
@@ -24,8 +27,8 @@ const socialLinks = [
     color: "hover:text-youtube",
   },
   {
+    key: "instagramUrl" as const,
     name: "Instagram",
-    href: "https://www.instagram.com/sonidoliquido/",
     icon: (
       <path
         fill="currentColor"
@@ -35,8 +38,8 @@ const socialLinks = [
     color: "hover:text-instagram",
   },
   {
+    key: "facebookUrl" as const,
     name: "Facebook",
-    href: "https://www.facebook.com/sonidoliquidocrew/",
     icon: (
       <path
         fill="currentColor"
@@ -69,6 +72,8 @@ const footerLinks: {
 };
 
 export function Footer() {
+  const { links } = useCrewSocialLinks();
+
   return (
     <footer className="border-t border-slc-border bg-slc-darker">
       <div className="section-container py-12">
@@ -96,12 +101,12 @@ export function Footer() {
               Fundado en 1999 en la Ciudad de México.
               +160 lanzamientos, +25 años de historia.
             </p>
-            {/* Social Links */}
+            {/* Social Links — dynamic from DB */}
             <div className="flex items-center gap-3">
-              {socialLinks.map((social) => (
+              {socialIcons.map((social) => (
                 <a
                   key={social.name}
-                  href={social.href}
+                  href={links[social.key]}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`w-10 h-10 flex items-center justify-center rounded-full bg-slc-card border border-slc-border text-slc-muted transition-all ${social.color} hover:border-current`}
