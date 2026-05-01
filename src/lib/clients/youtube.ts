@@ -193,14 +193,16 @@ class YouTubeClient {
   }
 
   /**
-   * Get videos from a channel
+   * Get videos from a channel using the search endpoint.
+   * Uses a broad query ("*") to find all videos from the channel.
    */
   async getChannelVideos(
     channelId: string,
     maxResults = 50
   ): Promise<YouTubeVideo[]> {
-    // First, search for videos from the channel
-    const searchResponse = await this.searchVideos("", {
+    // Use a broad query to list channel videos.
+    // Empty string can cause API errors, so we use "*" as a wildcard.
+    const searchResponse = await this.searchVideos("*", {
       channelId,
       maxResults: Math.min(maxResults, 50),
     });
@@ -264,8 +266,12 @@ class YouTubeClient {
     const idMatch = url.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
     if (idMatch && idMatch[1]) return { type: "id", value: idMatch[1] };
 
-    const handleMatch = url.match(/youtube\.com\/@([a-zA-Z0-9_-]+)/);
+    const handleMatch = url.match(/youtube\.com\/@([a-zA-Z0-9_.-]+)/);
     if (handleMatch && handleMatch[1]) return { type: "handle", value: handleMatch[1] };
+
+    // Also handle youtube.com/c/ChannelName format
+    const customMatch = url.match(/youtube\.com\/c\/([a-zA-Z0-9_.-]+)/);
+    if (customMatch && customMatch[1]) return { type: "handle", value: customMatch[1] };
 
     return null;
   }

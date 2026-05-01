@@ -166,20 +166,14 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // No Spotify data found — try Spotify oembed search
-          const embedData = await fetchArtistEmbed(dbArtist.slug);
-          if (embedData) {
-            errorLogger.info(`Found Spotify data via oembed for ${dbArtist.name}`, { name: embedData.name });
-          }
-
-          // Update profile image if available
-          if (embedData?.imageUrl && !dbArtist.profileImageUrl) {
-            try {
-              await db.update(artists).set({ profileImageUrl: embedData.imageUrl, updatedAt: new Date() }).where(eq(artists.id, dbArtist.id));
-            } catch (dbError) {
-              errorLogger.warn(`Failed to update image for ${dbArtist.name}`, { error: getErrorMessage(dbError) });
-            }
-          }
+          // No Spotify data found — try to search by artist name via oembed.
+          // Note: oembed requires a real Spotify ID (Base62), NOT the artist slug.
+          // Since we don't have the Spotify ID, we skip oembed and just log it.
+          errorLogger.info(`No Spotify profile for ${dbArtist.name} — needs manual setup`, {
+            artistId: dbArtist.id,
+            slug: dbArtist.slug,
+            help: "Add a Spotify profile URL via the admin artist page or the seed endpoint",
+          });
 
           processed++;
         } catch (error) {
@@ -289,14 +283,18 @@ export async function POST(request: NextRequest) {
             if (!mapping) continue;
 
             try {
-              // Update artist with followers
+              // Update artist with followers and profile image
+              // Only update profileImageUrl if Spotify returns one (keep existing if not)
+              const updateData: Record<string, unknown> = {
+                followers: spotifyArtist.followers?.total || 0,
+                updatedAt: new Date(),
+              };
+              if (spotifyArtist.images?.[0]?.url) {
+                updateData.profileImageUrl = spotifyArtist.images[0].url;
+              }
               await db
                 .update(artists)
-                .set({
-                  followers: spotifyArtist.followers?.total || 0,
-                  profileImageUrl: spotifyArtist.images?.[0]?.url || undefined,
-                  updatedAt: new Date(),
-                })
+                .set(updateData)
                 .where(eq(artists.id, mapping.artistId));
 
               // Update external profile with sync time

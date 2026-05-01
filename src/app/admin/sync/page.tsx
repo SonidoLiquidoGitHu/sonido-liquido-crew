@@ -379,14 +379,20 @@ export default function AdminSyncPage() {
       const data = await response.json();
 
       if (data.success) {
+        // For YouTube, also show errors from the data object
+        const youtubeErrors = serviceId === "youtube" && data.data?.errors?.length > 0
+          ? data.data.errors[0] // Show first error as the status message
+          : undefined;
+
         setServices(prev =>
           prev.map(s =>
             s.id === serviceId
               ? {
                   ...s,
-                  status: "success" as const,
+                  status: youtubeErrors ? "error" as const : "success" as const,
                   lastSync: new Date().toISOString(),
-                  itemsProcessed: data.processed || data.count || 0,
+                  itemsProcessed: data.data?.videosProcessed || data.processed || data.count || 0,
+                  errorMessage: youtubeErrors,
                 }
               : s
           )
@@ -415,7 +421,7 @@ export default function AdminSyncPage() {
               ? {
                   ...s,
                   status: "error" as const,
-                  errorMessage: data.error || "Sync failed",
+                  errorMessage: data.error || data.data?.errors?.[0] || "Sync failed",
                 }
               : s
           )

@@ -3,9 +3,9 @@ import { db, isDatabaseConfigured } from "@/db/client";
 import { artists, artistExternalProfiles, playlistTracks, curatedTracks, curatedSpotifyChannels } from "@/db/schema";
 import { eq, asc, inArray } from "drizzle-orm";
 
-// Spotify OAuth configuration
-const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
-const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
+// Spotify OAuth configuration — NO hardcoded fallbacks, must be set via env
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || "http://localhost:3000/api/auth/spotify/callback";
 
 // Playlist default descriptions
@@ -61,6 +61,14 @@ export async function GET(request: NextRequest) {
   const playlistId = stateData.playlistId;
   const customName = stateData.customName;
   const followArtists = stateData.followArtists ?? false;
+
+  // Check Spotify credentials are configured
+  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+    console.error("Spotify OAuth credentials not configured");
+    return NextResponse.redirect(
+      new URL(`${returnUrl}?error=spotify_not_configured`, request.url)
+    );
+  }
 
   // Handle errors
   if (error) {
@@ -160,7 +168,8 @@ export async function GET(request: NextRequest) {
               .from(curatedSpotifyChannels)
               .where(inArray(curatedSpotifyChannels.id, channelIds));
 
-            artistSpotifyIds.push(...channels.map(c => c.spotifyArtistId));
+            // Filter out null/undefined spotifyArtistIds to avoid 400 errors from Spotify API
+            artistSpotifyIds.push(...channels.map(c => c.spotifyArtistId).filter((id): id is string => Boolean(id)));
           }
         }
 
@@ -233,8 +242,8 @@ export async function GET(request: NextRequest) {
 
       // Follow artists if requested
       if (followArtists && artistSpotifyIds.length > 0) {
-        // Remove duplicates
-        const uniqueArtistIds = [...new Set(artistSpotifyIds)];
+        // Remove duplicates and filter any remaining nulls/empties
+        const uniqueArtistIds = [...new Set(artistSpotifyIds)].filter(id => id && typeof id === "string" && id.trim().length > 0);
 
         // Spotify API accepts max 50 artists at a time for follow
         for (let i = 0; i < uniqueArtistIds.length; i += 50) {
