@@ -3,15 +3,13 @@ import { db } from "@/db/client";
 import { releases, releaseArtists, artists, artistExternalProfiles } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { spotifyClient } from "@/lib/clients";
 
 // ===========================================
 // FIX MISSING ARTIST LINKS FOR COLLABORATION RELEASES
 // ===========================================
-// Uses Spotify's "Get Several Albums" API (up to 20 at a time) to
-// detect all artists on each release and create missing releaseArtists entries.
-
-const SPOTIFY_CLIENT_ID = (process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568").trim();
-const SPOTIFY_CLIENT_SECRET = (process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6").trim();
+// Uses the spotifyClient (which uses proper env var credentials) to
+// fetch all artists on each release and create missing releaseArtists entries.
 
 const SLC_SPOTIFY_IDS: Record<string, string> = {
   "2jJmTEMkGQfH3BxoG3MQvF": "Brez",
@@ -31,57 +29,8 @@ const SLC_SPOTIFY_IDS: Record<string, string> = {
   "4WQmw3fIx9F7iPKL5v8SCN": "Zaque",
 };
 
-async function getSpotifyToken(): Promise<string> {
-  const credentials = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString("base64");
-  const response = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-  if (!response.ok) throw new Error(`Spotify auth failed: ${response.status}`);
-  const data = await response.json();
-  return data.access_token;
-}
-
-// Fetch up to 20 albums at once from Spotify
-async function getSeveralAlbums(albumIds: string[], token: string): Promise<{ albums: Map<string, { artists: { id: string; name: string }[] }>; status: number; body: string }> {
-  const result = new Map<string, { artists: { id: string; name: string }[] }>();
-  if (albumIds.length === 0) return { albums: result, status: 0, body: "" };
-
-  const url = `https://api.spotify.com/v1/albums?ids=${albumIds.join(",")}&market=MX`;
-  
-  try {
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const body = await response.text();
-
-    if (!response.ok) {
-      console.error(`[Fix Links] Spotify albums API error: ${response.status}, body: ${body.substring(0, 200)}`);
-      return { albums: result, status: response.status, body: body.substring(0, 200) };
-    }
-
-    const data = JSON.parse(body);
-    for (const album of (data.albums || [])) {
-      if (album) {
-        result.set(album.id, {
-          artists: (album.artists || []).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name })),
-        });
-      }
-    }
-    return { albums: result, status: response.status, body: "ok" };
-  } catch (error) {
-    console.error(`[Fix Links] Spotify fetch error:`, error);
-    return { albums: result, status: -1, body: (error as Error).message };
-  }
-}
-
 export async function POST() {
-  console.log("[Fix Links] Starting artist link fix using Spotify API...");
+  console.log("[Fix Links] Starting artist link fix using spotifyClient...");
 
   const results = {
     success: true,
@@ -89,13 +38,16 @@ export async function POST() {
     newLinksCreated: 0,
     errors: [] as string[],
     fixes: [] as { release: string; artist: string }[],
-    debug: {} as Record<string, unknown>,
   };
 
   try {
-    // Get Spotify token
-    const token = await getSpotifyToken();
-    console.log("[Fix Links] Got Spotify token");
+    if (!spotifyClient.isConfigured()) {
+      return NextResponse.json({
+        ...results,
+        success: false,
+        error: "Spotify API not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET env vars.",
+      }, { status: 503 });
+    }
 
     // Get all DB artists with their Spotify IDs
     const dbArtists = await db.select().from(artists);
@@ -118,12 +70,6 @@ export async function POST() {
       }
     }
 
-    results.debug = {
-      dbArtistsCount: dbArtists.length,
-      spotifyIdMapSize: spotifyIdToDbArtist.size,
-      knownSpotifyIds: Object.keys(SLC_SPOTIFY_IDS).length,
-    };
-
     // Get all existing release-artist links
     const allReleaseArtists = await db.select().from(releaseArtists);
     const existingLinks = new Set<string>();
@@ -136,66 +82,43 @@ export async function POST() {
     const releasesWithSpotify = allReleases.filter(r => r.spotifyId);
     results.totalReleasesChecked = releasesWithSpotify.length;
 
-    // Process in batches of 20 (Spotify API limit)
-    const BATCH_SIZE = 20;
-    for (let i = 0; i < releasesWithSpotify.length; i += BATCH_SIZE) {
-      const batch = releasesWithSpotify.slice(i, i + BATCH_SIZE);
-      const spotifyIds = batch.map(r => r.spotifyId!).filter(Boolean);
+    // Use spotifyClient.getAlbums() which handles batching (20 at a time)
+    const allSpotifyIds = releasesWithSpotify.map(r => r.spotifyId!).filter(Boolean);
+    console.log(`[Fix Links] Fetching ${allSpotifyIds.length} albums from Spotify...`);
 
-      console.log(`[Fix Links] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(releasesWithSpotify.length / BATCH_SIZE)}...`);
+    const spotifyAlbums = await spotifyClient.getAlbums(allSpotifyIds);
+    console.log(`[Fix Links] Got ${spotifyAlbums.length} albums from Spotify`);
 
-      try {
-        const { albums: albumsData, status: spotifyStatus, body: spotifyBody } = await getSeveralAlbums(spotifyIds, token);
+    // Build a map from spotify album ID → album data
+    const albumMap = new Map(spotifyAlbums.map(a => [a.id, a]));
 
-        // Debug first batch
-        if (i === 0) {
-          (results.debug as Record<string, unknown>).firstBatchAlbumIds = spotifyIds.slice(0, 5);
-          (results.debug as Record<string, unknown>).albumsDataSize = albumsData.size;
-          (results.debug as Record<string, unknown>).spotifyStatus = spotifyStatus;
-          (results.debug as Record<string, unknown>).spotifyBody = spotifyBody;
-          // Show first album's artists
-          const firstAlbum = albumsData.values().next().value;
-          if (firstAlbum) {
-            (results.debug as Record<string, unknown>).firstAlbumArtists = firstAlbum.artists;
-          }
-        }
+    for (const release of releasesWithSpotify) {
+      if (!release.spotifyId) continue;
+      const albumInfo = albumMap.get(release.spotifyId);
+      if (!albumInfo) continue;
 
-        for (const release of batch) {
-          if (!release.spotifyId) continue;
-          const albumInfo = albumsData.get(release.spotifyId);
-          if (!albumInfo) continue;
-
-          // For each Spotify artist on this album, check if they're in our roster
-          for (const spotifyArtist of albumInfo.artists) {
-            const dbArtist = spotifyIdToDbArtist.get(spotifyArtist.id);
-            if (dbArtist) {
-              const linkKey = `${release.id}|${dbArtist.id}`;
-              if (!existingLinks.has(linkKey)) {
-                try {
-                  await db.insert(releaseArtists).values({
-                    id: generateUUID(),
-                    releaseId: release.id,
-                    artistId: dbArtist.id,
-                    isPrimary: spotifyArtist.id === albumInfo.artists[0]?.id,
-                  });
-                  existingLinks.add(linkKey);
-                  results.newLinksCreated++;
-                  results.fixes.push({ release: release.title, artist: dbArtist.name });
-                  console.log(`[Fix Links] Linked "${release.title}" → ${dbArtist.name}`);
-                } catch {
-                  // Duplicate, ignore
-                }
-              }
+      // For each Spotify artist on this album, check if they're in our roster
+      for (const spotifyArtist of albumInfo.artists) {
+        const dbArtist = spotifyIdToDbArtist.get(spotifyArtist.id);
+        if (dbArtist) {
+          const linkKey = `${release.id}|${dbArtist.id}`;
+          if (!existingLinks.has(linkKey)) {
+            try {
+              await db.insert(releaseArtists).values({
+                id: generateUUID(),
+                releaseId: release.id,
+                artistId: dbArtist.id,
+                isPrimary: spotifyArtist.id === albumInfo.artists[0]?.id,
+              });
+              existingLinks.add(linkKey);
+              results.newLinksCreated++;
+              results.fixes.push({ release: release.title, artist: dbArtist.name });
+              console.log(`[Fix Links] Linked "${release.title}" → ${dbArtist.name}`);
+            } catch {
+              // Duplicate, ignore
             }
           }
         }
-
-        // Small delay between batches to avoid rate limiting
-        if (i + BATCH_SIZE < releasesWithSpotify.length) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      } catch (batchError) {
-        results.errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${(batchError as Error).message}`);
       }
     }
 
@@ -219,7 +142,8 @@ export async function POST() {
 
 export async function GET() {
   return NextResponse.json({
-    message: "Use POST to fix missing artist links for collaboration releases using Spotify API",
+    message: "Use POST to fix missing artist links for collaboration releases using spotifyClient",
     artists: Object.values(SLC_SPOTIFY_IDS),
+    spotifyConfigured: spotifyClient.isConfigured(),
   });
 }
