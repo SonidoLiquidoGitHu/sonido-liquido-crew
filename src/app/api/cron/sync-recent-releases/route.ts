@@ -4,6 +4,7 @@ import { releases, releaseArtists, artists, artistExternalProfiles } from "@/db/
 import { eq, and, desc } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 import { spotifyClient } from "@/lib/clients";
+import { releasesRepository } from "@/lib/repositories";
 
 // ===========================================
 // LIGHTWEIGHT DAILY SYNC - RECENT RELEASES ONLY
@@ -245,10 +246,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Auto-convert any past-due upcoming releases and fix stale isUpcoming flags
+    const autoConvertResult = await releasesRepository.autoConvertUpcomingReleases();
+
     return NextResponse.json({
       ...results,
       success: true,
-      message: `Sync: ${results.newReleasesCreated} new, ${results.newArtistLinksCreated} links from ${results.totalArtistsProcessed} artists`,
+      message: `Sync: ${results.newReleasesCreated} new, ${results.newArtistLinksCreated} links from ${results.totalArtistsProcessed} artists, ${autoConvertResult.converted} auto-converted, ${autoConvertResult.fixed} flags fixed`,
+      autoConvert: autoConvertResult,
     });
 
   } catch (error) {

@@ -1,12 +1,13 @@
-import { db } from "@/db/client";
+import { db, isDatabaseConfigured } from "@/db/client";
 import {
   releases,
   releaseArtists,
   artists,
+  upcomingReleases,
   type Release,
   type NewRelease,
 } from "@/db/schema";
-import { eq, and, desc, asc, gte, lte, sql, like } from "drizzle-orm";
+import { eq, and, or, desc, asc, gte, lte, sql, like, lt, isNotNull } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 
 // ===========================================
@@ -304,5 +305,201 @@ export const releasesRepository = {
       .limit(1);
 
     return release || null;
+  },
+
+  /**
+   * Auto-convert upcoming_releases whose releaseDate has passed
+   * into the releases table so they appear in discografía.
+   * Returns count of newly converted releases.
+   */
+  async autoConvertUpcomingReleases(): Promise<{ converted: number; fixed: number }> {
+    if (!isDatabaseConfigured()) return { converted: 0, fixed: 0 };
+
+    const now = new Date();
+    let converted = 0;
+    let fixed = 0;
+
+    try {
+      // 1. Find active upcoming releases whose date has passed and aren't yet converted
+      const pastDue = await db
+        .select()
+        .from(upcomingReleases)
+        .where(
+          and(
+            eq(upcomingReleases.isActive, true),
+            lt(upcomingReleases.releaseDate, now),
+            sql`${upcomingReleases.releasedReleaseId} IS NULL`
+          )
+        );
+
+      for (const upcoming of pastDue) {
+        try {
+          // Check if a release with same slug already exists (e.g. from Spotify sync)
+          const [existing] = await db
+            .select()
+            .from(releases)
+            .where(eq(releases.slug, upcoming.slug))
+            .limit(1);
+
+          if (existing) {
+            // Link the upcoming release to the existing one
+            await db
+              .update(upcomingReleases)
+              .set({
+                releasedReleaseId: existing.id,
+                isActive: false,
+                updatedAt: new Date(),
+              })
+              .where(eq(upcomingReleases.id, upcoming.id));
+            converted++;
+            continue;
+          }
+
+          // Also check by title match (in case slug differs)
+          const [byTitle] = await db
+            .select()
+            .from(releases)
+            .where(like(releases.title, `%${upcoming.title}%`))
+            .limit(1);
+
+          if (byTitle) {
+            await db
+              .update(upcomingReleases)
+              .set({
+                releasedReleaseId: byTitle.id,
+                isActive: false,
+                updatedAt: new Date(),
+              })
+              .where(eq(upcomingReleases.id, upcoming.id));
+            converted++;
+            continue;
+          }
+
+          // Create a new release from the upcoming release
+          const releaseId = generateUUID();
+          const releaseType = upcoming.releaseType as "album" | "ep" | "single" | "maxi-single" | "compilation" | "mixtape";
+
+          await db.insert(releases).values({
+            id: releaseId,
+            title: upcoming.title,
+            slug: upcoming.slug,
+            releaseType,
+            releaseDate: upcoming.releaseDate,
+            coverImageUrl: upcoming.coverImageUrl,
+            description: upcoming.description,
+            isUpcoming: false,
+            isFeatured: upcoming.isFeatured,
+          });
+
+          // Try to find and link the artist by name
+          const [matchedArtist] = await db
+            .select()
+            .from(artists)
+            .where(
+              or(
+                eq(artists.name, upcoming.artistName),
+                like(artists.name, `%${upcoming.artistName}%`)
+              )
+            )
+            .limit(1);
+
+          if (matchedArtist) {
+            await db.insert(releaseArtists).values({
+              id: generateUUID(),
+              releaseId,
+              artistId: matchedArtist.id,
+              isPrimary: true,
+            });
+          }
+
+          // Handle featured artists
+          if (upcoming.featuredArtists) {
+            try {
+              const featuredNames = JSON.parse(upcoming.featuredArtists) as string[];
+              for (const featName of featuredNames) {
+                const [featArtist] = await db
+                  .select()
+                  .from(artists)
+                  .where(
+                    or(
+                      eq(artists.name, featName),
+                      like(artists.name, `%${featName}%`)
+                    )
+                  )
+                  .limit(1);
+
+                if (featArtist) {
+                  const [existingLink] = await db
+                    .select()
+                    .from(releaseArtists)
+                    .where(
+                      and(
+                        eq(releaseArtists.releaseId, releaseId),
+                        eq(releaseArtists.artistId, featArtist.id)
+                      )
+                    )
+                    .limit(1);
+
+                  if (!existingLink) {
+                    await db.insert(releaseArtists).values({
+                      id: generateUUID(),
+                      releaseId,
+                      artistId: featArtist.id,
+                      isPrimary: false,
+                    });
+                  }
+                }
+              }
+            } catch { /* featured artists JSON parse error, skip */ }
+          }
+
+          // Mark the upcoming release as converted
+          await db
+            .update(upcomingReleases)
+            .set({
+              releasedReleaseId: releaseId,
+              isActive: false,
+              updatedAt: new Date(),
+            })
+            .where(eq(upcomingReleases.id, upcoming.id));
+
+          converted++;
+        } catch (err) {
+          console.error(`[autoConvert] Failed to convert "${upcoming.title}":`, err);
+        }
+      }
+
+      // 2. Fix isUpcoming flags on releases whose dates have passed
+      const staleUpcoming = await db
+        .select({ id: releases.id })
+        .from(releases)
+        .where(
+          and(
+            eq(releases.isUpcoming, true),
+            lt(releases.releaseDate, now)
+          )
+        );
+
+      if (staleUpcoming.length > 0) {
+        await db
+          .update(releases)
+          .set({ isUpcoming: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(releases.isUpcoming, true),
+              lt(releases.releaseDate, now)
+            )
+          );
+        fixed = staleUpcoming.length;
+      }
+
+      if (converted > 0 || fixed > 0) {
+        console.log(`[autoConvert] Converted ${converted} upcoming → releases, fixed ${fixed} isUpcoming flags`);
+      }
+    } catch (error) {
+      console.error("[autoConvert] Error:", error);
+    }
+
+    return { converted, fixed };
   },
 };

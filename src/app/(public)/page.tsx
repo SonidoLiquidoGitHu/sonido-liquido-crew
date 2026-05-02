@@ -6,15 +6,14 @@ import {
   FeaturedArtists,
   UpcomingReleasesHero,
 } from "@/components/public";
-import { ReleaseCountdown } from "@/components/public/ReleaseCountdown";
 import {
   LazySection,
-  ArtistsSkeleton,
   ReleasesSkeleton,
-  VideosSkeleton,
   EventsSkeleton,
   GallerySkeleton,
 } from "@/components/public/LazySection";
+import { BackToTopFab } from "@/components/public/BackToTopFab";
+import { SectionNavDots } from "@/components/public/SectionNavDots";
 import {
   artistsService,
   releasesService,
@@ -34,43 +33,18 @@ const LatestReleases = dynamic(
   { ssr: true }
 );
 
-const FeaturedVideos = dynamic(
-  () => import("@/components/public/sections/FeaturedVideos").then(m => ({ default: m.FeaturedVideos })),
+const MusicaSection = dynamic(
+  () => import("@/components/public/sections/MusicaSection").then(m => ({ default: m.MusicaSection })),
   { ssr: true }
 );
 
-const RandomVideoCarousel = dynamic(
-  () => import("@/components/public/sections/RandomVideoCarousel").then(m => ({ default: m.RandomVideoCarousel })),
-  { ssr: true }
-);
-
-const FeaturedBeats = dynamic(
-  () => import("@/components/public/sections/FeaturedBeats").then(m => ({ default: m.FeaturedBeats })),
-  { ssr: true }
-);
-
-const ArtistChannels = dynamic(
-  () => import("@/components/public/sections/ArtistChannels").then(m => ({ default: m.ArtistChannels })),
-  { ssr: true }
-);
-
-const DiscographyExplorer = dynamic(
-  () => import("@/components/public/sections/DiscographyExplorer").then(m => ({ default: m.DiscographyExplorer })),
-  { ssr: true }
-);
-
-const RosterSocials = dynamic(
-  () => import("@/components/public/sections/RosterSocials").then(m => ({ default: m.RosterSocials })),
+const VideosSection = dynamic(
+  () => import("@/components/public/sections/VideosSection").then(m => ({ default: m.VideosSection })),
   { ssr: true }
 );
 
 const GallerySection = dynamic(
   () => import("@/components/public/sections/GallerySection").then(m => ({ default: m.GallerySection })),
-  { ssr: true }
-);
-
-const SpotifySection = dynamic(
-  () => import("@/components/public/sections/SpotifySection").then(m => ({ default: m.SpotifySection })),
   { ssr: true }
 );
 
@@ -86,11 +60,6 @@ const NewsletterSection = dynamic(
 
 const StatsSection = dynamic(
   () => import("@/components/public/sections/StatsSection").then(m => ({ default: m.StatsSection })),
-  { ssr: true }
-);
-
-const RandomArtistPlayer = dynamic(
-  () => import("@/components/public/RandomArtistPlayer").then(m => ({ default: m.RandomArtistPlayer })),
   { ssr: true }
 );
 
@@ -141,16 +110,13 @@ export default async function HomePage() {
   const [
     allArtists,
     upcomingReleasesList,
-    upcomingRelease,
   ] = await Promise.all([
     safeFetch(artistsService.getAll({ limit: 15 }), []),
     getUpcomingReleases(),
-    safeFetch(releasesService.getNextUpcoming(), null),
   ]);
 
   // ===========================================
   // DEFERRED: Fetch below-the-fold data in parallel
-  // (Still fetched server-side but lower priority)
   // ===========================================
   const [
     latestReleases,
@@ -168,104 +134,98 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* ===========================================
-          ABOVE THE FOLD - Load immediately
-          =========================================== */}
-
-      {/* Upcoming Releases Hero - TOP PRIORITY */}
-      {upcomingReleasesList.length > 0 && (
-        <UpcomingReleasesHero releases={upcomingReleasesList} />
-      )}
-
-      {/* Random Artist Spotify Player - Client-side for variety */}
-      <Suspense fallback={<div className="h-24 bg-slc-dark animate-pulse" />}>
-        <RandomArtistPlayer />
-      </Suspense>
-
-      {/* Hero Section - Critical */}
-      <HeroSection />
-
-      {/* Artist Marquee Banner - Lightweight */}
-      <MarqueeBanner />
-
-      {/* Upcoming Release Countdown (legacy) */}
-      {upcomingRelease && <ReleaseCountdown release={upcomingRelease} />}
-
-      {/* Featured Artists - Important for branding */}
-      <FeaturedArtists artists={allArtists} />
+      {/* Section Nav Dots (desktop only) */}
+      <SectionNavDots />
 
       {/* ===========================================
-          BELOW THE FOLD - Lazy load with skeletons
+          1. UPCOMING RELEASES HERO (with countdowns)
+          Merged: UpcomingReleasesHero + legacy ReleaseCountdown
           =========================================== */}
+      <section id="lanzamientos">
+        {upcomingReleasesList.length > 0 && (
+          <UpcomingReleasesHero releases={upcomingReleasesList} />
+        )}
+      </section>
 
-      {/* Stats Section */}
+      {/* ===========================================
+          2. HERO SECTION (animated title + stats + CTAs)
+          MarqueeBanner merged inline here
+          =========================================== */}
+      <section id="hero">
+        <HeroSection />
+        <MarqueeBanner />
+      </section>
+
+      {/* ===========================================
+          3. FEATURED ARTISTS (pop-art grid)
+          =========================================== */}
+      <section id="artistas">
+        <FeaturedArtists artists={allArtists} />
+      </section>
+
+      {/* ===========================================
+          4. LATEST RELEASES (carousel)
+          =========================================== */}
+      <section id="discografia">
+        <LazySection fallback={<ReleasesSkeleton />} minHeight="500px">
+          <LatestReleases releases={latestReleases} />
+        </LazySection>
+      </section>
+
+      {/* ===========================================
+          5. MÚSICA (tabbed: Artistas / Beats / Playlists)
+          Merged: RandomArtistPlayer + FeaturedBeats + SpotifySection
+          =========================================== */}
+      <LazySection minHeight="400px">
+        <MusicaSection featuredBeats={featuredBeats} />
+      </LazySection>
+
+      {/* ===========================================
+          6. VIDEOS (tabbed: Destacados / Aleatorios / Canales)
+          Merged: FeaturedVideos + RandomVideoCarousel + ArtistChannels
+          =========================================== */}
+      <LazySection minHeight="500px">
+        <VideosSection featuredVideos={featuredVideos} />
+      </LazySection>
+
+      {/* ===========================================
+          7. STATS (inline, compact)
+          =========================================== */}
       <LazySection minHeight="200px">
         <StatsSection />
       </LazySection>
 
-      {/* Latest Releases */}
-      <LazySection fallback={<ReleasesSkeleton />} minHeight="500px">
-        <LatestReleases releases={latestReleases} />
-      </LazySection>
-
-      {/* Featured Videos */}
-      {featuredVideos.length > 0 && (
-        <LazySection fallback={<VideosSkeleton />} minHeight="600px">
-          <FeaturedVideos videos={featuredVideos} />
+      {/* ===========================================
+          8. GALLERY (photos)
+          Removed: RosterSocials (redundant with footer)
+          Removed: DiscographyExplorer (redundant with /discografia page)
+          =========================================== */}
+      <section id="galeria">
+        <LazySection fallback={<GallerySkeleton />} minHeight="400px">
+          <GallerySection limit={12} />
         </LazySection>
-      )}
+      </section>
 
-      {/* Random Video Carousel */}
-      <LazySection fallback={<VideosSkeleton />} minHeight="500px">
-        <RandomVideoCarousel
-          title="Videos Aleatorios"
-          subtitle="Descubre contenido diferente cada vez que visitas"
-          limit={6}
-          showRefreshButton={true}
-        />
-      </LazySection>
-
-      {/* Featured Beats */}
-      {featuredBeats.length > 0 && (
-        <LazySection minHeight="400px">
-          <FeaturedBeats beats={featuredBeats} />
+      {/* ===========================================
+          9. EVENTS
+          =========================================== */}
+      <section id="eventos">
+        <LazySection fallback={<EventsSkeleton />} minHeight="600px">
+          <EventsSection upcomingEvents={upcomingEvents} pastEvents={pastEvents} />
         </LazySection>
-      )}
+      </section>
 
-      {/* Artist YouTube Channels */}
-      <LazySection minHeight="400px">
-        <ArtistChannels />
-      </LazySection>
+      {/* ===========================================
+          10. NEWSLETTER
+          =========================================== */}
+      <section id="newsletter">
+        <LazySection minHeight="300px">
+          <NewsletterSection />
+        </LazySection>
+      </section>
 
-      {/* Discography Explorer - Spotify */}
-      <LazySection minHeight="500px">
-        <DiscographyExplorer />
-      </LazySection>
-
-      {/* Roster Social Links */}
-      <LazySection minHeight="300px">
-        <RosterSocials />
-      </LazySection>
-
-      {/* Photo Gallery - Only show featured photos */}
-      <LazySection fallback={<GallerySkeleton />} minHeight="400px">
-        <GallerySection limit={12} />
-      </LazySection>
-
-      {/* Spotify Playlist */}
-      <LazySection minHeight="400px">
-        <SpotifySection />
-      </LazySection>
-
-      {/* Events */}
-      <LazySection fallback={<EventsSkeleton />} minHeight="600px">
-        <EventsSection upcomingEvents={upcomingEvents} pastEvents={pastEvents} />
-      </LazySection>
-
-      {/* Newsletter Section */}
-      <LazySection minHeight="300px">
-        <NewsletterSection />
-      </LazySection>
+      {/* Back to Top FAB */}
+      <BackToTopFab />
     </>
   );
 }

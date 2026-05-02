@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { releasesService, artistsService } from "@/lib/services";
+import { releasesRepository } from "@/lib/repositories";
 import { db } from "@/db/client";
 import { releaseArtists, artists } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -42,6 +43,10 @@ async function ReleasesWithFilters() {
   let artistOptions: ArtistOption[] = [];
 
   try {
+    // Auto-convert any past-due upcoming releases into the releases table
+    // This keeps discografía in sync with próximos lanzamientos automatically
+    await releasesRepository.autoConvertUpcomingReleases();
+
     // Fetch all releases
     const rawReleases = await releasesService.getAll({ limit: 500 });
 
