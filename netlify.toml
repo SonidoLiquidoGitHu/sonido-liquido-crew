@@ -40,6 +40,11 @@
 [functions."api/*"]
   included_files = ["node_modules/**"]
 
+# Scheduled function: sync Spotify releases every 6 hours
+# Runs at midnight, 6am, noon, and 6pm UTC
+[functions."sync-releases"]
+  schedule = "0 */6 * * *"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
@@ -52,3 +57,4 @@
 # - MAILCHIMP_API_KEY (optional, for newsletter integration)
 # - DROPBOX_APP_KEY (optional, for Dropbox integration)
 # - DROPBOX_APP_SECRET (optional, for Dropbox integration)
+# - CRON_SECRET (optional, secures the scheduled sync endpoint)

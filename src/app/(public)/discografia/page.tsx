@@ -1,8 +1,12 @@
 import { Suspense } from "react";
-import { releasesService } from "@/lib/services";
+import { releasesService, artistsService } from "@/lib/services";
+import { db } from "@/db/client";
+import { releaseArtists, artists } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Disc3 } from "lucide-react";
 import { DiscografiaClient } from "@/components/public/sections/DiscografiaClient";
+import type { ReleaseType } from "@/types";
 
 export const metadata = {
   title: "Discografía | Sonido Líquido Crew",
@@ -11,17 +15,115 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
+interface ArtistOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface ReleaseWithArtist {
+  id: string;
+  title: string;
+  slug: string;
+  releaseType: ReleaseType;
+  releaseDate: Date | null;
+  coverImageUrl: string | null;
+  spotifyUrl: string | null;
+  spotifyId: string | null;
+  artistId: string | null;
+  artistName: string | null;
+  artistSlug: string | null;
+  isUpcoming: boolean;
+  isFeatured: boolean;
+}
+
 async function ReleasesWithFilters() {
-  let releases: Awaited<ReturnType<typeof releasesService.getAll>> = [];
+  let releases: ReleaseWithArtist[] = [];
+  let artistOptions: ArtistOption[] = [];
 
   try {
-    releases = await releasesService.getAll({ limit: 200 });
+    // Fetch all releases
+    const rawReleases = await releasesService.getAll({ limit: 500 });
+
+    // Fetch artist-release associations
+    const allReleaseArtists = await db.select({
+      releaseId: releaseArtists.releaseId,
+      artistId: releaseArtists.artistId,
+      isPrimary: releaseArtists.isPrimary,
+    }).from(releaseArtists);
+
+    // Fetch all artists
+    const allArtists = await db.select({
+      id: artists.id,
+      name: artists.name,
+      slug: artists.slug,
+    }).from(artists);
+
+    // Build artist lookup map
+    const artistMap = new Map(allArtists.map(a => [a.id, a]));
+
+    // Build releaseId → primary artist lookup
+    const releaseArtistMap = new Map<string, { artistId: string; artistName: string; artistSlug: string }>();
+    for (const ra of allReleaseArtists) {
+      if (ra.isPrimary) {
+        const artist = artistMap.get(ra.artistId);
+        if (artist) {
+          releaseArtistMap.set(ra.releaseId, {
+            artistId: artist.id,
+            artistName: artist.name,
+            artistSlug: artist.slug,
+          });
+        }
+      }
+    }
+
+    // For releases without a primary artist, use the first association
+    for (const ra of allReleaseArtists) {
+      if (!releaseArtistMap.has(ra.releaseId)) {
+        const artist = artistMap.get(ra.artistId);
+        if (artist) {
+          releaseArtistMap.set(ra.releaseId, {
+            artistId: artist.id,
+            artistName: artist.name,
+            artistSlug: artist.slug,
+          });
+        }
+      }
+    }
+
+    // Enrich releases with artist info
+    releases = rawReleases.map(r => {
+      const artistInfo = releaseArtistMap.get(r.id);
+      return {
+        id: r.id,
+        title: r.title,
+        slug: r.slug,
+        releaseType: r.releaseType,
+        releaseDate: r.releaseDate,
+        coverImageUrl: r.coverImageUrl,
+        spotifyUrl: r.spotifyUrl,
+        spotifyId: r.spotifyId,
+        artistId: artistInfo?.artistId || null,
+        artistName: artistInfo?.artistName || null,
+        artistSlug: artistInfo?.artistSlug || null,
+        isUpcoming: r.isUpcoming,
+        isFeatured: r.isFeatured,
+      };
+    });
+
+    // Build artist options from releases that have artist associations
+    const artistIdsWithReleases = new Set(
+      releases.filter(r => r.artistId).map(r => r.artistId!)
+    );
+    artistOptions = allArtists
+      .filter(a => artistIdsWithReleases.has(a.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     console.error("Failed to fetch releases:", error);
     releases = [];
   }
 
-  return <DiscografiaClient releases={releases} />;
+  return <DiscografiaClient releases={releases} artistOptions={artistOptions} />;
 }
 
 function ReleasesGridSkeleton() {

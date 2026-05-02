@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ReleaseCard } from "@/components/public/cards/ReleaseCard";
-import { Disc3, Search, SlidersHorizontal, X } from "lucide-react";
+import { Disc3, Search, SlidersHorizontal, X, Users } from "lucide-react";
 import type { Release, ReleaseType } from "@/types";
 
 // ===========================================
@@ -20,13 +20,37 @@ const RELEASE_TYPES: { value: ReleaseType | "all"; label: string }[] = [
 
 type SortOption = "newest" | "oldest" | "title";
 
-interface DiscografiaClientProps {
-  releases: Release[];
+interface ArtistOption {
+  id: string;
+  name: string;
+  slug: string;
 }
 
-export function DiscografiaClient({ releases }: DiscografiaClientProps) {
+interface ReleaseWithArtist {
+  id: string;
+  title: string;
+  slug: string;
+  releaseType: ReleaseType;
+  releaseDate: Date | null;
+  coverImageUrl: string | null;
+  spotifyUrl: string | null;
+  spotifyId: string | null;
+  artistId: string | null;
+  artistName: string | null;
+  artistSlug: string | null;
+  isUpcoming: boolean;
+  isFeatured: boolean;
+}
+
+interface DiscografiaClientProps {
+  releases: ReleaseWithArtist[];
+  artistOptions: ArtistOption[];
+}
+
+export function DiscografiaClient({ releases, artistOptions }: DiscografiaClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<ReleaseType | "all">("all");
+  const [selectedArtistId, setSelectedArtistId] = useState<string | "all">("all");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [showFilters, setShowFilters] = useState(false);
 
@@ -51,7 +75,8 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter((r) =>
-        r.title.toLowerCase().includes(query)
+        r.title.toLowerCase().includes(query) ||
+        (r.artistName && r.artistName.toLowerCase().includes(query))
       );
     }
 
@@ -60,10 +85,15 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
       result = result.filter((r) => r.releaseType === selectedType);
     }
 
+    // Artist filter
+    if (selectedArtistId !== "all") {
+      result = result.filter((r) => r.artistId === selectedArtistId);
+    }
+
     // Year filter
     if (selectedYear !== "all") {
       result = result.filter(
-        (r) => new Date(r.releaseDate).getFullYear() === selectedYear
+        (r) => r.releaseDate && new Date(r.releaseDate).getFullYear() === selectedYear
       );
     }
 
@@ -72,13 +102,13 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
       case "newest":
         result.sort(
           (a, b) =>
-            new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+            new Date(b.releaseDate || 0).getTime() - new Date(a.releaseDate || 0).getTime()
         );
         break;
       case "oldest":
         result.sort(
           (a, b) =>
-            new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()
+            new Date(a.releaseDate || 0).getTime() - new Date(b.releaseDate || 0).getTime()
         );
         break;
       case "title":
@@ -87,7 +117,7 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
     }
 
     return result;
-  }, [releases, searchQuery, selectedType, selectedYear, sortBy]);
+  }, [releases, searchQuery, selectedType, selectedArtistId, selectedYear, sortBy]);
 
   // Count releases per type for badges
   const typeCounts = useMemo(() => {
@@ -98,11 +128,12 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
     return counts;
   }, [releases]);
 
-  const hasActiveFilters = selectedType !== "all" || selectedYear !== "all" || searchQuery.trim() !== "";
+  const hasActiveFilters = selectedType !== "all" || selectedYear !== "all" || selectedArtistId !== "all" || searchQuery.trim() !== "";
 
   const clearFilters = () => {
     setSelectedType("all");
     setSelectedYear("all");
+    setSelectedArtistId("all");
     setSearchQuery("");
     setSortBy("newest");
   };
@@ -134,7 +165,7 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar lanzamiento..."
+              placeholder="Buscar lanzamiento o artista..."
               className="w-full pl-10 pr-4 py-2.5 bg-slc-card border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted focus:outline-none focus:border-primary transition-colors"
             />
             {searchQuery && (
@@ -192,8 +223,27 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
             })}
           </div>
 
-          {/* Year Filter + Sort Row */}
+          {/* Artist Filter + Year + Sort Row */}
           <div className="flex flex-wrap items-center gap-3">
+            {/* Artist Dropdown */}
+            {artistOptions.length > 0 && (
+              <div className="relative">
+                <Users className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slc-muted pointer-events-none" />
+                <select
+                  value={selectedArtistId}
+                  onChange={(e) => setSelectedArtistId(e.target.value)}
+                  className="pl-8 pr-8 py-1.5 bg-slc-card border border-slc-border rounded-lg text-xs text-slc-muted focus:outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="all">Todos los artistas</option>
+                  {artistOptions.map((artist) => (
+                    <option key={artist.id} value={artist.id}>
+                      {artist.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Year Dropdown */}
             <select
               value={selectedYear}
@@ -247,7 +297,12 @@ export function DiscografiaClient({ releases }: DiscografiaClientProps) {
       {filteredReleases.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 pb-20">
           {filteredReleases.map((release) => (
-            <ReleaseCard key={release.id} release={release} showArtist={false} />
+            <ReleaseCard
+              key={release.id}
+              release={release as unknown as Release}
+              showArtist={selectedArtistId === "all"}
+              artistName={release.artistName || undefined}
+            />
           ))}
         </div>
       ) : (
