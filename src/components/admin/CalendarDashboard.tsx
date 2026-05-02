@@ -1106,15 +1106,23 @@ export function CalendarDashboard() {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Descargar archivo ICS
-                <span className="text-xs text-slc-muted ml-auto">Apple, Outlook, Google</span>
+                <span className="text-xs text-slc-muted ml-auto">Apple, Outlook</span>
               </Button>
 
+              <a
+                href={`https://calendar.google.com/calendar/render?cid=${encodeURIComponent(`webcal://${typeof window !== "undefined" ? window.location.host : "sonidoliquido.com"}/api/calendar/ics`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-start w-full px-4 py-2 border border-slc-border rounded-lg hover:bg-slc-dark transition-colors"
+              >
+                <CalendarIcon className="w-4 h-4 mr-2" />
+                Agregar a Google Calendar
+                <ExternalLink className="w-3 h-3 ml-auto text-slc-muted" />
+              </a>
+
               <p className="text-xs text-slc-muted text-center pt-2">
-                El archivo ICS incluye todos los lanzamientos y eventos.
-                Impórtalo manualmente en tu calendario.
-              </p>
-              <p className="text-xs text-yellow-500/80 text-center">
-                No uses la suscripción automática — descarga e importa manualmente para evitar duplicados.
+                El archivo ICS incluye todos los lanzamientos, eventos y notas.
+                La suscripción se actualiza automáticamente cada 7 días.
               </p>
             </div>
           </div>

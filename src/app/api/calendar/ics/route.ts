@@ -3,11 +3,24 @@
 // Provides a proper webcal/ICS subscription feed
 // for events and releases from Sonido Líquido Crew
 // ===========================================
+//
+// BUG FIX HISTORY:
+// - Fixed: DTSTAMP was using new Date() which changed every request,
+//   causing calendar clients to create duplicate events on every re-fetch.
+//   Now uses stable DTSTAMP derived from event date.
+// - Fixed: Missing VTIMEZONE caused Apple Calendar to treat events as
+//   recurring daily (phantom events until 2028). Now includes proper
+//   VTIMEZONE for America/Mexico_City.
+// - Fixed: REFRESH-INTERVAL was PT24H (24 hours), now P7D (7 days)
+//   to reduce re-fetch frequency.
+// - Fixed: Added SEQUENCE:0 and TRANSP:OPAQUE for proper event handling.
+// - Fixed: Timed events now use TZID instead of UTC conversion.
+// ===========================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { events, releases, upcomingReleases, artists } from "@/db/schema";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { events, releases, upcomingReleases } from "@/db/schema";
+import { eq, gte, desc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // Cache for 1 hour
@@ -25,25 +38,6 @@ function formatICSDateOnly(d: Date): string {
   return `${year}${month}${day}`;
 }
 
-// Escape ICS text values
-function escapeICS(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\n/g, "\\n")
-    .slice(0, 200); // Limit length for safety
-}
-
-// Generate a stable DTSTAMP from a date string so it doesn't change on every request
-// This prevents calendar clients from creating duplicate events on re-fetch
-function stableDTSTAMP(dateStr: string | Date): string {
-  const d = new Date(dateStr);
-  // Use the event date at midnight UTC as the stamp - this is stable across requests
-  const stamp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
-  return formatICSDate(stamp);
-}
-
 // Format local datetime for TZID usage: YYYYMMDDTHHMMSS (no Z suffix)
 // Used with DTSTART;TZID=... for timed events in specific timezones
 function formatLocalDateTime(d: Date): string {
@@ -56,8 +50,28 @@ function formatLocalDateTime(d: Date): string {
   return `${year}${month}${day}T${hours}${minutes}${seconds}`;
 }
 
+// Escape ICS text values
+function escapeICS(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n")
+    .slice(0, 200);
+}
+
+// Generate a stable DTSTAMP from a date string so it doesn't change on every request
+// This is THE critical fix — previously used new Date() which changed every second,
+// making calendar clients think events were modified and creating duplicates
+function stableDTSTAMP(dateStr: string | Date): string {
+  const d = new Date(dateStr);
+  const stamp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
+  return formatICSDate(stamp);
+}
+
 // VTIMEZONE definition for America/Mexico_City
-// Required by RFC 5545 for proper timezone handling in calendar clients
+// Required by RFC 5545 — without this, Apple Calendar misinterprets timed events
+// as floating-time and can display them as daily recurring events
 const VTIMEZONE_MEXICO_CITY = [
   "BEGIN:VTIMEZONE",
   "TZID:America/Mexico_City",
@@ -78,7 +92,23 @@ const VTIMEZONE_MEXICO_CITY = [
   "END:VTIMEZONE",
 ].join("\r\n");
 
-// Create a VEVENT block for a single event
+// Build the ICS calendar header — used for all responses
+function buildCalendarHeader(): string[] {
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Sonido Líquido Crew//Calendar//ES",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:Sonido Líquido Crew",
+    "X-WR-TIMEZONE:America/Mexico_City",
+    VTIMEZONE_MEXICO_CITY,
+    "REFRESH-INTERVAL;VALUE=DURATION:P7D",
+    "X-PUBLISHED-TTL:P7D",
+  ];
+}
+
+// Create a VEVENT block for a single event (no recurrence)
 function createICSEvent(params: {
   uid: string;
   title: string;
@@ -99,9 +129,7 @@ function createICSEvent(params: {
   ];
 
   if (isAllDay) {
-    // All-day event format (no time component)
     lines.push(`DTSTART;VALUE=DATE:${formatICSDateOnly(dateStart)}`);
-    // End date for all-day events is exclusive (next day)
     const nextDay = new Date(dateStart);
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
     lines.push(`DTEND;VALUE=DATE:${formatICSDateOnly(nextDay)}`);
@@ -111,7 +139,6 @@ function createICSEvent(params: {
     if (dateEnd) {
       lines.push(`DTEND;TZID=America/Mexico_City:${formatLocalDateTime(dateEnd)}`);
     } else {
-      // Default 2-hour duration for timed events
       const end = new Date(dateStart);
       end.setHours(end.getHours() + 2);
       lines.push(`DTEND;TZID=America/Mexico_City:${formatLocalDateTime(end)}`);
@@ -123,52 +150,24 @@ function createICSEvent(params: {
   if (description) {
     lines.push(`DESCRIPTION:${escapeICS(description)}`);
   }
-
   if (location) {
     lines.push(`LOCATION:${escapeICS(location)}`);
   }
-
   if (url) {
     lines.push(`URL:${url}`);
   }
 
-  // No recurrence - each event is a single occurrence
-  // TRANSP:OPAQUE means the event blocks time (busy)
   lines.push("TRANSP:OPAQUE");
   lines.push("END:VEVENT");
 
   return lines.join("\r\n");
 }
 
-// Create a CANCELLED VEVENT to force calendar clients to delete an event by UID
-function createCancelledICSEvent(uid: string, dateStart: Date): string {
-  const lines: string[] = [
-    "BEGIN:VEVENT",
-    `UID:${uid}@sonidoliquido.com`,
-    `DTSTAMP:${formatICSDate(new Date())}`,
-    `DTSTART;VALUE=DATE:${formatICSDateOnly(dateStart)}`,
-    "STATUS:CANCELLED",
-    "SEQUENCE:1",
-    "END:VEVENT",
-  ];
-  return lines.join("\r\n");
-}
-
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      // Return an empty but valid ICS calendar with CANCEL to clear subscriptions
       const emptyCalendar = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Sonido Líquido Crew//Calendar//ES",
-        "CALSCALE:GREGORIAN",
-        "METHOD:CANCEL",
-        "X-WR-CALNAME:Sonido Líquido Crew",
-        "X-WR-TIMEZONE:America/Mexico_City",
-        VTIMEZONE_MEXICO_CITY,
-        "REFRESH-INTERVAL;VALUE=DURATION:P7D",
-        "X-PUBLISHED-TTL:P7D",
+        ...buildCalendarHeader(),
         "END:VCALENDAR",
       ].join("\r\n");
 
@@ -184,20 +183,20 @@ export async function GET(request: NextRequest) {
 
     const icsEvents: string[] = [];
 
-    // Fetch ALL events (including past) to generate CANCEL entries for phantom events
-    // This ensures calendar clients that received buggy events will remove them
+    // Fetch future events (upcoming + past 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const allEvents = await db
       .select()
       .from(events)
+      .where(gte(events.eventDate, thirtyDaysAgo))
       .orderBy(events.eventDate);
 
-    // Add events to ICS
     for (const event of allEvents) {
       const eventDate = new Date(event.eventDate);
       const hasTime = event.eventTime && event.eventTime.trim() !== "";
 
       if (hasTime && event.eventTime) {
-        // Parse time string (e.g., "21:00" or "9:00 PM")
         const timeParts = event.eventTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
         if (timeParts) {
           let hours = parseInt(timeParts[1], 10);
@@ -210,7 +209,7 @@ export async function GET(request: NextRequest) {
           eventDate.setHours(hours, minutes, 0, 0);
 
           const endDate = new Date(eventDate);
-          endDate.setHours(endDate.getHours() + 3); // Default 3h for concerts
+          endDate.setHours(endDate.getHours() + 3);
 
           icsEvents.push(createICSEvent({
             uid: `event-${event.id}`,
@@ -223,7 +222,6 @@ export async function GET(request: NextRequest) {
             url: event.ticketUrl || undefined,
           }));
         } else {
-          // Fallback to all-day if time can't be parsed
           icsEvents.push(createICSEvent({
             uid: `event-${event.id}`,
             title: event.title,
@@ -235,7 +233,6 @@ export async function GET(request: NextRequest) {
           }));
         }
       } else {
-        // All-day event
         icsEvents.push(createICSEvent({
           uid: `event-${event.id}`,
           title: event.title,
@@ -248,14 +245,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch all releases to generate proper calendar entries
+    // Fetch recent releases (past 30 days)
     const recentReleases = await db
       .select()
       .from(releases)
+      .where(gte(releases.releaseDate, thirtyDaysAgo))
       .orderBy(desc(releases.releaseDate))
-      .limit(50);
+      .limit(20);
 
-    // Add releases as all-day events
     for (const release of recentReleases) {
       const releaseDate = new Date(release.releaseDate);
       icsEvents.push(createICSEvent({
@@ -289,19 +286,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Build the ICS calendar
-    // Use METHOD:REQUEST so that calendar clients properly update existing events
-    // instead of creating duplicates
     const icsContent = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Sonido Líquido Crew//Calendar//ES",
-      "CALSCALE:GREGORIAN",
-      "METHOD:REQUEST",
-      "X-WR-CALNAME:Sonido Líquido Crew",
-      "X-WR-TIMEZONE:America/Mexico_City",
-      VTIMEZONE_MEXICO_CITY,
-      "REFRESH-INTERVAL;VALUE=DURATION:P7D",
-      "X-PUBLISHED-TTL:P7D",
+      ...buildCalendarHeader(),
       ...icsEvents,
       "END:VCALENDAR",
     ].join("\r\n");
@@ -311,29 +297,20 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
         "Content-Disposition": 'attachment; filename="sonido-liquido.ics"',
-        "Cache-Control": "public, max-age=3600", // Cache 1 hour
+        "Cache-Control": "public, max-age=3600",
       },
     });
   } catch (error) {
     console.error("[Calendar ICS] Error generating feed:", error);
 
-    // Return a valid but empty ICS on error (so phone doesn't create phantom events)
+    // Return a valid but empty ICS on error
     const errorCalendar = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Sonido Líquido Crew//Calendar//ES",
-      "CALSCALE:GREGORIAN",
-      "METHOD:CANCEL",
-      "X-WR-CALNAME:Sonido Líquido Crew",
-      "X-WR-TIMEZONE:America/Mexico_City",
-      VTIMEZONE_MEXICO_CITY,
-      "REFRESH-INTERVAL;VALUE=DURATION:P7D",
-      "X-PUBLISHED-TTL:P7D",
+      ...buildCalendarHeader(),
       "END:VCALENDAR",
     ].join("\r\n");
 
     return new NextResponse(errorCalendar, {
-      status: 200, // Return 200 even on error so phone doesn't create phantom events
+      status: 200,
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
         "Content-Disposition": 'attachment; filename="sonido-liquido.ics"',
