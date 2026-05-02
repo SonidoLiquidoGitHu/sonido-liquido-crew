@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Music, Play, Pause, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface Beat {
   id: string;
@@ -175,7 +176,7 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
                 {/* Cover */}
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-slc-dark flex-shrink-0">
                   {beat.coverImageUrl ? (
-                    <Image
+                    <SafeImage
                       src={beat.coverImageUrl}
                       alt={beat.title}
                       width={48}

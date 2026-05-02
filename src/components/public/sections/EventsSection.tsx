@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Calendar, MapPin, History, CalendarDays, LayoutGrid } from "lucide-react";
 import { EventCard } from "../cards/EventCard";
+import { SafeImage } from "@/components/ui/safe-image";
 import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -289,7 +290,6 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
 
 // Compact card for past events - with cover image support
 function PastEventCard({ event }: { event: Event }) {
-  const [imgFailed, setImgFailed] = useState(false);
   const eventDate = new Date(event.eventDate);
 
   // Guard against invalid dates
@@ -304,14 +304,13 @@ function PastEventCard({ event }: { event: Event }) {
     <div className="group rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all overflow-hidden">
       {/* Cover Image */}
       <div className="relative aspect-[16/9] bg-gray-800">
-        {event.imageUrl && !imgFailed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+        {event.imageUrl ? (
+          <SafeImage
             src={event.imageUrl}
             alt={event.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
-            loading="lazy"
-            onError={() => setImgFailed(true)}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">

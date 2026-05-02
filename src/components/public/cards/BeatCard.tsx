@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Play, Pause, Music, Download, Lock, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface Beat {
   id: string;
@@ -66,7 +66,7 @@ export function BeatCard({
       {/* Cover Image with Play Button */}
       <div className="relative aspect-square">
         {beat.coverImageUrl ? (
-          <Image
+          <SafeImage
             src={beat.coverImageUrl}
             alt={beat.title}
             fill
@@ -228,7 +228,7 @@ export function BeatCardCompact({
       {/* Cover Image */}
       <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
         {beat.coverImageUrl ? (
-          <Image
+          <SafeImage
             src={beat.coverImageUrl}
             alt={beat.title}
             fill

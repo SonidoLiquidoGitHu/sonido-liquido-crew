@@ -2,6 +2,7 @@ import { Calendar, MapPin, Clock, Ticket } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface EventCardProps {
   event: Event;
@@ -31,16 +32,12 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
         {/* Image */}
         <div className="aspect-[21/9] relative">
           {event.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SafeImage
               src={event.imageUrl}
               alt={event.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = "none";
-              }}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 600px"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/30 to-slc-dark flex items-center justify-center">
@@ -129,19 +126,15 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
       {/* Cover Image or Date */}
       {event.imageUrl ? (
         <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <SafeImage
             src={event.imageUrl}
             alt={event.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-            }}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="56px"
           />
           {/* Date overlay */}
-          <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center pointer-events-none">
             <span className="font-oswald text-lg font-bold text-white leading-none">
               {day}
             </span>
