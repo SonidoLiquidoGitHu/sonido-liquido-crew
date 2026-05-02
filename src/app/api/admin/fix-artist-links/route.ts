@@ -47,29 +47,37 @@ async function getSpotifyToken(): Promise<string> {
 }
 
 // Fetch up to 20 albums at once from Spotify
-async function getSeveralAlbums(albumIds: string[], token: string): Promise<Map<string, { artists: { id: string; name: string }[] }>> {
+async function getSeveralAlbums(albumIds: string[], token: string): Promise<{ albums: Map<string, { artists: { id: string; name: string }[] }>; status: number; body: string }> {
   const result = new Map<string, { artists: { id: string; name: string }[] }>();
-  if (albumIds.length === 0) return result;
+  if (albumIds.length === 0) return { albums: result, status: 0, body: "" };
 
   const url = `https://api.spotify.com/v1/albums?ids=${albumIds.join(",")}&market=MX`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-  if (!response.ok) {
-    console.error(`[Fix Links] Spotify albums API error: ${response.status}`);
-    return result;
-  }
+    const body = await response.text();
 
-  const data = await response.json();
-  for (const album of (data.albums || [])) {
-    if (album) {
-      result.set(album.id, {
-        artists: (album.artists || []).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name })),
-      });
+    if (!response.ok) {
+      console.error(`[Fix Links] Spotify albums API error: ${response.status}, body: ${body.substring(0, 200)}`);
+      return { albums: result, status: response.status, body: body.substring(0, 200) };
     }
+
+    const data = JSON.parse(body);
+    for (const album of (data.albums || [])) {
+      if (album) {
+        result.set(album.id, {
+          artists: (album.artists || []).map((a: { id: string; name: string }) => ({ id: a.id, name: a.name })),
+        });
+      }
+    }
+    return { albums: result, status: response.status, body: "ok" };
+  } catch (error) {
+    console.error(`[Fix Links] Spotify fetch error:`, error);
+    return { albums: result, status: -1, body: (error as Error).message };
   }
-  return result;
 }
 
 export async function POST() {
@@ -137,12 +145,14 @@ export async function POST() {
       console.log(`[Fix Links] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(releasesWithSpotify.length / BATCH_SIZE)}...`);
 
       try {
-        const albumsData = await getSeveralAlbums(spotifyIds, token);
+        const { albums: albumsData, status: spotifyStatus, body: spotifyBody } = await getSeveralAlbums(spotifyIds, token);
 
         // Debug first batch
         if (i === 0) {
           (results.debug as Record<string, unknown>).firstBatchAlbumIds = spotifyIds.slice(0, 5);
           (results.debug as Record<string, unknown>).albumsDataSize = albumsData.size;
+          (results.debug as Record<string, unknown>).spotifyStatus = spotifyStatus;
+          (results.debug as Record<string, unknown>).spotifyBody = spotifyBody;
           // Show first album's artists
           const firstAlbum = albumsData.values().next().value;
           if (firstAlbum) {
