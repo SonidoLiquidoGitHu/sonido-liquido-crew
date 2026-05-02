@@ -5,7 +5,7 @@ interface SpotifySectionProps {
 }
 
 export function SpotifySection({
-  playlistId = "5qHTKCZIwi3GM3mhPq45Ab",
+  playlistId = "2y0Z7WdObJY1IvCLCXwUez",
 }: SpotifySectionProps) {
   return (
     <section className="py-20 bg-slc-black">

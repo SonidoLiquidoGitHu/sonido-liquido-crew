@@ -11,7 +11,7 @@ const DEFAULT_COVER_COLORS = [
 
 // Fallback playlists with placeholder Spotify IDs (admin can replace via admin panel)
 const FALLBACK_PLAYLISTS: Array<{ id: string; name: string; description: string; coverColor: string; spotifyPlaylistId: string | null; spotifyPlaylistUrl: string | null; trackCount?: number }> = [
-  { id: "gran-reserva", name: "Gran Reserva", description: "Los mejores tracks del roster", coverColor: "#f97316", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
+  { id: "gran-reserva", name: "Gran Reserva", description: "Los mejores tracks del roster", coverColor: "#f97316", spotifyPlaylistId: "2y0Z7WdObJY1IvCLCXwUez", spotifyPlaylistUrl: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez" },
   { id: "weekly-picks", name: "Picks de la Semana", description: "Selección semanal", coverColor: "#22c55e", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
   { id: "new-releases", name: "Nuevos Lanzamientos", description: "Lo más reciente", coverColor: "#3b82f6", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
   { id: "classics", name: "Clásicos", description: "Tracks clásicos del crew", coverColor: "#8b5cf6", spotifyPlaylistId: null, spotifyPlaylistUrl: null },

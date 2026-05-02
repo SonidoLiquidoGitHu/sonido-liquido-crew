@@ -399,30 +399,32 @@ export function CalendarDashboard() {
   const exportToICS = () => {
     const icsEvents: string[] = [];
 
-    // Add releases
+    // Add releases as all-day events
     releases.forEach((release) => {
       const date = new Date(release.releaseDate);
       icsEvents.push(createICSEvent({
         uid: `release-${release.id}`,
         title: `🎵 Lanzamiento: ${release.title}`,
         date,
+        isAllDay: true,
         description: `Lanzamiento de ${release.artistName || "Sonido Líquido"}`,
       }));
     });
 
-    // Add events
+    // Add events (all-day by default since no time info)
     events.forEach((event) => {
       const date = new Date(event.eventDate);
       icsEvents.push(createICSEvent({
         uid: `event-${event.id}`,
         title: `🎤 ${event.title}`,
         date,
+        isAllDay: true,
         description: `Evento en ${event.venue || ""}, ${event.city || ""}`,
         location: `${event.venue || ""}, ${event.city || ""}`,
       }));
     });
 
-    // Add notes
+    // Add notes as all-day events
     notes.forEach((note) => {
       const date = new Date(note.date);
       const categoryInfo = getCategoryInfo(note.category);
@@ -430,18 +432,24 @@ export function CalendarDashboard() {
         uid: note.id,
         title: `📝 ${categoryInfo.label}: ${note.content.slice(0, 50)}`,
         date,
+        isAllDay: true,
         description: note.content,
       }));
     });
 
-    const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Sonido Líquido Crew//Calendar//ES
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-X-WR-CALNAME:Sonido Líquido Crew
-${icsEvents.join("\n")}
-END:VCALENDAR`;
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Sonido Líquido Crew//Calendar//ES",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "X-WR-CALNAME:Sonido Líquido Crew",
+      "X-WR-TIMEZONE:America/Mexico_City",
+      "REFRESH-INTERVAL;VALUE=DURATION:PT24H",
+      "X-PUBLISHED-TTL:PT24H",
+      ...icsEvents,
+      "END:VCALENDAR",
+    ].join("\r\n");
 
     const blob = new Blob([icsContent], { type: "text/calendar" });
     const url = URL.createObjectURL(blob);
@@ -453,26 +461,49 @@ END:VCALENDAR`;
     setShowExportModal(false);
   };
 
-  const createICSEvent = ({ uid, title, date, description, location }: {
+  const createICSEvent = ({ uid, title, date, description, location, isAllDay }: {
     uid: string;
     title: string;
     date: Date;
     description?: string;
     location?: string;
+    isAllDay?: boolean;
   }) => {
     const formatICSDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-    const endDate = new Date(date);
-    endDate.setHours(endDate.getHours() + 2);
+    const formatICSDateOnly = (d: Date) => {
+      const year = d.getUTCFullYear();
+      const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      return `${year}${month}${day}`;
+    };
 
-    return `BEGIN:VEVENT
-UID:${uid}@sonidoliquido.com
-DTSTAMP:${formatICSDate(new Date())}
-DTSTART:${formatICSDate(date)}
-DTEND:${formatICSDate(endDate)}
-SUMMARY:${title.replace(/,/g, "\\,")}
-DESCRIPTION:${(description || "").replace(/\n/g, "\\n").replace(/,/g, "\\,")}
-${location ? `LOCATION:${location.replace(/,/g, "\\,")}` : ""}
-END:VEVENT`;
+    const escapeICS = (text: string) => text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n").slice(0, 200);
+
+    const lines: string[] = [
+      "BEGIN:VEVENT",
+      `UID:${uid}@sonidoliquido.com`,
+      `DTSTAMP:${formatICSDate(new Date())}`,
+    ];
+
+    if (isAllDay) {
+      // All-day events use VALUE=DATE format (no time, no recurrence)
+      lines.push(`DTSTART;VALUE=DATE:${formatICSDateOnly(date)}`);
+      const nextDay = new Date(date);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      lines.push(`DTEND;VALUE=DATE:${formatICSDateOnly(nextDay)}`);
+    } else {
+      const endDate = new Date(date);
+      endDate.setHours(endDate.getHours() + 2);
+      lines.push(`DTSTART:${formatICSDate(date)}`);
+      lines.push(`DTEND:${formatICSDate(endDate)}`);
+    }
+
+    lines.push(`SUMMARY:${escapeICS(title)}`);
+    if (description) lines.push(`DESCRIPTION:${escapeICS(description)}`);
+    if (location) lines.push(`LOCATION:${escapeICS(location)}`);
+    lines.push("END:VEVENT");
+
+    return lines.join("\r\n");
   };
 
   const calendarDays = viewMode === "month" ? generateMonthDays() : generateWeekDays();
@@ -1071,7 +1102,7 @@ END:VEVENT`;
               </Button>
 
               <a
-                href={`https://calendar.google.com/calendar/render?cid=webcal://${typeof window !== "undefined" ? window.location.host : ""}/api/calendar/ics`}
+                href={`https://calendar.google.com/calendar/render?cid=${encodeURIComponent(`webcal://${typeof window !== "undefined" ? window.location.host : "sonidoliquido.com"}/api/calendar/ics`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-start w-full px-4 py-2 border border-slc-border rounded-lg hover:bg-slc-dark transition-colors"
