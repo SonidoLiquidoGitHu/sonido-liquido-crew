@@ -64,6 +64,7 @@ class SpotifyClient {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: "grant_type=client_credentials",
+      signal: AbortSignal.timeout(10_000), // 10s timeout for auth
     });
 
     if (!response.ok) {
@@ -80,37 +81,49 @@ class SpotifyClient {
   }
 
   /**
-   * Make authenticated API request with retry logic
+   * Make authenticated API request with retry logic and timeout
    */
-  private async request<T>(endpoint: string, retries = 3): Promise<T> {
+  private async request<T>(endpoint: string, retries = 3, timeoutMs = 15_000): Promise<T> {
     const token = await this.getAccessToken();
     const url = `https://api.spotify.com/v1${endpoint}`;
 
     for (let attempt = 0; attempt < retries; attempt++) {
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
 
-      if (response.ok) {
-        return response.json();
+        if (response.ok) {
+          return response.json();
+        }
+
+        // Handle rate limiting
+        if (response.status === 429) {
+          const retryAfter = parseInt(response.headers.get("Retry-After") || "5", 10);
+          const waitTime = Math.min((retryAfter + 1) * 1000, 10_000); // Cap at 10s
+          console.log(`[Spotify API] Rate limited, waiting ${retryAfter}s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+
+        // For other errors, fail immediately (don't retry 4xx except 429)
+        const errorBody = await response.text().catch(() => "");
+        console.error(`[Spotify API] Error ${response.status}: ${errorBody}`);
+        console.error(`[Spotify API] URL: ${url}`);
+        throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
+      } catch (fetchError) {
+        // Handle timeout errors
+        if (fetchError instanceof DOMException && fetchError.name === "TimeoutError") {
+          console.warn(`[Spotify API] Request timeout for ${endpoint} (attempt ${attempt + 1}/${retries})`);
+          if (attempt < retries - 1) continue;
+          throw new Error(`Spotify API timeout: ${endpoint} failed after ${retries} attempts`);
+        }
+        // Re-throw other errors
+        throw fetchError;
       }
-
-      // Handle rate limiting
-      if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get("Retry-After") || "5", 10);
-        const waitTime = (retryAfter + 1) * 1000;
-        console.log(`[Spotify API] Rate limited, waiting ${retryAfter}s before retry...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-        continue;
-      }
-
-      // For other errors, fail immediately
-      const errorBody = await response.text().catch(() => "");
-      console.error(`[Spotify API] Error ${response.status}: ${errorBody}`);
-      console.error(`[Spotify API] URL: ${url}`);
-      throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
     }
 
     throw new Error(`Spotify API error: Max retries exceeded for ${endpoint}`);

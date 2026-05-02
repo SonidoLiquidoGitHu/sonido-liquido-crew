@@ -162,12 +162,13 @@ export const releasesRepository = {
   },
 
   /**
-   * Get latest releases
+   * Get latest releases (excludes upcoming/unreleased)
    */
   async findLatest(limit = 10): Promise<Release[]> {
     return db
       .select()
       .from(releases)
+      .where(eq(releases.isUpcoming, false))
       .orderBy(desc(releases.releaseDate))
       .limit(limit);
   },

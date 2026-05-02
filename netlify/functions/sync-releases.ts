@@ -6,8 +6,31 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 // This function runs automatically every 6 hours via Netlify's cron scheduler.
 // It calls the app's sync endpoint for each artist individually to avoid
 // Netlify function timeouts. Each artist sync takes ~5-10 seconds.
+// The sync endpoint uses streaming (NDJSON) to prevent CDN inactivity timeouts.
 
 const SLC_ARTIST_COUNT = 15;
+
+interface SyncLine {
+  type: string;
+  artist?: string;
+  found?: number;
+  created?: number;
+  linked?: number;
+  newReleasesCreated?: number;
+  newArtistLinksCreated?: number;
+  totalArtistsProcessed?: number;
+  errors?: string[];
+  message?: string;
+  error?: string;
+}
+
+async function parseNdjsonResponse(response: Response): Promise<SyncLine[]> {
+  const text = await response.text();
+  const lines = text.split("\n").filter(l => l.trim());
+  return lines.map(l => {
+    try { return JSON.parse(l); } catch { return { type: "parse_error", raw: l }; }
+  });
+}
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   const startTime = Date.now();
@@ -28,8 +51,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   for (let i = 0; i < SLC_ARTIST_COUNT; i++) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
-    // Stop if we're approaching the function timeout (leave 10s buffer)
-    if (Date.now() - startTime > 50000) {
+    // Stop if we're approaching the function timeout (leave 15s buffer)
+    if (Date.now() - startTime > 45000) {
       console.log(`[Scheduled Sync] Approaching timeout after ${elapsed}s, stopping at artist ${i}/${SLC_ARTIST_COUNT}`);
       break;
     }
@@ -43,18 +66,41 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           "Content-Type": "application/json",
           ...(cronSecret ? { "Authorization": `Bearer ${cronSecret}` } : {}),
         },
-        signal: AbortSignal.timeout(12_000), // 12 second timeout per artist
+        signal: AbortSignal.timeout(20_000), // 20 second timeout per artist (increased for streaming)
       });
 
-      const data = await response.json();
+      // Parse NDJSON streaming response
+      const lines = await parseNdjsonResponse(response);
 
-      if (data.success) {
+      // Find the final "complete" or "artist_done" line
+      const completeLine = lines.find(l => l.type === "complete");
+      const artistDoneLine = lines.find(l => l.type === "artist_done");
+      const errorLine = lines.find(l => l.type === "error" || l.type === "artist_error" || l.type === "fatal_error");
+
+      if (completeLine || artistDoneLine) {
         results.artistsProcessed++;
-        results.totalNewReleases += data.newReleasesCreated || 0;
-        results.totalNewLinks += data.newArtistLinksCreated || 0;
-        console.log(`[Scheduled Sync] Artist ${i}: ${data.newReleasesCreated || 0} new, ${data.newArtistLinksCreated || 0} links (${elapsed}s)`);
+        const newReleases = completeLine?.newReleasesCreated || artistDoneLine?.created || 0;
+        const newLinks = completeLine?.newArtistLinksCreated || artistDoneLine?.linked || 0;
+        results.totalNewReleases += newReleases;
+        results.totalNewLinks += newLinks;
+        console.log(`[Scheduled Sync] Artist ${i}: ${newReleases} new, ${newLinks} links (${elapsed}s)`);
+      } else if (errorLine) {
+        results.errors.push(`Artist ${i}: ${errorLine.error || "Unknown error"}`);
+        console.error(`[Scheduled Sync] Artist ${i} error: ${errorLine.error}`);
       } else {
-        results.errors.push(`Artist ${i}: ${data.error || "Unknown error"}`);
+        // Fallback: try parsing as regular JSON (backward compatibility)
+        try {
+          const data = JSON.parse(await response.text());
+          if (data.success) {
+            results.artistsProcessed++;
+            results.totalNewReleases += data.newReleasesCreated || 0;
+            results.totalNewLinks += data.newArtistLinksCreated || 0;
+          } else {
+            results.errors.push(`Artist ${i}: ${data.error || "Unknown error"}`);
+          }
+        } catch {
+          results.errors.push(`Artist ${i}: Unexpected response format`);
+        }
       }
     } catch (error) {
       const errorMsg = (error as Error).message;
