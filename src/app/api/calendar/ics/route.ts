@@ -35,6 +35,49 @@ function escapeICS(text: string): string {
     .slice(0, 200); // Limit length for safety
 }
 
+// Generate a stable DTSTAMP from a date string so it doesn't change on every request
+// This prevents calendar clients from creating duplicate events on re-fetch
+function stableDTSTAMP(dateStr: string | Date): string {
+  const d = new Date(dateStr);
+  // Use the event date at midnight UTC as the stamp - this is stable across requests
+  const stamp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
+  return formatICSDate(stamp);
+}
+
+// Format local datetime for TZID usage: YYYYMMDDTHHMMSS (no Z suffix)
+// Used with DTSTART;TZID=... for timed events in specific timezones
+function formatLocalDateTime(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+}
+
+// VTIMEZONE definition for America/Mexico_City
+// Required by RFC 5545 for proper timezone handling in calendar clients
+const VTIMEZONE_MEXICO_CITY = [
+  "BEGIN:VTIMEZONE",
+  "TZID:America/Mexico_City",
+  "BEGIN:DAYLIGHT",
+  "DTSTART:19700405T020000",
+  "RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=4",
+  "TZOFFSETFROM:-0600",
+  "TZOFFSETTO:-0500",
+  "TZNAME:CDT",
+  "END:DAYLIGHT",
+  "BEGIN:STANDARD",
+  "DTSTART:19701025T020000",
+  "RRULE:FREQ=YEARLY;BYDAY=5SU;BYMONTH=10",
+  "TZOFFSETFROM:-0500",
+  "TZOFFSETTO:-0600",
+  "TZNAME:CST",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+].join("\r\n");
+
 // Create a VEVENT block for a single event
 function createICSEvent(params: {
   uid: string;
@@ -51,7 +94,8 @@ function createICSEvent(params: {
   const lines: string[] = [
     "BEGIN:VEVENT",
     `UID:${uid}@sonidoliquido.com`,
-    `DTSTAMP:${formatICSDate(new Date())}`,
+    `DTSTAMP:${stableDTSTAMP(dateStart)}`,
+    "SEQUENCE:0",
   ];
 
   if (isAllDay) {
@@ -62,14 +106,15 @@ function createICSEvent(params: {
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
     lines.push(`DTEND;VALUE=DATE:${formatICSDateOnly(nextDay)}`);
   } else {
-    lines.push(`DTSTART:${formatICSDate(dateStart)}`);
+    // Use TZID for timed events so calendar clients interpret the time correctly
+    lines.push(`DTSTART;TZID=America/Mexico_City:${formatLocalDateTime(dateStart)}`);
     if (dateEnd) {
-      lines.push(`DTEND:${formatICSDate(dateEnd)}`);
+      lines.push(`DTEND;TZID=America/Mexico_City:${formatLocalDateTime(dateEnd)}`);
     } else {
       // Default 2-hour duration for timed events
       const end = new Date(dateStart);
-      end.setUTCHours(end.getUTCHours() + 2);
-      lines.push(`DTEND:${formatICSDate(end)}`);
+      end.setHours(end.getHours() + 2);
+      lines.push(`DTEND;TZID=America/Mexico_City:${formatLocalDateTime(end)}`);
     }
   }
 
@@ -88,25 +133,42 @@ function createICSEvent(params: {
   }
 
   // No recurrence - each event is a single occurrence
+  // TRANSP:OPAQUE means the event blocks time (busy)
+  lines.push("TRANSP:OPAQUE");
   lines.push("END:VEVENT");
 
+  return lines.join("\r\n");
+}
+
+// Create a CANCELLED VEVENT to force calendar clients to delete an event by UID
+function createCancelledICSEvent(uid: string, dateStart: Date): string {
+  const lines: string[] = [
+    "BEGIN:VEVENT",
+    `UID:${uid}@sonidoliquido.com`,
+    `DTSTAMP:${formatICSDate(new Date())}`,
+    `DTSTART;VALUE=DATE:${formatICSDateOnly(dateStart)}`,
+    "STATUS:CANCELLED",
+    "SEQUENCE:1",
+    "END:VEVENT",
+  ];
   return lines.join("\r\n");
 }
 
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      // Return an empty but valid ICS calendar
+      // Return an empty but valid ICS calendar with CANCEL to clear subscriptions
       const emptyCalendar = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
         "PRODID:-//Sonido Líquido Crew//Calendar//ES",
         "CALSCALE:GREGORIAN",
-        "METHOD:PUBLISH",
+        "METHOD:CANCEL",
         "X-WR-CALNAME:Sonido Líquido Crew",
         "X-WR-TIMEZONE:America/Mexico_City",
-        "REFRESH-INTERVAL;VALUE=DURATION:PT24H",
-        "X-PUBLISHED-TTL:PT24H",
+        VTIMEZONE_MEXICO_CITY,
+        "REFRESH-INTERVAL;VALUE=DURATION:P7D",
+        "X-PUBLISHED-TTL:P7D",
         "END:VCALENDAR",
       ].join("\r\n");
 
@@ -122,13 +184,11 @@ export async function GET(request: NextRequest) {
 
     const icsEvents: string[] = [];
 
-    // Fetch future events (upcoming + past 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Fetch ALL events (including past) to generate CANCEL entries for phantom events
+    // This ensures calendar clients that received buggy events will remove them
     const allEvents = await db
       .select()
       .from(events)
-      .where(gte(events.eventDate, thirtyDaysAgo))
       .orderBy(events.eventDate);
 
     // Add events to ICS
@@ -188,13 +248,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch recent releases (past 30 days + next 30 days)
+    // Fetch all releases to generate proper calendar entries
     const recentReleases = await db
       .select()
       .from(releases)
-      .where(gte(releases.releaseDate, thirtyDaysAgo))
       .orderBy(desc(releases.releaseDate))
-      .limit(20);
+      .limit(50);
 
     // Add releases as all-day events
     for (const release of recentReleases) {
@@ -230,16 +289,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Build the ICS calendar
+    // Use METHOD:REQUEST so that calendar clients properly update existing events
+    // instead of creating duplicates
     const icsContent = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
       "PRODID:-//Sonido Líquido Crew//Calendar//ES",
       "CALSCALE:GREGORIAN",
-      "METHOD:PUBLISH",
+      "METHOD:REQUEST",
       "X-WR-CALNAME:Sonido Líquido Crew",
       "X-WR-TIMEZONE:America/Mexico_City",
-      "REFRESH-INTERVAL;VALUE=DURATION:PT24H",
-      "X-PUBLISHED-TTL:PT24H",
+      VTIMEZONE_MEXICO_CITY,
+      "REFRESH-INTERVAL;VALUE=DURATION:P7D",
+      "X-PUBLISHED-TTL:P7D",
       ...icsEvents,
       "END:VCALENDAR",
     ].join("\r\n");
@@ -261,11 +323,12 @@ export async function GET(request: NextRequest) {
       "VERSION:2.0",
       "PRODID:-//Sonido Líquido Crew//Calendar//ES",
       "CALSCALE:GREGORIAN",
-      "METHOD:PUBLISH",
+      "METHOD:CANCEL",
       "X-WR-CALNAME:Sonido Líquido Crew",
       "X-WR-TIMEZONE:America/Mexico_City",
-      "REFRESH-INTERVAL;VALUE=DURATION:PT24H",
-      "X-PUBLISHED-TTL:PT24H",
+      VTIMEZONE_MEXICO_CITY,
+      "REFRESH-INTERVAL;VALUE=DURATION:P7D",
+      "X-PUBLISHED-TTL:P7D",
       "END:VCALENDAR",
     ].join("\r\n");
 

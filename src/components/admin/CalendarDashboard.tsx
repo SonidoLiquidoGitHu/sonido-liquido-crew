@@ -445,8 +445,8 @@ export function CalendarDashboard() {
       "METHOD:PUBLISH",
       "X-WR-CALNAME:Sonido Líquido Crew",
       "X-WR-TIMEZONE:America/Mexico_City",
-      "REFRESH-INTERVAL;VALUE=DURATION:PT24H",
-      "X-PUBLISHED-TTL:PT24H",
+      // NO REFRESH-INTERVAL in downloaded ICS files — only for subscription feeds
+      // This prevents phones from re-fetching and creating duplicate events
       ...icsEvents,
       "END:VCALENDAR",
     ].join("\r\n");
@@ -476,13 +476,21 @@ export function CalendarDashboard() {
       const day = String(d.getUTCDate()).padStart(2, "0");
       return `${year}${month}${day}`;
     };
+    // Stable DTSTAMP derived from the event date (not current time)
+    // This prevents calendar clients from creating duplicate events
+    const stableDTSTAMP = (d: Date) => {
+      const stamp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
+      return formatICSDate(stamp);
+    };
 
     const escapeICS = (text: string) => text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n").slice(0, 200);
 
     const lines: string[] = [
       "BEGIN:VEVENT",
       `UID:${uid}@sonidoliquido.com`,
-      `DTSTAMP:${formatICSDate(new Date())}`,
+      `DTSTAMP:${stableDTSTAMP(date)}`,
+      "SEQUENCE:0",
+      "TRANSP:OPAQUE",
     ];
 
     if (isAllDay) {
@@ -1098,22 +1106,15 @@ export function CalendarDashboard() {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Descargar archivo ICS
-                <span className="text-xs text-slc-muted ml-auto">Apple, Outlook</span>
+                <span className="text-xs text-slc-muted ml-auto">Apple, Outlook, Google</span>
               </Button>
 
-              <a
-                href={`https://calendar.google.com/calendar/render?cid=${encodeURIComponent(`webcal://${typeof window !== "undefined" ? window.location.host : "sonidoliquido.com"}/api/calendar/ics`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-start w-full px-4 py-2 border border-slc-border rounded-lg hover:bg-slc-dark transition-colors"
-              >
-                <CalendarIcon className="w-4 h-4 mr-2" />
-                Agregar a Google Calendar
-                <ExternalLink className="w-3 h-3 ml-auto text-slc-muted" />
-              </a>
-
               <p className="text-xs text-slc-muted text-center pt-2">
-                El archivo ICS incluye todos los lanzamientos, eventos y notas
+                El archivo ICS incluye todos los lanzamientos y eventos.
+                Impórtalo manualmente en tu calendario.
+              </p>
+              <p className="text-xs text-yellow-500/80 text-center">
+                No uses la suscripción automática — descarga e importa manualmente para evitar duplicados.
               </p>
             </div>
           </div>
