@@ -78,10 +78,10 @@ export async function POST(request: NextRequest) {
     const existingLinks = new Set<string>();
     for (const ra of allReleaseArtists) existingLinks.add(`${ra.releaseId}|${ra.artistId}`);
 
-    // Fetch this artist's albums from Spotify
+    // Fetch this artist's albums from Spotify (limit to 20 for speed within Netlify timeout)
     const albumsResponse = await spotifyClient.getArtistAlbums(artistId, {
       includeGroups: "album,single,compilation",
-      limit: 50,
+      limit: 20,
     });
 
     results.albumsChecked = albumsResponse.items.length;
