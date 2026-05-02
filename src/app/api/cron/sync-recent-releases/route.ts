@@ -261,16 +261,18 @@ export async function POST(request: NextRequest) {
     ? [SLC_ARTISTS[parseInt(artistIndex)]].filter(Boolean)
     : SLC_ARTISTS;
 
-  // For single-artist syncs or explicit wait, run synchronously
-  // For full syncs, use fire-and-forget to prevent CDN timeout
-  if (wait || artistIndex !== null) {
+  // IMPORTANT: Always use fire-and-forget pattern to prevent Netlify CDN inactivity timeout.
+  // The Spotify API can be slow from serverless environments, and the CDN kills connections
+  // after ~10 seconds of inactivity. By responding immediately, we avoid this timeout.
+  // Set ?wait=true only for local development or very fast networks.
+  if (wait) {
     const results = await runSync(artistsToProcess);
     return NextResponse.json(results);
   }
 
   // Fire-and-forget: respond immediately, process in background
   // The serverless function will keep running until the promise settles
-  console.log("[Cron Sync] Starting background sync for all artists...");
+  console.log(`[Cron Sync] Starting background sync for ${artistsToProcess.length} artist(s)...`);
   const syncPromise = runSync(artistsToProcess);
 
   // Also trigger ISR revalidation after sync completes
@@ -287,7 +289,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    message: `Sync started for ${artistsToProcess.length} artists. Processing in background.`,
+    message: `Sync started for ${artistsToProcess.length} artist(s). Processing in background.`,
     artists: artistsToProcess.length,
     timestamp: new Date().toISOString(),
   }, { status: 202 });
@@ -307,7 +309,7 @@ export async function GET() {
       success: true,
       totalReleases: totalReleases.length,
       latestRelease: latestRelease ? { title: latestRelease.title, releaseDate: latestRelease.releaseDate } : null,
-      message: "POST to sync. Add ?artist=0-14 for single artist (waits for result). Full sync responds immediately (202) and processes in background.",
+      message: "POST to sync (responds immediately as 202, processes in background). Add ?wait=true to wait for results (may timeout). Add ?artist=0-14 for single artist.",
       spotifyConfigured: spotifyClient.isConfigured(),
       artists: SLC_ARTISTS.map((a, i) => ({ index: i, name: a.name, spotifyId: a.spotifyId })),
     });

@@ -47,15 +47,14 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         signal: AbortSignal.timeout(25_000), // 25 second timeout per artist
       });
 
-      if (response.ok) {
+      if (response.ok || response.status === 202) {
         try {
           const data = await response.json();
           results.artistsProcessed++;
           results.totalNewReleases += data.newReleasesCreated || 0;
           results.totalNewLinks += data.newArtistLinksCreated || 0;
-          console.log(`[Scheduled Sync] Artist ${i}: ${data.newReleasesCreated || 0} new, ${data.newArtistLinksCreated || 0} links (${elapsed}s)`);
+          console.log(`[Scheduled Sync] Artist ${i}: accepted (${elapsed}s) - ${data.message || 'processing'}`);
         } catch {
-          // Response was 202 (fire-and-forget acknowledgment) or parse error
           results.artistsProcessed++;
           console.log(`[Scheduled Sync] Artist ${i}: accepted (${elapsed}s)`);
         }
