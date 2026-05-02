@@ -253,15 +253,35 @@ export async function POST() {
     const spotifyProfiles = await db.select().from(artistExternalProfiles)
       .where(eq(artistExternalProfiles.platform, "spotify"));
 
-    // Create a map from artist name to DB artist with their Spotify ID
+    // Create lookup maps:
+    // 1. By DB artist name (lowercase) → DB artist + Spotify ID
+    // 2. By Spotify artist ID → DB artist (for multi-artist matching)
     const artistNameMap = new Map<string, { artist: typeof dbArtists[0]; spotifyId: string | null }>();
+    const artistBySpotifyIdMap = new Map<string, typeof dbArtists[0]>();
 
     for (const artist of dbArtists) {
       // Find Spotify profile for this artist
       const spotifyProfile = spotifyProfiles.find(p => p.artistId === artist.id);
       const spotifyId = spotifyProfile?.externalId || null;
       artistNameMap.set(artist.name.toLowerCase(), { artist, spotifyId });
+      if (spotifyId) {
+        artistBySpotifyIdMap.set(spotifyId, artist);
+      }
     }
+
+    // Also add all SLC_ARTISTS to the Spotify ID map
+    for (const slcArtist of SLC_ARTISTS) {
+      if (!artistBySpotifyIdMap.has(slcArtist.spotifyId)) {
+        const dbEntry = artistNameMap.get(slcArtist.name.toLowerCase());
+        if (dbEntry) {
+          artistBySpotifyIdMap.set(slcArtist.spotifyId, dbEntry.artist);
+        }
+      }
+    }
+
+    // Track processed release IDs to avoid duplicate processing
+    const processedReleaseIds = new Set<string>();
+    let newArtistLinksCreated = 0;
 
     // Process each SLC artist
     for (const slcArtist of SLC_ARTISTS) {
@@ -308,13 +328,65 @@ export async function POST() {
         for (const album of albums) {
           results.totalReleasesFound++;
 
-          // Check if release already exists
+          // Skip if already processed in this sync run (same release under different artists)
+          if (processedReleaseIds.has(album.id)) {
+            // Still check if current artist needs a link to the existing release
+            const existingRelease = await db.select().from(releases)
+              .where(eq(releases.spotifyId, album.id))
+              .limit(1);
+            if (existingRelease.length > 0) {
+              const existingLink = await db.select().from(releaseArtists)
+                .where(and(
+                  eq(releaseArtists.releaseId, existingRelease[0].id),
+                  eq(releaseArtists.artistId, dbArtist.id)
+                ))
+                .limit(1);
+              if (existingLink.length === 0) {
+                try {
+                  await db.insert(releaseArtists).values({
+                    id: generateUUID(),
+                    releaseId: existingRelease[0].id,
+                    artistId: dbArtist.id,
+                    isPrimary: false,
+                  });
+                  newArtistLinksCreated++;
+                  console.log(`   🔗 Linked existing: ${album.name} → ${slcArtist.name}`);
+                } catch { /* duplicate */ }
+              }
+            }
+            continue;
+          }
+          processedReleaseIds.add(album.id);
+
+          // Check if release already exists in DB
           const existing = await db.select().from(releases)
             .where(eq(releases.spotifyId, album.id))
             .limit(1);
 
           if (existing.length > 0) {
             results.existingReleasesSkipped++;
+
+            // IMPORTANT: Check if current artist has a link to this release
+            // This fixes multi-artist collaborations (e.g. Trap Juicy by Dilema, Zaque, X Santa-Ana)
+            const existingLink = await db.select().from(releaseArtists)
+              .where(and(
+                eq(releaseArtists.releaseId, existing[0].id),
+                eq(releaseArtists.artistId, dbArtist.id)
+              ))
+              .limit(1);
+
+            if (existingLink.length === 0) {
+              try {
+                await db.insert(releaseArtists).values({
+                  id: generateUUID(),
+                  releaseId: existing[0].id,
+                  artistId: dbArtist.id,
+                  isPrimary: false,
+                });
+                newArtistLinksCreated++;
+                console.log(`   🔗 Linked existing: ${album.name} → ${slcArtist.name}`);
+              } catch { /* duplicate */ }
+            }
             continue;
           }
 
@@ -325,6 +397,7 @@ export async function POST() {
           const releaseSlug = `${baseSlug}-${generateUUID().substring(0, 8)}`;
           const releaseDate = parseReleaseDate(album.release_date, album.release_date_precision);
           const coverUrl = getBestCoverImage(album.images);
+          const allArtistNames = album.artists.map(a => a.name).join(", ");
 
           try {
             // Insert release
@@ -337,22 +410,44 @@ export async function POST() {
               coverImageUrl: coverUrl,
               spotifyId: album.id,
               spotifyUrl: album.external_urls.spotify,
-              description: `${album.album_type.charAt(0).toUpperCase() + album.album_type.slice(1)} by ${slcArtist.name}`,
+              description: `${album.album_type.charAt(0).toUpperCase() + album.album_type.slice(1)} by ${allArtistNames}`,
               isUpcoming: releaseDate > new Date(),
               isFeatured: album.album_type === "album",
             });
 
-            // Create artist-release association
-            await db.insert(releaseArtists).values({
-              id: generateUUID(),
-              releaseId,
-              artistId: dbArtist.id,
-              isPrimary: true,
-            });
+            // Create artist-release associations for ALL roster artists on this album
+            const isPrimary = (spotifyArtistId: string) => spotifyArtistId === album.artists[0]?.id;
+
+            for (const spotifyArtist of album.artists) {
+              const rosterArtist = artistBySpotifyIdMap.get(spotifyArtist.id);
+              if (rosterArtist) {
+                try {
+                  await db.insert(releaseArtists).values({
+                    id: generateUUID(),
+                    releaseId,
+                    artistId: rosterArtist.id,
+                    isPrimary: isPrimary(spotifyArtist.id),
+                  });
+                  console.log(`   🔗 Linked: ${album.name} → ${rosterArtist.name} (${isPrimary(spotifyArtist.id) ? "primary" : "featured"})`);
+                } catch { /* duplicate */ }
+              }
+            }
+
+            // If no roster artists were found in the album's artist list,
+            // at least link the current SLC artist as primary
+            const hasAnyLink = album.artists.some(a => artistBySpotifyIdMap.has(a.id));
+            if (!hasAnyLink) {
+              await db.insert(releaseArtists).values({
+                id: generateUUID(),
+                releaseId,
+                artistId: dbArtist.id,
+                isPrimary: true,
+              });
+            }
 
             results.newReleasesCreated++;
             artistStats.created++;
-            console.log(`   ✅ Created: ${album.name}`);
+            console.log(`   ✅ Created: ${album.name} (by ${allArtistNames})`);
           } catch (insertError) {
             // Handle duplicate slug error
             const errorMsg = (insertError as Error).message;

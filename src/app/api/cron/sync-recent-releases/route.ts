@@ -11,6 +11,9 @@ import { generateUUID, slugify } from "@/lib/utils";
 // It only fetches the FIRST page (20 most recent) releases per artist
 // from Spotify, making it fast enough to run within serverless function timeouts.
 // The full sync (all pages) is still available via /api/admin/sync/spotify-releases
+//
+// KEY FIX: Handles multi-artist releases (collaborations) by creating
+// releaseArtists entries for ALL roster artists that appear on a release.
 
 // All Sonido Líquido Crew artists with their Spotify IDs
 const SLC_ARTISTS = [
@@ -70,7 +73,7 @@ async function getSpotifyToken(): Promise<string> {
 
 // Fetch only the FIRST page of albums for an artist (20 most recent)
 async function fetchRecentAlbums(artistId: string, token: string): Promise<SpotifyAlbum[]> {
-  const url = `https://api.spotify.com/v1/artists/${artistId}/albums?include_groups=album,single,compilation&limit=20&offset=0`;
+  const url = `https://api.spotify.com/v1/artists/${artistId}/albums?include_groups=album,single,compilation&limit=20&offset=0&market=MX`;
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -144,8 +147,9 @@ export async function POST(request: NextRequest) {
     totalReleasesFound: 0,
     newReleasesCreated: 0,
     existingReleasesSkipped: 0,
+    newArtistLinksCreated: 0,
     errors: [] as string[],
-    artistBreakdown: [] as { name: string; found: number; created: number }[],
+    artistBreakdown: [] as { name: string; found: number; created: number; linked: number }[],
   };
 
   try {
@@ -163,23 +167,44 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Get all artists from database
+    // Get all artists from database with their Spotify profiles
     const dbArtists = await db.select().from(artists);
     const spotifyProfiles = await db.select().from(artistExternalProfiles)
       .where(eq(artistExternalProfiles.platform, "spotify"));
 
-    // Create lookup map
-    const artistNameMap = new Map<string, { artist: typeof dbArtists[0]; spotifyId: string | null }>();
+    // Create lookup maps:
+    // 1. By DB artist name (lowercase) → DB artist + Spotify ID
+    // 2. By Spotify artist ID → DB artist (for multi-artist matching)
+    const artistByNameMap = new Map<string, { artist: typeof dbArtists[0]; spotifyId: string | null }>();
+    const artistBySpotifyIdMap = new Map<string, typeof dbArtists[0]>();
+
     for (const artist of dbArtists) {
       const spotifyProfile = spotifyProfiles.find(p => p.artistId === artist.id);
       const spotifyId = spotifyProfile?.externalId || null;
-      artistNameMap.set(artist.name.toLowerCase(), { artist, spotifyId });
+      artistByNameMap.set(artist.name.toLowerCase(), { artist, spotifyId });
+      if (spotifyId) {
+        artistBySpotifyIdMap.set(spotifyId, artist);
+      }
     }
+
+    // Also add all SLC_ARTISTS to the Spotify ID map (for artists without DB profiles yet)
+    for (const slcArtist of SLC_ARTISTS) {
+      if (!artistBySpotifyIdMap.has(slcArtist.spotifyId)) {
+        const dbEntry = artistByNameMap.get(slcArtist.name.toLowerCase());
+        if (dbEntry) {
+          artistBySpotifyIdMap.set(slcArtist.spotifyId, dbEntry.artist);
+        }
+      }
+    }
+
+    // Track which releases we've already processed in this sync run
+    // to avoid duplicate processing (same release can appear under multiple artists)
+    const processedReleaseIds = new Set<string>();
 
     // Process each SLC artist
     for (const slcArtist of SLC_ARTISTS) {
       try {
-        const artistData = artistNameMap.get(slcArtist.name.toLowerCase());
+        const artistData = artistByNameMap.get(slcArtist.name.toLowerCase());
 
         if (!artistData) {
           results.errors.push(`Artist ${slcArtist.name} not found in database`);
@@ -208,10 +233,46 @@ export async function POST(request: NextRequest) {
         const albums = await fetchRecentAlbums(slcArtist.spotifyId, token);
         console.log(`[Cron Sync] ${slcArtist.name}: found ${albums.length} recent releases`);
 
-        const artistStats = { name: slcArtist.name, found: albums.length, created: 0 };
+        const artistStats = { name: slcArtist.name, found: albums.length, created: 0, linked: 0 };
         results.totalReleasesFound += albums.length;
 
         for (const album of albums) {
+          // Skip if we already processed this release in this sync run
+          if (processedReleaseIds.has(album.id)) {
+            // But still check if current artist needs a link
+            const existingRelease = await db.select().from(releases)
+              .where(eq(releases.spotifyId, album.id))
+              .limit(1);
+
+            if (existingRelease.length > 0) {
+              const existingLink = await db.select().from(releaseArtists)
+                .where(and(
+                  eq(releaseArtists.releaseId, existingRelease[0].id),
+                  eq(releaseArtists.artistId, dbArtist.id)
+                ))
+                .limit(1);
+
+              if (existingLink.length === 0) {
+                try {
+                  await db.insert(releaseArtists).values({
+                    id: generateUUID(),
+                    releaseId: existingRelease[0].id,
+                    artistId: dbArtist.id,
+                    isPrimary: false,
+                  });
+                  results.newArtistLinksCreated++;
+                  artistStats.linked++;
+                  console.log(`[Cron Sync] Linked ${album.name} to ${slcArtist.name}`);
+                } catch {
+                  // Duplicate, ignore
+                }
+              }
+            }
+            continue;
+          }
+
+          processedReleaseIds.add(album.id);
+
           // Check if release already exists by Spotify ID
           const existing = await db.select().from(releases)
             .where(eq(releases.spotifyId, album.id))
@@ -219,6 +280,32 @@ export async function POST(request: NextRequest) {
 
           if (existing.length > 0) {
             results.existingReleasesSkipped++;
+
+            // IMPORTANT: Check if current artist has a link to this release
+            // This fixes the multi-artist collaboration issue
+            const existingLink = await db.select().from(releaseArtists)
+              .where(and(
+                eq(releaseArtists.releaseId, existing[0].id),
+                eq(releaseArtists.artistId, dbArtist.id)
+              ))
+              .limit(1);
+
+            if (existingLink.length === 0) {
+              // This artist is on the album but wasn't linked - create the link!
+              try {
+                await db.insert(releaseArtists).values({
+                  id: generateUUID(),
+                  releaseId: existing[0].id,
+                  artistId: dbArtist.id,
+                  isPrimary: false, // First synced artist is primary, others are not
+                });
+                results.newArtistLinksCreated++;
+                artistStats.linked++;
+                console.log(`[Cron Sync] Linked existing release ${album.name} to ${slcArtist.name}`);
+              } catch {
+                // Duplicate, ignore
+              }
+            }
             continue;
           }
 
@@ -228,6 +315,10 @@ export async function POST(request: NextRequest) {
           const releaseSlug = `${baseSlug}-${generateUUID().substring(0, 8)}`;
           const releaseDate = parseReleaseDate(album.release_date, album.release_date_precision);
           const coverUrl = getBestCoverImage(album.images);
+
+          // Determine primary artist name for description (first artist on Spotify)
+          const primaryArtistName = album.artists[0]?.name || slcArtist.name;
+          const allArtistNames = album.artists.map(a => a.name).join(", ");
 
           try {
             await db.insert(releases).values({
@@ -239,22 +330,48 @@ export async function POST(request: NextRequest) {
               coverImageUrl: coverUrl,
               spotifyId: album.id,
               spotifyUrl: album.external_urls.spotify,
-              description: `${album.album_type.charAt(0).toUpperCase() + album.album_type.slice(1)} by ${slcArtist.name}`,
+              description: `${album.album_type.charAt(0).toUpperCase() + album.album_type.slice(1)} by ${allArtistNames}`,
               isUpcoming: releaseDate > new Date(),
               isFeatured: album.album_type === "album",
             });
 
-            // Create artist-release association
-            await db.insert(releaseArtists).values({
-              id: generateUUID(),
-              releaseId,
-              artistId: dbArtist.id,
-              isPrimary: true,
-            });
+            // Create artist-release associations for ALL roster artists on this album
+            // This is the key fix for multi-artist collaborations like "Trap Juicy"
+            const isPrimary = (spotifyArtistId: string) => spotifyArtistId === album.artists[0]?.id;
+
+            for (const spotifyArtist of album.artists) {
+              // Check if this Spotify artist is in our roster
+              const rosterArtist = artistBySpotifyIdMap.get(spotifyArtist.id);
+              if (rosterArtist) {
+                try {
+                  await db.insert(releaseArtists).values({
+                    id: generateUUID(),
+                    releaseId,
+                    artistId: rosterArtist.id,
+                    isPrimary: isPrimary(spotifyArtist.id),
+                  });
+                  console.log(`[Cron Sync] Linked ${album.name} to ${rosterArtist.name} (${isPrimary(spotifyArtist.id) ? "primary" : "featured"})`);
+                } catch {
+                  // Duplicate, ignore
+                }
+              }
+            }
+
+            // If no roster artists were found in the album's artist list,
+            // at least link the current SLC artist as primary
+            const hasAnyLink = album.artists.some(a => artistBySpotifyIdMap.has(a.id));
+            if (!hasAnyLink) {
+              await db.insert(releaseArtists).values({
+                id: generateUUID(),
+                releaseId,
+                artistId: dbArtist.id,
+                isPrimary: true,
+              });
+            }
 
             results.newReleasesCreated++;
             artistStats.created++;
-            console.log(`[Cron Sync] Created: ${album.name}`);
+            console.log(`[Cron Sync] Created: ${album.name} (by ${allArtistNames})`);
           } catch (insertError) {
             const errorMsg = (insertError as Error).message;
             if (errorMsg.includes("UNIQUE") || errorMsg.includes("duplicate")) {
@@ -269,7 +386,7 @@ export async function POST(request: NextRequest) {
         results.totalArtistsProcessed++;
 
         // Small delay between artists to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 300));
 
       } catch (artistError) {
         const errorMsg = (artistError as Error).message;
@@ -278,12 +395,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Cron Sync] Complete: ${results.newReleasesCreated} new, ${results.existingReleasesSkipped} existing`);
+    console.log(`[Cron Sync] Complete: ${results.newReleasesCreated} new, ${results.existingReleasesSkipped} existing, ${results.newArtistLinksCreated} new artist links`);
 
     return NextResponse.json({
       ...results,
       success: true,
-      message: `Daily sync: ${results.newReleasesCreated} new releases from ${results.totalArtistsProcessed} artists`,
+      message: `Daily sync: ${results.newReleasesCreated} new releases, ${results.newArtistLinksCreated} new artist links from ${results.totalArtistsProcessed} artists`,
     });
 
   } catch (error) {
