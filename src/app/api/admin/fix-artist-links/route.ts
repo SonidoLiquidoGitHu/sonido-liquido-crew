@@ -81,6 +81,7 @@ export async function POST() {
     newLinksCreated: 0,
     errors: [] as string[],
     fixes: [] as { release: string; artist: string }[],
+    debug: {} as Record<string, unknown>,
   };
 
   try {
@@ -109,6 +110,12 @@ export async function POST() {
       }
     }
 
+    results.debug = {
+      dbArtistsCount: dbArtists.length,
+      spotifyIdMapSize: spotifyIdToDbArtist.size,
+      knownSpotifyIds: Object.keys(SLC_SPOTIFY_IDS).length,
+    };
+
     // Get all existing release-artist links
     const allReleaseArtists = await db.select().from(releaseArtists);
     const existingLinks = new Set<string>();
@@ -131,6 +138,17 @@ export async function POST() {
 
       try {
         const albumsData = await getSeveralAlbums(spotifyIds, token);
+
+        // Debug first batch
+        if (i === 0) {
+          (results.debug as Record<string, unknown>).firstBatchAlbumIds = spotifyIds.slice(0, 5);
+          (results.debug as Record<string, unknown>).albumsDataSize = albumsData.size;
+          // Show first album's artists
+          const firstAlbum = albumsData.values().next().value;
+          if (firstAlbum) {
+            (results.debug as Record<string, unknown>).firstAlbumArtists = firstAlbum.artists;
+          }
+        }
 
         for (const release of batch) {
           if (!release.spotifyId) continue;
