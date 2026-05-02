@@ -8,29 +8,30 @@ import { spotifyClient } from "@/lib/clients";
 // ===========================================
 // FIX MISSING ARTIST LINKS FOR COLLABORATION RELEASES
 // ===========================================
-// Uses the spotifyClient (which uses proper env var credentials) to
-// fetch all artists on each release and create missing releaseArtists entries.
+// Strategy: For each roster artist, fetch their recent albums from Spotify
+// (which works with client credentials), then check each album against
+// our DB to create missing artist-release links.
 
-const SLC_SPOTIFY_IDS: Record<string, string> = {
-  "2jJmTEMkGQfH3BxoG3MQvF": "Brez",
-  "4fNQqyvcM71IyF2EitEtCj": "Bruno Grasso",
-  "3RAg8fPmZ8RnacJO8MhLP1": "Chas 7P",
-  "2zrv1oduhIYh29vvQZwI5r": "Codak",
-  "3eCEorgAoZkvnAQLdy4x38": "Dilema",
-  "5urer15JPbCELf17LVia7w": "Doctor Destino",
-  "5TMoczTLclVyzzDY5qf3Yb": "Fancy Freak",
-  "6AN9ek9RwrLbSp9rT2lcDG": "Hassyel",
-  "0QdRhOmiqAcV1dPCoiSIQJ": "Kev Cabrone",
-  "16YScXC67nAnFDcA2LGdY0": "Latin Geisha",
-  "5HrBwfVDf0HXzGDrJ6Znqc": "Pepe Levine",
-  "4T4Z7jvUcMV16VsslRRuC5": "Q Master Weed",
-  "4UqFXhJVb9zy2SbNx4ycJQ": "Reick One",
-  "2Apt0MjZGqXAd1pl4LNQrR": "X Santa-Ana",
-  "4WQmw3fIx9F7iPKL5v8SCN": "Zaque",
-};
+const SLC_ARTISTS = [
+  { name: "Brez", spotifyId: "2jJmTEMkGQfH3BxoG3MQvF" },
+  { name: "Bruno Grasso", spotifyId: "4fNQqyvcM71IyF2EitEtCj" },
+  { name: "Chas 7P", spotifyId: "3RAg8fPmZ8RnacJO8MhLP1" },
+  { name: "Codak", spotifyId: "2zrv1oduhIYh29vvQZwI5r" },
+  { name: "Dilema", spotifyId: "3eCEorgAoZkvnAQLdy4x38" },
+  { name: "Doctor Destino", spotifyId: "5urer15JPbCELf17LVia7w" },
+  { name: "Fancy Freak", spotifyId: "5TMoczTLclVyzzDY5qf3Yb" },
+  { name: "Hassyel", spotifyId: "6AN9ek9RwrLbSp9rT2lcDG" },
+  { name: "Kev Cabrone", spotifyId: "0QdRhOmiqAcV1dPCoiSIQJ" },
+  { name: "Latin Geisha", spotifyId: "16YScXC67nAnFDcA2LGdY0" },
+  { name: "Pepe Levine", spotifyId: "5HrBwfVDf0HXzGDrJ6Znqc" },
+  { name: "Q Master Weed", spotifyId: "4T4Z7jvUcMV16VsslRRuC5" },
+  { name: "Reick One", spotifyId: "4UqFXhJVb9zy2SbNx4ycJQ" },
+  { name: "X Santa-Ana", spotifyId: "2Apt0MjZGqXAd1pl4LNQrR" },
+  { name: "Zaque", spotifyId: "4WQmw3fIx9F7iPKL5v8SCN" },
+];
 
 export async function POST() {
-  console.log("[Fix Links] Starting artist link fix using spotifyClient...");
+  console.log("[Fix Links] Starting artist link fix using per-artist album fetch...");
 
   const results = {
     success: true,
@@ -45,7 +46,7 @@ export async function POST() {
       return NextResponse.json({
         ...results,
         success: false,
-        error: "Spotify API not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET env vars.",
+        error: "Spotify API not configured.",
       }, { status: 503 });
     }
 
@@ -62,11 +63,10 @@ export async function POST() {
         spotifyIdToDbArtist.set(profile.externalId, artist);
       }
     }
-    // Also add SLC artists by known Spotify IDs
-    for (const [spotifyId, name] of Object.entries(SLC_SPOTIFY_IDS)) {
-      if (!spotifyIdToDbArtist.has(spotifyId)) {
-        const dbArtist = dbArtists.find(a => a.name.toLowerCase() === name.toLowerCase());
-        if (dbArtist) spotifyIdToDbArtist.set(spotifyId, dbArtist);
+    for (const slcArtist of SLC_ARTISTS) {
+      if (!spotifyIdToDbArtist.has(slcArtist.spotifyId)) {
+        const dbArtist = dbArtists.find(a => a.name.toLowerCase() === slcArtist.name.toLowerCase());
+        if (dbArtist) spotifyIdToDbArtist.set(slcArtist.spotifyId, dbArtist);
       }
     }
 
@@ -77,48 +77,60 @@ export async function POST() {
       existingLinks.add(`${ra.releaseId}|${ra.artistId}`);
     }
 
-    // Get all releases with Spotify IDs
-    const allReleases = await db.select().from(releases);
-    const releasesWithSpotify = allReleases.filter(r => r.spotifyId);
-    results.totalReleasesChecked = releasesWithSpotify.length;
+    // For each roster artist, fetch their recent albums from Spotify
+    // Then find those albums in our DB and create missing links
+    for (const slcArtist of SLC_ARTISTS) {
+      try {
+        const dbArtist = spotifyIdToDbArtist.get(slcArtist.spotifyId);
+        if (!dbArtist) {
+          results.errors.push(`${slcArtist.name} not found in DB`);
+          continue;
+        }
 
-    // Use spotifyClient.getAlbums() which handles batching (20 at a time)
-    const allSpotifyIds = releasesWithSpotify.map(r => r.spotifyId!).filter(Boolean);
-    console.log(`[Fix Links] Fetching ${allSpotifyIds.length} albums from Spotify...`);
+        // Fetch albums from Spotify for this artist (this endpoint works!)
+        const albumsResponse = await spotifyClient.getArtistAlbums(slcArtist.spotifyId, {
+          includeGroups: "album,single,compilation",
+          limit: 50,
+          offset: 0,
+        });
 
-    const spotifyAlbums = await spotifyClient.getAlbums(allSpotifyIds);
-    console.log(`[Fix Links] Got ${spotifyAlbums.length} albums from Spotify`);
+        console.log(`[Fix Links] ${slcArtist.name}: found ${albumsResponse.items.length} albums on Spotify`);
 
-    // Build a map from spotify album ID → album data
-    const albumMap = new Map(spotifyAlbums.map(a => [a.id, a]));
+        for (const album of albumsResponse.items) {
+          // Find this album in our DB by Spotify ID
+          const [dbRelease] = await db.select().from(releases)
+            .where(eq(releases.spotifyId, album.id))
+            .limit(1);
 
-    for (const release of releasesWithSpotify) {
-      if (!release.spotifyId) continue;
-      const albumInfo = albumMap.get(release.spotifyId);
-      if (!albumInfo) continue;
+          if (!dbRelease) continue; // Not in our DB yet
 
-      // For each Spotify artist on this album, check if they're in our roster
-      for (const spotifyArtist of albumInfo.artists) {
-        const dbArtist = spotifyIdToDbArtist.get(spotifyArtist.id);
-        if (dbArtist) {
-          const linkKey = `${release.id}|${dbArtist.id}`;
+          results.totalReleasesChecked++;
+
+          // Check if this artist is already linked
+          const linkKey = `${dbRelease.id}|${dbArtist.id}`;
           if (!existingLinks.has(linkKey)) {
             try {
               await db.insert(releaseArtists).values({
                 id: generateUUID(),
-                releaseId: release.id,
+                releaseId: dbRelease.id,
                 artistId: dbArtist.id,
-                isPrimary: spotifyArtist.id === albumInfo.artists[0]?.id,
+                isPrimary: album.artists[0]?.id === slcArtist.spotifyId,
               });
               existingLinks.add(linkKey);
               results.newLinksCreated++;
-              results.fixes.push({ release: release.title, artist: dbArtist.name });
-              console.log(`[Fix Links] Linked "${release.title}" → ${dbArtist.name}`);
+              results.fixes.push({ release: dbRelease.title, artist: slcArtist.name });
+              console.log(`[Fix Links] Linked "${dbRelease.title}" → ${slcArtist.name}`);
             } catch {
               // Duplicate, ignore
             }
           }
         }
+
+        // Small delay between artists
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+      } catch (artistError) {
+        results.errors.push(`Error processing ${slcArtist.name}: ${(artistError as Error).message}`);
       }
     }
 
@@ -127,7 +139,7 @@ export async function POST() {
     return NextResponse.json({
       ...results,
       success: true,
-      message: `Fixed ${results.newLinksCreated} missing artist links across ${results.totalReleasesChecked} releases`,
+      message: `Fixed ${results.newLinksCreated} missing artist links`,
     });
 
   } catch (error) {
@@ -142,8 +154,7 @@ export async function POST() {
 
 export async function GET() {
   return NextResponse.json({
-    message: "Use POST to fix missing artist links for collaboration releases using spotifyClient",
-    artists: Object.values(SLC_SPOTIFY_IDS),
+    message: "Use POST to fix missing artist links for collaboration releases",
     spotifyConfigured: spotifyClient.isConfigured(),
   });
 }
