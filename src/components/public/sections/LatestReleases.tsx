@@ -7,8 +7,13 @@ import { ReleaseCard } from "../cards/ReleaseCard";
 import type { Release } from "@/types";
 import { Button } from "@/components/ui/button";
 
+interface ReleaseWithArtist extends Release {
+  artistName?: string | null;
+  artistSlug?: string | null;
+}
+
 interface LatestReleasesProps {
-  releases: Release[];
+  releases: ReleaseWithArtist[];
   title?: string;
   subtitle?: string;
 }
@@ -69,7 +74,7 @@ export function LatestReleases({
         {/* Releases Carousel */}
         <div
           ref={scrollRef}
-          className="flex gap-6 overflow-x-auto pb-20 -mb-20 snap-x snap-mandatory scrollbar-hide"
+          className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {releases.map((release) => (
@@ -77,7 +82,11 @@ export function LatestReleases({
               key={release.id}
               className="flex-shrink-0 w-40 sm:w-48 snap-start"
             >
-              <ReleaseCard release={release} showArtist={false} />
+              <ReleaseCard
+                release={release}
+                showArtist={true}
+                artistName={release.artistName || undefined}
+              />
             </div>
           ))}
         </div>

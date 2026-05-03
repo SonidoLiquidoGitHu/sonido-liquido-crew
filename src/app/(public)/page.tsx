@@ -22,8 +22,8 @@ import {
   beatsService,
 } from "@/lib/services";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { upcomingReleases } from "@/db/schema";
-import { eq, and, gte } from "drizzle-orm";
+import { upcomingReleases, releaseArtists, artists } from "@/db/schema";
+import { eq, and, gte, inArray } from "drizzle-orm";
 
 // ===========================================
 // PERFORMANCE: Lazy load below-the-fold sections
@@ -119,7 +119,7 @@ export default async function HomePage() {
   // DEFERRED: Fetch below-the-fold data in parallel
   // ===========================================
   const [
-    latestReleases,
+    rawLatestReleases,
     featuredVideos,
     upcomingEvents,
     pastEvents,
@@ -131,6 +131,46 @@ export default async function HomePage() {
     safeFetch(eventsService.getPast(100), []),
     safeFetch(beatsService.getFeatured(5), []),
   ]);
+
+  // Enrich releases with artist info (same pattern as discografia page)
+  let latestReleases: (typeof rawLatestReleases[number] & { artistName?: string | null; artistSlug?: string | null })[] = rawLatestReleases;
+  try {
+    if (rawLatestReleases.length > 0) {
+      const releaseIds = rawLatestReleases.map(r => r.id);
+
+      // Fetch release-artist associations and artists in parallel
+      const [releaseArtistsForReleases, allArtists] = await Promise.all([
+        db.select({
+          releaseId: releaseArtists.releaseId,
+          artistId: releaseArtists.artistId,
+          isPrimary: releaseArtists.isPrimary,
+        }).from(releaseArtists).where(inArray(releaseArtists.releaseId, releaseIds)),
+        db.select({ id: artists.id, name: artists.name, slug: artists.slug }).from(artists),
+      ]);
+
+      const artistMap = new Map(allArtists.map(a => [a.id, a]));
+
+      // Build releaseId → primary artist lookup (prefer primary, fall back to first)
+      const releaseArtistMap = new Map<string, { artistName: string; artistSlug: string }>();
+      for (const ra of releaseArtistsForReleases) {
+        if (!releaseArtistMap.has(ra.releaseId) || ra.isPrimary) {
+          const artist = artistMap.get(ra.artistId);
+          if (artist) {
+            releaseArtistMap.set(ra.releaseId, { artistName: artist.name, artistSlug: artist.slug });
+          }
+        }
+      }
+
+      latestReleases = rawLatestReleases.map(r => ({
+        ...r,
+        artistName: releaseArtistMap.get(r.id)?.artistName || null,
+        artistSlug: releaseArtistMap.get(r.id)?.artistSlug || null,
+      }));
+    }
+  } catch (error) {
+    console.error("[HomePage] Error enriching releases with artists:", error);
+    // Keep rawLatestReleases as-is
+  }
 
   return (
     <>
