@@ -7,7 +7,7 @@ export const revalidate = 300; // Cache for 5 minutes
 
 // Default fallback values (used only when DB is unavailable)
 const defaults = {
-  spotifyUrl: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab",
+  spotifyUrl: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
   youtubeUrl: "https://www.youtube.com/@sonidoliquidocrew",
   instagramUrl: "https://www.instagram.com/sonidoliquido/",
   facebookUrl: "https://www.facebook.com/sonidoliquidocrew/",

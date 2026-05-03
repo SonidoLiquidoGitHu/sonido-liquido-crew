@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Img } from "@/components/ui/img";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -20,7 +20,7 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Image */}
       <Link href={`/tienda/${product.slug}`} className="block relative aspect-square">
         {product.imageUrl ? (
-          <Image
+          <Img
             src={product.imageUrl}
             alt={product.name}
             fill

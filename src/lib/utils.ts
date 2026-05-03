@@ -301,3 +301,30 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
     return fallback;
   }
 }
+
+/**
+ * Transform a Dropbox image URL to go through our image proxy.
+ *
+ * Dropbox shared links return content-type: application/json even though
+ * the body is an image. Mobile browsers (especially Safari) refuse to render
+ * images when the content-type doesn't match. Our /api/image-proxy route
+ * fetches the image server-side and re-serves it with the correct MIME type.
+ */
+export function proxyImageUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return url ?? null;
+
+  const isDropbox = url.includes("dropbox.com") || url.includes("dropboxusercontent.com");
+  if (isDropbox) {
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+
+  return url;
+}
+
+/**
+ * Check if a URL is from Dropbox (needs proxy for content-type fix on mobile)
+ */
+export function isDropboxImageUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== "string") return false;
+  return url.includes("dropbox.com") || url.includes("dropboxusercontent.com");
+}

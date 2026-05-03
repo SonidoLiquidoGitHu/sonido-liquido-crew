@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS press_kit (
   contact_location TEXT DEFAULT 'Ciudad de México, CDMX',
 
   -- Social Links
-  spotify_url TEXT DEFAULT 'https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab',
+  spotify_url TEXT DEFAULT 'https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez',
   instagram_url TEXT DEFAULT 'https://www.instagram.com/sonidoliquido/',
   youtube_url TEXT DEFAULT 'https://www.youtube.com/@sonidoliquidocrew',
   twitter_url TEXT,

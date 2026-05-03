@@ -166,7 +166,7 @@ export default function AdminSettingsPage() {
     location: "Ciudad de México, CDMX",
 
     // Social
-    spotify_playlist_url: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab",
+    spotify_playlist_url: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
     youtube_channel_url: "https://www.youtube.com/@sonidoliquidocrew",
     instagram_url: "https://www.instagram.com/sonidoliquido/",
     facebook_url: "https://www.facebook.com/sonidoliquidocrew/",

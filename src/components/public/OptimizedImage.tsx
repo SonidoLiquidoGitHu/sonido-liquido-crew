@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image, { ImageProps } from "next/image";
 import { cn } from "@/lib/utils";
+
+/**
+ * Route Dropbox URLs through the image proxy to fix content-type issues on mobile.
+ */
+function proxyDropboxUrl(url: string): string {
+  if (url.includes("dropbox.com") || url.includes("dropboxusercontent.com")) {
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
 
 interface OptimizedImageProps extends Omit<ImageProps, "onError" | "onLoad"> {
   fallbackSrc?: string;
@@ -39,12 +49,20 @@ export function OptimizedImage({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
+  // Pre-process: proxy Dropbox URLs to fix content-type on mobile
+  const processedSrc = useMemo(() => {
+    if (!src || typeof src !== "string") return src;
+    return proxyDropboxUrl(src);
+  }, [src]);
+
+  const isDropbox = typeof src === "string" && (src.includes("dropbox.com") || src.includes("dropboxusercontent.com"));
+
   // Reset state when src changes
   useEffect(() => {
-    setImgSrc(src);
+    setImgSrc(processedSrc);
     setIsLoading(true);
     setHasError(false);
-  }, [src]);
+  }, [processedSrc]);
 
   const handleError = () => {
     if (imgSrc !== fallbackSrc) {
@@ -86,6 +104,7 @@ export function OptimizedImage({
         blurDataURL={shimmerBlur}
         loading={priority ? "eager" : "lazy"}
         priority={priority}
+        unoptimized={isDropbox || props.unoptimized}
       />
 
       {/* Error state */}

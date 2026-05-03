@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Play, ExternalLink } from "lucide-react";
-import { cn, getReleaseTypeDisplay } from "@/lib/utils";
+import { cn, getReleaseTypeDisplay, proxyImageUrl } from "@/lib/utils";
 import type { Release } from "@/types";
 
 interface ReleaseCardProps {
@@ -19,9 +19,10 @@ export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseC
       <div className="absolute inset-0">
         {release.coverImageUrl ? (
           <Image
-            src={release.coverImageUrl}
+            src={proxyImageUrl(release.coverImageUrl) || ""}
             alt={release.title}
             fill
+            unoptimized={!!(release.coverImageUrl && (release.coverImageUrl.includes("dropbox.com") || release.coverImageUrl.includes("dropboxusercontent.com")))}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           />

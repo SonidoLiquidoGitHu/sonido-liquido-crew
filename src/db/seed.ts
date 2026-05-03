@@ -258,7 +258,7 @@ const settingsData = [
   { key: "contact_phone", value: "5528011881", type: "string" as const },
   { key: "location", value: "Ciudad de México, CDMX", type: "string" as const },
   { key: "founded_year", value: "1999", type: "number" as const },
-  { key: "spotify_playlist_url", value: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab", type: "string" as const },
+  { key: "spotify_playlist_url", value: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez", type: "string" as const },
   { key: "youtube_channel_url", value: "https://www.youtube.com/@sonidoliquidocrew", type: "string" as const },
   { key: "instagram_url", value: "https://www.instagram.com/sonidoliquido/", type: "string" as const },
   { key: "facebook_url", value: "https://www.facebook.com/sonidoliquidocrew/", type: "string" as const },

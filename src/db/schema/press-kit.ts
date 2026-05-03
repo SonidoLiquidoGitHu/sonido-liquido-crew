@@ -34,7 +34,7 @@ export const pressKit = sqliteTable("press_kit", {
   contactLocation: text("contact_location").default("Ciudad de México, CDMX"),
 
   // Social Links
-  spotifyUrl: text("spotify_url").default("https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab"),
+  spotifyUrl: text("spotify_url").default("https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez"),
   instagramUrl: text("instagram_url").default("https://www.instagram.com/sonidoliquido/"),
   youtubeUrl: text("youtube_url").default("https://www.youtube.com/@sonidoliquidocrew"),
   twitterUrl: text("twitter_url"),

@@ -11,7 +11,7 @@ export interface CrewSocialLinks {
 
 // Sensible defaults used while loading or if the API fails
 const defaultLinks: CrewSocialLinks = {
-  spotifyUrl: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab",
+  spotifyUrl: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
   youtubeUrl: "https://www.youtube.com/@sonidoliquidocrew",
   instagramUrl: "https://www.instagram.com/sonidoliquido/",
   facebookUrl: "https://www.facebook.com/sonidoliquidocrew/",

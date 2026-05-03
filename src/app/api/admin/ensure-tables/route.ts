@@ -622,7 +622,7 @@ export async function POST() {
     // === SEED CREW SOCIAL LINKS IN SITE_SETTINGS ===
     try {
       const crewSocialSettings = [
-        { key: "spotify_playlist_url", value: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab", type: "string" },
+        { key: "spotify_playlist_url", value: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez", type: "string" },
         { key: "youtube_channel_url", value: "https://www.youtube.com/@sonidoliquidocrew", type: "string" },
         { key: "instagram_url", value: "https://www.instagram.com/sonidoliquido/", type: "string" },
         { key: "facebook_url", value: "https://www.facebook.com/sonidoliquidocrew/", type: "string" },

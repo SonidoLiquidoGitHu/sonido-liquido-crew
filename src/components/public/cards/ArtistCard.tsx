@@ -2,9 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { Artist } from "@/types";
 import { useSoundEffects } from "../effects/SoundEffects";
+
+/**
+ * Proxy Dropbox URLs through /api/image-proxy to fix content-type issues on mobile.
+ * Dropbox returns application/json instead of image/*, which mobile Safari rejects.
+ */
+function proxyDropboxUrl(url: string | null | undefined): string {
+  if (!url || typeof url !== "string") return url || "";
+  if (url.includes("dropbox.com") || url.includes("dropboxusercontent.com")) {
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
 
 // Detect touch devices for mobile-friendly interactions
 function useIsTouchDevice() {
@@ -144,7 +156,7 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
 
           {/* Artist image with duotone effect - grayscale then colorized */}
           <Image
-            src={artist.profileImageUrl}
+            src={proxyDropboxUrl(artist.profileImageUrl)}
             alt={artist.name}
             fill
             unoptimized

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { Img } from "@/components/ui/img";
 import Link from "next/link";
 import { Bell, Rocket, Music, Calendar, Clock, ChevronRight, Star, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -215,7 +215,7 @@ function CompactReleaseCard({
         {/* Cover Image */}
         <div className="aspect-square relative overflow-hidden">
           {release.coverImageUrl ? (
-            <Image
+            <Img
               src={release.coverImageUrl}
               alt={release.title}
               fill
@@ -493,7 +493,7 @@ function MiniReleaseCard({ release }: { release: UpcomingRelease }) {
     >
       <div className="relative aspect-square rounded-lg overflow-hidden border border-slc-border/50 group-hover:border-primary/50 transition-all mb-2">
         {release.coverImageUrl ? (
-          <Image
+          <Img
             src={release.coverImageUrl}
             alt={release.title}
             fill

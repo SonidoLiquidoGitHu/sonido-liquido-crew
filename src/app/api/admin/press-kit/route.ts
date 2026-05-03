@@ -28,7 +28,7 @@ A lo largo de su historia, Sonido Líquido ha producido más de 160 lanzamientos
   contactEmail: "prensasonidoliquido@gmail.com",
   contactPhone: "+52 55 2801 1881",
   contactLocation: "Ciudad de México, CDMX",
-  spotifyUrl: "https://open.spotify.com/playlist/5qHTKCZIwi3GM3mhPq45Ab",
+  spotifyUrl: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
   instagramUrl: "https://www.instagram.com/sonidoliquido/",
   youtubeUrl: "https://www.youtube.com/@sonidoliquidocrew",
   twitterUrl: null,

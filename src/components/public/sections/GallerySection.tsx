@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { Img } from "@/components/ui/img";
 import Link from "next/link";
 import { ArrowRight, X, ChevronLeft, ChevronRight, Camera, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -215,7 +215,7 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
                 aspectRatio: index % 5 === 0 ? "3/4" : index % 7 === 3 ? "16/9" : "1/1",
               }}
             >
-              <Image
+              <Img
                 src={photo.thumbnailUrl || photo.imageUrl}
                 alt={photo.title || "Gallery photo"}
                 fill
@@ -316,7 +316,7 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
             className="relative max-w-[90vw] max-h-[85vh] w-full h-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image
+            <Img
               src={filteredPhotos[lightboxIndex].imageUrl}
               alt={filteredPhotos[lightboxIndex].title || "Gallery photo"}
               fill

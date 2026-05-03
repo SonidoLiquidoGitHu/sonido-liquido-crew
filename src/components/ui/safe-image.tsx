@@ -1,11 +1,12 @@
 "use client";
 import Image, { ImageProps } from "next/image";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 interface SafeImageProps extends Omit<ImageProps, "onError" | "src"> {
   src: ImageProps["src"] | null | undefined;
   fallbackSrc?: string;
   onError?: () => void;
+  /** @deprecated No longer needed — proxy handles content-type issues */
   useNativeForDropbox?: boolean;
   /** Number of retry attempts for failed images (default: 2). Helps with flaky mobile connections. */
   retryCount?: number;
@@ -25,20 +26,40 @@ const INLINE_PLACEHOLDER = `data:image/svg+xml,${encodeURIComponent(
 )}`;
 
 /**
+ * Check if a URL is from Dropbox (needs proxy for content-type fix on mobile)
+ */
+function isDropboxUrl(url: string): boolean {
+  return url.includes("dropbox.com") || url.includes("dropboxusercontent.com");
+}
+
+/**
+ * Convert a Dropbox URL to a proxied URL that fixes the content-type header.
+ * Dropbox returns content-type: application/json even for image files, which
+ * causes mobile browsers (especially Safari) to refuse rendering them.
+ * Our /api/image-proxy route fetches the image server-side and re-serves it
+ * with the correct MIME type.
+ */
+function proxyUrl(url: string): string {
+  if (isDropboxUrl(url)) {
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+/**
  * SafeImage - A wrapper around Next.js Image component that:
- * 1. Automatically sets unoptimized for Dropbox URLs
+ * 1. Routes Dropbox URLs through /api/image-proxy to fix content-type issues on mobile
  * 2. Handles image loading errors with optional fallback
- * 3. Uses native img element for Dropbox URLs to bypass content-type issues
- * 4. Works correctly on Netlify production
- * 5. Retries failed images (helpful for flaky mobile connections)
- * 6. Uses an inline SVG placeholder to avoid fallback cascade failures
+ * 3. Works correctly on Netlify production
+ * 4. Retries failed images (helpful for flaky mobile connections)
+ * 5. Uses an inline SVG placeholder to avoid fallback cascade failures
  */
 export function SafeImage({
   src,
   alt,
   fallbackSrc = INLINE_PLACEHOLDER,
   onError: onErrorProp,
-  useNativeForDropbox = true,
+  useNativeForDropbox: _useNativeForDropbox, // deprecated — kept for API compat
   fill,
   width,
   height,
@@ -54,10 +75,16 @@ export function SafeImage({
   const retryAttemptRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Pre-process the source URL: proxy Dropbox URLs
+  const processedSrc = useMemo(() => {
+    if (!src || typeof src !== "string") return src;
+    return proxyUrl(src);
+  }, [src]);
+
   // Reset state when src changes
   useEffect(() => {
     setError(false);
-    setImageSrc(src);
+    setImageSrc(processedSrc);
     retryAttemptRef.current = 0;
 
     return () => {
@@ -66,19 +93,15 @@ export function SafeImage({
         retryTimerRef.current = null;
       }
     };
-  }, [src]);
+  }, [processedSrc]);
 
-  // Check if URL is from Dropbox
-  const isDropboxUrl = typeof src === "string" && (
-    src.includes("dropbox.com") ||
-    src.includes("dropboxusercontent.com")
-  );
+  // Check if original URL is from Dropbox
+  const wasDropboxUrl = typeof src === "string" && isDropboxUrl(src);
 
-  // Use unoptimized for Dropbox URLs (they have auth tokens that don't work with Next.js optimization)
-  const shouldUnoptimize = isDropboxUrl || props.unoptimized;
+  // Use unoptimized for proxied URLs (proxy already serves optimized content)
+  const shouldUnoptimize = wasDropboxUrl || props.unoptimized;
 
   const handleFinalError = useCallback(() => {
-    // Call the provided onError callback
     onErrorProp?.();
   }, [onErrorProp]);
 
@@ -95,10 +118,12 @@ export function SafeImage({
       retryTimerRef.current = setTimeout(() => {
         // Force a re-render by toggling the src (adds cache-bust query param)
         const bustParam = `_retry=${retryAttemptRef.current}_${Date.now()}`;
-        const retrySrc = typeof src === "string" && src.startsWith("http")
-          ? `${src}${src.includes("?") ? "&" : "?"}${bustParam}`
-          : src;
-        setImageSrc(retrySrc);
+        const currentProcessedSrc = typeof processedSrc === "string" && processedSrc.startsWith("/")
+          ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
+          : typeof processedSrc === "string" && processedSrc.startsWith("http")
+            ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
+            : processedSrc;
+        setImageSrc(currentProcessedSrc);
       }, retryDelay * retryAttemptRef.current);
       return;
     }
@@ -109,7 +134,7 @@ export function SafeImage({
       setImageSrc(fallbackSrc);
     }
     handleFinalError();
-  }, [src, error, fallbackSrc, retryCount, retryDelay, handleFinalError]);
+  }, [src, processedSrc, error, fallbackSrc, retryCount, retryDelay, handleFinalError]);
 
   // If no valid src, show nothing or fallback
   if (!src || (typeof src === "string" && src.trim() === "")) {
@@ -134,47 +159,6 @@ export function SafeImage({
 
   // Final URL to render
   const finalSrc = error ? fallbackSrc : imageSrc;
-
-  // For Dropbox URLs, use native img element to bypass content-type header issues
-  // Dropbox returns content-type: application/json but actual content is image
-  if (isDropboxUrl && useNativeForDropbox && !error) {
-    // For fill mode, we need special handling
-    if (fill) {
-      return (
-        // biome-ignore lint/a11y/useAltText: alt is provided
-        <img
-          src={typeof finalSrc === "string" ? finalSrc : ""}
-          alt={alt || "Image"}
-          className={className}
-          style={{
-            position: "absolute",
-            height: "100%",
-            width: "100%",
-            inset: 0,
-            objectFit: "cover",
-          }}
-          onError={handleError}
-          loading={priority ? "eager" : "lazy"}
-          // Help mobile browsers by providing decoding hint
-          decoding="async"
-        />
-      );
-    }
-    // For explicit dimensions
-    return (
-      // biome-ignore lint/a11y/useAltText: alt is provided
-      <img
-        src={typeof finalSrc === "string" ? finalSrc : ""}
-        alt={alt || "Image"}
-        width={typeof width === "number" ? width : undefined}
-        height={typeof height === "number" ? height : undefined}
-        className={className}
-        onError={handleError}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-      />
-    );
-  }
 
   return (
     <Image
