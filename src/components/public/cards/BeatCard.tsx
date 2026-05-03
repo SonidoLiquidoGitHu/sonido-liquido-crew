@@ -64,7 +64,7 @@ export function BeatCard({
   return (
     <div className="group bg-slc-card border border-slc-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300">
       {/* Cover Image with Play Button */}
-      <div className="relative aspect-square">
+      <div className="relative aspect-square bg-slc-dark">
         {beat.coverImageUrl ? (
           <SafeImage
             src={beat.coverImageUrl}
@@ -72,6 +72,7 @@ export function BeatCard({
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            retryCount={2}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-slc-dark flex items-center justify-center">
@@ -226,7 +227,7 @@ export function BeatCardCompact({
         : "bg-slc-card border-slc-border hover:border-primary/30"
     }`}>
       {/* Cover Image */}
-      <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-slc-dark">
         {beat.coverImageUrl ? (
           <SafeImage
             src={beat.coverImageUrl}
@@ -234,6 +235,7 @@ export function BeatCardCompact({
             fill
             className="object-cover"
             sizes="56px"
+            retryCount={2}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-slc-dark flex items-center justify-center">

@@ -311,6 +311,7 @@ function PastEventCard({ event }: { event: Event }) {
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            retryCount={2}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">

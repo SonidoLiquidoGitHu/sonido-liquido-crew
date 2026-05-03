@@ -51,7 +51,7 @@ function DefaultSkeleton({ minHeight = "400px" }: { minHeight?: string }) {
 export function LazySection({
   children,
   fallback,
-  rootMargin = "200px", // Start loading 200px before entering viewport
+  rootMargin = "400px", // Start loading 400px before entering viewport (increased for mobile)
   threshold = 0,
   minHeight = "400px",
   className = "",
@@ -83,13 +83,19 @@ export function LazySection({
       return;
     }
 
+    // Use a larger rootMargin on mobile for better preloading
+    const isMobile = window.innerWidth < 768;
+    const effectiveRootMargin = isMobile ? "600px" : rootMargin;
+
     // Fallback timeout in case IntersectionObserver doesn't work
+    // Shorter on mobile since connections are slower and we want content sooner
+    const fallbackMs = isMobile ? 1500 : 3000;
     const fallbackTimer = setTimeout(() => {
       if (!isVisible) {
         setIsVisible(true);
         setHasLoaded(true);
       }
-    }, 2000);
+    }, fallbackMs);
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -100,7 +106,7 @@ export function LazySection({
         }
       },
       {
-        rootMargin,
+        rootMargin: effectiveRootMargin,
         threshold,
       }
     );

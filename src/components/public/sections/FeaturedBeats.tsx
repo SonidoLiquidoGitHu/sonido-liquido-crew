@@ -182,6 +182,7 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
                       width={48}
                       height={48}
                       className="w-full h-full object-cover"
+                      retryCount={2}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">

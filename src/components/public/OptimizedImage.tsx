@@ -10,15 +10,20 @@ interface OptimizedImageProps extends Omit<ImageProps, "onError" | "onLoad"> {
   aspectRatio?: "square" | "video" | "portrait" | "auto";
 }
 
-// Simple blur data URL for placeholder
-const shimmerBlur = `data:image/svg+xml;base64,${Buffer.from(
+// Simple blur data URL for placeholder (inline SVG - no Buffer.from in client component)
+const shimmerBlur = `data:image/svg+xml,${encodeURIComponent(
   `<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
     <rect width="400" height="400" fill="#1a1a1a"/>
   </svg>`
-).toString("base64")}`;
+)}`;
 
-// Default fallback image
-const defaultFallback = "/images/placeholder.jpg";
+// Default fallback image - inline SVG to avoid missing file issues
+const defaultFallback = `data:image/svg+xml,${encodeURIComponent(
+  `<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="400" fill="#1a1a1a"/>
+    <text x="200" y="210" text-anchor="middle" fill="#555" font-family="sans-serif" font-size="14">Sin imagen</text>
+  </svg>`
+)}`;
 
 export function OptimizedImage({
   src,

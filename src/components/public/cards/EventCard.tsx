@@ -30,7 +30,7 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
         isPast && "opacity-70"
       )}>
         {/* Image */}
-        <div className="aspect-[21/9] relative">
+        <div className="aspect-[21/9] relative bg-slc-dark">
           {event.imageUrl ? (
             <SafeImage
               src={event.imageUrl}
@@ -38,6 +38,8 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 600px"
+              priority
+              retryCount={2}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/30 to-slc-dark flex items-center justify-center">
@@ -125,13 +127,14 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
     )}>
       {/* Cover Image or Date */}
       {event.imageUrl ? (
-        <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative">
+        <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative bg-slc-dark">
           <SafeImage
             src={event.imageUrl}
             alt={event.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
             sizes="56px"
+            retryCount={2}
           />
           {/* Date overlay */}
           <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center pointer-events-none">
