@@ -4,6 +4,31 @@ import { releases, releaseArtists } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { slugify } from "@/lib/utils";
 
+/**
+ * Auto-fetch cover image from Spotify when a spotifyUrl or spotifyId is provided
+ * but no coverImageUrl. Uses Spotify oEmbed API (no auth required).
+ */
+async function fetchCoverFromSpotify(spotifyUrl: string | null, spotifyId: string | null): Promise<string | null> {
+  const embedUrl = spotifyUrl || (spotifyId ? `https://open.spotify.com/album/${spotifyId}` : null);
+  if (!embedUrl) return null;
+
+  try {
+    const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(embedUrl)}`;
+    const response = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.thumbnail_url) {
+        console.log("[Admin] Auto-fetched cover from Spotify oEmbed:", embedUrl);
+        return data.thumbnail_url;
+      }
+    }
+  } catch (error) {
+    console.warn("[Admin] Failed to fetch cover from Spotify oEmbed:", error);
+  }
+
+  return null;
+}
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -103,6 +128,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Auto-fetch cover from Spotify if not provided but Spotify URL/ID is available
+    let finalCoverImageUrl = coverImageUrl || null;
+    if (!finalCoverImageUrl && (spotifyUrl || spotifyId)) {
+      finalCoverImageUrl = await fetchCoverFromSpotify(spotifyUrl || null, spotifyId || null);
+    }
+
     // Update release
     await db
       .update(releases)
@@ -113,7 +144,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         releaseDate: releaseDate ? new Date(releaseDate) : existing.releaseDate,
         spotifyId: spotifyId || null,
         spotifyUrl: spotifyUrl || null,
-        coverImageUrl: coverImageUrl || null,
+        coverImageUrl: finalCoverImageUrl,
         description: description || null,
         appleMusicUrl: appleMusicUrl || null,
         youtubeMusicUrl: youtubeMusicUrl || null,

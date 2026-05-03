@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { releases, releaseArtists, artists, artistExternalProfiles } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 
 // All Sonido Líquido Crew artists with their Spotify IDs
@@ -364,13 +364,30 @@ export async function POST() {
             .limit(1);
 
           if (existing.length > 0) {
+            // Update missing fields on existing releases (especially coverImageUrl)
+            const existingRelease = existing[0];
+            const coverUrl = getBestCoverImage(album.images);
+            const updates: Record<string, unknown> = {};
+            if (!existingRelease.coverImageUrl && coverUrl) {
+              updates.coverImageUrl = coverUrl;
+            }
+            if (!existingRelease.spotifyUrl && album.external_urls?.spotify) {
+              updates.spotifyUrl = album.external_urls.spotify;
+            }
+            if (Object.keys(updates).length > 0) {
+              try {
+                await db.update(releases).set(updates).where(eq(releases.id, existingRelease.id));
+                console.log(`   🔄 Updated missing fields for: ${existingRelease.title}`);
+              } catch { /* non-critical */ }
+            }
+
             results.existingReleasesSkipped++;
 
             // IMPORTANT: Check if current artist has a link to this release
             // This fixes multi-artist collaborations (e.g. Trap Juicy by Dilema, Zaque, X Santa-Ana)
             const existingLink = await db.select().from(releaseArtists)
               .where(and(
-                eq(releaseArtists.releaseId, existing[0].id),
+                eq(releaseArtists.releaseId, existingRelease.id),
                 eq(releaseArtists.artistId, dbArtist.id)
               ))
               .limit(1);
@@ -379,7 +396,7 @@ export async function POST() {
               try {
                 await db.insert(releaseArtists).values({
                   id: generateUUID(),
-                  releaseId: existing[0].id,
+                  releaseId: existingRelease.id,
                   artistId: dbArtist.id,
                   isPrimary: false,
                 });
@@ -387,6 +404,51 @@ export async function POST() {
                 console.log(`   🔗 Linked existing: ${album.name} → ${slcArtist.name}`);
               } catch { /* duplicate */ }
             }
+            continue;
+          }
+
+          // Before creating, also try matching by title (for manually-created releases without spotifyId)
+          const manualMatch = await db.select().from(releases)
+            .where(and(
+              eq(releases.title, album.name),
+              sql`${releases.spotifyId} IS NULL`
+            )).limit(1);
+
+          if (manualMatch.length > 0) {
+            // Update the manually-created release with Spotify data
+            const coverUrl = getBestCoverImage(album.images);
+            const updates: Record<string, unknown> = {
+              spotifyId: album.id,
+            };
+            if (!manualMatch[0].coverImageUrl && coverUrl) {
+              updates.coverImageUrl = coverUrl;
+            }
+            if (!manualMatch[0].spotifyUrl && album.external_urls?.spotify) {
+              updates.spotifyUrl = album.external_urls.spotify;
+            }
+            try {
+              await db.update(releases).set(updates).where(eq(releases.id, manualMatch[0].id));
+              console.log(`   🔗 Linked manual release to Spotify: ${album.name}`);
+
+              // Also link the artist if not already linked
+              const existingLink = await db.select().from(releaseArtists)
+                .where(and(
+                  eq(releaseArtists.releaseId, manualMatch[0].id),
+                  eq(releaseArtists.artistId, dbArtist.id)
+                )).limit(1);
+              if (existingLink.length === 0) {
+                try {
+                  await db.insert(releaseArtists).values({
+                    id: generateUUID(),
+                    releaseId: manualMatch[0].id,
+                    artistId: dbArtist.id,
+                    isPrimary: false,
+                  });
+                  newArtistLinksCreated++;
+                } catch { /* dup */ }
+              }
+            } catch { /* non-critical */ }
+            results.existingReleasesSkipped++;
             continue;
           }
 

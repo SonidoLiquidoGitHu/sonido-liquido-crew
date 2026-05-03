@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { releases, releaseArtists, artists, artistExternalProfiles } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 import { spotifyClient } from "@/lib/clients";
 import { releasesRepository } from "@/lib/repositories";
@@ -161,6 +161,22 @@ async function runSync(artistsToProcess: typeof SLC_ARTISTS) {
             .where(eq(releases.spotifyId, album.id)).limit(1);
 
           if (existing) {
+            // Update missing fields on existing releases (especially coverImageUrl)
+            const coverUrl = getBestCoverImage(album.images);
+            const updates: Record<string, unknown> = {};
+            if (!existing.coverImageUrl && coverUrl) {
+              updates.coverImageUrl = coverUrl;
+            }
+            if (!existing.spotifyUrl && album.external_urls?.spotify) {
+              updates.spotifyUrl = album.external_urls.spotify;
+            }
+            if (Object.keys(updates).length > 0) {
+              try {
+                await db.update(releases).set(updates).where(eq(releases.id, existing.id));
+                console.log(`[Cron Sync] Updated missing fields for: ${existing.title}`);
+              } catch { /* non-critical */ }
+            }
+
             results.existingReleasesSkipped++;
             const [existingLink] = await db.select().from(releaseArtists)
               .where(and(eq(releaseArtists.releaseId, existing.id), eq(releaseArtists.artistId, dbArtist.id))).limit(1);
@@ -171,6 +187,44 @@ async function runSync(artistsToProcess: typeof SLC_ARTISTS) {
                 artistStats.linked++;
               } catch { /* dup */ }
             }
+            continue;
+          }
+
+          // Before creating, also try matching by title (for manually-created releases without spotifyId)
+          const [manualMatch] = await db.select().from(releases)
+            .where(and(
+              eq(releases.title, album.name),
+              sql`${releases.spotifyId} IS NULL`
+            )).limit(1);
+
+          if (manualMatch) {
+            // Update the manually-created release with Spotify data
+            const coverUrl = getBestCoverImage(album.images);
+            const updates: Record<string, unknown> = {
+              spotifyId: album.id,
+              updatedAt: new Date(),
+            };
+            if (!manualMatch.coverImageUrl && coverUrl) {
+              updates.coverImageUrl = coverUrl;
+            }
+            if (!manualMatch.spotifyUrl && album.external_urls?.spotify) {
+              updates.spotifyUrl = album.external_urls.spotify;
+            }
+            try {
+              await db.update(releases).set(updates).where(eq(releases.id, manualMatch.id));
+              console.log(`[Cron Sync] Linked manual release to Spotify: ${album.name}`);
+
+              // Also link the artist if not already linked
+              const [existingLink] = await db.select().from(releaseArtists)
+                .where(and(eq(releaseArtists.releaseId, manualMatch.id), eq(releaseArtists.artistId, dbArtist.id))).limit(1);
+              if (!existingLink) {
+                try {
+                  await db.insert(releaseArtists).values({ id: generateUUID(), releaseId: manualMatch.id, artistId: dbArtist.id, isPrimary: false });
+                  results.newArtistLinksCreated++;
+                } catch { /* dup */ }
+              }
+            } catch { /* non-critical */ }
+            results.existingReleasesSkipped++;
             continue;
           }
 
