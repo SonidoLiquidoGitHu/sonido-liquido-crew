@@ -15,6 +15,7 @@ import {
   Video,
   Loader2,
   Filter,
+  Users,
 } from "lucide-react";
 
 interface MediaRelease {
@@ -29,6 +30,9 @@ interface MediaRelease {
   isFeatured: boolean;
   viewCount: number;
   tags: string | null;
+  mainArtistId: string | null;
+  mainArtistName: string | null;
+  resolvedArtistName: string | null;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -157,6 +161,10 @@ export default function ComunicadosPage() {
                           {new Date(release.publishDate).toLocaleDateString("es-MX")}
                         </span>
                         <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
+                        </span>
+                        <span className="flex items-center gap-1">
                           <Eye className="w-3 h-3" />
                           {release.viewCount} vistas
                         </span>
@@ -242,9 +250,12 @@ export default function ComunicadosPage() {
                     </span>
                   </div>
                   <div className="p-4">
-                    <h3 className="font-oswald text-lg uppercase mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <h3 className="font-oswald text-lg uppercase mb-1 group-hover:text-primary transition-colors line-clamp-2">
                       {release.title}
                     </h3>
+                    <p className="text-xs text-primary mb-2">
+                      {release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
+                    </p>
                     {release.summary && (
                       <p className="text-sm text-slc-muted line-clamp-2 mb-3">{release.summary}</p>
                     )}

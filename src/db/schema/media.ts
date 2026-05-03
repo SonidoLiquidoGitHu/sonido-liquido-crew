@@ -57,6 +57,7 @@ export const mediaReleases = sqliteTable("media_releases", {
   pressKitSize: integer("press_kit_size"), // File size in bytes
   highResImagesUrl: text("high_res_images_url"), // ZIP of high-res images
   linerNotesUrl: text("liner_notes_url"), // PDF of liner notes/credits
+  attachedPressKitIds: text("attached_press_kit_ids"), // JSON array of press kit IDs from roster artists
 
   // Credits
   credits: text("credits"), // JSON or markdown with full credits

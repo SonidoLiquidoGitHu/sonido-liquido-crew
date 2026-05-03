@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { mediaReleases } from "@/db/schema";
+import { mediaReleases, artists, pressKits } from "@/db/schema";
 import { eq, sql, and } from "drizzle-orm";
 
 export async function GET(
@@ -60,9 +60,77 @@ export async function GET(
 
     console.log(`[API] Media release viewed: ${release.title}`);
 
+    // Resolve mainArtistId → artist name
+    let resolvedArtistName: string | null = null;
+    if (release.mainArtistId) {
+      const [artistRow] = await db
+        .select({ id: artists.id, name: artists.name })
+        .from(artists)
+        .where(eq(artists.id, release.mainArtistId))
+        .limit(1);
+      if (artistRow) {
+        resolvedArtistName = artistRow.name;
+      }
+    }
+
+    // Resolve attachedPressKitIds → press kit data
+    let attachedPressKits: Array<{
+      id: string;
+      title: string;
+      downloadUrl: string;
+      artistName: string | null;
+      fileSize: number | null;
+    }> = [];
+
+    if (release.attachedPressKitIds) {
+      try {
+        const kitIds: string[] = JSON.parse(release.attachedPressKitIds);
+        if (Array.isArray(kitIds) && kitIds.length > 0) {
+          for (const kitId of kitIds) {
+            const [kit] = await db
+              .select({
+                id: pressKits.id,
+                title: pressKits.title,
+                downloadUrl: pressKits.downloadUrl,
+                fileSize: pressKits.fileSize,
+                artistId: pressKits.artistId,
+              })
+              .from(pressKits)
+              .where(eq(pressKits.id, kitId))
+              .limit(1);
+
+            if (kit) {
+              let kitArtistName: string | null = null;
+              if (kit.artistId) {
+                const [kitArtist] = await db
+                  .select({ name: artists.name })
+                  .from(artists)
+                  .where(eq(artists.id, kit.artistId))
+                  .limit(1);
+                kitArtistName = kitArtist?.name || null;
+              }
+              attachedPressKits.push({
+                id: kit.id,
+                title: kit.title,
+                downloadUrl: kit.downloadUrl,
+                artistName: kitArtistName,
+                fileSize: kit.fileSize,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("[API] Error parsing attachedPressKitIds:", e);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      data: release,
+      data: {
+        ...release,
+        resolvedArtistName,
+        attachedPressKits,
+      },
     });
   } catch (error) {
     console.error("[API] Error fetching media release:", error);

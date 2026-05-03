@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CompactTracklist, CompactAudioPlayer } from "@/components/ui/compact-audio-player";
 import { PressToolkit } from "@/components/press/PressToolkit";
+import { CountdownTimer } from "@/components/public/CountdownTimer";
 import {
   Newspaper,
   Calendar,
@@ -44,12 +45,23 @@ interface AudioTrack {
   trackNumber: number;
 }
 
+interface AttachedPressKit {
+  id: string;
+  title: string;
+  downloadUrl: string;
+  artistName: string | null;
+  fileSize: number | null;
+}
+
 interface MediaRelease {
   id: string;
   title: string;
   slug: string;
   subtitle: string | null;
   category: string;
+  mainArtistId: string | null;
+  mainArtistName: string | null;
+  resolvedArtistName: string | null;
   summary: string | null;
   content: string | null;
   pullQuote: string | null;
@@ -81,6 +93,8 @@ interface MediaRelease {
   isFeatured: boolean;
   viewCount: number;
   tags: string | null;
+  attachedPressKitIds?: string | null;
+  attachedPressKits?: AttachedPressKit[];
 }
 
 const categoryLabels: Record<string, string> = {
@@ -371,6 +385,10 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                     day: "numeric",
                   })}
                 </span>
+                <span className="flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  {release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
+                </span>
                 {audioTracks.length > 0 && (
                   <>
                     <span className="flex items-center gap-1">
@@ -392,6 +410,20 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
           </div>
         </div>
       </div>
+
+      {/* Countdown Timer */}
+      {release.releaseDate && new Date(release.releaseDate) > new Date() && (
+        <div className="border-b border-slc-border bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="container mx-auto px-4 py-8 text-center">
+            <p className="text-sm text-slc-muted uppercase tracking-wider mb-4">
+              Faltan para el lanzamiento
+            </p>
+            <div className="flex justify-center">
+              <CountdownTimer targetDate={release.releaseDate} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
@@ -601,7 +633,37 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
             <PressToolkit
               release={release as Parameters<typeof PressToolkit>[0]["release"]}
               pageUrl={typeof window !== "undefined" ? window.location.href : `https://sonidoliquido.com/prensa/comunicados/${release.slug}`}
+              artistName={release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
             />
+
+            {/* Attached Press Kits from Roster Artists */}
+            {release.attachedPressKits && release.attachedPressKits.length > 0 && (
+              <div className="bg-slc-card border border-slc-border rounded-xl p-5">
+                <h3 className="font-oswald text-sm uppercase mb-3 flex items-center gap-2">
+                  <Package className="w-4 h-4 text-primary" />
+                  Press Kits de Artistas
+                </h3>
+                <div className="space-y-2">
+                  {release.attachedPressKits.map((kit) => (
+                    <a
+                      key={kit.id}
+                      href={kit.downloadUrl}
+                      download
+                      className="flex items-center gap-2 p-2 rounded-lg text-sm bg-slc-dark hover:bg-slc-dark/80 transition-colors"
+                    >
+                      <Package className="w-4 h-4 text-slc-muted" />
+                      <div className="flex-1">
+                        <span>{kit.artistName ? `${kit.artistName} - ` : ""}{kit.title}</span>
+                        {kit.fileSize && (
+                          <span className="text-slc-muted ml-2">({(kit.fileSize / 1024 / 1024).toFixed(1)} MB)</span>
+                        )}
+                      </div>
+                      <Download className="w-3 h-3 text-slc-muted" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Downloads */}
             {(release.pressKitUrl || release.highResImagesUrl || release.linerNotesUrl) && (

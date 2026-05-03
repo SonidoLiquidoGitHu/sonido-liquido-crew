@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { mediaReleases } from "@/db/schema";
+import { mediaReleases, artists } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -35,9 +35,35 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(mediaReleases.publishDate))
       .limit(limit);
 
+    // Resolve mainArtistId → artist name for each release
+    const artistIds = releases
+      .map(r => r.mainArtistId)
+      .filter((id): id is string => !!id);
+
+    const artistNames: Record<string, string> = {};
+    if (artistIds.length > 0) {
+      const uniqueIds = [...new Set(artistIds)];
+      // Fetch each artist individually (SQLite doesn't support IN easily with drizzle)
+      for (const id of uniqueIds) {
+        const [row] = await db
+          .select({ id: artists.id, name: artists.name })
+          .from(artists)
+          .where(eq(artists.id, id))
+          .limit(1);
+        if (row) {
+          artistNames[row.id] = row.name;
+        }
+      }
+    }
+
+    const releasesWithArtist = releases.map(r => ({
+      ...r,
+      resolvedArtistName: r.mainArtistId ? (artistNames[r.mainArtistId] || null) : null,
+    }));
+
     return NextResponse.json({
       success: true,
-      data: releases,
+      data: releasesWithArtist,
     });
   } catch (error) {
     console.error("[API] Error fetching media releases:", error);

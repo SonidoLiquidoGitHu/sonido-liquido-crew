@@ -167,6 +167,7 @@ export async function POST(request: NextRequest) {
         highResImagesUrl: body.highResImagesUrl || null,
         linerNotesUrl: body.linerNotesUrl || null,
         credits: body.credits?.trim() || null,
+        attachedPressKitIds: body.attachedPressKitIds || null,
 
         // Related
         relatedArtistIds: body.relatedArtistIds || null,
@@ -291,6 +292,7 @@ export async function PUT(request: NextRequest) {
         highResImagesUrl: body.highResImagesUrl || null,
         linerNotesUrl: body.linerNotesUrl || null,
         credits: body.credits || null,
+        attachedPressKitIds: body.attachedPressKitIds || null,
         relatedArtistIds: body.relatedArtistIds || null,
         externalLinks: body.externalLinks || null,
         prContactName: body.prContactName || null,

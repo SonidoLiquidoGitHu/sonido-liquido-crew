@@ -9,6 +9,7 @@ import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader"
 import { BulkAudioUploader } from "@/components/admin/BulkAudioUploader";
 import { BulkImageUploader } from "@/components/admin/BulkImageUploader";
 import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
+import { PressKitMultiSelector } from "@/components/admin/PressKitMultiSelector";
 import {
   ArrowLeft,
   Save,
@@ -121,6 +122,7 @@ export default function NewMediaReleaseForm({ artists }: NewMediaReleaseFormProp
     highResImagesUrl: "",
     linerNotesUrl: "",
     credits: "",
+    attachedPressKitIds: [] as string[],
 
     // Related
     relatedArtistIds: [] as string[],
@@ -335,6 +337,7 @@ export default function NewMediaReleaseForm({ artists }: NewMediaReleaseFormProp
         externalLinks: JSON.stringify(formData.externalLinks),
         audioTracks: formData.audioTracks.length > 0 ? JSON.stringify(formData.audioTracks) : null,
         tags: formData.tags ? JSON.stringify(formData.tags.split(",").map(t => t.trim())) : null,
+        attachedPressKitIds: formData.attachedPressKitIds.length > 0 ? JSON.stringify(formData.attachedPressKitIds) : null,
       };
 
       // Remove useCustomArtist from submit data
@@ -1010,7 +1013,23 @@ export default function NewMediaReleaseForm({ artists }: NewMediaReleaseFormProp
             {/* Tab: Assets */}
             {activeTab === "assets" && (
               <div className="space-y-6">
-                {/* Press Kit */}
+                {/* Press Kit Multi-Selector from Roster Artists */}
+                <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
+                  <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-primary" />
+                    Press Kits de Artistas del Roster
+                  </h2>
+                  <p className="text-sm text-slc-muted mb-4">
+                    Selecciona uno o más press kits existentes de los artistas del roster para adjuntar a este comunicado.
+                  </p>
+
+                  <PressKitMultiSelector
+                    value={formData.attachedPressKitIds}
+                    onChange={(ids) => setFormData(prev => ({ ...prev, attachedPressKitIds: ids }))}
+                  />
+                </div>
+
+                {/* Press Kit Upload */}
                 <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
                   <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
                     <Package className="w-5 h-5 text-blue-500" />

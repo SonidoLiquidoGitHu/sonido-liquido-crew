@@ -12,6 +12,7 @@ import { ImageAnalyzer } from "@/components/admin/ImageAnalyzer";
 import { YouTubePreview } from "@/components/admin/YouTubePreview";
 import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
 import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
+import { PressKitMultiSelector } from "@/components/admin/PressKitMultiSelector";
 import { type StyleSettings } from "@/lib/style-config";
 import {
   ArrowLeft,
@@ -175,6 +176,7 @@ export default function EditMediaReleasePage() {
     highResImagesUrl: "",
     linerNotesUrl: "",
     credits: "",
+    attachedPressKitIds: [] as string[],
     relatedArtistIds: [] as string[],
     externalLinks: [] as ExternalLink[],
     prContactName: "",
@@ -254,6 +256,17 @@ export default function EditMediaReleasePage() {
           console.error("Error parsing tags:", e);
         }
 
+        // Parse attachedPressKitIds
+        let attachedPressKitIds: string[] = [];
+        try {
+          if ((mr as any).attachedPressKitIds) {
+            const parsed = JSON.parse((mr as any).attachedPressKitIds);
+            attachedPressKitIds = Array.isArray(parsed) ? parsed : [];
+          }
+        } catch (e) {
+          console.error("Error parsing attachedPressKitIds:", e);
+        }
+
         setFormData({
           id: mr.id,
           title: mr.title || "",
@@ -282,6 +295,7 @@ export default function EditMediaReleasePage() {
           highResImagesUrl: mr.highResImagesUrl || "",
           linerNotesUrl: mr.linerNotesUrl || "",
           credits: mr.credits || "",
+          attachedPressKitIds,
           relatedArtistIds,
           externalLinks,
           prContactName: mr.prContactName || "",
@@ -553,6 +567,7 @@ export default function EditMediaReleasePage() {
         externalLinks: JSON.stringify(formData.externalLinks),
         audioTracks: formData.audioTracks.length > 0 ? JSON.stringify(formData.audioTracks) : null,
         tags: formData.tags ? JSON.stringify(formData.tags.split(",").map(t => t.trim())) : null,
+        attachedPressKitIds: formData.attachedPressKitIds.length > 0 ? JSON.stringify(formData.attachedPressKitIds) : null,
       };
 
       // Remove useCustomArtist from submit data (it's only for UI state)
@@ -1361,7 +1376,23 @@ export default function EditMediaReleasePage() {
             {/* Tab: Assets */}
             {activeTab === "assets" && (
               <div className="space-y-6">
-                {/* Press Kit */}
+                {/* Press Kit Multi-Selector from Roster Artists */}
+                <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
+                  <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-primary" />
+                    Press Kits de Artistas del Roster
+                  </h2>
+                  <p className="text-sm text-slc-muted mb-4">
+                    Selecciona uno o más press kits existentes de los artistas del roster para adjuntar a este comunicado.
+                  </p>
+
+                  <PressKitMultiSelector
+                    value={formData.attachedPressKitIds}
+                    onChange={(ids) => setFormData(prev => ({ ...prev, attachedPressKitIds: ids }))}
+                  />
+                </div>
+
+                {/* Press Kit Upload */}
                 <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
                   <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
                     <Package className="w-5 h-5 text-blue-500" />
@@ -1371,41 +1402,7 @@ export default function EditMediaReleasePage() {
                     Archivo ZIP con todos los materiales: imágenes HD, logo, bio, etc.
                   </p>
 
-                  {/* Existing Press Kits Selector */}
-                  {existingPressKits.length > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-sm text-slc-muted mb-2">
-                        Usar Press Kit de Artista Existente
-                      </label>
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleSelectExistingPressKit(e.target.value);
-                          }
-                        }}
-                        className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
-                      >
-                        <option value="">Seleccionar press kit existente...</option>
-                        {existingPressKits.map((kit) => (
-                          <option key={kit.id} value={kit.id}>
-                            {kit.artistName ? `${kit.artistName} - ${kit.title}` : kit.title}
-                            {kit.fileSize ? ` (${(kit.fileSize / 1024 / 1024).toFixed(1)} MB)` : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-slc-muted mt-1">
-                        Selecciona un press kit existente de un artista para vincularlo a este comunicado.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="relative">
-                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 px-3 bg-slc-dark text-slc-muted text-xs">
-                      o subir nuevo
-                    </div>
-                    <div className="pt-4 border-t border-slc-border">
-                      <DirectDropboxUploader
+                  <DirectDropboxUploader
                         onUploadComplete={handlePressKitUpload}
                         accept=".zip,.rar"
                         maxSize={150}
@@ -1413,8 +1410,6 @@ export default function EditMediaReleasePage() {
                         label="Subir Press Kit"
                         currentUrl={formData.pressKitUrl}
                       />
-                    </div>
-                  </div>
 
                   {formData.pressKitUrl && (
                     <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center justify-between">
