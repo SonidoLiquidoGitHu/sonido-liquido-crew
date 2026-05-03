@@ -36,10 +36,10 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["music-metadata-browser", "@libsql/client", "@libsql/client/web"]
-  max_duration = 60
 
 [functions."api/*"]
   included_files = ["node_modules/**"]
+  max_duration = 60
 
 # Scheduled function: sync Spotify releases every 6 hours
 # Runs at midnight, 6am, noon, and 6pm UTC
