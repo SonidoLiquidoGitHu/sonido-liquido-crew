@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { proxyImageUrl } from "@/lib/utils";
 import { Disc3, Play, ExternalLink, Calendar, Clock, Music2, Loader2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -237,11 +237,12 @@ export function ArtistDiscography({
                     {/* Album Cover */}
                     <div className="relative aspect-square rounded-lg overflow-hidden bg-slc-card mb-3">
                       {album.images[0]?.url ? (
-                        <Image
-                          src={album.images[0].url}
+                        <img
+                          src={proxyImageUrl(album.images[0].url) || undefined}
                           alt={album.name}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slc-card to-slc-border">

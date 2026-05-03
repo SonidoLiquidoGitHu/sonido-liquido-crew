@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { releasesService } from "@/lib/services";
-import { formatDate, getReleaseTypeDisplay } from "@/lib/utils";
+import { formatDate, getReleaseTypeDisplay, proxyImageUrl } from "@/lib/utils";
 import { SpotifyEmbed } from "@/components/public/embeds/SpotifyEmbed";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Calendar, Disc3, User } from "lucide-react";
@@ -53,12 +52,12 @@ export default async function ReleasePage({ params }: ReleasePageProps) {
           <div className="relative">
             <div className="aspect-square rounded-xl overflow-hidden bg-slc-card shadow-2xl">
               {release.coverImageUrl ? (
-                <Image
-                  src={release.coverImageUrl}
+                <img
+                  src={proxyImageUrl(release.coverImageUrl) || undefined}
                   alt={release.title}
-                  fill
-                  className="object-cover"
-                  priority
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading="eager"
+                  decoding="async"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-slc-dark">
@@ -172,12 +171,12 @@ export default async function ReleasePage({ params }: ReleasePageProps) {
                 >
                   <div className="aspect-square rounded-lg overflow-hidden bg-slc-card mb-2">
                     {artist.profileImageUrl ? (
-                      <Image
-                        src={artist.profileImageUrl}
+                      <img
+                        src={proxyImageUrl(artist.profileImageUrl) || undefined}
                         alt={artist.name}
-                        width={200}
-                        height={200}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

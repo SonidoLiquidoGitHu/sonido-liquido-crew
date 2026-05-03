@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { Play, ExternalLink } from "lucide-react";
-import { cn, getReleaseTypeDisplay } from "@/lib/utils";
-import { SafeImage } from "@/components/ui/safe-image";
+import { getReleaseTypeDisplay } from "@/lib/utils";
+import { Img } from "@/components/ui/img";
 import type { Release } from "@/types";
 
 interface ReleaseCardProps {
@@ -12,19 +12,27 @@ interface ReleaseCardProps {
   artistName?: string;
 }
 
+/**
+ * ReleaseCard — displays a single release with cover art, title, artist, and date.
+ *
+ * Uses the Img component (plain <img> with Dropbox proxying) instead of next/image because:
+ * 1. Cover images come from Spotify CDN or Dropbox (Img auto-proxies Dropbox URLs)
+ * 2. next/image with fill + unoptimized has proven unreliable for client-rendered
+ *    sections (LazySection delays render until scroll)
+ * 3. The global unoptimized:true config means next/image adds zero value
+ * 4. Plain <img> is simpler, more reliable, and renders identically across all browsers
+ */
 export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseCardProps) {
   return (
     <div className="group">
-      {/* Album Cover - isolated container with overflow-hidden */}
+      {/* Album Cover — isolated container with overflow-hidden */}
       <div className="release-card">
         {release.coverImageUrl ? (
-          <SafeImage
+          <Img
             src={release.coverImageUrl}
             alt={release.title}
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            retryCount={2}
+            className="transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full bg-slc-card flex items-center justify-center">
@@ -35,7 +43,7 @@ export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseC
           </div>
         )}
 
-        {/* Hover/Touch Overlay with Actions - visible on hover (desktop) and always on mobile */}
+        {/* Hover/Touch Overlay with Actions — visible on hover (desktop) and always on mobile */}
         <div className="release-card-overlay">
           <div className="flex flex-col items-center gap-3">
             {release.spotifyUrl && (
@@ -73,7 +81,7 @@ export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseC
         </Link>
       </div>
 
-      {/* Info Below Card - in normal document flow, no absolute positioning */}
+      {/* Info Below Card — in normal document flow, no absolute positioning */}
       <div className="mt-3 text-center">
         <span className="text-xs text-primary uppercase tracking-wider">
           {getReleaseTypeDisplay(release.releaseType)}
