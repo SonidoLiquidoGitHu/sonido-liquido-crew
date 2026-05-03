@@ -162,10 +162,6 @@ const nextConfig = {
       "@radix-ui/react-icons",
       "sonner",
     ],
-    // Fix Turbopack root directory detection
-    turbopack: {
-      root: "..",
-    },
   },
   // Headers for caching
   async headers() {
