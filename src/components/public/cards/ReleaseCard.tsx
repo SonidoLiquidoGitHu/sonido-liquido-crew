@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Play, ExternalLink } from "lucide-react";
-import { cn, getReleaseTypeDisplay, proxyImageUrl } from "@/lib/utils";
+import { cn, getReleaseTypeDisplay } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
 import type { Release } from "@/types";
 
 interface ReleaseCardProps {
@@ -18,13 +18,13 @@ export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseC
       {/* Album Cover */}
       <div className="absolute inset-0">
         {release.coverImageUrl ? (
-          <Image
-            src={proxyImageUrl(release.coverImageUrl) || ""}
+          <SafeImage
+            src={release.coverImageUrl}
             alt={release.title}
             fill
-            unoptimized={!!(release.coverImageUrl && (release.coverImageUrl.includes("dropbox.com") || release.coverImageUrl.includes("dropboxusercontent.com")))}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            retryCount={2}
           />
         ) : (
           <div className="w-full h-full bg-slc-card flex items-center justify-center">
