@@ -197,6 +197,16 @@ const nextConfig = {
         ],
       },
       {
+        // Image proxy - aggressive caching (images are immutable, proxied from Dropbox/CDN)
+        source: "/api/image-proxy",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
         // API routes - no CDN caching to prevent stale data
         source: "/api/:path*",
         headers: [

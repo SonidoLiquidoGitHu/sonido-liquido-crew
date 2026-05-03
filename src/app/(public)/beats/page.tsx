@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { BeatCard, BeatCardCompact } from "@/components/public/cards/BeatCard";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   Music,
   Loader2,
@@ -313,12 +314,15 @@ export default function BeatsPage() {
           <div className="section-container py-3">
             <div className="flex items-center gap-4">
               {/* Album Art */}
-              <div className="w-12 h-12 rounded-lg overflow-hidden bg-slc-card flex-shrink-0">
+              <div className="w-12 h-12 rounded-lg overflow-hidden bg-slc-card flex-shrink-0 relative">
                 {currentBeat.coverImageUrl ? (
-                  <img
+                  <SafeImage
                     src={currentBeat.coverImageUrl}
                     alt={currentBeat.title}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="48px"
+                    retryCount={1}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">

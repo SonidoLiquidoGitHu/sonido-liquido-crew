@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -283,11 +283,13 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
         <div className="relative mb-6">
           <div className="aspect-square rounded-xl overflow-hidden shadow-2xl">
             {beat.coverImageUrl ? (
-              <Image
+              <SafeImage
                 src={beat.coverImageUrl}
                 alt={beat.title}
                 fill
                 className="object-cover"
+                sizes="(max-width: 640px) 100vw, 480px"
+                retryCount={2}
               />
             ) : (
               <div className="w-full h-full bg-slc-card flex items-center justify-center">

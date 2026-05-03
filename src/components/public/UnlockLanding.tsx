@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import { Button } from "@/components/ui/button";
 import {
   Music,
@@ -249,11 +249,13 @@ export function UnlockLanding({
         {/* Blurred cover as background */}
         {coverImageUrl && (
           <div className="absolute inset-0 opacity-20 blur-3xl scale-150">
-            <Image
+            <SafeImage
               src={coverImageUrl}
               alt=""
               fill
               className="object-cover"
+              sizes="100vw"
+              retryCount={1}
             />
           </div>
         )}
@@ -440,12 +442,14 @@ export function UnlockLanding({
             {/* Main Cover */}
             <div className="relative w-64 h-64 md:w-72 md:h-72 rounded-2xl overflow-hidden shadow-2xl transform transition-transform duration-300 group-hover:scale-[1.02]">
               {coverImageUrl ? (
-                <Image
+                <SafeImage
                   src={coverImageUrl}
                   alt={title}
                   fill
                   className="object-cover"
+                  sizes="(max-width: 768px) 256px, 288px"
                   priority
+                  retryCount={2}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
@@ -461,13 +465,14 @@ export function UnlockLanding({
 
         {/* Cover for video (smaller, below video) */}
         {hasVideo && coverImageUrl && (
-          <div className="w-24 h-24 rounded-xl overflow-hidden shadow-lg mb-4 border-2 border-white/10">
-            <Image
+          <div className="w-24 h-24 rounded-xl overflow-hidden shadow-lg mb-4 border-2 border-white/10 relative">
+            <SafeImage
               src={coverImageUrl}
               alt={title}
-              width={96}
-              height={96}
-              className="object-cover w-full h-full"
+              fill
+              className="object-cover"
+              sizes="96px"
+              retryCount={1}
             />
           </div>
         )}

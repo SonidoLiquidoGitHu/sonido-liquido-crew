@@ -25,6 +25,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface Track {
   id: string;
@@ -169,10 +170,13 @@ export default function PlaylistPage() {
         {/* Background blur */}
         {playlist.coverImageUrl && (
           <div className="absolute inset-0">
-            <img
+            <SafeImage
               src={playlist.coverImageUrl}
               alt=""
-              className="w-full h-full object-cover blur-3xl opacity-20 scale-110"
+              fill
+              className="object-cover blur-3xl opacity-20 scale-110"
+              sizes="100vw"
+              retryCount={1}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-slc-black/80 to-slc-black" />
           </div>
@@ -191,12 +195,15 @@ export default function PlaylistPage() {
           <div className="flex flex-col md:flex-row gap-8">
             {/* Cover */}
             <div className="flex-shrink-0">
-              <div className="w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden bg-slc-card shadow-2xl mx-auto md:mx-0">
+              <div className="w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden bg-slc-card shadow-2xl mx-auto md:mx-0 relative">
                 {playlist.coverImageUrl ? (
-                  <img
+                  <SafeImage
                     src={playlist.coverImageUrl}
                     alt={playlist.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 192px, 224px"
+                    retryCount={2}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/50 to-slc-dark">
@@ -497,12 +504,15 @@ function TrackRow({
 
       {/* Title & Cover */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded bg-slc-dark overflow-hidden flex-shrink-0">
+        <div className="w-10 h-10 rounded bg-slc-dark overflow-hidden flex-shrink-0 relative">
           {track.coverUrl ? (
-            <img
+            <SafeImage
               src={track.coverUrl}
               alt={track.title}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              sizes="40px"
+              retryCount={1}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
