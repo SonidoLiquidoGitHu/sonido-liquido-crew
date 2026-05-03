@@ -388,6 +388,9 @@ const ADD_COLUMNS_SQL = [
   // Missing columns in playlist_tracks (some installs may lack these)
   `ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT`,
   `ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT`,
+
+  // Media releases - attached press kit IDs (JSON array of press kit IDs from roster artists)
+  `ALTER TABLE media_releases ADD COLUMN attached_press_kit_ids TEXT`,
 ];
 
 const ENSURE_INDEXES_SQL = [
