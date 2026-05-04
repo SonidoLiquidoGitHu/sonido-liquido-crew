@@ -101,6 +101,7 @@ export default function CuratedChannelDetailPage({
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchingTop, setFetchingTop] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [playingTrack, setPlayingTrack] = useState<string | null>(null);
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
@@ -172,6 +173,26 @@ export default function CuratedChannelDetailPage({
       alert("Error de conexión");
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleFetchTopTracks = async () => {
+    setFetchingTop(true);
+    try {
+      const res = await fetch(`/api/admin/curated-channels/${id}/top-tracks`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || "Top tracks actualizados");
+        fetchChannel();
+      } else {
+        alert(data.error || "Error al obtener top tracks");
+      }
+    } catch (error) {
+      alert("Error de conexión");
+    } finally {
+      setFetchingTop(false);
     }
   };
 
@@ -360,14 +381,14 @@ export default function CuratedChannelDetailPage({
               )}
 
               {/* Actions */}
-              <div className="flex gap-3">
-                <Button onClick={handleRefreshInfo} disabled={refreshing} variant="outline">
-                  {refreshing ? (
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleFetchTopTracks} disabled={fetchingTop} variant="outline">
+                  {fetchingTop ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <RefreshCw className="w-4 h-4 mr-2" />
+                    <Star className="w-4 h-4 mr-2" />
                   )}
-                  Actualizar Info
+                  Top Tracks
                 </Button>
                 <Button onClick={handleSync} disabled={syncing}>
                   {syncing ? (
@@ -375,7 +396,14 @@ export default function CuratedChannelDetailPage({
                   ) : (
                     <Disc3 className="w-4 h-4 mr-2" />
                   )}
-                  Sincronizar Tracks
+                  Sincronizar Todo
+                </Button>
+                <Button onClick={handleRefreshInfo} disabled={refreshing} variant="outline" size="sm">
+                  {refreshing ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
                 </Button>
                 <a
                   href={channel.spotifyArtistUrl}

@@ -82,6 +82,7 @@ export default function CuratedChannelsPage() {
   // Sync state
   const [syncing, setSyncing] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<string | null>(null);
+  const [fetchingTop, setFetchingTop] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChannels();
@@ -128,6 +129,8 @@ export default function CuratedChannelsPage() {
         setShowAddModal(false);
         setNewSpotifyUrl("");
         setNewDescription("");
+        const topInfo = data.data?.topTracksAdded ? ` (${data.data.topTracksAdded} top tracks)` : '';
+        alert(`Canal "${data.data?.name}" agregado${topInfo}`);
         fetchChannels();
       } else {
         setAddError(data.error || "Error al agregar el canal");
@@ -177,6 +180,26 @@ export default function CuratedChannelsPage() {
       alert("Error de conexión");
     } finally {
       setRefreshing(null);
+    }
+  };
+
+  const handleFetchTopTracks = async (channel: CuratedChannel) => {
+    setFetchingTop(channel.id);
+    try {
+      const res = await fetch(`/api/admin/curated-channels/${channel.id}/top-tracks`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || "Top tracks actualizados");
+        fetchChannels();
+      } else {
+        alert(data.error || "Error al obtener top tracks");
+      }
+    } catch (error) {
+      alert("Error de conexión");
+    } finally {
+      setFetchingTop(null);
     }
   };
 
@@ -447,14 +470,14 @@ export default function CuratedChannelsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRefreshInfo(channel)}
-                      disabled={refreshing === channel.id}
-                      title="Actualizar info desde Spotify"
+                      onClick={() => handleFetchTopTracks(channel)}
+                      disabled={fetchingTop === channel.id}
+                      title="Obtener top tracks"
                     >
-                      {refreshing === channel.id ? (
+                      {fetchingTop === channel.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Info className="w-4 h-4" />
+                        <Star className="w-4 h-4" />
                       )}
                     </Button>
                     <Button
@@ -462,12 +485,25 @@ export default function CuratedChannelsPage() {
                       size="sm"
                       onClick={() => handleSyncChannel(channel.id)}
                       disabled={syncing === channel.id}
-                      title="Sincronizar tracks"
+                      title="Sincronizar todo"
                     >
                       {syncing === channel.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRefreshInfo(channel)}
+                      disabled={refreshing === channel.id}
+                      title="Actualizar info"
+                    >
+                      {refreshing === channel.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Info className="w-4 h-4" />
                       )}
                     </Button>
                     <Button

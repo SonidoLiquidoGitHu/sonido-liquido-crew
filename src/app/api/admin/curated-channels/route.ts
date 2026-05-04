@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { curatedSpotifyChannels } from "@/db/schema";
+import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
 import { eq, desc, asc } from "drizzle-orm";
 import { spotifyClient, SpotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
@@ -157,10 +157,55 @@ export async function POST(request: NextRequest) {
 
     await db.insert(curatedSpotifyChannels).values(newChannel);
 
+    // Auto-fetch top tracks from Spotify (quick - only 1 API call)
+    let topTracksAdded = 0;
+    try {
+      const topTracks = await spotifyClient.getArtistTopTracks(spotifyArtistId);
+
+      for (const track of topTracks) {
+        // Skip if track already exists (shouldn't happen for new channel, but safe check)
+        const existingTrack = await db
+          .select()
+          .from(curatedTracks)
+          .where(eq(curatedTracks.spotifyTrackId, track.id))
+          .limit(1);
+
+        if (existingTrack.length > 0) continue;
+
+        const newTrack = {
+          id: generateUUID(),
+          spotifyTrackId: track.id,
+          spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+          spotifyAlbumId: track.album?.id || null,
+          name: track.name,
+          artistName: track.artists?.map((a: any) => a.name).join(", ") || artistInfo.name,
+          artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
+          albumName: track.album?.name || null,
+          albumImageUrl: track.album?.images?.[0]?.url || null,
+          durationMs: track.duration_ms ?? null,
+          previewUrl: track.preview_url || null,
+          releaseDate: track.album?.release_date || null,
+          popularity: track.popularity ?? null,
+          explicit: Boolean(track.explicit),
+          curatedChannelId: id,
+          isAvailableForPlaylist: true,
+          isFeatured: true, // Top tracks are featured by default
+        };
+
+        await db.insert(curatedTracks).values(newTrack);
+        topTracksAdded++;
+      }
+
+      console.log(`[Curated Channels API] Auto-fetched ${topTracksAdded} top tracks for ${artistInfo.name}`);
+    } catch (err) {
+      console.warn(`[Curated Channels API] Could not fetch top tracks for ${artistInfo.name}:`, err);
+      // Non-blocking — channel is still created
+    }
+
     return NextResponse.json({
       success: true,
-      data: newChannel,
-      message: `Channel "${artistInfo.name}" added successfully`,
+      data: { ...newChannel, topTracksAdded },
+      message: `Channel "${artistInfo.name}" added with ${topTracksAdded} top tracks`,
     });
   } catch (error) {
     console.error("[Curated Channels API] Error creating channel:", error);

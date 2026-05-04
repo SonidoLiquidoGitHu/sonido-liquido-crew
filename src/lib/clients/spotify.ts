@@ -177,6 +177,16 @@ class SpotifyClient {
   }
 
   /**
+   * Get artist's top tracks (up to 10)
+   */
+  async getArtistTopTracks(artistId: string): Promise<SpotifyTrack[]> {
+    const response = await this.request<{ tracks: SpotifyTrack[] }>(
+      `/artists/${artistId}/top-tracks?market=MX`
+    );
+    return response.tracks || [];
+  }
+
+  /**
    * Get artist's albums
    */
   async getArtistAlbums(
