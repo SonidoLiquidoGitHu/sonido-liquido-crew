@@ -522,6 +522,8 @@ export interface SpotifyTrack {
   album: SpotifyAlbum;
   external_urls: { spotify: string };
   preview_url: string | null;
+  popularity?: number;
+  explicit?: boolean;
 }
 
 // ===========================================
