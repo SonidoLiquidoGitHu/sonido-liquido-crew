@@ -34,6 +34,13 @@ const defaultSettings = {
   popupImageUrl: "https://ext.same-assets.com/1846169302/3422652946.png",
 
   dismissDays: 7,
+
+  // Download reward file (offered after subscribing)
+  downloadFileEnabled: false,
+  downloadFileUrl: "",
+  downloadFileName: "",
+  downloadButtonText: "Descargar Regalo",
+  downloadDescription: "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
 };
 
 // GET - Fetch popup settings (public)
@@ -97,6 +104,11 @@ export async function POST(request: NextRequest) {
       variantBButtonText: body.variantBButtonText ?? defaultSettings.variantBButtonText,
       popupImageUrl: body.popupImageUrl ?? defaultSettings.popupImageUrl,
       dismissDays: body.dismissDays ?? defaultSettings.dismissDays,
+      downloadFileEnabled: body.downloadFileEnabled ?? defaultSettings.downloadFileEnabled,
+      downloadFileUrl: body.downloadFileUrl ?? defaultSettings.downloadFileUrl,
+      downloadFileName: body.downloadFileName ?? defaultSettings.downloadFileName,
+      downloadButtonText: body.downloadButtonText ?? defaultSettings.downloadButtonText,
+      downloadDescription: body.downloadDescription ?? defaultSettings.downloadDescription,
     };
 
     // Check if setting exists

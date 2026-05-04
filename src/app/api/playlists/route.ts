@@ -43,6 +43,11 @@ export async function GET(request: NextRequest) {
       useFallback = true;
     }
 
+    // Also filter by isActive
+    if (!useFallback) {
+      dbPlaylistRows = dbPlaylistRows.filter(p => p.isActive !== false);
+    }
+
     if (dbPlaylistRows.length === 0) {
       useFallback = true;
     }

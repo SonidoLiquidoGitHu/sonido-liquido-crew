@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSoundEffects } from "./effects/SoundEffects";
 
+// Download file info returned after subscription
+interface DownloadFileInfo {
+  url: string;
+  name: string;
+  buttonText: string;
+  description: string;
+}
+
 // Default popup configuration
 interface PopupSettings {
   // Timing
@@ -44,6 +52,13 @@ interface PopupSettings {
 
   // Dismissal
   dismissDays: number;
+
+  // Download reward file (offered after subscribing)
+  downloadFileEnabled: boolean;
+  downloadFileUrl: string;
+  downloadFileName: string;
+  downloadButtonText: string;
+  downloadDescription: string;
 }
 
 const defaultSettings: PopupSettings = {
@@ -72,6 +87,13 @@ const defaultSettings: PopupSettings = {
   popupImageUrl: "",
 
   dismissDays: 7,
+
+  // Download reward file
+  downloadFileEnabled: false,
+  downloadFileUrl: "",
+  downloadFileName: "",
+  downloadButtonText: "Descargar Regalo",
+  downloadDescription: "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
 };
 
 // Icon mapping
@@ -115,6 +137,7 @@ export function NewsletterPopup({
   const [settings, setSettings] = useState<PopupSettings>(defaultSettings);
   const [abVariant, setAbVariant] = useState<"A" | "B">("A");
   const [triggerSource, setTriggerSource] = useState<"time" | "scroll" | "exit-intent">("time");
+  const [downloadFile, setDownloadFile] = useState<DownloadFileInfo | null>(null);
   const { playSound } = useSoundEffects();
   const exitIntentEnabled = useRef(false);
 
@@ -337,6 +360,11 @@ export function NewsletterPopup({
         playSound("success");
         localStorage.setItem("newsletter_subscribed", "true");
 
+        // Store download file info if returned
+        if (data.data?.downloadFile) {
+          setDownloadFile(data.data.downloadFile);
+        }
+
         // Track conversion for A/B testing
         if (settings.abTestEnabled) {
           trackPopupEvent("converted");
@@ -443,6 +471,27 @@ export function NewsletterPopup({
                 <p className="text-slc-muted">
                   {settings.successMessage}
                 </p>
+                {/* Download reward file */}
+                {(downloadFile || (settings.downloadFileEnabled && settings.downloadFileUrl)) && (
+                  <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                    <p className="text-sm text-slc-muted mb-3">
+                      {downloadFile?.description || settings.downloadDescription}
+                    </p>
+                    <a
+                      href={downloadFile?.url || settings.downloadFileUrl}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(249,115,22,0.4)]"
+                    >
+                      <Download className="w-5 h-5" />
+                      {downloadFile?.buttonText || settings.downloadButtonText}
+                    </a>
+                    <p className="text-xs text-slc-muted mt-2">
+                      {downloadFile?.name || settings.downloadFileName || "Archivo exclusivo"}
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               // Form state

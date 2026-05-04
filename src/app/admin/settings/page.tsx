@@ -33,7 +33,11 @@ import {
   X,
   BarChart3,
   RotateCcw,
+  Download,
+  FileText,
+  Gift,
 } from "lucide-react";
+import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
 
 interface SiteSetting {
   key: string;
@@ -68,6 +72,11 @@ interface PopupSettings {
   variantBButtonText: string;
   popupImageUrl: string;
   dismissDays: number;
+  downloadFileEnabled: boolean;
+  downloadFileUrl: string;
+  downloadFileName: string;
+  downloadButtonText: string;
+  downloadDescription: string;
 }
 
 interface PopupAnalytics {
@@ -106,6 +115,11 @@ const defaultPopupSettings: PopupSettings = {
   variantBButtonText: "",
   popupImageUrl: "", // Leave empty to use default icon
   dismissDays: 7,
+  downloadFileEnabled: false,
+  downloadFileUrl: "",
+  downloadFileName: "",
+  downloadButtonText: "Descargar Regalo",
+  downloadDescription: "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
 };
 
 const iconOptions = [
@@ -974,6 +988,117 @@ export default function AdminSettingsPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Download Reward File */}
+                <div className="bg-slc-card/50 p-4 rounded-lg border border-slc-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Gift className="w-5 h-5 text-primary" />
+                      <div>
+                        <h3 className="font-medium">Archivo de Regalo por Suscripción</h3>
+                        <p className="text-xs text-slc-muted">Ofrece un archivo descargable a cambio del email</p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={popupSettings.downloadFileEnabled}
+                        onChange={(e) => updatePopupSetting("downloadFileEnabled", e.target.checked)}
+                        className="w-5 h-5 rounded"
+                      />
+                      <span className="text-sm">Activar</span>
+                    </label>
+                  </div>
+
+                  {popupSettings.downloadFileEnabled && (
+                    <div className="space-y-4 mt-4 pt-4 border-t border-slc-border">
+                      {/* File Upload */}
+                      <div>
+                        <label className="block text-sm text-slc-muted mb-2">Archivo de Descarga</label>
+                        <DirectDropboxUploader
+                          onUploadComplete={(url, filename) => {
+                            updatePopupSetting("downloadFileUrl", url);
+                            updatePopupSetting("downloadFileName", filename);
+                          }}
+                          accept=".pdf,.zip,.mp3,.wav,.epub,.png,.jpg"
+                          maxSize={100}
+                          folder="/newsletter-downloads"
+                          label="Subir archivo de regalo (PDF, ZIP, MP3, etc.)"
+                          currentUrl={popupSettings.downloadFileUrl}
+                        />
+                      </div>
+
+                      {/* File URL (manual override) */}
+                      <div>
+                        <label className="block text-sm text-slc-muted mb-2">URL del Archivo (manual)</label>
+                        <Input
+                          value={popupSettings.downloadFileUrl}
+                          onChange={(e) => updatePopupSetting("downloadFileUrl", e.target.value)}
+                          placeholder="https://dl.dropboxusercontent.com/..."
+                        />
+                        <p className="text-xs text-slc-muted mt-1">
+                          Se llena automáticamente al subir un archivo, o puedes pegar una URL directamente
+                        </p>
+                      </div>
+
+                      {/* File Name */}
+                      <div>
+                        <label className="block text-sm text-slc-muted mb-2">Nombre del Archivo</label>
+                        <Input
+                          value={popupSettings.downloadFileName}
+                          onChange={(e) => updatePopupSetting("downloadFileName", e.target.value)}
+                          placeholder="Ej: Guía de Producción Musical, Pack de Samples, etc."
+                        />
+                        <p className="text-xs text-slc-muted mt-1">
+                          Nombre que se muestra al suscriptor como descripción del archivo
+                        </p>
+                      </div>
+
+                      {/* Download Button Text */}
+                      <div>
+                        <label className="block text-sm text-slc-muted mb-2">Texto del Botón de Descarga</label>
+                        <Input
+                          value={popupSettings.downloadButtonText}
+                          onChange={(e) => updatePopupSetting("downloadButtonText", e.target.value)}
+                          placeholder="Descargar Regalo"
+                        />
+                      </div>
+
+                      {/* Download Description */}
+                      <div>
+                        <label className="block text-sm text-slc-muted mb-2">Descripción de la Descarga</label>
+                        <Input
+                          value={popupSettings.downloadDescription}
+                          onChange={(e) => updatePopupSetting("downloadDescription", e.target.value)}
+                          placeholder="Descarga tu archivo exclusivo como agradecimiento por suscribirte."
+                        />
+                        <p className="text-xs text-slc-muted mt-1">
+                          Texto que aparece arriba del botón de descarga después de suscribirse
+                        </p>
+                      </div>
+
+                      {/* Preview */}
+                      {popupSettings.downloadFileUrl && (
+                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Download className="w-4 h-4 text-primary" />
+                            <span className="text-sm font-medium">Vista previa del resultado</span>
+                          </div>
+                          <p className="text-sm text-slc-muted mb-2">
+                            {popupSettings.downloadDescription || "Descarga tu archivo exclusivo como agradecimiento por suscribirte."}
+                          </p>
+                          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white font-semibold rounded-xl text-sm">
+                            <Download className="w-4 h-4" />
+                            {popupSettings.downloadButtonText || "Descargar Regalo"}
+                          </div>
+                          <p className="text-xs text-slc-muted mt-2">
+                            {popupSettings.downloadFileName || "Archivo exclusivo"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* A/B Testing */}
