@@ -141,15 +141,26 @@ export default function CuratedChannelDetailPage({
       const res = await fetch(`/api/admin/curated-channels/${id}/sync`, {
         method: "POST",
       });
+      
+      if (!res.ok) {
+        let errorMsg = "Error al sincronizar";
+        try {
+          const data = await res.json();
+          errorMsg = data.error || errorMsg;
+        } catch {}
+        alert(errorMsg);
+        return;
+      }
+      
       const data = await res.json();
       if (data.success) {
-        alert(`Sincronizado: ${data.data.tracksAdded} tracks nuevos de ${data.data.albumsProcessed} álbumes`);
+        alert(data.message || `Sincronizado: ${data.data.tracksAdded} tracks nuevos`);
         fetchChannel();
       } else {
         alert(data.error || "Error al sincronizar");
       }
     } catch (error) {
-      alert("Error de conexión");
+      alert("Error de conexión - la sincronización puede tardar más de lo esperado. Intenta usar 'Top Tracks' primero.");
     } finally {
       setSyncing(false);
     }
