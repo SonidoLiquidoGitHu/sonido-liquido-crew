@@ -80,8 +80,45 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (existing.length > 0) {
+      const existingChannel = existing[0];
+
+      // If the channel exists but is inactive, reactivate it instead of erroring
+      if (!existingChannel.isActive) {
+        const updates: Record<string, unknown> = {
+          isActive: true,
+          category: category || existingChannel.category,
+          priority: priority || existingChannel.priority,
+          description: description || existingChannel.description,
+          updatedAt: new Date(),
+        };
+
+        // Refresh artist info from Spotify
+        try {
+          const artistInfo = await spotifyClient.getArtist(spotifyArtistId);
+          updates.name = artistInfo.name;
+          updates.imageUrl = artistInfo.images?.[0]?.url || existingChannel.imageUrl;
+          updates.genres = artistInfo.genres ? JSON.stringify(artistInfo.genres) : existingChannel.genres;
+          updates.popularity = artistInfo.popularity || existingChannel.popularity;
+          updates.followers = artistInfo.followers?.total || existingChannel.followers;
+        } catch {
+          // Keep existing data if Spotify fetch fails
+        }
+
+        await db
+          .update(curatedSpotifyChannels)
+          .set(updates)
+          .where(eq(curatedSpotifyChannels.id, existingChannel.id));
+
+        return NextResponse.json({
+          success: true,
+          data: { ...existingChannel, ...updates, isActive: true },
+          message: `Channel "${existingChannel.name}" reactivated successfully`,
+          reactivated: true,
+        });
+      }
+
       return NextResponse.json(
-        { success: false, error: "This channel is already curated", existing: existing[0] },
+        { success: false, error: "This channel is already curated", existing: existingChannel },
         { status: 409 }
       );
     }
