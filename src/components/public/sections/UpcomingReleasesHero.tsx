@@ -5,7 +5,7 @@ import { Img } from "@/components/ui/img";
 import Link from "next/link";
 import { Bell, Rocket, Music, Calendar, Clock, ChevronRight, Star, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, getReleaseTypeDisplay } from "@/lib/utils";
 import type { UpcomingRelease } from "@/db/schema/upcoming";
 
 interface UpcomingReleasesHeroProps {
@@ -268,9 +268,7 @@ function CompactReleaseCard({
             isHovered && "opacity-0 translate-y-[10px]"
           )}>
             <span className="px-2 py-0.5 bg-primary/90 text-white text-[10px] font-bold uppercase tracking-wider rounded">
-              {release.releaseType === "single" ? "Single" :
-               release.releaseType === "ep" ? "EP" :
-               release.releaseType === "album" ? "Álbum" : "Mixtape"}
+              {getReleaseTypeDisplay(release.releaseType)}
             </span>
           </div>
 

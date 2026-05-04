@@ -22,8 +22,8 @@ import {
   beatsService,
 } from "@/lib/services";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { upcomingReleases, releaseArtists, artists } from "@/db/schema";
-import { eq, and, gte, inArray } from "drizzle-orm";
+import { upcomingReleases, releaseArtists, artists, releases as releasesTable } from "@/db/schema";
+import { eq, and, gte, inArray, like } from "drizzle-orm";
 
 // ===========================================
 // PERFORMANCE: Lazy load below-the-fold sections
@@ -79,12 +79,14 @@ async function safeFetch<T>(promise: Promise<T>, fallback: T): Promise<T> {
 }
 
 // Fetch upcoming releases directly - limited to 4 closest to release date
+// Also cross-references the releases table to ensure releaseType consistency
+// (the releases table is the source of truth, e.g. from Spotify sync)
 async function getUpcomingReleases() {
   try {
     if (!isDatabaseConfigured()) return [];
 
     const now = new Date();
-    const releases = await db
+    const upcomingList = await db
       .select()
       .from(upcomingReleases)
       .where(
@@ -96,7 +98,36 @@ async function getUpcomingReleases() {
       .orderBy(upcomingReleases.releaseDate)
       .limit(4);
 
-    return releases;
+    // Cross-reference with releases table to ensure releaseType consistency.
+    // If a matching release exists in the releases table, use its releaseType
+    // as the source of truth (in-memory override only — the persistent fix is
+    // handled by autoConvertUpcomingReleases in the cron job).
+    if (upcomingList.length > 0) {
+      for (const upcoming of upcomingList) {
+        try {
+          // Check by slug first, then by title
+          const [matchBySlug] = await db
+            .select({ releaseType: releasesTable.releaseType })
+            .from(releasesTable)
+            .where(eq(releasesTable.slug, upcoming.slug))
+            .limit(1);
+
+          const match = matchBySlug || (await db
+            .select({ releaseType: releasesTable.releaseType })
+            .from(releasesTable)
+            .where(like(releasesTable.title, `%${upcoming.title}%`))
+            .limit(1))[0];
+
+          if (match && match.releaseType !== upcoming.releaseType) {
+            // Override in memory so the display is correct.
+            // The autoConvertUpcomingReleases cron will persist the fix.
+            (upcoming as Record<string, unknown>).releaseType = match.releaseType;
+          }
+        } catch { /* non-critical per-item check */ }
+      }
+    }
+
+    return upcomingList;
   } catch (error) {
     console.error("[HomePage] Error fetching upcoming releases:", error);
     return [];

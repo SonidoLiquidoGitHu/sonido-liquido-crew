@@ -344,10 +344,12 @@ export const releasesRepository = {
 
           if (existing) {
             // Link the upcoming release to the existing one
+            // Also sync releaseType from the releases table to keep them consistent
             await db
               .update(upcomingReleases)
               .set({
                 releasedReleaseId: existing.id,
+                releaseType: existing.releaseType as typeof upcoming.releaseType,
                 isActive: false,
                 updatedAt: new Date(),
               })
@@ -364,10 +366,12 @@ export const releasesRepository = {
             .limit(1);
 
           if (byTitle) {
+            // Link and sync releaseType from the releases table to keep them consistent
             await db
               .update(upcomingReleases)
               .set({
                 releasedReleaseId: byTitle.id,
+                releaseType: byTitle.releaseType as typeof upcoming.releaseType,
                 isActive: false,
                 updatedAt: new Date(),
               })
@@ -494,8 +498,79 @@ export const releasesRepository = {
         fixed = staleUpcoming.length;
       }
 
-      if (converted > 0 || fixed > 0) {
-        console.log(`[autoConvert] Converted ${converted} upcoming → releases, fixed ${fixed} isUpcoming flags`);
+      // 3. Sync releaseType for already-linked upcoming releases where types differ
+      // This handles cases where the releases table was corrected (e.g. via Spotify sync)
+      // but the upcoming_releases table still has the old wrong type
+      const linkedUpcoming = await db
+        .select({
+          upcomingId: upcomingReleases.id,
+          upcomingType: upcomingReleases.releaseType,
+          releasedReleaseId: upcomingReleases.releasedReleaseId,
+        })
+        .from(upcomingReleases)
+        .where(isNotNull(upcomingReleases.releasedReleaseId));
+
+      let typeSynced = 0;
+      for (const linked of linkedUpcoming) {
+        try {
+          const [linkedRelease] = await db
+            .select({ releaseType: releases.releaseType })
+            .from(releases)
+            .where(eq(releases.id, linked.releasedReleaseId!))
+            .limit(1);
+
+          if (linkedRelease && linkedRelease.releaseType !== linked.upcomingType) {
+            await db
+              .update(upcomingReleases)
+              .set({
+                releaseType: linkedRelease.releaseType as typeof upcomingReleases.$inferInsert.releaseType,
+                updatedAt: new Date(),
+              })
+              .where(eq(upcomingReleases.id, linked.upcomingId));
+            typeSynced++;
+            console.log(`[autoConvert] Synced releaseType for "${linked.upcomingId}": ${linked.upcomingType} → ${linkedRelease.releaseType}`);
+          }
+        } catch { /* non-critical */ }
+      }
+
+      // 4. Sync releaseType for active upcoming releases that have a match in releases table
+      // (e.g. Spotify sync created the release before the upcoming was converted)
+      const activeUpcoming = await db
+        .select()
+        .from(upcomingReleases)
+        .where(eq(upcomingReleases.isActive, true));
+
+      for (const active of activeUpcoming) {
+        try {
+          // Check by slug match
+          const [matchBySlug] = await db
+            .select({ id: releases.id, releaseType: releases.releaseType })
+            .from(releases)
+            .where(eq(releases.slug, active.slug))
+            .limit(1);
+
+          const match = matchBySlug || (await db
+            .select({ id: releases.id, releaseType: releases.releaseType })
+            .from(releases)
+            .where(like(releases.title, `%${active.title}%`))
+            .limit(1))[0];
+
+          if (match && match.releaseType !== active.releaseType) {
+            await db
+              .update(upcomingReleases)
+              .set({
+                releaseType: match.releaseType as typeof upcomingReleases.$inferInsert.releaseType,
+                updatedAt: new Date(),
+              })
+              .where(eq(upcomingReleases.id, active.id));
+            typeSynced++;
+            console.log(`[autoConvert] Synced active upcoming releaseType for "${active.title}": ${active.releaseType} → ${match.releaseType}`);
+          }
+        } catch { /* non-critical */ }
+      }
+
+      if (converted > 0 || fixed > 0 || typeSynced > 0) {
+        console.log(`[autoConvert] Converted ${converted} upcoming → releases, fixed ${fixed} isUpcoming flags, synced ${typeSynced} releaseTypes`);
       }
     } catch (error) {
       console.error("[autoConvert] Error:", error);

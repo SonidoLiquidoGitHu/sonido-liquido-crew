@@ -15,7 +15,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getReleaseTypeDisplay } from "@/lib/utils";
 import type { UpcomingRelease } from "@/db/schema/upcoming";
 
 interface ArtistUpcomingReleasesProps {
@@ -236,9 +236,7 @@ function UpcomingReleaseCard({
             {/* Type Badge */}
             <div className="flex items-center gap-2 mb-2">
               <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs uppercase tracking-wider rounded-full">
-                {release.releaseType === "single" ? "Single" :
-                 release.releaseType === "ep" ? "EP" :
-                 release.releaseType === "album" ? "Álbum" : "Mixtape"}
+                {getReleaseTypeDisplay(release.releaseType)}
               </span>
               {release.isFeatured && (
                 <span className="flex items-center gap-1 text-xs text-yellow-500">
