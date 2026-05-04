@@ -121,6 +121,128 @@ function getAuthToken(): string | undefined {
   return token || undefined;
 }
 
+// Track whether auto-migration has run
+let _autoMigrationDone = false;
+
+/**
+ * Run auto-migration to ensure critical tables exist.
+ * This runs once when the database client is first initialized.
+ * Uses CREATE TABLE IF NOT EXISTS so it's safe to run repeatedly.
+ */
+async function runAutoMigration(client: Client): Promise<void> {
+  if (_autoMigrationDone) return;
+  _autoMigrationDone = true;
+
+  try {
+    console.log("[DB] Running auto-migration to ensure critical tables...");
+
+    const criticalTables = [
+      `CREATE TABLE IF NOT EXISTS curated_playlists (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        description TEXT,
+        cover_image_url TEXT,
+        cover_color TEXT,
+        is_public INTEGER DEFAULT 1 NOT NULL,
+        is_active INTEGER DEFAULT 1 NOT NULL,
+        priority INTEGER DEFAULT 0 NOT NULL,
+        spotify_playlist_id TEXT,
+        spotify_playlist_url TEXT,
+        track_count INTEGER DEFAULT 0,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS playlist_tracks (
+        id TEXT PRIMARY KEY,
+        playlist_id TEXT NOT NULL,
+        playlist_name TEXT,
+        spotify_track_id TEXT NOT NULL,
+        curated_track_id TEXT,
+        track_name TEXT NOT NULL,
+        artist_name TEXT NOT NULL,
+        album_image_url TEXT,
+        position INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER DEFAULT 1 NOT NULL,
+        added_by TEXT,
+        added_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )`,
+      `CREATE TABLE IF NOT EXISTS curated_spotify_channels (
+        id TEXT PRIMARY KEY,
+        spotify_artist_id TEXT NOT NULL UNIQUE,
+        spotify_artist_url TEXT NOT NULL,
+        name TEXT NOT NULL,
+        image_url TEXT,
+        genres TEXT,
+        popularity INTEGER,
+        followers INTEGER,
+        category TEXT NOT NULL DEFAULT 'roster',
+        priority INTEGER NOT NULL DEFAULT 0,
+        description TEXT,
+        auto_sync INTEGER DEFAULT 1 NOT NULL,
+        sync_new_releases INTEGER DEFAULT 1 NOT NULL,
+        sync_top_tracks INTEGER DEFAULT 1 NOT NULL,
+        is_active INTEGER DEFAULT 1 NOT NULL,
+        last_synced_at INTEGER,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )`,
+      `CREATE TABLE IF NOT EXISTS curated_tracks (
+        id TEXT PRIMARY KEY,
+        spotify_track_id TEXT NOT NULL UNIQUE,
+        spotify_track_url TEXT NOT NULL,
+        spotify_album_id TEXT,
+        name TEXT NOT NULL,
+        artist_name TEXT NOT NULL,
+        artist_ids TEXT,
+        album_name TEXT,
+        album_image_url TEXT,
+        duration_ms INTEGER,
+        preview_url TEXT,
+        release_date TEXT,
+        popularity INTEGER,
+        explicit INTEGER DEFAULT 0 NOT NULL,
+        curated_channel_id TEXT,
+        is_available_for_playlist INTEGER DEFAULT 1 NOT NULL,
+        is_featured INTEGER DEFAULT 0 NOT NULL,
+        admin_notes TEXT,
+        added_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )`,
+    ];
+
+    // Add missing columns (safe - ignores "duplicate column" errors)
+    const addColumns = [
+      `ALTER TABLE curated_playlists ADD COLUMN cover_color TEXT`,
+      `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_id TEXT`,
+      `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_url TEXT`,
+      `ALTER TABLE curated_playlists ADD COLUMN track_count INTEGER DEFAULT 0`,
+      `ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT`,
+      `ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT`,
+    ];
+
+    for (const sql of criticalTables) {
+      await client.execute(sql);
+    }
+
+    for (const sql of addColumns) {
+      try {
+        await client.execute(sql);
+      } catch (err: any) {
+        // "duplicate column name" means it already exists — that's fine
+        if (!String(err?.message || "").includes("duplicate column name")) {
+          console.warn("[DB] Auto-migration column warning:", err);
+        }
+      }
+    }
+
+    console.log("[DB] Auto-migration completed successfully");
+  } catch (error) {
+    console.error("[DB] Auto-migration failed (non-fatal):", error);
+    // Don't throw — the app should still work even if migration partially fails
+  }
+}
+
 /**
  * Get or create database client (lazy initialization)
  */
@@ -134,6 +256,9 @@ function getClient(): Client {
         authToken: getAuthToken(),
       });
       console.log("[DB] Database client initialized successfully");
+
+      // Run auto-migration asynchronously (don't block client creation)
+      runAutoMigration(_client).catch(() => {});
     } catch (error) {
       console.error("[DB] Failed to create database client:", error);
       throw error;
