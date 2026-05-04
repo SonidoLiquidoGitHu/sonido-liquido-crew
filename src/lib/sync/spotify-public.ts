@@ -156,8 +156,9 @@ export async function addReleaseFromSpotify(
   releaseDate?: Date
 ): Promise<string | null> {
   try {
-    // Extract Spotify ID from URL
-    const match = spotifyUrl.match(/album\/([a-zA-Z0-9]+)/);
+    // Extract Spotify ID from URL (supports locale prefixes like intl-es/)
+    const match = spotifyUrl.match(/spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?album\/([a-zA-Z0-9]+)/)
+      || spotifyUrl.match(/album\/([a-zA-Z0-9]+)/); // fallback
     if (!match) {
       console.error("Invalid Spotify album URL");
       return null;

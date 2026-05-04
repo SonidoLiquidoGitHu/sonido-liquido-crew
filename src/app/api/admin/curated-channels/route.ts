@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const spotifyArtistId = SpotifyClient.extractId(spotifyUrl);
     if (!spotifyArtistId) {
       return NextResponse.json(
-        { success: false, error: "Invalid Spotify URL" },
+        { success: false, error: "Invalid Spotify URL. Supported formats: https://open.spotify.com/artist/..., https://open.spotify.com/intl-XX/artist/..., or spotify:artist:..." },
         { status: 400 }
       );
     }

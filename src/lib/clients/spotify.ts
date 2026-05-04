@@ -312,16 +312,27 @@ class SpotifyClient {
    * Extract Spotify ID from URL
    */
   static extractId(url: string): string | null {
-    const patterns = [
-      /spotify\.com\/artist\/([a-zA-Z0-9]+)/,
-      /spotify\.com\/album\/([a-zA-Z0-9]+)/,
-      /spotify\.com\/track\/([a-zA-Z0-9]+)/,
-      /spotify\.com\/playlist\/([a-zA-Z0-9]+)/,
-    ];
+    // Supported URL formats:
+    //   https://open.spotify.com/artist/XXXXX
+    //   https://open.spotify.com/intl-es/artist/XXXXX  (locale prefix)
+    //   https://open.spotify.com/embed/artist/XXXXX
+    //   spotify:artist:XXXXX  (Spotify URI)
+    const types = ['artist', 'album', 'track', 'playlist'];
 
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) return match[1];
+    // Try Spotify URI format first: spotify:artist:XXXXX
+    for (const type of types) {
+      const uriMatch = url.match(new RegExp(`spotify:${type}:([a-zA-Z0-9]+)`));
+      if (uriMatch) return uriMatch[1];
+    }
+
+    // Try URL format with optional locale/embed prefix:
+    //   spotify.com/[intl-XX/]artist/XXXXX
+    //   spotify.com/embed/artist/XXXXX
+    for (const type of types) {
+      const urlMatch = url.match(
+        new RegExp(`spotify\\.com/(?:embed/)?(?:intl-[a-z]{2}/)?${type}/([a-zA-Z0-9]+)`)
+      );
+      if (urlMatch) return urlMatch[1];
     }
 
     return null;
