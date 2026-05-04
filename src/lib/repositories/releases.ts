@@ -572,6 +572,101 @@ export const releasesRepository = {
       if (converted > 0 || fixed > 0 || typeSynced > 0) {
         console.log(`[autoConvert] Converted ${converted} upcoming → releases, fixed ${fixed} isUpcoming flags, synced ${typeSynced} releaseTypes`);
       }
+
+      // 5. Deduplicate releases whose titles differ only by minor variations
+      // (e.g. "y" vs "&", accented vs unaccented). Keeps the one with a
+      // spotifyId (Spotify-synced version) and deletes the manual duplicate.
+      let deduped = 0;
+      try {
+        const allReleases = await db
+          .select({
+            id: releases.id,
+            title: releases.title,
+            slug: releases.slug,
+            spotifyId: releases.spotifyId,
+          })
+          .from(releases);
+
+        // Build a normalized-title map to find duplicates
+        const normalize = (t: string) =>
+          t.toLowerCase()
+            .replace(/&/g, "y")           // "Beats, Donas & Café" → "beats, donas y café"
+            .replace(/\s+/g, " ")          // collapse whitespace
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // strip diacritics
+            .trim();
+
+        const byNormTitle = new Map<string, typeof allReleases>();
+        for (const r of allReleases) {
+          const key = normalize(r.title);
+          if (!byNormTitle.has(key)) byNormTitle.set(key, []);
+          byNormTitle.get(key)!.push(r);
+        }
+
+        for (const [, group] of byNormTitle) {
+          if (group.length < 2) continue;
+
+          // Prefer the one that has a spotifyId (Spotify-synced = canonical)
+          // If both have spotifyId, prefer the one with "&" in the title
+          const keep = group.find(r => r.spotifyId) || group[0];
+          const toRemove = group.filter(r => r.id !== keep.id);
+
+          for (const dup of toRemove) {
+            try {
+              // Move any artist links from the duplicate to the keeper
+              const dupLinks = await db
+                .select()
+                .from(releaseArtists)
+                .where(eq(releaseArtists.releaseId, dup.id));
+
+              for (const link of dupLinks) {
+                // Check if this artist is already linked to the keeper
+                const [existingLink] = await db
+                  .select()
+                  .from(releaseArtists)
+                  .where(and(
+                    eq(releaseArtists.releaseId, keep.id),
+                    eq(releaseArtists.artistId, link.artistId)
+                  ))
+                  .limit(1);
+
+                if (!existingLink) {
+                  await db
+                    .update(releaseArtists)
+                    .set({ releaseId: keep.id })
+                    .where(eq(releaseArtists.id, link.id));
+                } else {
+                  await db
+                    .delete(releaseArtists)
+                    .where(eq(releaseArtists.id, link.id));
+                }
+              }
+
+              // Also update any upcoming_releases pointing to the duplicate
+              try {
+                await db
+                  .update(upcomingReleases)
+                  .set({ releasedReleaseId: keep.id })
+                  .where(eq(upcomingReleases.releasedReleaseId, dup.id));
+              } catch { /* non-critical */ }
+
+              // Delete the duplicate release
+              await db.delete(releaseArtists).where(eq(releaseArtists.releaseId, dup.id));
+              await db.delete(releases).where(eq(releases.id, dup.id));
+              deduped++;
+              console.log(`[autoConvert] Deduplicated: removed "${dup.title}" (keeping "${keep.title}")`);
+            } catch (dedupErr) {
+              console.error(`[autoConvert] Failed to dedup "${dup.title}":`, dedupErr);
+            }
+          }
+        }
+      } catch (dedupError) {
+        console.error("[autoConvert] Deduplication error:", dedupError);
+      }
+
+      if (deduped > 0) {
+        console.log(`[autoConvert] Removed ${deduped} duplicate release(s)`);
+      }
     } catch (error) {
       console.error("[autoConvert] Error:", error);
     }
