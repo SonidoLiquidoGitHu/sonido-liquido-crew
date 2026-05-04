@@ -193,13 +193,14 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
   const handleGeneratePdf = async () => {
     setGeneratingPdf(true);
     try {
-      const res = await fetch("/api/admin/press-kit/generate-pdf");
+      const previewParam = isPreview ? "?preview=true" : "";
+      const res = await fetch(`/api/media-releases/${slug}/epk-pdf${previewParam}`);
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({ error: "Error al generar PDF" }));
         throw new Error(errorData.error || "Error al generar PDF");
       }
       const contentDisposition = res.headers.get("Content-Disposition");
-      let filename = "press-kit.pdf";
+      let filename = "epk.pdf";
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
         if (match) filename = match[1];
@@ -601,13 +602,14 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
 
           {/* Right Column - Sidebar */}
           <div className="space-y-4 no-print">
-            {/* Press Kit Download */}
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
-              <h3 className="font-oswald text-sm uppercase mb-3 text-primary">
-                Press Kit PDF
+            {/* EPK PDF Download */}
+            <div className="bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/20 rounded-xl p-5">
+              <h3 className="font-oswald text-sm uppercase mb-3 text-primary flex items-center gap-2">
+                <FileDown className="w-4 h-4" />
+                EPK en PDF
               </h3>
               <p className="text-xs text-slc-muted mb-4">
-                Kit de prensa completo con biografías y fotos HD.
+                Electronic Press Kit con info del lanzamiento, biografia del artista, estadisticas de streaming, citas de prensa y contactos.
               </p>
               <Button
                 onClick={handleGeneratePdf}
@@ -623,7 +625,7 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                 ) : (
                   <>
                     <FileDown className="w-4 h-4 mr-2" />
-                    Descargar PDF
+                    Descargar EPK PDF
                   </>
                 )}
               </Button>

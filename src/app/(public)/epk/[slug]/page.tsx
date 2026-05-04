@@ -32,6 +32,7 @@ import {
   Star,
   Clock,
   Globe,
+  FileDown,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -220,14 +221,23 @@ export default async function PublicEpkPage({ params }: PageProps) {
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
 
         <div className="container mx-auto px-4 relative z-10">
-          {/* Back Link */}
-          <Link
-            href="/prensa"
-            className="inline-flex items-center gap-2 text-slc-muted hover:text-white transition-colors mb-8"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver al Press Kit
-          </Link>
+          {/* Top Bar: Back Link + EPK PDF Download */}
+          <div className="flex items-center justify-between mb-8">
+            <Link
+              href="/prensa"
+              className="inline-flex items-center gap-2 text-slc-muted hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver al Press Kit
+            </Link>
+            <a
+              href={`/api/epk/${artist.slug}/pdf`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <FileDown className="w-4 h-4" />
+              Descargar EPK PDF
+            </a>
+          </div>
 
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
             {/* Profile Image */}
@@ -847,44 +857,49 @@ export default async function PublicEpkPage({ params }: PageProps) {
       </section>
 
       {/* Downloads Section */}
-      {(epk?.pressKitPdfUrl || epk?.hiResPhotosZipUrl || epk?.logoPackZipUrl) && (
-        <section className="py-12 bg-slc-dark/50">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto">
-              <h2 className="font-oswald text-2xl uppercase mb-6 flex items-center gap-3">
-                <Download className="w-6 h-6 text-primary" />
-                Descargas
-              </h2>
-              <div className="flex flex-wrap gap-4">
-                {epk?.pressKitPdfUrl && (
-                  <Button asChild variant="outline" size="lg">
-                    <a href={epk.pressKitPdfUrl} target="_blank" rel="noopener noreferrer">
-                      <FileText className="w-5 h-5 mr-2" />
-                      Press Kit PDF
-                    </a>
-                  </Button>
-                )}
-                {epk?.hiResPhotosZipUrl && (
-                  <Button asChild variant="outline" size="lg">
-                    <a href={epk.hiResPhotosZipUrl} target="_blank" rel="noopener noreferrer">
-                      <Download className="w-5 h-5 mr-2" />
-                      Fotos Hi-Res
-                    </a>
-                  </Button>
-                )}
-                {epk?.logoPackZipUrl && (
-                  <Button asChild variant="outline" size="lg">
-                    <a href={epk.logoPackZipUrl} target="_blank" rel="noopener noreferrer">
-                      <Palette className="w-5 h-5 mr-2" />
-                      Logos
-                    </a>
-                  </Button>
-                )}
-              </div>
+      <section className="py-12 bg-slc-dark/50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="font-oswald text-2xl uppercase mb-6 flex items-center gap-3">
+              <Download className="w-6 h-6 text-primary" />
+              Descargas
+            </h2>
+            <div className="flex flex-wrap gap-4">
+              {/* EPK PDF - Always available for download */}
+              <Button asChild size="lg">
+                <a href={`/api/epk/${artist.slug}/pdf`}>
+                  <FileDown className="w-5 h-5 mr-2" />
+                  EPK en PDF
+                </a>
+              </Button>
+              {epk?.pressKitPdfUrl && (
+                <Button asChild variant="outline" size="lg">
+                  <a href={epk.pressKitPdfUrl} target="_blank" rel="noopener noreferrer">
+                    <FileText className="w-5 h-5 mr-2" />
+                    Press Kit PDF
+                  </a>
+                </Button>
+              )}
+              {epk?.hiResPhotosZipUrl && (
+                <Button asChild variant="outline" size="lg">
+                  <a href={epk.hiResPhotosZipUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="w-5 h-5 mr-2" />
+                    Fotos Hi-Res
+                  </a>
+                </Button>
+              )}
+              {epk?.logoPackZipUrl && (
+                <Button asChild variant="outline" size="lg">
+                  <a href={epk.logoPackZipUrl} target="_blank" rel="noopener noreferrer">
+                    <Palette className="w-5 h-5 mr-2" />
+                    Logos
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* Brand Colors */}
       {brandColors.length > 0 && (
