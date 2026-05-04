@@ -215,7 +215,7 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√
     console.log(`[API] Press kit PDF generated: ${filename}`);
 
     // Return PDF as download
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

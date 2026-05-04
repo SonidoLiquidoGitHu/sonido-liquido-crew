@@ -1436,25 +1436,1586 @@ export default function EpkEditorPage({ params }: { params: Promise<{ artistId: 
           </div>
         )}
 
-        {/* Placeholder for other tabs */}
-        {["press", "playlists", "shows", "collaborations", "music", "videos", "quotes"].includes(activeTab) && (
-          <div className="bg-slc-card border border-slc-border rounded-xl p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-slc-dark flex items-center justify-center mx-auto mb-4">
-              {tabs.find(t => t.id === activeTab)?.icon && (
-                <span className="text-slc-muted">
-                  {(() => {
-                    const Icon = tabs.find(t => t.id === activeTab)?.icon;
-                    return Icon ? <Icon className="w-8 h-8" /> : null;
-                  })()}
-                </span>
-              )}
+        {/* Press Tab */}
+        {activeTab === "press" && (
+          <div className="space-y-6">
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
+                <Newspaper className="w-5 h-5 text-primary" />
+                Prensa & Medios
+              </h2>
+
+              <div className="space-y-8">
+                {/* Press Features */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Artículos de Prensa
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Agrega artículos, reseñas y menciones en medios de comunicación.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.pressFeatures || []).map((feature, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Artículo #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.pressFeatures || []).filter((_, i) => i !== idx);
+                              updateEpk("pressFeatures", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Medio / Outlet</label>
+                            <Input
+                              value={feature.outlet || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pressFeatures || [])];
+                                updated[idx] = { ...updated[idx], outlet: e.target.value };
+                                updateEpk("pressFeatures", updated);
+                              }}
+                              placeholder="Ej: Rolling Stone, Noisey..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Título</label>
+                            <Input
+                              value={feature.title || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pressFeatures || [])];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                updateEpk("pressFeatures", updated);
+                              }}
+                              placeholder="Título del artículo"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">URL</label>
+                            <Input
+                              value={feature.url || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pressFeatures || [])];
+                                updated[idx] = { ...updated[idx], url: e.target.value };
+                                updateEpk("pressFeatures", updated);
+                              }}
+                              placeholder="https://..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Fecha</label>
+                            <Input
+                              value={feature.date || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pressFeatures || [])];
+                                updated[idx] = { ...updated[idx], date: e.target.value };
+                                updateEpk("pressFeatures", updated);
+                              }}
+                              placeholder="Ej: Marzo 2024"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Extracto (opcional)</label>
+                          <textarea
+                            value={feature.excerpt || ""}
+                            onChange={(e) => {
+                              const updated = [...(epk.pressFeatures || [])];
+                              updated[idx] = { ...updated[idx], excerpt: e.target.value };
+                              updateEpk("pressFeatures", updated);
+                            }}
+                            rows={2}
+                            className="w-full px-4 py-3 bg-slc-black border border-slc-border rounded-lg resize-none"
+                            placeholder="Breve extracto del artículo..."
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("pressFeatures", [...(epk.pressFeatures || []), { outlet: "", title: "", url: "", date: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Artículo
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Blog Mentions */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Menciones en Blogs
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Nombres de blogs o sitios que te han mencionado.
+                  </p>
+                  <div className="space-y-2">
+                    {(epk.blogMentions || []).map((mention, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={mention}
+                          onChange={(e) => {
+                            const updated = [...(epk.blogMentions || [])];
+                            updated[idx] = e.target.value;
+                            updateEpk("blogMentions", updated);
+                          }}
+                          placeholder="Nombre del blog o sitio"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (epk.blogMentions || []).filter((_, i) => i !== idx);
+                            updateEpk("blogMentions", updated);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("blogMentions", [...(epk.blogMentions || []), ""])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Mención
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Interview URLs */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Entrevistas
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Links a entrevistas en video, podcast o artículos.
+                  </p>
+                  <div className="space-y-2">
+                    {(epk.interviewUrls || []).map((url, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={url}
+                          onChange={(e) => {
+                            const updated = [...(epk.interviewUrls || [])];
+                            updated[idx] = e.target.value;
+                            updateEpk("interviewUrls", updated);
+                          }}
+                          placeholder="https://..."
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (epk.interviewUrls || []).filter((_, i) => i !== idx);
+                            updateEpk("interviewUrls", updated);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("interviewUrls", [...(epk.interviewUrls || []), ""])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Entrevista
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="font-oswald text-xl uppercase mb-2">
-              {tabs.find(t => t.id === activeTab)?.label}
-            </h3>
-            <p className="text-slc-muted mb-4">
-              Esta sección está en desarrollo. Pronto podrás agregar información aquí.
-            </p>
+
+            {/* Tips */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+              <h3 className="font-medium text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Tips para Prensa
+              </h3>
+              <ul className="text-sm text-slc-muted space-y-2">
+                <li>• Incluye solo artículos de medios reconocidos o relevantes en tu escena</li>
+                <li>• Un extracto fuerte vale más que el artículo completo</li>
+                <li>• Prioriza calidad sobre cantidad — 3-5 artículos sólidos son suficientes</li>
+                <li>• Las entrevistas muestran que los medios están interesados en tu historia</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Playlists Tab */}
+        {activeTab === "playlists" && (
+          <div className="space-y-6">
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
+                <ListMusic className="w-5 h-5 text-primary" />
+                Playlists
+              </h2>
+
+              <div className="space-y-8">
+                {/* Editorial Playlists */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Playlists Editoriales
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Playlists curatoradas por plataformas (Spotify Editorial, Apple Music, etc.).
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.editorialPlaylists || []).map((playlist, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Playlist #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.editorialPlaylists || []).filter((_, i) => i !== idx);
+                              updateEpk("editorialPlaylists", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Nombre</label>
+                            <Input
+                              value={playlist.name || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.editorialPlaylists || [])];
+                                updated[idx] = { ...updated[idx], name: e.target.value };
+                                updateEpk("editorialPlaylists", updated);
+                              }}
+                              placeholder="Nombre de la playlist"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Plataforma</label>
+                            <Input
+                              value={playlist.platform || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.editorialPlaylists || [])];
+                                updated[idx] = { ...updated[idx], platform: e.target.value };
+                                updateEpk("editorialPlaylists", updated);
+                              }}
+                              placeholder="Spotify, Apple Music..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Seguidores</label>
+                            <Input
+                              type="number"
+                              value={playlist.followers || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.editorialPlaylists || [])];
+                                updated[idx] = { ...updated[idx], followers: parseInt(e.target.value) || 0 };
+                                updateEpk("editorialPlaylists", updated);
+                              }}
+                              placeholder="Ej: 50000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">URL</label>
+                            <Input
+                              value={playlist.url || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.editorialPlaylists || [])];
+                                updated[idx] = { ...updated[idx], url: e.target.value };
+                                updateEpk("editorialPlaylists", updated);
+                              }}
+                              placeholder="https://..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("editorialPlaylists", [...(epk.editorialPlaylists || []), { name: "", platform: "", followers: 0, url: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Playlist Editorial
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Curated Playlists */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Playlists Curadas
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Playlists de curadores independientes donde aparece tu música.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.curatedPlaylists || []).map((playlist, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Playlist #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.curatedPlaylists || []).filter((_, i) => i !== idx);
+                              updateEpk("curatedPlaylists", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Nombre</label>
+                            <Input
+                              value={playlist.name || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.curatedPlaylists || [])];
+                                updated[idx] = { ...updated[idx], name: e.target.value };
+                                updateEpk("curatedPlaylists", updated);
+                              }}
+                              placeholder="Nombre de la playlist"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Curador</label>
+                            <Input
+                              value={playlist.curator || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.curatedPlaylists || [])];
+                                updated[idx] = { ...updated[idx], curator: e.target.value };
+                                updateEpk("curatedPlaylists", updated);
+                              }}
+                              placeholder="Nombre del curador"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">URL</label>
+                            <Input
+                              value={playlist.url || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.curatedPlaylists || [])];
+                                updated[idx] = { ...updated[idx], url: e.target.value };
+                                updateEpk("curatedPlaylists", updated);
+                              }}
+                              placeholder="https://..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("curatedPlaylists", [...(epk.curatedPlaylists || []), { name: "", curator: "", url: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Playlist Curada
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+              <h3 className="font-medium text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Tips para Playlists
+              </h3>
+              <ul className="text-sm text-slc-muted space-y-2">
+                <li>• Las playlists editoriales son la prueba más fuerte de validación</li>
+                <li>• Incluye el número de seguidores — los números importan</li>
+                <li>• Las playlists curadas por influencers también valen, especialmente si son grandes</li>
+                <li>• Actualiza esta sección cada vez que entres en una nueva playlist</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Shows Tab */}
+        {activeTab === "shows" && (
+          <div className="space-y-6">
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                Shows & Festivales
+              </h2>
+
+              <div className="space-y-8">
+                {/* Past Shows */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Shows Pasados
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Los shows más relevantes o recientes del artista.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.pastShows || []).map((show, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Show #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.pastShows || []).filter((_, i) => i !== idx);
+                              updateEpk("pastShows", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Venue</label>
+                            <Input
+                              value={show.venue || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pastShows || [])];
+                                updated[idx] = { ...updated[idx], venue: e.target.value };
+                                updateEpk("pastShows", updated);
+                              }}
+                              placeholder="Nombre del venue"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Ciudad</label>
+                            <Input
+                              value={show.city || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pastShows || [])];
+                                updated[idx] = { ...updated[idx], city: e.target.value };
+                                updateEpk("pastShows", updated);
+                              }}
+                              placeholder="Ciudad, País"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Fecha</label>
+                            <Input
+                              value={show.date || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pastShows || [])];
+                                updated[idx] = { ...updated[idx], date: e.target.value };
+                                updateEpk("pastShows", updated);
+                              }}
+                              placeholder="Ej: 15 Mar 2024"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Asistencia (opcional)</label>
+                            <Input
+                              type="number"
+                              value={show.attendance || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pastShows || [])];
+                                updated[idx] = { ...updated[idx], attendance: parseInt(e.target.value) || undefined };
+                                updateEpk("pastShows", updated);
+                              }}
+                              placeholder="Ej: 5000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Tipo</label>
+                            <Input
+                              value={show.type || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pastShows || [])];
+                                updated[idx] = { ...updated[idx], type: e.target.value };
+                                updateEpk("pastShows", updated);
+                              }}
+                              placeholder="Headliner, Soporte, Festival..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("pastShows", [...(epk.pastShows || []), { venue: "", city: "", date: "", type: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Show
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Festival Appearances */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Festivales
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Nombres de festivales donde te has presentado.
+                  </p>
+                  <div className="space-y-2">
+                    {(epk.festivalAppearances || []).map((festival, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={festival}
+                          onChange={(e) => {
+                            const updated = [...(epk.festivalAppearances || [])];
+                            updated[idx] = e.target.value;
+                            updateEpk("festivalAppearances", updated);
+                          }}
+                          placeholder="Nombre del festival"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (epk.festivalAppearances || []).filter((_, i) => i !== idx);
+                            updateEpk("festivalAppearances", updated);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("festivalAppearances", [...(epk.festivalAppearances || []), ""])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Festival
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Notable Venues */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Venues Notables
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Venues icónicos donde te has presentado.
+                  </p>
+                  <div className="space-y-2">
+                    {(epk.notableVenues || []).map((venue, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={venue}
+                          onChange={(e) => {
+                            const updated = [...(epk.notableVenues || [])];
+                            updated[idx] = e.target.value;
+                            updateEpk("notableVenues", updated);
+                          }}
+                          placeholder="Nombre del venue"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (epk.notableVenues || []).filter((_, i) => i !== idx);
+                            updateEpk("notableVenues", updated);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("notableVenues", [...(epk.notableVenues || []), ""])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Venue
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tour History */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Historial de Giras
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Nombres de giras o tours realizados.
+                  </p>
+                  <div className="space-y-2">
+                    {(epk.tourHistory || []).map((tour, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={tour}
+                          onChange={(e) => {
+                            const updated = [...(epk.tourHistory || [])];
+                            updated[idx] = e.target.value;
+                            updateEpk("tourHistory", updated);
+                          }}
+                          placeholder="Ej: Gira México 2024"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (epk.tourHistory || []).filter((_, i) => i !== idx);
+                            updateEpk("tourHistory", updated);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("tourHistory", [...(epk.tourHistory || []), ""])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Gira
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+              <h3 className="font-medium text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Tips para Shows
+              </h3>
+              <ul className="text-sm text-slc-muted space-y-2">
+                <li>• Los festivales son la prueba más fuerte de tu nivel como artista en vivo</li>
+                <li>• Incluye la asistencia cuando sea impresionante (más de 1,000)</li>
+                <li>• Los venues notables muestran dónde has tocado — los promotores conocen estos lugares</li>
+                <li>• No incluyas todo — selecciona los 5-10 más impresionantes</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Collaborations Tab */}
+        {activeTab === "collaborations" && (
+          <div className="space-y-6">
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Colaboraciones
+              </h2>
+
+              <div className="space-y-8">
+                {/* Collaborations */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Colaboraciones Destacadas
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Artistas con los que has colaborado en canciones o proyectos.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.collaborations || []).map((collab, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Colaboración #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.collaborations || []).filter((_, i) => i !== idx);
+                              updateEpk("collaborations", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Artista</label>
+                            <Input
+                              value={collab.artistName || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.collaborations || [])];
+                                updated[idx] = { ...updated[idx], artistName: e.target.value };
+                                updateEpk("collaborations", updated);
+                              }}
+                              placeholder="Nombre del artista"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Track</label>
+                            <Input
+                              value={collab.trackName || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.collaborations || [])];
+                                updated[idx] = { ...updated[idx], trackName: e.target.value };
+                                updateEpk("collaborations", updated);
+                              }}
+                              placeholder="Nombre de la canción"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Año</label>
+                            <Input
+                              type="number"
+                              value={collab.year || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.collaborations || [])];
+                                updated[idx] = { ...updated[idx], year: parseInt(e.target.value) || 0 };
+                                updateEpk("collaborations", updated);
+                              }}
+                              placeholder="2024"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Tipo</label>
+                            <Input
+                              value={collab.type || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.collaborations || [])];
+                                updated[idx] = { ...updated[idx], type: e.target.value };
+                                updateEpk("collaborations", updated);
+                              }}
+                              placeholder="Feat, Producción, Remix..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("collaborations", [...(epk.collaborations || []), { artistName: "", trackName: "", year: 0, type: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Colaboración
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Producer Credits */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Créditos de Producción
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Canciones que has producido para otros artistas.
+                  </p>
+                  <div className="space-y-2">
+                    {(epk.producerCredits || []).map((credit, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={credit}
+                          onChange={(e) => {
+                            const updated = [...(epk.producerCredits || [])];
+                            updated[idx] = e.target.value;
+                            updateEpk("producerCredits", updated);
+                          }}
+                          placeholder="Ej: Artista - Canción (2024)"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (epk.producerCredits || []).filter((_, i) => i !== idx);
+                            updateEpk("producerCredits", updated);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("producerCredits", [...(epk.producerCredits || []), ""])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Crédito
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Remix Credits */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Créditos de Remixes
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Remixes oficiales que has hecho para otros artistas.
+                  </p>
+                  <div className="space-y-2">
+                    {(epk.remixCredits || []).map((credit, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={credit}
+                          onChange={(e) => {
+                            const updated = [...(epk.remixCredits || [])];
+                            updated[idx] = e.target.value;
+                            updateEpk("remixCredits", updated);
+                          }}
+                          placeholder="Ej: Artista - Canción (Remix)"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = (epk.remixCredits || []).filter((_, i) => i !== idx);
+                            updateEpk("remixCredits", updated);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("remixCredits", [...(epk.remixCredits || []), ""])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Remix
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+              <h3 className="font-medium text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Tips para Colaboraciones
+              </h3>
+              <ul className="text-sm text-slc-muted space-y-2">
+                <li>• Las colaboraciones con artistas conocidos son prueba social muy fuerte</li>
+                <li>• Incluye el nombre del track — permite al promotor buscar y verificar</li>
+                <li>• Los créditos de producción muestran versatilidad</li>
+                <li>• Si el artista es más grande que tú, destácalo más</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Music Tab */}
+        {activeTab === "music" && (
+          <div className="space-y-6">
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
+                <Music className="w-5 h-5 text-primary" />
+                Música Destacada
+              </h2>
+
+              <div className="space-y-8">
+                {/* Top Tracks */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Tracks Destacados
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Tus 2-5 mejores tracks con links para escuchar.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.topTracks || []).map((track, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Track #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.topTracks || []).filter((_, i) => i !== idx);
+                              updateEpk("topTracks", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Título</label>
+                            <Input
+                              value={track.title || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.topTracks || [])];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                updateEpk("topTracks", updated);
+                              }}
+                              placeholder="Nombre del track"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">URL</label>
+                            <Input
+                              value={track.url || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.topTracks || [])];
+                                updated[idx] = { ...updated[idx], url: e.target.value };
+                                updateEpk("topTracks", updated);
+                              }}
+                              placeholder="https://open.spotify.com/..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Plataforma</label>
+                            <Input
+                              value={track.platform || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.topTracks || [])];
+                                updated[idx] = { ...updated[idx], platform: e.target.value };
+                                updateEpk("topTracks", updated);
+                              }}
+                              placeholder="Spotify, Apple Music, YouTube..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("topTracks", [...(epk.topTracks || []), { title: "", url: "", platform: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Track
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Latest Release */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Último Lanzamiento
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Información sobre tu lanzamiento más reciente.
+                  </p>
+                  <div className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-1">Título</label>
+                        <Input
+                          value={epk.latestRelease?.title || ""}
+                          onChange={(e) => updateEpk("latestRelease", { ...(epk.latestRelease || { title: "", date: "", coverUrl: "", links: {} }), title: e.target.value })}
+                          placeholder="Título del lanzamiento"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-1">Fecha</label>
+                        <Input
+                          value={epk.latestRelease?.date || ""}
+                          onChange={(e) => updateEpk("latestRelease", { ...(epk.latestRelease || { title: "", date: "", coverUrl: "", links: {} }), date: e.target.value })}
+                          placeholder="Ej: 15 Mar 2024"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-slc-muted mb-1">URL de Portada</label>
+                        <Input
+                          value={epk.latestRelease?.coverUrl || ""}
+                          onChange={(e) => updateEpk("latestRelease", { ...(epk.latestRelease || { title: "", date: "", coverUrl: "", links: {} }), coverUrl: e.target.value })}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slc-muted mb-2">Links por Plataforma</label>
+                      {Object.entries(epk.latestRelease?.links || {}).map(([platform, url], idx) => (
+                        <div key={idx} className="flex items-center gap-2 mb-2">
+                          <Input
+                            value={platform}
+                            onChange={(e) => {
+                              const links = { ...(epk.latestRelease?.links || {}) };
+                              const oldUrl = links[platform];
+                              delete links[platform];
+                              links[e.target.value] = oldUrl;
+                              updateEpk("latestRelease", { ...(epk.latestRelease || { title: "", date: "", coverUrl: "", links: {} }), links });
+                            }}
+                            placeholder="Plataforma (spotify, apple, youtube)"
+                            className="w-40"
+                          />
+                          <Input
+                            value={url}
+                            onChange={(e) => {
+                              const links = { ...(epk.latestRelease?.links || {}) };
+                              links[platform] = e.target.value;
+                              updateEpk("latestRelease", { ...(epk.latestRelease || { title: "", date: "", coverUrl: "", links: {} }), links });
+                            }}
+                            placeholder="https://..."
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const links = { ...(epk.latestRelease?.links || {}) };
+                              delete links[platform];
+                              updateEpk("latestRelease", { ...(epk.latestRelease || { title: "", date: "", coverUrl: "", links: {} }), links });
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const links = { ...(epk.latestRelease?.links || {}) };
+                          links[""] = "";
+                          updateEpk("latestRelease", { ...(epk.latestRelease || { title: "", date: "", coverUrl: "", links: {} }), links });
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Agregar Link
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Upcoming Release */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Próximo Lanzamiento
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Información sobre tu próximo lanzamiento (si aplica).
+                  </p>
+                  <div className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-1">Título</label>
+                        <Input
+                          value={epk.upcomingRelease?.title || ""}
+                          onChange={(e) => updateEpk("upcomingRelease", { ...(epk.upcomingRelease || { title: "", date: "", coverUrl: "" }), title: e.target.value })}
+                          placeholder="Título del lanzamiento"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-1">Fecha Estimada</label>
+                        <Input
+                          value={epk.upcomingRelease?.date || ""}
+                          onChange={(e) => updateEpk("upcomingRelease", { ...(epk.upcomingRelease || { title: "", date: "", coverUrl: "" }), date: e.target.value })}
+                          placeholder="Ej: Verano 2024"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-slc-muted mb-1">URL de Portada</label>
+                        <Input
+                          value={epk.upcomingRelease?.coverUrl || ""}
+                          onChange={(e) => updateEpk("upcomingRelease", { ...(epk.upcomingRelease || { title: "", date: "", coverUrl: "" }), coverUrl: e.target.value })}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+              <h3 className="font-medium text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Tips para Música
+              </h3>
+              <ul className="text-sm text-slc-muted space-y-2">
+                <li>• Incluye 2-5 tracks que mejor representen tu sonido</li>
+                <li>• Asegúrate de que los links funcionen — verifica antes de guardar</li>
+                <li>• El último lanzamiento es lo primero que verá un promotor</li>
+                <li>• Los links multi-plataforma facilitan que escuchen tu música</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Videos Tab */}
+        {activeTab === "videos" && (
+          <div className="space-y-6">
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
+                <Video className="w-5 h-5 text-primary" />
+                Videos
+              </h2>
+
+              <div className="space-y-8">
+                {/* Official Music Videos */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Videos Musicales Oficiales
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Tus videos musicales oficiales con URL y número de vistas.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.officialMusicVideos || []).map((video, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Video #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.officialMusicVideos || []).filter((_, i) => i !== idx);
+                              updateEpk("officialMusicVideos", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Título</label>
+                            <Input
+                              value={video.title || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.officialMusicVideos || [])];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                updateEpk("officialMusicVideos", updated);
+                              }}
+                              placeholder="Título del video"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">URL</label>
+                            <Input
+                              value={video.url || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.officialMusicVideos || [])];
+                                updated[idx] = { ...updated[idx], url: e.target.value };
+                                updateEpk("officialMusicVideos", updated);
+                              }}
+                              placeholder="https://youtube.com/..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Vistas</label>
+                            <Input
+                              type="number"
+                              value={video.views || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.officialMusicVideos || [])];
+                                updated[idx] = { ...updated[idx], views: parseInt(e.target.value) || 0 };
+                                updateEpk("officialMusicVideos", updated);
+                              }}
+                              placeholder="Ej: 500000"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("officialMusicVideos", [...(epk.officialMusicVideos || []), { title: "", url: "", views: 0 }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Video Musical
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Live Performance Videos */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Videos de Performance en Vivo
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Capturas de tus presentaciones en vivo.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.livePerformanceVideos || []).map((video, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Video #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.livePerformanceVideos || []).filter((_, i) => i !== idx);
+                              updateEpk("livePerformanceVideos", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Título</label>
+                            <Input
+                              value={video.title || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.livePerformanceVideos || [])];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                updateEpk("livePerformanceVideos", updated);
+                              }}
+                              placeholder="Título o descripción"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">URL</label>
+                            <Input
+                              value={video.url || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.livePerformanceVideos || [])];
+                                updated[idx] = { ...updated[idx], url: e.target.value };
+                                updateEpk("livePerformanceVideos", updated);
+                              }}
+                              placeholder="https://..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Venue / Evento</label>
+                            <Input
+                              value={video.venue || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.livePerformanceVideos || [])];
+                                updated[idx] = { ...updated[idx], venue: e.target.value };
+                                updateEpk("livePerformanceVideos", updated);
+                              }}
+                              placeholder="Nombre del venue o evento"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("livePerformanceVideos", [...(epk.livePerformanceVideos || []), { title: "", url: "", venue: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Video en Vivo
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Featured Video */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Video Destacado
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    El video principal que quieres mostrar en tu EPK.
+                  </p>
+                  <div className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-1">Título</label>
+                        <Input
+                          value={epk.featuredVideo?.title || ""}
+                          onChange={(e) => updateEpk("featuredVideo", { ...(epk.featuredVideo || { title: "", url: "", platform: "" }), title: e.target.value })}
+                          placeholder="Título del video"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-1">URL</label>
+                        <Input
+                          value={epk.featuredVideo?.url || ""}
+                          onChange={(e) => updateEpk("featuredVideo", { ...(epk.featuredVideo || { title: "", url: "", platform: "" }), url: e.target.value })}
+                          placeholder="https://youtube.com/..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-1">Plataforma</label>
+                        <Input
+                          value={epk.featuredVideo?.platform || ""}
+                          onChange={(e) => updateEpk("featuredVideo", { ...(epk.featuredVideo || { title: "", url: "", platform: "" }), platform: e.target.value })}
+                          placeholder="YouTube, Vimeo..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+              <h3 className="font-medium text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Tips para Videos
+              </h3>
+              <ul className="text-sm text-slc-muted space-y-2">
+                <li>• Un video musical profesional vale más que mil palabras</li>
+                <li>• Los videos en vivo demuestran que puedes actuar — crucial para bookings</li>
+                <li>• Incluye el número de vistas si es impresionante (más de 100K)</li>
+                <li>• El video destacado será el primero que vea el visitante</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Quotes Tab */}
+        {activeTab === "quotes" && (
+          <div className="space-y-6">
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-6 flex items-center gap-2">
+                <Quote className="w-5 h-5 text-primary" />
+                Citas & Testimonios
+              </h2>
+
+              <div className="space-y-8">
+                {/* Press Quotes */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Citas de Prensa
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Citas de medios, críticos o periodistas sobre tu música.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.pressQuotes || []).map((item, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Cita #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.pressQuotes || []).filter((_, i) => i !== idx);
+                              updateEpk("pressQuotes", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Cita</label>
+                          <textarea
+                            value={item.quote || ""}
+                            onChange={(e) => {
+                              const updated = [...(epk.pressQuotes || [])];
+                              updated[idx] = { ...updated[idx], quote: e.target.value };
+                              updateEpk("pressQuotes", updated);
+                            }}
+                            rows={2}
+                            className="w-full px-4 py-3 bg-slc-black border border-slc-border rounded-lg resize-none"
+                            placeholder='"La cita textual aquí..."'
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Fuente</label>
+                            <Input
+                              value={item.source || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pressQuotes || [])];
+                                updated[idx] = { ...updated[idx], source: e.target.value };
+                                updateEpk("pressQuotes", updated);
+                              }}
+                              placeholder="Ej: Rolling Stone México"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">URL (opcional)</label>
+                            <Input
+                              value={item.sourceUrl || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pressQuotes || [])];
+                                updated[idx] = { ...updated[idx], sourceUrl: e.target.value };
+                                updateEpk("pressQuotes", updated);
+                              }}
+                              placeholder="https://..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Fecha (opcional)</label>
+                            <Input
+                              value={item.date || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.pressQuotes || [])];
+                                updated[idx] = { ...updated[idx], date: e.target.value };
+                                updateEpk("pressQuotes", updated);
+                              }}
+                              placeholder="Ej: Marzo 2024"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("pressQuotes", [...(epk.pressQuotes || []), { quote: "", source: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Cita de Prensa
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Artist Endorsements */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Avales de Artistas
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Citas de otros artistas sobre ti o tu música.
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.artistEndorsements || []).map((item, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Aval #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.artistEndorsements || []).filter((_, i) => i !== idx);
+                              updateEpk("artistEndorsements", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Artista</label>
+                            <Input
+                              value={item.artistName || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.artistEndorsements || [])];
+                                updated[idx] = { ...updated[idx], artistName: e.target.value };
+                                updateEpk("artistEndorsements", updated);
+                              }}
+                              placeholder="Nombre del artista"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Contexto (opcional)</label>
+                            <Input
+                              value={item.context || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.artistEndorsements || [])];
+                                updated[idx] = { ...updated[idx], context: e.target.value };
+                                updateEpk("artistEndorsements", updated);
+                              }}
+                              placeholder="Ej: En colaboración con..."
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Cita</label>
+                          <textarea
+                            value={item.quote || ""}
+                            onChange={(e) => {
+                              const updated = [...(epk.artistEndorsements || [])];
+                              updated[idx] = { ...updated[idx], quote: e.target.value };
+                              updateEpk("artistEndorsements", updated);
+                            }}
+                            rows={2}
+                            className="w-full px-4 py-3 bg-slc-black border border-slc-border rounded-lg resize-none"
+                            placeholder='"Lo que dijo el artista..."'
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("artistEndorsements", [...(epk.artistEndorsements || []), { artistName: "", quote: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Aval
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Industry Testimonials */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">
+                    Testimonios de la Industria
+                  </label>
+                  <p className="text-xs text-slc-muted mb-3">
+                    Citas de profesionales de la industria (productores, A&R, managers, etc.).
+                  </p>
+                  <div className="space-y-4">
+                    {(epk.industryTestimonials || []).map((item, idx) => (
+                      <div key={idx} className="bg-slc-dark border border-slc-border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slc-muted">Testimonio #{idx + 1}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updated = (epk.industryTestimonials || []).filter((_, i) => i !== idx);
+                              updateEpk("industryTestimonials", updated);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Nombre</label>
+                            <Input
+                              value={item.name || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.industryTestimonials || [])];
+                                updated[idx] = { ...updated[idx], name: e.target.value };
+                                updateEpk("industryTestimonials", updated);
+                              }}
+                              placeholder="Nombre completo"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slc-muted mb-1">Rol</label>
+                            <Input
+                              value={item.role || ""}
+                              onChange={(e) => {
+                                const updated = [...(epk.industryTestimonials || [])];
+                                updated[idx] = { ...updated[idx], role: e.target.value };
+                                updateEpk("industryTestimonials", updated);
+                              }}
+                              placeholder="Ej: A&R, Productor, Bookings Agent..."
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Cita</label>
+                          <textarea
+                            value={item.quote || ""}
+                            onChange={(e) => {
+                              const updated = [...(epk.industryTestimonials || [])];
+                              updated[idx] = { ...updated[idx], quote: e.target.value };
+                              updateEpk("industryTestimonials", updated);
+                            }}
+                            rows={2}
+                            className="w-full px-4 py-3 bg-slc-black border border-slc-border rounded-lg resize-none"
+                            placeholder='"Su testimonio aquí..."'
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateEpk("industryTestimonials", [...(epk.industryTestimonials || []), { name: "", role: "", quote: "" }])}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Agregar Testimonio
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+              <h3 className="font-medium text-primary mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Tips para Citas
+              </h3>
+              <ul className="text-sm text-slc-muted space-y-2">
+                <li>• Las citas de prensa son la forma más poderosa de prueba social</li>
+                <li>• Siempre usa citas reales y verificables — los promotores verifican</li>
+                <li>• Un aval de un artista conocido vale oro</li>
+                <li>• Los testimonios de la industria son especialmente valiosos para bookings</li>
+              </ul>
+            </div>
           </div>
         )}
       </div>

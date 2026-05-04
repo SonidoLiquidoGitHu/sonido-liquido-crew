@@ -178,7 +178,8 @@ export default async function PublicEpkPage({ params }: PageProps) {
 
   const { artist, epk, profiles } = data;
 
-  // Check if EPK is public (or show anyway if no EPK exists)
+  // Only show 404 if EPK exists AND is explicitly set to not public
+  // If there's no EPK record at all, still show the page with basic artist info
   if (epk && !epk.isPublic) {
     notFound();
   }

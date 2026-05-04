@@ -53,6 +53,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         bioShort: artist.shortBio || "",
         bioLong: artist.bio || "",
         bookingEmail: artist.bookingEmail || "",
+        isPublic: true,
       });
 
       [epk] = await db
@@ -237,7 +238,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       stageplotUrl: body.stageplotUrl,
 
       // Settings
-      isPublic: body.isPublic ?? false,
+      isPublic: body.isPublic ?? true,
       customSlug: body.customSlug,
       theme: body.theme || "dark",
       customCss: body.customCss,
