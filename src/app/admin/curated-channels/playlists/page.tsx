@@ -17,6 +17,7 @@ import {
   ChevronUp,
   Disc3,
   ExternalLink,
+  ImagePlus,
   ListMusic,
   Loader2,
   Music,
@@ -24,6 +25,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -168,6 +170,8 @@ function PlaylistFormDialog({
   isSubmitting: boolean;
 }) {
   const [formData, setFormData] = useState<PlaylistFormData>(defaultFormData);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (playlist) {
@@ -183,8 +187,10 @@ function PlaylistFormDialog({
         isActive: playlist.isActive !== undefined ? playlist.isActive : true,
         priority: playlist.priority || 0,
       });
+      setCoverPreview(playlist.coverImageUrl || null);
     } else {
       setFormData(defaultFormData);
+      setCoverPreview(null);
     }
   }, [playlist]);
 
@@ -194,6 +200,114 @@ function PlaylistFormDialog({
       name,
       slug: slugify(name),
     }));
+  };
+
+  const handleCoverUpload = async (file: File) => {
+    setIsUploadingCover(true);
+    try {
+      // Get Dropbox access token
+      const tokenRes = await fetch("/api/admin/dropbox/token");
+      const tokenData = await tokenRes.json();
+      if (!tokenData.success || !tokenData.data?.token) {
+        // Fallback: convert to base64 data URL for local storage
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          setFormData((prev) => ({ ...prev, coverImageUrl: dataUrl }));
+          setCoverPreview(dataUrl);
+        };
+        reader.readAsDataURL(file);
+        setIsUploadingCover(false);
+        return;
+      }
+
+      const accessToken = tokenData.data.token;
+
+      // Generate unique filename
+      const ext = file.name.split(".").pop() || "jpg";
+      const uniqueId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const filename = `playlist_cover_${uniqueId}.${ext}`;
+      const dropboxPath = `/playlists/${filename}`;
+
+      // Upload to Dropbox
+      const arrayBuffer = await file.arrayBuffer();
+      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({
+            path: dropboxPath,
+            mode: "overwrite",
+            autorename: false,
+            mute: false,
+          }),
+        },
+        body: arrayBuffer,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      // Create shared link
+      let sharedUrl: string;
+      try {
+        const linkResponse = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            path: dropboxPath,
+            settings: { access: "viewer", audience: "public", requested_visibility: "public" },
+          }),
+        });
+
+        if (linkResponse.ok) {
+          const data = await linkResponse.json();
+          sharedUrl = data.url
+            .replace("www.dropbox.com", "dl.dropboxusercontent.com")
+            .replace("?dl=0", "")
+            .replace("&dl=0", "");
+        } else {
+          // Try to get existing link
+          const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ path: dropboxPath, direct_only: true }),
+          });
+
+          if (listResponse.ok) {
+            const listData = await listResponse.json();
+            if (listData.links && listData.links.length > 0) {
+              sharedUrl = listData.links[0].url
+                .replace("www.dropbox.com", "dl.dropboxusercontent.com")
+                .replace("?dl=0", "")
+                .replace("&dl=0", "");
+            } else {
+              throw new Error("Could not get shared link");
+            }
+          } else {
+            throw new Error("Could not get existing shared link");
+          }
+        }
+      } catch (linkError) {
+        throw new Error(`Link error: ${(linkError as Error).message}`);
+      }
+
+      setFormData((prev) => ({ ...prev, coverImageUrl: sharedUrl }));
+      setCoverPreview(sharedUrl);
+    } catch (error) {
+      console.error("Cover upload error:", error);
+      alert(`Error al subir la imagen: ${(error as Error).message}`);
+    } finally {
+      setIsUploadingCover(false);
+    }
   };
 
   const isEditing = !!playlist;
@@ -276,22 +390,92 @@ function PlaylistFormDialog({
             />
           </div>
 
-          {/* Cover Image URL */}
+          {/* Cover Image Upload */}
           <div>
             <label className="text-sm font-medium text-slc-muted mb-1.5 block">
-              URL de Imagen de Portada
+              Imagen de Portada
             </label>
-            <Input
-              value={formData.coverImageUrl}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  coverImageUrl: e.target.value,
-                }))
-              }
-              placeholder="https://..."
-              className="bg-slc-card border-slc-border"
-            />
+            {coverPreview ? (
+              <div className="relative w-full aspect-square max-w-[200px] rounded-xl overflow-hidden bg-slc-card group">
+                <img
+                  src={coverPreview}
+                  alt="Cover"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*";
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) handleCoverUpload(file);
+                      };
+                      input.click();
+                    }}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+                    title="Cambiar imagen"
+                  >
+                    <ImagePlus className="w-4 h-4 text-white" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, coverImageUrl: "" }));
+                      setCoverPreview(null);
+                    }}
+                    className="w-8 h-8 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center"
+                    title="Eliminar imagen"
+                  >
+                    <X className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed border-slc-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) handleCoverUpload(file);
+                  };
+                  input.click();
+                }}
+              >
+                {isUploadingCover ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    <span className="text-sm text-slc-muted">Subiendo...</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <ImagePlus className="w-8 h-8 text-slc-muted" />
+                    <span className="text-sm text-slc-muted">Haz clic para subir imagen</span>
+                    <span className="text-xs text-slc-muted">JPG, PNG, WebP</span>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mt-2">
+              <p className="text-xs text-slc-muted mb-1">O pega una URL directamente:</p>
+              <Input
+                value={formData.coverImageUrl}
+                onChange={(e) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    coverImageUrl: e.target.value,
+                  }));
+                  setCoverPreview(e.target.value || null);
+                }}
+                placeholder="https://..."
+                className="bg-slc-card border-slc-border text-xs"
+              />
+            </div>
           </div>
 
           {/* Spotify Playlist ID */}
@@ -748,14 +932,22 @@ export default function PlaylistsPage() {
                         onClick={() => setSelectedPlaylist(playlist.id)}
                         className="flex items-center gap-3 flex-1 min-w-0 text-left"
                       >
-                        <div
-                          className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center"
-                          style={{
-                            backgroundColor: playlist.coverColor || "#374151",
-                          }}
-                        >
-                          <ListMusic className="w-4 h-4 text-white" />
-                        </div>
+                        {playlist.coverImageUrl ? (
+                          <img
+                            src={playlist.coverImageUrl}
+                            alt={playlist.name}
+                            className="w-8 h-8 rounded-lg flex-shrink-0 object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center"
+                            style={{
+                              backgroundColor: playlist.coverColor || "#374151",
+                            }}
+                          >
+                            <ListMusic className="w-4 h-4 text-white" />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">
                             {playlist.name}
@@ -811,13 +1003,33 @@ export default function PlaylistsPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="font-oswald text-2xl uppercase mb-1">
-                          {currentPlaylist.name}
-                        </h2>
-                        <p className="text-slc-muted">
-                          {currentPlaylist.description || "Sin descripción"}
-                        </p>
-                        <div className="flex items-center gap-4 mt-2">
+                        <div className="flex items-center gap-4">
+                          {currentPlaylist.coverImageUrl ? (
+                            <img
+                              src={currentPlaylist.coverImageUrl}
+                              alt={currentPlaylist.name}
+                              className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className="w-16 h-16 rounded-xl flex-shrink-0 flex items-center justify-center"
+                              style={{
+                                backgroundColor: currentPlaylist.coverColor || "#f97316",
+                              }}
+                            >
+                              <ListMusic className="w-8 h-8 text-white" />
+                            </div>
+                          )}
+                          <div>
+                            <h2 className="font-oswald text-2xl uppercase mb-1">
+                              {currentPlaylist.name}
+                            </h2>
+                            <p className="text-slc-muted">
+                              {currentPlaylist.description || "Sin descripción"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 mt-2 ml-20">
                           <p className="text-sm">
                             <span className="font-oswald text-primary">
                               {playlistTracksList.length}
