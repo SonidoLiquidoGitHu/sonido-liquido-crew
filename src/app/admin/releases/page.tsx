@@ -3,6 +3,7 @@ import Image from "next/image";
 import { releasesService } from "@/lib/services";
 import { formatDate, getReleaseTypeDisplay } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { DeduplicateButton } from "@/components/admin/DeduplicateButton";
 import {
   Plus,
   Search,
@@ -45,12 +46,15 @@ export default async function AdminReleasesPage() {
             Gestiona la discografía del crew
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/releases/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Agregar Lanzamiento
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <DeduplicateButton />
+          <Button asChild>
+            <Link href="/admin/releases/new">
+              <Plus className="w-4 h-4 mr-2" />
+              Agregar Lanzamiento
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filters */}
