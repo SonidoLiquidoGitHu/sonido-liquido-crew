@@ -22,6 +22,7 @@ import {
   EyeOff,
   ChevronDown,
   Star,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +81,7 @@ export default function CuratedChannelsPage() {
 
   // Sync state
   const [syncing, setSyncing] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChannels();
@@ -154,6 +156,27 @@ export default function CuratedChannelsPage() {
       alert("Error de conexión");
     } finally {
       setSyncing(null);
+    }
+  };
+
+  const handleRefreshInfo = async (channel: CuratedChannel) => {
+    setRefreshing(channel.id);
+    try {
+      const res = await fetch(`/api/admin/curated-channels/${channel.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshInfo: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchChannels();
+      } else {
+        alert(data.error || "Error al actualizar info");
+      }
+    } catch (error) {
+      alert("Error de conexión");
+    } finally {
+      setRefreshing(null);
     }
   };
 
@@ -377,14 +400,31 @@ export default function CuratedChannelsPage() {
                 </Link>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-2 px-4 py-3 bg-slc-dark/50">
-                  <div>
-                    <p className="text-xs text-slc-muted">Seguidores</p>
-                    <p className="font-oswald">{formatNumber(channel.followers)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slc-muted">Popularidad</p>
-                    <p className="font-oswald">{channel.popularity || "-"}/100</p>
+                <div className="px-4 py-3 bg-slc-dark/50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slc-muted">Seguidores</p>
+                      <p className="font-oswald text-lg">{formatNumber(channel.followers)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slc-muted">Popularidad</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-2 bg-slc-dark rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${channel.popularity ?? 0}%`,
+                              backgroundColor: channel.popularity != null
+                                ? channel.popularity >= 70 ? "#22c55e"
+                                  : channel.popularity >= 40 ? "#eab308"
+                                  : "#ef4444"
+                                : "#4b5563",
+                            }}
+                          />
+                        </div>
+                        <span className="font-oswald text-sm">{channel.popularity ?? "-"}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -407,8 +447,22 @@ export default function CuratedChannelsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => handleRefreshInfo(channel)}
+                      disabled={refreshing === channel.id}
+                      title="Actualizar info desde Spotify"
+                    >
+                      {refreshing === channel.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Info className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleSyncChannel(channel.id)}
                       disabled={syncing === channel.id}
+                      title="Sincronizar tracks"
                     >
                       {syncing === channel.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -420,6 +474,7 @@ export default function CuratedChannelsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleToggleActive(channel)}
+                      title={channel.isActive ? "Desactivar" : "Activar"}
                     >
                       {channel.isActive ? (
                         <Eye className="w-4 h-4" />
@@ -432,6 +487,7 @@ export default function CuratedChannelsPage() {
                       size="sm"
                       onClick={() => handleDeleteChannel(channel)}
                       className="text-red-500 hover:text-red-400"
+                      title="Eliminar"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -442,6 +498,7 @@ export default function CuratedChannelsPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-green-500 hover:text-green-400"
+                    title="Abrir en Spotify"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </a>

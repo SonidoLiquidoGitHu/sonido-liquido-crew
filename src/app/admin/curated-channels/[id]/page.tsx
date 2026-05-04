@@ -100,6 +100,7 @@ export default function CuratedChannelDetailPage({
   const [channel, setChannel] = useState<CuratedChannel | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [playingTrack, setPlayingTrack] = useState<string | null>(null);
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
@@ -150,6 +151,27 @@ export default function CuratedChannelDetailPage({
       alert("Error de conexión");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleRefreshInfo = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch(`/api/admin/curated-channels/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshInfo: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchChannel();
+      } else {
+        alert(data.error || "Error al actualizar info");
+      }
+    } catch (error) {
+      alert("Error de conexión");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -295,7 +317,22 @@ export default function CuratedChannelDetailPage({
                 </div>
                 <div>
                   <p className="text-xs text-slc-muted">Popularidad</p>
-                  <p className="font-oswald text-xl">{channel.popularity || "-"}/100</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-3 bg-slc-dark rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${channel.popularity ?? 0}%`,
+                          backgroundColor: channel.popularity != null
+                            ? channel.popularity >= 70 ? "#22c55e"
+                              : channel.popularity >= 40 ? "#eab308"
+                              : "#ef4444"
+                            : "#4b5563",
+                        }}
+                      />
+                    </div>
+                    <span className="font-oswald text-xl">{channel.popularity ?? "-"}</span>
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs text-slc-muted">Tracks Sincronizados</p>
@@ -324,11 +361,19 @@ export default function CuratedChannelDetailPage({
 
               {/* Actions */}
               <div className="flex gap-3">
+                <Button onClick={handleRefreshInfo} disabled={refreshing} variant="outline">
+                  {refreshing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Actualizar Info
+                </Button>
                 <Button onClick={handleSync} disabled={syncing}>
                   {syncing ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <RefreshCw className="w-4 h-4 mr-2" />
+                    <Disc3 className="w-4 h-4 mr-2" />
                   )}
                   Sincronizar Tracks
                 </Button>

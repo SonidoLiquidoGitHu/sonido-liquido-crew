@@ -95,13 +95,25 @@ export async function POST(
       }
     }
 
-    // Update last synced timestamp
+    // Refresh artist metadata from Spotify (popularity, followers, image, genres)
+    const metadataUpdates: Record<string, unknown> = {
+      lastSyncedAt: new Date(),
+      updatedAt: new Date(),
+    };
+    try {
+      const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId);
+      metadataUpdates.name = artistInfo.name;
+      metadataUpdates.imageUrl = artistInfo.images?.[0]?.url ?? channel.imageUrl;
+      metadataUpdates.genres = artistInfo.genres?.length ? JSON.stringify(artistInfo.genres) : channel.genres;
+      metadataUpdates.popularity = artistInfo.popularity ?? channel.popularity;
+      metadataUpdates.followers = artistInfo.followers?.total ?? channel.followers;
+    } catch (err) {
+      console.warn(`[Sync] Could not refresh artist metadata for ${channel.name}:`, err);
+    }
+
     await db
       .update(curatedSpotifyChannels)
-      .set({
-        lastSyncedAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .set(metadataUpdates)
       .where(eq(curatedSpotifyChannels.id, id));
 
     return NextResponse.json({

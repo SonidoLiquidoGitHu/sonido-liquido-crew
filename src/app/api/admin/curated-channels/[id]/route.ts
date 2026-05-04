@@ -68,7 +68,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
     }
 
-    const { category, priority, description, autoSync, syncNewReleases, syncTopTracks, isActive } = body;
+    const { category, priority, description, autoSync, syncNewReleases, syncTopTracks, isActive, refreshInfo } = body;
 
     // Check if exists
     const [existing] = await db
@@ -82,6 +82,38 @@ export async function PUT(
         { success: false, error: "Channel not found" },
         { status: 404 }
       );
+    }
+
+    // If refreshInfo is true, fetch latest data from Spotify and return it
+    if (refreshInfo) {
+      try {
+        const artistInfo = await spotifyClient.getArtist(existing.spotifyArtistId);
+        const updates: Record<string, unknown> = {
+          name: artistInfo.name,
+          imageUrl: artistInfo.images?.[0]?.url ?? existing.imageUrl,
+          genres: artistInfo.genres?.length ? JSON.stringify(artistInfo.genres) : existing.genres,
+          popularity: artistInfo.popularity ?? existing.popularity,
+          followers: artistInfo.followers?.total ?? existing.followers,
+          updatedAt: new Date(),
+        };
+
+        await db
+          .update(curatedSpotifyChannels)
+          .set(updates)
+          .where(eq(curatedSpotifyChannels.id, id));
+
+        return NextResponse.json({
+          success: true,
+          data: { ...existing, ...updates },
+          message: `Info de "${artistInfo.name}" actualizada desde Spotify`,
+        });
+      } catch (err) {
+        console.error("[Curated Channels API] Error refreshing info from Spotify:", err);
+        return NextResponse.json(
+          { success: false, error: "No se pudo obtener info de Spotify" },
+          { status: 400 }
+        );
+      }
     }
 
     // Update
