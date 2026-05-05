@@ -162,38 +162,46 @@ export async function POST(request: NextRequest) {
     try {
       const topTracks = await spotifyClient.getArtistTopTracks(spotifyArtistId);
 
-      for (const track of topTracks) {
-        // Skip if track already exists (shouldn't happen for new channel, but safe check)
-        const existingTrack = await db
-          .select()
-          .from(curatedTracks)
-          .where(eq(curatedTracks.spotifyTrackId, track.id))
-          .limit(1);
+      if (topTracks && Array.isArray(topTracks)) {
+        for (const track of topTracks) {
+          if (!track?.id) continue;
 
-        if (existingTrack.length > 0) continue;
+          try {
+            // Skip if track already exists (shouldn't happen for new channel, but safe check)
+            const existingTrack = await db
+              .select()
+              .from(curatedTracks)
+              .where(eq(curatedTracks.spotifyTrackId, track.id))
+              .limit(1);
 
-        const newTrack = {
-          id: generateUUID(),
-          spotifyTrackId: track.id,
-          spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
-          spotifyAlbumId: track.album?.id || null,
-          name: track.name,
-          artistName: track.artists?.map((a: any) => a.name).join(", ") || artistInfo.name,
-          artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
-          albumName: track.album?.name || null,
-          albumImageUrl: track.album?.images?.[0]?.url || null,
-          durationMs: track.duration_ms ?? null,
-          previewUrl: track.preview_url || null,
-          releaseDate: track.album?.release_date || null,
-          popularity: track.popularity ?? null,
-          explicit: Boolean(track.explicit),
-          curatedChannelId: id,
-          isAvailableForPlaylist: true,
-          isFeatured: true, // Top tracks are featured by default
-        };
+            if (existingTrack.length > 0) continue;
 
-        await db.insert(curatedTracks).values(newTrack);
-        topTracksAdded++;
+            const newTrack = {
+              id: generateUUID(),
+              spotifyTrackId: track.id,
+              spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+              spotifyAlbumId: (track as any).album?.id || null,
+              name: track.name || 'Unknown',
+              artistName: (track as any).artists?.map((a: any) => a.name).join(", ") || artistInfo.name,
+              artistIds: JSON.stringify((track as any).artists?.map((a: any) => a.id) || []),
+              albumName: (track as any).album?.name || null,
+              albumImageUrl: (track as any).album?.images?.[0]?.url || null,
+              durationMs: track.duration_ms ?? null,
+              previewUrl: track.preview_url || null,
+              releaseDate: (track as any).album?.release_date || null,
+              popularity: (track as any).popularity ?? null,
+              explicit: Boolean((track as any).explicit),
+              curatedChannelId: id,
+              isAvailableForPlaylist: true,
+              isFeatured: true, // Top tracks are featured by default
+            };
+
+            await db.insert(curatedTracks).values(newTrack);
+            topTracksAdded++;
+          } catch (trackErr) {
+            console.warn(`[Curated Channels API] Error inserting track ${track?.id}:`, trackErr);
+          }
+        }
       }
 
       console.log(`[Curated Channels API] Auto-fetched ${topTracksAdded} top tracks for ${artistInfo.name}`);

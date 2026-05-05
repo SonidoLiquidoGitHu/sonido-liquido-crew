@@ -205,10 +205,10 @@ export default function CuratedChannelsPage() {
         alert(data.message || "Top tracks actualizados");
         fetchChannels();
       } else {
-        alert(data.error || "Error al obtener top tracks");
+        alert(`Error: ${data.error || "Error al obtener top tracks"}`);
       }
     } catch (error) {
-      alert("Error de conexión");
+      alert("Error de conexión - intenta de nuevo");
     } finally {
       setFetchingTop(null);
     }
