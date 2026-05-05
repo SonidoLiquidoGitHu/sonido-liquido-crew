@@ -99,11 +99,11 @@ export default function AdminLayout({
       {/* Mobile Sidebar */}
       <aside
         className={cn(
-          "lg:hidden fixed top-16 left-0 z-50 w-64 h-[calc(100vh-4rem)] bg-slc-dark border-r border-slc-border transform transition-transform duration-200",
+          "lg:hidden fixed top-16 left-0 z-50 w-64 h-[calc(100vh-4rem)] bg-slc-dark border-r border-slc-border transform transition-transform duration-200 flex flex-col",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <nav className="p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {sidebarLinks.map((link) => {
             const isActive = pathname === link.href ||
               (link.href !== "/admin" && pathname.startsWith(link.href));
@@ -125,6 +125,17 @@ export default function AdminLayout({
             );
           })}
         </nav>
+        {/* Footer */}
+        <div className="p-4 border-t border-slc-border">
+          <Link
+            href="/"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slc-muted hover:text-white hover:bg-slc-card transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Volver al sitio</span>
+          </Link>
+        </div>
       </aside>
 
       <div className="flex">
