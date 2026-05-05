@@ -216,6 +216,15 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
   // Track current page for footers
   let pageNumber = 1;
 
+  // Fill the first page with dark background
+  const fillPageBackground = () => {
+    doc.setFillColor(COLORS.dark);
+    doc.rect(0, 0, pageWidth, pageHeight, "F");
+  };
+
+  // Initial page background
+  fillPageBackground();
+
   const checkPageBreak = (requiredHeight: number): boolean => {
     if (yPos + requiredHeight > pageHeight - 25) {
       // Add footer before new page
@@ -223,6 +232,8 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
       doc.addPage();
       pageNumber++;
       yPos = margin;
+      // Fill new page with dark background
+      fillPageBackground();
       // Add subtle top bar on new pages
       doc.setFillColor(COLORS.primary);
       doc.rect(0, 0, pageWidth, 1.5, "F");
@@ -271,7 +282,7 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
   // PAGE 1: COVER / HERO
   // ===========================================
 
-  // Full dark background header area
+  // Full dark background header area (darker shade on top of already-dark page)
   doc.setFillColor(COLORS.darker);
   doc.rect(0, 0, pageWidth, 90, "F");
 
