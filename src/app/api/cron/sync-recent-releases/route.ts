@@ -131,7 +131,7 @@ async function runSync(artistsToProcess: typeof SLC_ARTISTS) {
 
         const albumsResponse = await spotifyClient.getArtistAlbums(slcArtist.spotifyId, {
           includeGroups: "album,single,compilation",
-          limit: 20,
+          limit: 10, // Spotify reduced max limit to 10 for client credentials
         });
         const albums = albumsResponse.items || [];
 

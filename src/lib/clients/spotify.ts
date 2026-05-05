@@ -271,7 +271,7 @@ class SpotifyClient {
     options: { includeGroups?: string; limit?: number; offset?: number } = {}
   ): Promise<SpotifyArtistAlbumsResponse> {
     const includeGroups = options.includeGroups || "album,single";
-    const limit = Math.min(options.limit || 20, 50); // Max is 50, default to 20
+    const limit = Math.min(options.limit || 10, 10); // Spotify reduced max limit to 10 for client credentials
     const offset = options.offset || 0;
 
     // Use URLSearchParams for proper encoding
@@ -298,7 +298,7 @@ class SpotifyClient {
     // Fetch main types: album and single (most reliable)
     const includeGroups = "album,single";
     let offset = 0;
-    const limit = 50; // Use max limit for efficiency
+    const limit = 10; // Spotify reduced max limit to 10 for client credentials
 
     while (true) {
       const response = await this.getArtistAlbums(artistId, {
@@ -407,12 +407,13 @@ class SpotifyClient {
   async search(
     query: string,
     types: ("artist" | "album" | "track")[] = ["artist"],
-    limit = 20
+    limit = 10
   ): Promise<SpotifySearchResponse> {
+    const cappedLimit = Math.min(limit, 10); // Spotify reduced max limit to 10 for client credentials
     const params = new URLSearchParams({
       q: query,
       type: types.join(","),
-      limit: String(limit),
+      limit: String(cappedLimit),
       market: "MX",
     });
 
