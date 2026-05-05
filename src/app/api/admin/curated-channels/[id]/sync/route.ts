@@ -36,8 +36,21 @@ export async function POST(
 
     // Fetch albums from Spotify
     console.log(`[Sync] Fetching albums for ${channel.name}...`);
-    const albums = await spotifyClient.getAllArtistAlbums(channel.spotifyArtistId);
-    console.log(`[Sync] Found ${albums.length} albums for ${channel.name}`);
+    let albums: any[] = [];
+    try {
+      albums = await spotifyClient.getAllArtistAlbums(channel.spotifyArtistId);
+      console.log(`[Sync] Found ${albums.length} albums for ${channel.name}`);
+    } catch (albumFetchErr) {
+      console.error(`[Sync] Error fetching albums for ${channel.name}:`, albumFetchErr);
+      const errMsg = (albumFetchErr as Error).message || "";
+      if (errMsg.includes("400") || errMsg.includes("403")) {
+        return NextResponse.json({
+          success: false,
+          error: "Spotify API no permite acceso a los álbumes de este artista (400/403). La API de Spotify ha restringido algunos endpoints para apps sin autorización de usuario.",
+        }, { status: 500 });
+      }
+      throw albumFetchErr;
+    }
 
     let addedTracks = 0;
     let skippedTracks = 0;

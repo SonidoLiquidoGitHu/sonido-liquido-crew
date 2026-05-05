@@ -113,7 +113,9 @@ class SpotifyClient {
         const errorBody = await response.text().catch(() => "");
         console.error(`[Spotify API] Error ${response.status}: ${errorBody}`);
         console.error(`[Spotify API] URL: ${url}`);
-        throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
+        // Include error body in message for 400 errors (helps debug bad requests)
+        const detail = errorBody ? ` - ${errorBody.slice(0, 200)}` : "";
+        throw new Error(`Spotify API error: ${response.status} ${response.statusText}${detail}`);
       } catch (fetchError) {
         // Handle timeout errors
         if (fetchError instanceof DOMException && fetchError.name === "TimeoutError") {
@@ -313,21 +315,59 @@ class SpotifyClient {
 
   /**
    * Get multiple albums by IDs
+   * Primary: batch endpoint /albums?ids=...
+   * Fallback: fetch one by one if batch returns 400/403
    */
   async getAlbums(albumIds: string[]): Promise<SpotifyAlbum[]> {
     if (albumIds.length === 0) return [];
 
+    // Spotify's batch endpoint max is 20 IDs
     const chunks: string[][] = [];
     for (let i = 0; i < albumIds.length; i += 20) {
       chunks.push(albumIds.slice(i, i + 20));
     }
 
     const results: SpotifyAlbum[] = [];
+    let useFallback = false;
+
     for (const chunk of chunks) {
-      const response = await this.request<{ albums: SpotifyAlbum[] }>(
-        `/albums?ids=${chunk.join(",")}&market=MX`
-      );
-      results.push(...response.albums);
+      if (useFallback) {
+        // Fetch one by one
+        for (const albumId of chunk) {
+          try {
+            const album = await this.getAlbum(albumId);
+            results.push(album);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (err) {
+            console.warn(`[Spotify API] Failed to fetch album ${albumId}:`, (err as Error).message);
+          }
+        }
+      } else {
+        try {
+          const response = await this.request<{ albums: SpotifyAlbum[] }>(
+            `/albums?ids=${chunk.join(",")}&market=MX`
+          );
+          results.push(...response.albums);
+        } catch (error) {
+          const errMsg = (error as Error).message || "";
+          if (errMsg.includes("400") || errMsg.includes("403")) {
+            console.log(`[Spotify API] Batch albums endpoint failed (${errMsg}), falling back to one-by-one...`);
+            useFallback = true;
+            // Retry this chunk one by one
+            for (const albumId of chunk) {
+              try {
+                const album = await this.getAlbum(albumId);
+                results.push(album);
+                await new Promise(resolve => setTimeout(resolve, 100));
+              } catch (err) {
+                console.warn(`[Spotify API] Failed to fetch album ${albumId}:`, (err as Error).message);
+              }
+            }
+          } else {
+            throw error;
+          }
+        }
+      }
     }
 
     return results;
