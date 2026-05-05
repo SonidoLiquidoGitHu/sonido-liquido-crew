@@ -178,12 +178,66 @@ class SpotifyClient {
 
   /**
    * Get artist's top tracks (up to 10)
+   * Primary: /artists/{id}/top-tracks endpoint
+   * Fallback: search for artist's tracks if top-tracks returns 403
    */
   async getArtistTopTracks(artistId: string): Promise<SpotifyTrack[]> {
-    const response = await this.request<{ tracks: SpotifyTrack[] }>(
-      `/artists/${artistId}/top-tracks?market=MX`
-    );
-    return response.tracks || [];
+    // Try the dedicated top-tracks endpoint first
+    try {
+      const response = await this.request<{ tracks: SpotifyTrack[] }>(
+        `/artists/${artistId}/top-tracks?market=MX`
+      );
+      return response.tracks || [];
+    } catch (error) {
+      const errMsg = (error as Error).message || "";
+      // If 403 (Spotify restricted this endpoint for client credentials), use fallback
+      if (errMsg.includes("403")) {
+        console.log("[Spotify API] Top-tracks endpoint returned 403, using search fallback...");
+        return this.getArtistTopTracksFallback(artistId);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Fallback: Get artist's top tracks using search + album tracks
+   * Used when /artists/{id}/top-tracks returns 403 (restricted for client credentials)
+   */
+  private async getArtistTopTracksFallback(artistId: string): Promise<SpotifyTrack[]> {
+    // Step 1: Get the artist's name
+    let artistName: string;
+    try {
+      const artist = await this.getArtist(artistId);
+      artistName = artist.name;
+    } catch {
+      console.error("[Spotify API] Fallback: Could not fetch artist name");
+      return [];
+    }
+
+    // Step 2: Search for the artist's tracks
+    try {
+      const searchResult = await this.search(
+        `artist:${artistName}`,
+        ["track"],
+        20
+      );
+
+      if (!searchResult.tracks?.items?.length) {
+        console.log(`[Spotify API] Fallback: No tracks found for artist:${artistName}`);
+        return [];
+      }
+
+      // Filter to only include tracks where this artist is the primary artist
+      const filtered = searchResult.tracks.items.filter((track) =>
+        track.artists?.some((a) => a.id === artistId)
+      );
+
+      console.log(`[Spotify API] Fallback: Found ${filtered.length} tracks for ${artistName} (from ${searchResult.tracks.items.length} search results)`);
+      return filtered.slice(0, 10);
+    } catch (searchError) {
+      console.error("[Spotify API] Fallback search failed:", searchError);
+      return [];
+    }
   }
 
   /**
