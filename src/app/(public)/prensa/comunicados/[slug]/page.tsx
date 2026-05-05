@@ -479,6 +479,8 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                 <CompactTracklist
                   tracks={audioTracks}
                   showDownloadAll={false}
+                  showDownload={false}
+                  showCopyLink={false}
                 />
               </div>
             )}
@@ -493,6 +495,8 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                 <CompactAudioPlayer
                   src={release.audioPreviewUrl}
                   title={release.audioPreviewTitle || "Audio Preview"}
+                  showDownload={false}
+                  showCopyLink={false}
                 />
               </div>
             )}

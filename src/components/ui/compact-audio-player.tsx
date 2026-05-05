@@ -245,6 +245,8 @@ interface Track {
 interface CompactTracklistProps {
   tracks: Track[];
   showDownloadAll?: boolean;
+  showDownload?: boolean;
+  showCopyLink?: boolean;
   onDownloadAll?: () => void;
   className?: string;
 }
@@ -252,6 +254,8 @@ interface CompactTracklistProps {
 export function CompactTracklist({
   tracks,
   showDownloadAll = true,
+  showDownload = true,
+  showCopyLink = true,
   onDownloadAll,
   className,
 }: CompactTracklistProps) {
@@ -293,7 +297,9 @@ export function CompactTracklist({
           <span>•</span>
           <span>{formatTotalDuration(totalDuration)} total</span>
         </div>
+        {(showCopyLink || showDownloadAll) && (
         <div className="flex items-center gap-2">
+          {showCopyLink && (
           <button
             onClick={handleCopyAllLinks}
             className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-slc-muted hover:text-white hover:bg-slc-card transition-colors"
@@ -310,6 +316,7 @@ export function CompactTracklist({
               </>
             )}
           </button>
+          )}
           {showDownloadAll && onDownloadAll && (
             <button
               onClick={onDownloadAll}
@@ -320,6 +327,7 @@ export function CompactTracklist({
             </button>
           )}
         </div>
+        )}
       </div>
 
       {/* Track list */}
@@ -332,6 +340,8 @@ export function CompactTracklist({
             artist={track.artist}
             duration={track.duration}
             trackNumber={track.trackNumber || index + 1}
+            showDownload={showDownload}
+            showCopyLink={showCopyLink}
           />
         ))}
       </div>
