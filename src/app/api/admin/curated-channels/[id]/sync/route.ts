@@ -8,6 +8,11 @@ import { generateUUID } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 second timeout for Netlify
 
+// Max albums to process per request to stay within 60s timeout
+// Each album takes ~300-500ms (API call + DB inserts + delay)
+// With 5 albums we use ~2-3s of API time, leaving plenty of headroom
+const ALBUMS_PER_BATCH = 5;
+
 // Helper to process tracks from a single album
 async function processAlbumTracks(
   fullAlbum: any,
@@ -67,7 +72,13 @@ async function processAlbumTracks(
   return { added, skipped, errors };
 }
 
-// POST - Sync tracks from a curated channel
+// POST - Sync tracks from a curated channel (resumable batch mode)
+// Query params:
+//   ?offset=N  — start processing from album index N (default: 0)
+//   ?batch=N   — process N albums per request (default: 5)
+//
+// Returns { hasMore: true, nextOffset: N } if there are more albums to process.
+// The frontend should loop until hasMore is false.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -78,6 +89,14 @@ export async function POST(
     if (!isDatabaseConfigured()) {
       return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
     }
+
+    // Parse batch pagination params
+    const url = new URL(request.url);
+    const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
+    const batchSize = Math.min(
+      Math.max(1, parseInt(url.searchParams.get("batch") || String(ALBUMS_PER_BATCH), 10)),
+      10 // Never process more than 10 albums per request
+    );
 
     // Get the channel
     const [channel] = await db
@@ -93,7 +112,7 @@ export async function POST(
       );
     }
 
-    // Fetch album list from Spotify (this endpoint still works)
+    // Fetch album list from Spotify
     console.log(`[Sync] Fetching albums for ${channel.name}...`);
     let albumList: any[] = [];
     try {
@@ -111,15 +130,54 @@ export async function POST(
       throw albumFetchErr;
     }
 
+    // Determine the batch slice
+    const albumsToProcess = albumList.slice(offset, offset + batchSize);
+    const hasMore = offset + batchSize < albumList.length;
+    const nextOffset = offset + batchSize;
+
+    if (albumsToProcess.length === 0) {
+      // Nothing to process — update metadata and return done
+      const metadataUpdates: Record<string, unknown> = {
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      };
+      try {
+        const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId) as any;
+        if (artistInfo.name) metadataUpdates.name = artistInfo.name;
+        if (artistInfo.images?.[0]?.url) metadataUpdates.imageUrl = artistInfo.images[0].url;
+      } catch (err) {
+        console.warn(`[Sync] Could not refresh artist metadata for ${channel.name}:`, err);
+      }
+
+      await db
+        .update(curatedSpotifyChannels)
+        .set(metadataUpdates)
+        .where(eq(curatedSpotifyChannels.id, id));
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          albumsProcessed: 0,
+          totalAlbums: albumList.length,
+          tracksAdded: 0,
+          tracksSkipped: 0,
+          errors: 0,
+          hasMore: false,
+          nextOffset: 0,
+        },
+        message: `Sincronización completa. ${albumList.length} álbumes ya estaban sincronizados.`,
+      });
+    }
+
     let addedTracks = 0;
     let skippedTracks = 0;
     let errorsCount = 0;
 
-    // Fetch each album individually (batch endpoint /albums?ids= is 403'd)
-    // Process in small batches with delays to avoid rate limiting
-    for (let i = 0; i < albumList.length; i++) {
-      const album = albumList[i];
-      console.log(`[Sync] Fetching album ${i + 1}/${albumList.length}: ${album.name}`);
+    // Process only the albums in this batch
+    for (let i = 0; i < albumsToProcess.length; i++) {
+      const album = albumsToProcess[i];
+      const albumIndex = offset + i;
+      console.log(`[Sync] Fetching album ${albumIndex + 1}/${albumList.length}: ${album.name}`);
 
       try {
         const fullAlbum = await spotifyClient.getAlbum(album.id) as any;
@@ -132,48 +190,48 @@ export async function POST(
         errorsCount++;
       }
 
-      // Rate limiting: pause between albums (more aggressive for larger catalogs)
-      if (i < albumList.length - 1) {
-        const delay = albumList.length > 20 ? 300 : 150;
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-
-      // Safety: if we've been running too long, stop and report progress
-      // (Netlify function timeout is 60s)
-      if (i > 0 && i % 15 === 0) {
-        console.log(`[Sync] Progress: ${i}/${albumList.length} albums processed, ${addedTracks} tracks added so far`);
+      // Rate limiting: pause between albums
+      if (i < albumsToProcess.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
-    // Refresh artist metadata (name and image only — Spotify Client Credentials doesn't provide popularity/followers/genres)
-    const metadataUpdates: Record<string, unknown> = {
-      lastSyncedAt: new Date(),
-      updatedAt: new Date(),
-    };
-    try {
-      const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId) as any;
-      if (artistInfo.name) metadataUpdates.name = artistInfo.name;
-      if (artistInfo.images?.[0]?.url) metadataUpdates.imageUrl = artistInfo.images[0].url;
-    } catch (err) {
-      console.warn(`[Sync] Could not refresh artist metadata for ${channel.name}:`, err);
+    // If this is the last batch, update metadata
+    if (!hasMore) {
+      const metadataUpdates: Record<string, unknown> = {
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      };
+      try {
+        const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId) as any;
+        if (artistInfo.name) metadataUpdates.name = artistInfo.name;
+        if (artistInfo.images?.[0]?.url) metadataUpdates.imageUrl = artistInfo.images[0].url;
+      } catch (err) {
+        console.warn(`[Sync] Could not refresh artist metadata for ${channel.name}:`, err);
+      }
+
+      await db
+        .update(curatedSpotifyChannels)
+        .set(metadataUpdates)
+        .where(eq(curatedSpotifyChannels.id, id));
     }
 
-    await db
-      .update(curatedSpotifyChannels)
-      .set(metadataUpdates)
-      .where(eq(curatedSpotifyChannels.id, id));
-
-    const message = errorsCount > 0
-      ? `Sincronizado: ${addedTracks} tracks nuevos de ${albumList.length} álbumes (${errorsCount} errores)`
-      : `Sincronizado: ${addedTracks} tracks nuevos de ${albumList.length} álbumes`;
+    const message = hasMore
+      ? `Progreso: ${nextOffset}/${albumList.length} álbumes procesados, ${addedTracks} tracks nuevos en este lote`
+      : errorsCount > 0
+        ? `Sincronizado: ${addedTracks} tracks nuevos de ${albumList.length} álbumes (${errorsCount} errores)`
+        : `Sincronizado: ${addedTracks} tracks nuevos de ${albumList.length} álbumes`;
 
     return NextResponse.json({
       success: true,
       data: {
-        albumsProcessed: albumList.length,
+        albumsProcessed: albumsToProcess.length,
+        totalAlbums: albumList.length,
         tracksAdded: addedTracks,
         tracksSkipped: skippedTracks,
         errors: errorsCount,
+        hasMore,
+        nextOffset: hasMore ? nextOffset : albumList.length,
       },
       message,
     });

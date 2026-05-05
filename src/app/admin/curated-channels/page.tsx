@@ -137,28 +137,54 @@ export default function CuratedChannelsPage() {
 
   const handleSyncChannel = async (channelId: string) => {
     setSyncing(channelId);
+    let totalAdded = 0;
+    let totalSkipped = 0;
+    let totalErrors = 0;
+    let offset = 0;
+    let totalAlbums = 0;
+
     try {
-      const res = await fetch(`/api/admin/curated-channels/${channelId}/sync`, {
-        method: "POST",
-      });
-      
-      if (!res.ok) {
-        let errorMsg = "Error al sincronizar";
-        try {
-          const data = await res.json();
-          errorMsg = data.error || errorMsg;
-        } catch {}
-        alert(errorMsg);
-        return;
+      // Loop through batches until all albums are processed
+      while (true) {
+        const res = await fetch(`/api/admin/curated-channels/${channelId}/sync?offset=${offset}`, {
+          method: "POST",
+        });
+
+        if (!res.ok) {
+          let errorMsg = "Error al sincronizar";
+          try {
+            const data = await res.json();
+            errorMsg = data.error || errorMsg;
+          } catch {}
+          alert(errorMsg);
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || "Error al sincronizar");
+          return;
+        }
+
+        totalAdded += data.data.tracksAdded || 0;
+        totalSkipped += data.data.tracksSkipped || 0;
+        totalErrors += data.data.errors || 0;
+        totalAlbums = data.data.totalAlbums || totalAlbums;
+
+        if (data.data.hasMore) {
+          offset = data.data.nextOffset;
+          // Small delay between batches to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } else {
+          break;
+        }
       }
-      
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message || `Sincronizado: ${data.data.tracksAdded} tracks nuevos`);
-        fetchChannels();
-      } else {
-        alert(data.error || "Error al sincronizar");
-      }
+
+      const msg = totalErrors > 0
+        ? `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes (${totalErrors} errores)`
+        : `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes`;
+      alert(msg);
+      fetchChannels();
     } catch (error) {
       alert("Error de conexión - la sincronización tarda. Intenta desde la página del canal.");
     } finally {
