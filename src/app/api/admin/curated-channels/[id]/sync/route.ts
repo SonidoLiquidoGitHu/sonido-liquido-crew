@@ -8,6 +8,65 @@ import { generateUUID } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 second timeout for Netlify
 
+// Helper to process tracks from a single album
+async function processAlbumTracks(
+  fullAlbum: any,
+  channelId: string,
+  channelName: string,
+): Promise<{ added: number; skipped: number; errors: number }> {
+  let added = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  if (!fullAlbum?.tracks?.items) return { added, skipped, errors };
+
+  for (const track of fullAlbum.tracks.items as any[]) {
+    if (!track?.id) continue;
+
+    try {
+      // Check if track already exists
+      const existing = await db
+        .select({ id: curatedTracks.id })
+        .from(curatedTracks)
+        .where(eq(curatedTracks.spotifyTrackId, track.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        skipped++;
+        continue;
+      }
+
+      const newTrack = {
+        id: generateUUID(),
+        spotifyTrackId: track.id as string,
+        spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+        spotifyAlbumId: fullAlbum.id as string,
+        name: (track.name || "Unknown") as string,
+        artistName: track.artists?.map((a: any) => a.name).join(", ") || channelName,
+        artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
+        albumName: (fullAlbum.name || null) as string | null,
+        albumImageUrl: fullAlbum.images?.[0]?.url ?? null,
+        durationMs: (track.duration_ms ?? null) as number | null,
+        previewUrl: (track.preview_url ?? null) as string | null,
+        releaseDate: (fullAlbum.release_date ?? null) as string | null,
+        popularity: (track.popularity ?? null) as number | null,
+        explicit: Boolean(track.explicit),
+        curatedChannelId: channelId,
+        isAvailableForPlaylist: true,
+        isFeatured: false,
+      };
+
+      await db.insert(curatedTracks).values(newTrack);
+      added++;
+    } catch (trackErr) {
+      console.error(`[Sync] Error inserting track ${track?.id}:`, trackErr);
+      errors++;
+    }
+  }
+
+  return { added, skipped, errors };
+}
+
 // POST - Sync tracks from a curated channel
 export async function POST(
   request: NextRequest,
@@ -34,19 +93,19 @@ export async function POST(
       );
     }
 
-    // Fetch albums from Spotify
+    // Fetch album list from Spotify (this endpoint still works)
     console.log(`[Sync] Fetching albums for ${channel.name}...`);
-    let albums: any[] = [];
+    let albumList: any[] = [];
     try {
-      albums = await spotifyClient.getAllArtistAlbums(channel.spotifyArtistId);
-      console.log(`[Sync] Found ${albums.length} albums for ${channel.name}`);
+      albumList = await spotifyClient.getAllArtistAlbums(channel.spotifyArtistId);
+      console.log(`[Sync] Found ${albumList.length} albums for ${channel.name}`);
     } catch (albumFetchErr) {
-      console.error(`[Sync] Error fetching albums for ${channel.name}:`, albumFetchErr);
+      console.error(`[Sync] Error fetching album list for ${channel.name}:`, albumFetchErr);
       const errMsg = (albumFetchErr as Error).message || "";
       if (errMsg.includes("400") || errMsg.includes("403")) {
         return NextResponse.json({
           success: false,
-          error: "Spotify API no permite acceso a los álbumes de este artista (400/403). La API de Spotify ha restringido algunos endpoints para apps sin autorización de usuario.",
+          error: "Spotify API no permite listar álbumes (400/403). La API de Spotify ha restringido algunos endpoints.",
         }, { status: 500 });
       }
       throw albumFetchErr;
@@ -56,142 +115,55 @@ export async function POST(
     let skippedTracks = 0;
     let errorsCount = 0;
 
-    // Batch fetch albums (20 at a time) instead of one-by-one to reduce API calls
-    const BATCH_SIZE = 20;
-    const albumIds = albums.map(a => a.id);
-
-    for (let i = 0; i < albumIds.length; i += BATCH_SIZE) {
-      const batchIds = albumIds.slice(i, i + BATCH_SIZE);
-      console.log(`[Sync] Fetching batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(albumIds.length / BATCH_SIZE)} (${batchIds.length} albums)`);
+    // Fetch each album individually (batch endpoint /albums?ids= is 403'd)
+    // Process in small batches with delays to avoid rate limiting
+    for (let i = 0; i < albumList.length; i++) {
+      const album = albumList[i];
+      console.log(`[Sync] Fetching album ${i + 1}/${albumList.length}: ${album.name}`);
 
       try {
-        const batchAlbums = await spotifyClient.getAlbums(batchIds);
-
-        for (const fullAlbum of batchAlbums) {
-          try {
-            const albumData = fullAlbum as any;
-            if (!albumData.tracks?.items) continue;
-
-            for (const track of albumData.tracks.items as any[]) {
-              try {
-                // Check if track already exists
-                const existing = await db
-                  .select({ id: curatedTracks.id })
-                  .from(curatedTracks)
-                  .where(eq(curatedTracks.spotifyTrackId, track.id))
-                  .limit(1);
-
-                if (existing.length > 0) {
-                  skippedTracks++;
-                  continue;
-                }
-
-                // Add the track
-                const newTrack = {
-                  id: generateUUID(),
-                  spotifyTrackId: track.id as string,
-                  spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
-                  spotifyAlbumId: albumData.id as string,
-                  name: track.name as string,
-                  artistName: track.artists?.map((a: any) => a.name).join(", ") || channel.name,
-                  artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
-                  albumName: albumData.name as string,
-                  albumImageUrl: albumData.images?.[0]?.url ?? null,
-                  durationMs: track.duration_ms ?? null,
-                  previewUrl: track.preview_url ?? null,
-                  releaseDate: albumData.release_date ?? null,
-                  popularity: track.popularity ?? null,
-                  explicit: Boolean(track.explicit),
-                  curatedChannelId: id,
-                  isAvailableForPlaylist: true,
-                  isFeatured: false,
-                };
-
-                await db.insert(curatedTracks).values(newTrack);
-                addedTracks++;
-              } catch (trackErr) {
-                console.error(`[Sync] Error inserting track ${track.id}:`, trackErr);
-                errorsCount++;
-              }
-            }
-          } catch (albumErr) {
-            console.error(`[Sync] Error processing album ${fullAlbum.name}:`, albumErr);
-            errorsCount++;
-          }
-        }
-
-        // Small delay between batches to avoid rate limiting
-        if (i + BATCH_SIZE < albumIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      } catch (batchErr) {
-        console.error(`[Sync] Error fetching batch starting at ${i}:`, batchErr);
+        const fullAlbum = await spotifyClient.getAlbum(album.id) as any;
+        const result = await processAlbumTracks(fullAlbum, id, channel.name);
+        addedTracks += result.added;
+        skippedTracks += result.skipped;
+        errorsCount += result.errors;
+      } catch (albumErr) {
+        console.error(`[Sync] Error fetching album ${album.name}:`, (albumErr as Error).message);
         errorsCount++;
-        // Fallback: try albums one by one for this batch
-        for (const albumId of batchIds) {
-          try {
-            const fullAlbum = await spotifyClient.getAlbum(albumId) as any;
-            if (!fullAlbum.tracks?.items) continue;
+      }
 
-            for (const track of fullAlbum.tracks.items as any[]) {
-              try {
-                const existing = await db
-                  .select({ id: curatedTracks.id })
-                  .from(curatedTracks)
-                  .where(eq(curatedTracks.spotifyTrackId, track.id))
-                  .limit(1);
+      // Rate limiting: pause between albums (more aggressive for larger catalogs)
+      if (i < albumList.length - 1) {
+        const delay = albumList.length > 20 ? 300 : 150;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
 
-                if (existing.length > 0) {
-                  skippedTracks++;
-                  continue;
-                }
-
-                const newTrack = {
-                  id: generateUUID(),
-                  spotifyTrackId: track.id as string,
-                  spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
-                  spotifyAlbumId: fullAlbum.id as string,
-                  name: track.name as string,
-                  artistName: track.artists?.map((a: any) => a.name).join(", ") || channel.name,
-                  artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
-                  albumName: fullAlbum.name as string,
-                  albumImageUrl: fullAlbum.images?.[0]?.url ?? null,
-                  durationMs: track.duration_ms ?? null,
-                  previewUrl: track.preview_url ?? null,
-                  releaseDate: fullAlbum.release_date ?? null,
-                  popularity: track.popularity ?? null,
-                  explicit: Boolean(track.explicit),
-                  curatedChannelId: id,
-                  isAvailableForPlaylist: true,
-                  isFeatured: false,
-                };
-
-                await db.insert(curatedTracks).values(newTrack);
-                addedTracks++;
-              } catch (trackErr) {
-                errorsCount++;
-              }
-            }
-            await new Promise(resolve => setTimeout(resolve, 200));
-          } catch (err) {
-            errorsCount++;
-          }
-        }
+      // Safety: if we've been running too long, stop and report progress
+      // (Netlify function timeout is 60s)
+      if (i > 0 && i % 15 === 0) {
+        console.log(`[Sync] Progress: ${i}/${albumList.length} albums processed, ${addedTracks} tracks added so far`);
       }
     }
 
-    // Refresh artist metadata from Spotify (popularity, followers, image, genres)
+    // Refresh artist metadata (note: Spotify may not return popularity/followers/genres for client credentials)
     const metadataUpdates: Record<string, unknown> = {
       lastSyncedAt: new Date(),
       updatedAt: new Date(),
     };
     try {
-      const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId);
-      metadataUpdates.name = artistInfo.name;
+      const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId) as any;
+      metadataUpdates.name = artistInfo.name || channel.name;
       metadataUpdates.imageUrl = artistInfo.images?.[0]?.url ?? channel.imageUrl;
-      metadataUpdates.genres = artistInfo.genres?.length ? JSON.stringify(artistInfo.genres) : channel.genres;
-      metadataUpdates.popularity = artistInfo.popularity ?? channel.popularity;
-      metadataUpdates.followers = artistInfo.followers?.total ?? channel.followers;
+      // These fields may be undefined with restricted API access
+      if (artistInfo.genres?.length) {
+        metadataUpdates.genres = JSON.stringify(artistInfo.genres);
+      }
+      if (artistInfo.popularity != null) {
+        metadataUpdates.popularity = artistInfo.popularity;
+      }
+      if (artistInfo.followers?.total != null) {
+        metadataUpdates.followers = artistInfo.followers.total;
+      }
     } catch (err) {
       console.warn(`[Sync] Could not refresh artist metadata for ${channel.name}:`, err);
     }
@@ -202,13 +174,13 @@ export async function POST(
       .where(eq(curatedSpotifyChannels.id, id));
 
     const message = errorsCount > 0
-      ? `Sincronizado: ${addedTracks} tracks nuevos de ${albums.length} álbumes (${errorsCount} errores)`
-      : `Sincronizado: ${addedTracks} tracks nuevos de ${albums.length} álbumes`;
+      ? `Sincronizado: ${addedTracks} tracks nuevos de ${albumList.length} álbumes (${errorsCount} errores)`
+      : `Sincronizado: ${addedTracks} tracks nuevos de ${albumList.length} álbumes`;
 
     return NextResponse.json({
       success: true,
       data: {
-        albumsProcessed: albums.length,
+        albumsProcessed: albumList.length,
         tracksAdded: addedTracks,
         tracksSkipped: skippedTracks,
         errors: errorsCount,

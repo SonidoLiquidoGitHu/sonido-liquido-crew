@@ -137,15 +137,16 @@ export async function POST(request: NextRequest) {
 
     // Create the curated channel
     const id = generateUUID();
+    const artistData = artistInfo as any; // Spotify may not return all fields with client credentials
     const newChannel = {
       id,
       spotifyArtistId,
       spotifyArtistUrl: `https://open.spotify.com/artist/${spotifyArtistId}`,
-      name: artistInfo.name,
-      imageUrl: artistInfo.images?.[0]?.url ?? null,
-      genres: artistInfo.genres?.length ? JSON.stringify(artistInfo.genres) : null,
-      popularity: artistInfo.popularity ?? null,
-      followers: artistInfo.followers?.total ?? null,
+      name: artistData.name,
+      imageUrl: artistData.images?.[0]?.url ?? null,
+      genres: artistData.genres?.length ? JSON.stringify(artistData.genres) : null,
+      popularity: artistData.popularity ?? null,
+      followers: artistData.followers?.total ?? null,
       category: category || "roster",
       priority: priority || 0,
       description: description || null,

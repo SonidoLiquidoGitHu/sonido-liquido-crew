@@ -181,7 +181,7 @@ class SpotifyClient {
   /**
    * Get artist's top tracks (up to 10)
    * Primary: /artists/{id}/top-tracks endpoint
-   * Fallback: search for artist's tracks if top-tracks returns 403
+   * Fallback: fetch recent albums + extract tracks (Spotify restricted top-tracks for client credentials)
    */
   async getArtistTopTracks(artistId: string): Promise<SpotifyTrack[]> {
     // Try the dedicated top-tracks endpoint first
@@ -194,7 +194,7 @@ class SpotifyClient {
       const errMsg = (error as Error).message || "";
       // If 403 (Spotify restricted this endpoint for client credentials), use fallback
       if (errMsg.includes("403")) {
-        console.log("[Spotify API] Top-tracks endpoint returned 403, using search fallback...");
+        console.log("[Spotify API] Top-tracks endpoint returned 403, using album-based fallback...");
         return this.getArtistTopTracksFallback(artistId);
       }
       throw error;
@@ -202,42 +202,63 @@ class SpotifyClient {
   }
 
   /**
-   * Fallback: Get artist's top tracks using search + album tracks
+   * Fallback: Get artist's top tracks from their recent albums
    * Used when /artists/{id}/top-tracks returns 403 (restricted for client credentials)
+   * Strategy: fetch the artist's most recent singles/albums and extract tracks
    */
   private async getArtistTopTracksFallback(artistId: string): Promise<SpotifyTrack[]> {
-    // Step 1: Get the artist's name
-    let artistName: string;
     try {
-      const artist = await this.getArtist(artistId);
-      artistName = artist.name;
-    } catch {
-      console.error("[Spotify API] Fallback: Could not fetch artist name");
-      return [];
-    }
+      // Get artist's recent releases (singles first, then albums)
+      const albumsResponse = await this.getArtistAlbums(artistId, {
+        includeGroups: "single,album",
+        limit: 5, // Just get the 5 most recent releases
+      });
 
-    // Step 2: Search for the artist's tracks
-    try {
-      const searchResult = await this.search(
-        `artist:${artistName}`,
-        ["track"],
-        20
-      );
-
-      if (!searchResult.tracks?.items?.length) {
-        console.log(`[Spotify API] Fallback: No tracks found for artist:${artistName}`);
+      if (!albumsResponse.items?.length) {
+        console.log("[Spotify API] Fallback: No albums found for artist");
         return [];
       }
 
-      // Filter to only include tracks where this artist is the primary artist
-      const filtered = searchResult.tracks.items.filter((track) =>
-        track.artists?.some((a) => a.id === artistId)
-      );
+      // Fetch each album individually (batch endpoint is 403'd)
+      const tracks: SpotifyTrack[] = [];
+      for (const album of albumsResponse.items) {
+        try {
+          const fullAlbum = await this.getAlbum(album.id);
+          const albumTracks = (fullAlbum as any).tracks?.items || [];
+          
+          for (const t of albumTracks) {
+            // Only include tracks where this artist is listed
+            const isByArtist = (t as any).artists?.some((a: any) => a.id === artistId);
+            if (isByArtist) {
+              // Enrich the track with album data (since album tracks don't include it)
+              const enriched: any = {
+                ...t,
+                album: {
+                  id: fullAlbum.id,
+                  name: fullAlbum.name,
+                  images: fullAlbum.images,
+                  release_date: (fullAlbum as any).release_date,
+                  album_type: (fullAlbum as any).album_type,
+                },
+              };
+              tracks.push(enriched as SpotifyTrack);
+            }
+          }
 
-      console.log(`[Spotify API] Fallback: Found ${filtered.length} tracks for ${artistName} (from ${searchResult.tracks.items.length} search results)`);
-      return filtered.slice(0, 10);
-    } catch (searchError) {
-      console.error("[Spotify API] Fallback search failed:", searchError);
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Stop once we have enough tracks
+          if (tracks.length >= 10) break;
+        } catch (albumErr) {
+          console.warn(`[Spotify API] Fallback: Could not fetch album ${album.id}:`, (albumErr as Error).message);
+        }
+      }
+
+      console.log(`[Spotify API] Fallback: Found ${tracks.length} tracks from recent albums`);
+      return tracks.slice(0, 10);
+    } catch (fallbackErr) {
+      console.error("[Spotify API] Album-based fallback failed:", fallbackErr);
       return [];
     }
   }
