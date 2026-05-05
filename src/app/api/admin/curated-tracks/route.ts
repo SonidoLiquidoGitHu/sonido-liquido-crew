@@ -6,6 +6,7 @@ import { eq, desc, and, like, sql } from "drizzle-orm";
 export const dynamic = "force-dynamic";
 
 // GET - List all curated tracks with filters
+// Supports pagination via ?limit=N&offset=N (default: all tracks)
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
@@ -16,9 +17,20 @@ export async function GET(request: NextRequest) {
     const channelId = searchParams.get("channelId");
     const featured = searchParams.get("featured");
     const available = searchParams.get("available");
-    const search = searchParams.get("search");
-    const limit = parseInt(searchParams.get("limit") || "100");
+    const searchQuery = searchParams.get("search");
+    const limitParam = searchParams.get("limit");
     const offset = parseInt(searchParams.get("offset") || "0");
+
+    // Get total count first (before any limit)
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(curatedTracks);
+
+    const totalInDb = countResult?.count ?? 0;
+
+    // Build query — no default limit, fetch all tracks
+    // (Admin panel needs to see all tracks; pagination can be added later if needed)
+    const limit = limitParam ? parseInt(limitParam) : 9999;
 
     // Get all tracks with channel info
     const tracks = await db
@@ -54,8 +66,8 @@ export async function GET(request: NextRequest) {
       filtered = filtered.filter(t => !t.track.isAvailableForPlaylist);
     }
 
-    if (search) {
-      const searchLower = search.toLowerCase();
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
       filtered = filtered.filter(t =>
         t.track.name.toLowerCase().includes(searchLower) ||
         t.track.artistName.toLowerCase().includes(searchLower) ||
@@ -73,7 +85,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: formattedTracks,
       count: formattedTracks.length,
-      total: tracks.length,
+      total: totalInDb,
     });
   } catch (error) {
     console.error("[Curated Tracks API] Error fetching tracks:", error);

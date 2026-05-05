@@ -71,6 +71,7 @@ export default function CuratedTracksPage() {
   const [tracks, setTracks] = useState<CuratedTrack[]>([]);
   const [channels, setChannels] = useState<CuratedChannel[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [totalInDb, setTotalInDb] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterChannel, setFilterChannel] = useState("");
@@ -104,6 +105,7 @@ export default function CuratedTracksPage() {
       const data = await res.json();
       if (data.success) {
         setTracks(data.data);
+        setTotalInDb(data.total ?? data.data.length);
       }
     } catch (error) {
       console.error("Error fetching tracks:", error);
@@ -279,7 +281,7 @@ export default function CuratedTracksPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-slc-card border border-slc-border rounded-xl p-4">
-            <p className="text-2xl font-oswald">{tracks.length}</p>
+            <p className="text-2xl font-oswald">{totalInDb}</p>
             <p className="text-xs text-slc-muted">Total Tracks</p>
           </div>
           <div className="bg-slc-card border border-slc-border rounded-xl p-4">
