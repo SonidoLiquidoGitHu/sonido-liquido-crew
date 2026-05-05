@@ -42,7 +42,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: { tracksAdded: 0, tracksSkipped: 0, totalTopTracks: 0 },
-        message: "No se encontraron top tracks para este artista",
+        message: "No se encontraron tracks recientes para este artista. Intenta 'Sincronizar Todo' para obtener todos los tracks de sus álbumes.",
       });
     }
 

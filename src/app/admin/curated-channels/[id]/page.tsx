@@ -9,18 +9,14 @@ import {
   Music,
   ArrowLeft,
   Loader2,
-  RefreshCw,
   ExternalLink,
   Clock,
   Disc3,
-  Calendar,
   Play,
   Pause,
-  Plus,
   Check,
   Star,
   Search,
-  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +26,6 @@ interface CuratedChannel {
   spotifyArtistUrl: string;
   name: string;
   imageUrl: string | null;
-  genres: string[];
-  popularity: number | null;
-  followers: number | null;
   category: string;
   priority: number;
   description: string | null;
@@ -84,13 +77,6 @@ function formatDuration(ms: number | null): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function formatNumber(num: number | null): string {
-  if (!num) return "-";
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return num.toString();
-}
-
 export default function CuratedChannelDetailPage({
   params,
 }: {
@@ -100,7 +86,6 @@ export default function CuratedChannelDetailPage({
   const [channel, setChannel] = useState<CuratedChannel | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [fetchingTop, setFetchingTop] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [playingTrack, setPlayingTrack] = useState<string | null>(null);
@@ -163,27 +148,6 @@ export default function CuratedChannelDetailPage({
       alert("Error de conexión - la sincronización puede tardar más de lo esperado. Intenta usar 'Top Tracks' primero.");
     } finally {
       setSyncing(false);
-    }
-  };
-
-  const handleRefreshInfo = async () => {
-    setRefreshing(true);
-    try {
-      const res = await fetch(`/api/admin/curated-channels/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshInfo: true }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchChannel();
-      } else {
-        alert(data.error || "Error al actualizar info");
-      }
-    } catch (error) {
-      alert("Error de conexión");
-    } finally {
-      setRefreshing(false);
     }
   };
 
@@ -342,30 +306,7 @@ export default function CuratedChannelDetailPage({
               )}
 
               {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-slc-muted">Seguidores</p>
-                  <p className="font-oswald text-xl">{formatNumber(channel.followers)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slc-muted">Popularidad</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-3 bg-slc-dark rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${channel.popularity ?? 0}%`,
-                          backgroundColor: channel.popularity != null
-                            ? channel.popularity >= 70 ? "#22c55e"
-                              : channel.popularity >= 40 ? "#eab308"
-                              : "#ef4444"
-                            : "#4b5563",
-                        }}
-                      />
-                    </div>
-                    <span className="font-oswald text-xl">{channel.popularity ?? "-"}</span>
-                  </div>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className="text-xs text-slc-muted">Tracks Sincronizados</p>
                   <p className="font-oswald text-xl">{channel.trackCount}</p>
@@ -380,17 +321,6 @@ export default function CuratedChannelDetailPage({
                 </div>
               </div>
 
-              {/* Genres */}
-              {channel.genres.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {channel.genres.map((genre) => (
-                    <span key={genre} className="text-xs px-2 py-1 bg-slc-dark rounded-full text-slc-muted">
-                      {genre}
-                    </span>
-                  ))}
-                </div>
-              )}
-
               {/* Actions */}
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleFetchTopTracks} disabled={fetchingTop} variant="outline">
@@ -399,7 +329,7 @@ export default function CuratedChannelDetailPage({
                   ) : (
                     <Star className="w-4 h-4 mr-2" />
                   )}
-                  Top Tracks
+                  Tracks Recientes
                 </Button>
                 <Button onClick={handleSync} disabled={syncing}>
                   {syncing ? (
@@ -409,13 +339,7 @@ export default function CuratedChannelDetailPage({
                   )}
                   Sincronizar Todo
                 </Button>
-                <Button onClick={handleRefreshInfo} disabled={refreshing} variant="outline" size="sm">
-                  {refreshing ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-3 h-3" />
-                  )}
-                </Button>
+
                 <a
                   href={channel.spotifyArtistUrl}
                   target="_blank"
@@ -530,10 +454,6 @@ export default function CuratedChannelDetailPage({
                     {formatDuration(track.durationMs)}
                   </div>
 
-                  {/* Popularity */}
-                  <div className="hidden md:block text-sm text-slc-muted w-12 text-center">
-                    {track.popularity || "-"}
-                  </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">

@@ -145,25 +145,15 @@ export async function POST(
       }
     }
 
-    // Refresh artist metadata (note: Spotify may not return popularity/followers/genres for client credentials)
+    // Refresh artist metadata (name and image only — Spotify Client Credentials doesn't provide popularity/followers/genres)
     const metadataUpdates: Record<string, unknown> = {
       lastSyncedAt: new Date(),
       updatedAt: new Date(),
     };
     try {
       const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId) as any;
-      metadataUpdates.name = artistInfo.name || channel.name;
-      metadataUpdates.imageUrl = artistInfo.images?.[0]?.url ?? channel.imageUrl;
-      // These fields may be undefined with restricted API access
-      if (artistInfo.genres?.length) {
-        metadataUpdates.genres = JSON.stringify(artistInfo.genres);
-      }
-      if (artistInfo.popularity != null) {
-        metadataUpdates.popularity = artistInfo.popularity;
-      }
-      if (artistInfo.followers?.total != null) {
-        metadataUpdates.followers = artistInfo.followers.total;
-      }
+      if (artistInfo.name) metadataUpdates.name = artistInfo.name;
+      if (artistInfo.images?.[0]?.url) metadataUpdates.imageUrl = artistInfo.images[0].url;
     } catch (err) {
       console.warn(`[Sync] Could not refresh artist metadata for ${channel.name}:`, err);
     }

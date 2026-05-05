@@ -17,12 +17,9 @@ import {
   AlertCircle,
   Users,
   Disc3,
-  Settings2,
   Eye,
   EyeOff,
-  ChevronDown,
   Star,
-  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +29,6 @@ interface CuratedChannel {
   spotifyArtistUrl: string;
   name: string;
   imageUrl: string | null;
-  genres: string | null;
-  popularity: number | null;
-  followers: number | null;
   category: string;
   priority: number;
   description: string | null;
@@ -81,7 +75,6 @@ export default function CuratedChannelsPage() {
 
   // Sync state
   const [syncing, setSyncing] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState<string | null>(null);
   const [fetchingTop, setFetchingTop] = useState<string | null>(null);
 
   useEffect(() => {
@@ -173,27 +166,6 @@ export default function CuratedChannelsPage() {
     }
   };
 
-  const handleRefreshInfo = async (channel: CuratedChannel) => {
-    setRefreshing(channel.id);
-    try {
-      const res = await fetch(`/api/admin/curated-channels/${channel.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshInfo: true }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchChannels();
-      } else {
-        alert(data.error || "Error al actualizar info");
-      }
-    } catch (error) {
-      alert("Error de conexión");
-    } finally {
-      setRefreshing(null);
-    }
-  };
-
   const handleFetchTopTracks = async (channel: CuratedChannel) => {
     setFetchingTop(channel.id);
     try {
@@ -252,12 +224,7 @@ export default function CuratedChannelsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const formatNumber = (num: number | null) => {
-    if (!num) return "-";
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
+
 
   return (
     <div className="min-h-screen bg-slc-black p-6">
@@ -433,47 +400,14 @@ export default function CuratedChannelsPage() {
                   </div>
                 </Link>
 
-                {/* Stats */}
-                <div className="px-4 py-3 bg-slc-dark/50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-slc-muted">Seguidores</p>
-                      <p className="font-oswald text-lg">{formatNumber(channel.followers)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slc-muted">Popularidad</p>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-2 bg-slc-dark rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${channel.popularity ?? 0}%`,
-                              backgroundColor: channel.popularity != null
-                                ? channel.popularity >= 70 ? "#22c55e"
-                                  : channel.popularity >= 40 ? "#eab308"
-                                  : "#ef4444"
-                                : "#4b5563",
-                            }}
-                          />
-                        </div>
-                        <span className="font-oswald text-sm">{channel.popularity ?? "-"}</span>
-                      </div>
-                    </div>
-                  </div>
+                {/* Last Sync Info */}
+                <div className="px-4 py-2 bg-slc-dark/50">
+                  <p className="text-xs text-slc-muted">
+                    {channel.lastSyncedAt
+                      ? `Sincronizado: ${new Date(channel.lastSyncedAt).toLocaleDateString("es-MX")}`
+                      : "Sin sincronizar"}
+                  </p>
                 </div>
-
-                {/* Genres */}
-                {channel.genres && (
-                  <div className="px-4 py-2 border-t border-slc-border/50">
-                    <div className="flex flex-wrap gap-1">
-                      {(JSON.parse(channel.genres) as string[]).slice(0, 3).map((genre) => (
-                        <span key={genre} className="text-xs px-2 py-0.5 bg-slc-dark rounded-full text-slc-muted">
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Actions */}
                 <div className="flex items-center justify-between p-4 border-t border-slc-border/50">
@@ -483,7 +417,7 @@ export default function CuratedChannelsPage() {
                       size="sm"
                       onClick={() => handleFetchTopTracks(channel)}
                       disabled={fetchingTop === channel.id}
-                      title="Obtener top tracks"
+                      title="Obtener tracks recientes"
                     >
                       {fetchingTop === channel.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -504,19 +438,7 @@ export default function CuratedChannelsPage() {
                         <RefreshCw className="w-4 h-4" />
                       )}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRefreshInfo(channel)}
-                      disabled={refreshing === channel.id}
-                      title="Actualizar info"
-                    >
-                      {refreshing === channel.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Info className="w-4 h-4" />
-                      )}
-                    </Button>
+
                     <Button
                       variant="ghost"
                       size="sm"

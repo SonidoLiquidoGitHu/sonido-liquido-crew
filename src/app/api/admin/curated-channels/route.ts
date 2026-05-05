@@ -94,12 +94,9 @@ export async function POST(request: NextRequest) {
 
         // Refresh artist info from Spotify
         try {
-          const artistInfo = await spotifyClient.getArtist(spotifyArtistId);
-          updates.name = artistInfo.name;
+          const artistInfo = await spotifyClient.getArtist(spotifyArtistId) as any;
+          updates.name = artistInfo.name || existingChannel.name;
           updates.imageUrl = artistInfo.images?.[0]?.url ?? existingChannel.imageUrl;
-          updates.genres = artistInfo.genres?.length ? JSON.stringify(artistInfo.genres) : existingChannel.genres;
-          updates.popularity = artistInfo.popularity ?? existingChannel.popularity;
-          updates.followers = artistInfo.followers?.total ?? existingChannel.followers;
         } catch {
           // Keep existing data if Spotify fetch fails
         }
@@ -144,9 +141,6 @@ export async function POST(request: NextRequest) {
       spotifyArtistUrl: `https://open.spotify.com/artist/${spotifyArtistId}`,
       name: artistData.name,
       imageUrl: artistData.images?.[0]?.url ?? null,
-      genres: artistData.genres?.length ? JSON.stringify(artistData.genres) : null,
-      popularity: artistData.popularity ?? null,
-      followers: artistData.followers?.total ?? null,
       category: category || "roster",
       priority: priority || 0,
       description: description || null,

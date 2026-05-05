@@ -379,9 +379,6 @@ export default function CuratedTracksPage() {
                         <Clock className="w-3 h-3" />
                         {formatDuration(track.durationMs)}
                       </span>
-                      {track.popularity && (
-                        <span>Pop: {track.popularity}</span>
-                      )}
                     </div>
                   </div>
                 </div>
