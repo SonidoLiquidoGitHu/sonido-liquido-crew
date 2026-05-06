@@ -13,6 +13,7 @@ import {
   validateToken,
   processQueueItem,
   getNextPendingItem,
+  ensurePublicImageUrl,
   type PostQueueItemResult,
 } from "@/lib/clients/meta";
 
@@ -56,11 +57,11 @@ export async function GET(request: NextRequest) {
     // Get current cycle info
     const cycleInfo = await db
       .select({
-        maxCycle: drizzleSql`MAX(${socialPostQueue.cycleNumber})`,
+        maxCycle: drizzleSql`MAX(CAST(${socialPostQueue.cycleNumber} AS INTEGER))`,
       })
       .from(socialPostQueue);
 
-    const currentCycle = cycleInfo[0]?.maxCycle || 0;
+    const currentCycle = Number(cycleInfo[0]?.maxCycle) || 0;
 
     // Get recent post history (last 20)
     const recentLogs = await db
@@ -165,9 +166,12 @@ async function handleProcessNext() {
   if (!nextItem) {
     return NextResponse.json({
       success: false,
-      message: "No pending items in queue. All items have been posted or queue is empty.",
+      message: "No pending items in queue. All items have been posted or queue is empty. Populate the queue first.",
     });
   }
+
+  // Ensure image URL is publicly accessible for Meta API
+  nextItem.imageUrl = ensurePublicImageUrl(nextItem.imageUrl);
 
   console.log(`[Social API] Processing queue item: ${nextItem.contentType} (${nextItem.sourceId})`);
 
@@ -184,9 +188,6 @@ async function handleProcessNext() {
 }
 
 async function handlePopulate() {
-  // Call the populate script's logic via internal API
-  const siteUrl = process.env.URL || process.env.DEPLOY_URL || "http://localhost:3000";
-
   return NextResponse.json({
     success: true,
     message: "Use the populate-social-queue script to populate the queue. Run: npx tsx scripts/populate-social-queue.ts",
@@ -194,24 +195,38 @@ async function handlePopulate() {
 }
 
 async function handleResetCycle() {
-  // Reset all items to pending for a new cycle
-  const result = await db
-    .update(socialPostQueue)
-    .set({
-      status: "pending",
-      postedPlatforms: "[]",
-      errorMessage: null,
-      postedAt: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(socialPostQueue.status, "posted"));
+  try {
+    // First count how many will be reset
+    const postedItems = await db
+      .select({ count: count() })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "posted"));
 
-  const count2 = result?.rowsAffected ?? 0;
+    const resetCount = postedItems[0]?.count || 0;
 
-  return NextResponse.json({
-    success: true,
-    message: `Reset ${count2} posted items back to pending for a new cycle.`,
-  });
+    // Reset all posted items to pending for a new cycle
+    await db
+      .update(socialPostQueue)
+      .set({
+        status: "pending",
+        postedPlatforms: "[]",
+        errorMessage: null,
+        postedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(socialPostQueue.status, "posted"));
+
+    return NextResponse.json({
+      success: true,
+      message: `Reset ${resetCount} posted items back to pending for a new cycle.`,
+    });
+  } catch (error) {
+    console.error("[Social API] Reset cycle error:", error);
+    return NextResponse.json({
+      success: false,
+      message: "Failed to reset cycle",
+    });
+  }
 }
 
 async function handleSkipItem(queueId: string) {
@@ -242,21 +257,35 @@ async function handleValidateToken() {
 }
 
 async function handleRetryFailed() {
-  // Reset all failed items to pending
-  const result = await db
-    .update(socialPostQueue)
-    .set({
-      status: "pending",
-      postedPlatforms: "[]",
-      errorMessage: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(socialPostQueue.status, "failed"));
+  try {
+    // Count failed items first
+    const failedItems = await db
+      .select({ count: count() })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "failed"));
 
-  const count2 = result?.rowsAffected ?? 0;
+    const failedCount = failedItems[0]?.count || 0;
 
-  return NextResponse.json({
-    success: true,
-    message: `Reset ${count2} failed items to pending for retry.`,
-  });
+    // Reset all failed items to pending
+    await db
+      .update(socialPostQueue)
+      .set({
+        status: "pending",
+        postedPlatforms: "[]",
+        errorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(socialPostQueue.status, "failed"));
+
+    return NextResponse.json({
+      success: true,
+      message: `Reset ${failedCount} failed items to pending for retry.`,
+    });
+  } catch (error) {
+    console.error("[Social API] Retry failed error:", error);
+    return NextResponse.json({
+      success: false,
+      message: "Failed to retry items",
+    });
+  }
 }
