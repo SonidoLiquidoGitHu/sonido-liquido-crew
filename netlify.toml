@@ -48,6 +48,13 @@
   schedule = "0 */6 * * *"
   max_duration = 60
 
+# Scheduled function: social auto-poster
+# Runs 3x daily at 4am, 10am, 3pm Mexico City time (CST = UTC-6)
+# 4am CST = 10am UTC, 10am CST = 4pm UTC, 3pm CST = 9pm UTC
+[functions."social-auto-post"]
+  schedule = "0 10,16,21 * * *"
+  max_duration = 60
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
@@ -61,3 +68,7 @@
 # - DROPBOX_APP_KEY (optional, for Dropbox integration)
 # - DROPBOX_APP_SECRET (optional, for Dropbox integration)
 # - CRON_SECRET (optional, secures the scheduled sync endpoint)
+# - META_APP_ID (required for social auto-posting)
+# - META_APP_SECRET (required for social auto-posting)
+# - META_SYSTEM_USER_TOKEN (required for social auto-posting)
+# - FACEBOOK_PAGE_ID (required for social auto-posting)

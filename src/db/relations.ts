@@ -26,6 +26,8 @@ import {
   syncLogs,
   tags,
   tagAssignments,
+  socialPostQueue,
+  socialPostsLog,
 } from "./schema";
 
 // ===========================================
@@ -218,5 +220,20 @@ export const tagAssignmentsRelations = relations(tagAssignments, ({ one }) => ({
   tag: one(tags, {
     fields: [tagAssignments.tagId],
     references: [tags.id],
+  }),
+}));
+
+// ===========================================
+// SOCIAL POST QUEUE RELATIONS
+// ===========================================
+
+export const socialPostQueueRelations = relations(socialPostQueue, ({ many }) => ({
+  logs: many(socialPostsLog),
+}));
+
+export const socialPostsLogRelations = relations(socialPostsLog, ({ one }) => ({
+  queueItem: one(socialPostQueue, {
+    fields: [socialPostsLog.queueId],
+    references: [socialPostQueue.id],
   }),
 }));

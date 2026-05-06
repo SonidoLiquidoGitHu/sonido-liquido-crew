@@ -137,6 +137,50 @@ async function runAutoMigration(client: Client): Promise<void> {
     console.log("[DB] Running auto-migration to ensure critical tables...");
 
     const criticalTables = [
+      // Social Auto-Posting tables
+      `CREATE TABLE IF NOT EXISTS social_post_queue (
+        id TEXT PRIMARY KEY NOT NULL,
+        content_type TEXT NOT NULL CHECK(content_type IN ('gallery_photo','spotify_track','artist_profile')),
+        source_id TEXT NOT NULL,
+        artist_id TEXT,
+        release_id TEXT,
+        image_url TEXT NOT NULL,
+        caption TEXT,
+        link_url TEXT,
+        queue_order INTEGER NOT NULL DEFAULT 0,
+        cycle_number INTEGER NOT NULL DEFAULT 1,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','posted','failed','skipped')),
+        platforms TEXT NOT NULL DEFAULT '["facebook","instagram"]',
+        posted_platforms TEXT DEFAULT '[]',
+        error_message TEXT,
+        scheduled_at INTEGER,
+        posted_at INTEGER,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS social_posts_log (
+        id TEXT PRIMARY KEY NOT NULL,
+        queue_id TEXT NOT NULL,
+        platform TEXT NOT NULL CHECK(platform IN ('facebook','instagram')),
+        content_type TEXT NOT NULL CHECK(content_type IN ('gallery_photo','spotify_track','artist_profile')),
+        source_id TEXT NOT NULL,
+        image_url TEXT NOT NULL,
+        caption TEXT,
+        link_url TEXT,
+        platform_post_id TEXT,
+        platform_post_url TEXT,
+        meta_api_response TEXT,
+        status TEXT NOT NULL CHECK(status IN ('success','failed','rate_limited')),
+        error_message TEXT,
+        likes INTEGER DEFAULT 0,
+        comments INTEGER DEFAULT 0,
+        shares INTEGER DEFAULT 0,
+        reach INTEGER DEFAULT 0,
+        impressions INTEGER DEFAULT 0,
+        metrics_updated_at INTEGER,
+        posted_at INTEGER NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
       `CREATE TABLE IF NOT EXISTS curated_playlists (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,

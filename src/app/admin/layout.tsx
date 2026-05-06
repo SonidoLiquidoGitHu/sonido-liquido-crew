@@ -31,6 +31,7 @@ import {
   ListMusic,
   Download,
   Brush,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -54,6 +55,7 @@ const sidebarLinks = [
   { href: "/admin/events", label: "Eventos", icon: Calendar },
   { href: "/admin/subscribers", label: "Suscriptores", icon: Mail },
   { href: "/admin/community", label: "Comunidad", icon: MessageCircle },
+  { href: "/admin/social", label: "Social Auto-Post", icon: Share2 },
   { href: "/admin/sync", label: "Sincronización", icon: RefreshCw },
   { href: "/admin/settings", label: "Configuración", icon: Settings },
   { href: "/admin/themes", label: "Temas", icon: Brush },

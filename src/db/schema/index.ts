@@ -70,3 +70,6 @@ export * from "./styles";
 
 // Curated Spotify Channels & Playlist Curation
 export * from "./curated-channels";
+
+// Social Auto-Posting (Instagram & Facebook)
+export * from "./social-posts";
