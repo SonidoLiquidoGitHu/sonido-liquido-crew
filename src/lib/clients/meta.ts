@@ -3,6 +3,7 @@
 // ===========================================
 // Handles posting to Facebook Page and Instagram Business Account
 // via the Meta Graph API using a System User token.
+// Also coordinates with the TikTok client for multi-platform posting.
 //
 // Key learnings from live API testing:
 // - FB: Use /{page-id}/feed (link post) with Page access token.
@@ -16,6 +17,7 @@
 import { db } from "@/db/client";
 import { socialPostQueue, socialPostsLog } from "@/db/schema";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
+import { postToTikTok, isTikTokConfigured, type TikTokPostResult } from "./tiktok";
 
 // ===========================================
 // CONFIGURATION
@@ -600,6 +602,7 @@ export interface PostQueueItemResult {
   queueId: string;
   facebook: FacebookPostResult;
   instagram: InstagramPostResult;
+  tiktok: TikTokPostResult;
 }
 
 // Type helper — the queue item as returned from DB
@@ -621,7 +624,7 @@ export interface SocialPostQueueWithId {
 }
 
 /**
- * Process a single queue item: post to FB and/or IG, log results, update queue status.
+ * Process a single queue item: post to FB, IG, and/or TikTok, log results, update queue status.
  */
 export async function processQueueItem(item: SocialPostQueueWithId): Promise<PostQueueItemResult> {
   const platforms: string[] = JSON.parse(item.platforms || "[]");
@@ -629,6 +632,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
 
   let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null };
   let igResult: InstagramPostResult = { success: false, mediaId: null, permalink: null };
+  let tkResult: TikTokPostResult = { success: false, videoId: null, postUrl: null };
 
   // Post to Facebook
   if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
@@ -641,7 +645,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
         id: crypto.randomUUID(),
         queueId: item.id,
         platform: "facebook",
-        contentType: item.contentType as "gallery_photo" | "spotify_track" | "artist_profile",
+        contentType: item.contentType as any,
         sourceId: item.sourceId,
         imageUrl: item.imageUrl,
         caption: item.caption,
@@ -673,7 +677,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
         id: crypto.randomUUID(),
         queueId: item.id,
         platform: "instagram",
-        contentType: item.contentType as "gallery_photo" | "spotify_track" | "artist_profile",
+        contentType: item.contentType as any,
         sourceId: item.sourceId,
         imageUrl: item.imageUrl,
         caption: item.caption,
@@ -694,11 +698,51 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     }
   }
 
+  // Post to TikTok
+  if (platforms.includes("tiktok") && !postedPlatforms.includes("tiktok")) {
+    if (isTikTokConfigured()) {
+      console.log(`[Social] Posting to TikTok: ${item.contentType} (${item.sourceId})`);
+      tkResult = await postToTikTok(item.imageUrl, item.caption || "", item.linkUrl || undefined);
+
+      // Log the result
+      try {
+        await db.insert(socialPostsLog).values({
+          id: crypto.randomUUID(),
+          queueId: item.id,
+          platform: "tiktok",
+          contentType: item.contentType as any,
+          sourceId: item.sourceId,
+          imageUrl: item.imageUrl,
+          caption: item.caption,
+          linkUrl: item.linkUrl,
+          platformPostId: tkResult.videoId,
+          platformPostUrl: tkResult.postUrl,
+          metaApiResponse: null,
+          status: tkResult.success ? "success" : "failed",
+          errorMessage: tkResult.error || null,
+          postedAt: new Date(),
+        });
+      } catch (logError) {
+        console.error("[Social] Failed to log TikTok result:", logError);
+      }
+
+      if (tkResult.success) {
+        postedPlatforms.push("tiktok");
+      }
+    } else {
+      console.log("[Social] TikTok not configured — skipping TikTok post");
+    }
+  }
+
   // Update queue item status
-  const allTargetPlatformsPosted = platforms.every((p) => postedPlatforms.includes(p));
+  const allTargetPlatformsPosted = platforms
+    .filter(p => p === "tiktok" ? isTikTokConfigured() : true) // Skip TikTok if not configured
+    .every((p) => postedPlatforms.includes(p));
   const anyPlatformSucceeded = postedPlatforms.length > 0;
-  const anyFailed = (!fbResult.success && platforms.includes("facebook") && !postedPlatforms.includes("facebook")) ||
-                    (!igResult.success && platforms.includes("instagram") && !postedPlatforms.includes("instagram"));
+  const anyFailed =
+    (!fbResult.success && platforms.includes("facebook") && !postedPlatforms.includes("facebook")) ||
+    (!igResult.success && platforms.includes("instagram") && !postedPlatforms.includes("instagram")) ||
+    (isTikTokConfigured() && !tkResult.success && platforms.includes("tiktok") && !postedPlatforms.includes("tiktok"));
 
   let newStatus: "posted" | "failed" | "pending" = "pending";
   if (allTargetPlatformsPosted) {
@@ -719,7 +763,11 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   }
 
   if (anyFailed) {
-    updateData.errorMessage = `FB: ${fbResult.error || "ok"} | IG: ${igResult.error || "ok"}`;
+    const errors: string[] = [];
+    if (!fbResult.success && platforms.includes("facebook")) errors.push(`FB: ${fbResult.error || "ok"}`);
+    if (!igResult.success && platforms.includes("instagram")) errors.push(`IG: ${igResult.error || "ok"}`);
+    if (isTikTokConfigured() && !tkResult.success && platforms.includes("tiktok")) errors.push(`TK: ${tkResult.error || "ok"}`);
+    updateData.errorMessage = errors.join(" | ");
   } else {
     updateData.errorMessage = null;
   }
@@ -733,7 +781,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     console.error("[Social] Failed to update queue item:", updateError);
   }
 
-  return { queueId: item.id, facebook: fbResult, instagram: igResult };
+  return { queueId: item.id, facebook: fbResult, instagram: igResult, tiktok: tkResult };
 }
 
 // ===========================================
@@ -741,7 +789,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
 // ===========================================
 
 export interface CaptionContext {
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track";
   artistName?: string;
   artistRole?: string;
   releaseTitle?: string;
@@ -751,6 +799,8 @@ export interface CaptionContext {
   photographer?: string;
   linkUrl?: string;
   spotifyUrl?: string;
+  trackName?: string;
+  albumName?: string;
 }
 
 /**
@@ -816,6 +866,22 @@ export function generateCaption(ctx: CaptionContext): string {
         "25 anos de hip hop mexicano, y seguimos rompiendo",
         "",
         `Conoce mas: ${ctx.linkUrl || `${siteUrl}/artistas`}`,
+        "",
+        hashtags,
+      ].join("\n");
+    }
+
+    case "curated_track": {
+      const artistLine = ctx.artistName || "Sonido Liquido Crew";
+      const trackLine = ctx.trackName ? `"${ctx.trackName}"` : "";
+      const albumLine = ctx.albumName ? `del album "${ctx.albumName}"` : "";
+
+      return [
+        `${artistLine} — ${trackLine} ${albumLine}`.trim(),
+        "",
+        "Descubre mas musica del roster en nuestra playlist curada",
+        "",
+        `Escucha: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
         "",
         hashtags,
       ].join("\n");

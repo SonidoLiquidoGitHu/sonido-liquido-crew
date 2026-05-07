@@ -22,6 +22,9 @@ import {
   Key,
   Facebook,
   Instagram,
+  Disc3,
+  Database,
+  Trash2,
 } from "lucide-react";
 
 // ===========================================
@@ -40,7 +43,7 @@ interface QueueSummary {
 
 interface QueueItem {
   id: string;
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track";
   sourceId: string;
   artistId: string | null;
   releaseId: string | null;
@@ -60,8 +63,8 @@ interface QueueItem {
 interface PostLog {
   id: string;
   queueId: string;
-  platform: "facebook" | "instagram";
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile";
+  platform: "facebook" | "instagram" | "tiktok";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track";
   sourceId: string;
   imageUrl: string;
   caption: string | null;
@@ -87,6 +90,20 @@ interface MetaStatus {
   facebookPageId: boolean;
 }
 
+interface TikTokStatus {
+  configured: boolean;
+  clientKey: boolean;
+  clientSecret: boolean;
+  accessToken: boolean;
+}
+
+interface ContentCounts {
+  galleryPhotos: number;
+  releases: number;
+  artists: number;
+  curatedTracks: number;
+}
+
 // ===========================================
 // HELPERS
 // ===========================================
@@ -95,17 +112,26 @@ const contentTypeLabels: Record<string, string> = {
   gallery_photo: "Foto de Galería",
   spotify_track: "Lanzamiento",
   artist_profile: "Perfil de Artista",
+  curated_track: "Track Curado",
 };
 
 const contentTypeIcons: Record<string, typeof ImageIcon> = {
   gallery_photo: ImageIcon,
   spotify_track: Music,
   artist_profile: Users,
+  curated_track: Disc3,
 };
 
 const platformLabels: Record<string, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
+  tiktok: "TikTok",
+};
+
+const platformIcons: Record<string, typeof Facebook> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  tiktok: Music, // Using Music icon as TikTok placeholder
 };
 
 const statusColors: Record<string, string> = {
@@ -150,12 +176,26 @@ export default function AdminSocialPage() {
   const [nextPending, setNextPending] = useState<QueueItem[]>([]);
   const [recentLogs, setRecentLogs] = useState<PostLog[]>([]);
   const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
+  const [tiktokStatus, setTikTokStatus] = useState<TikTokStatus | null>(null);
+  const [contentCounts, setContentCounts] = useState<ContentCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [populating, setPopulating] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [validatingTikTok, setValidatingTikTok] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<any>(null);
+  const [tiktokTokenInfo, setTikTokTokenInfo] = useState<any>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"queue" | "history" | "config">("queue");
+
+  // Populate options
+  const [populateOptions, setPopulateOptions] = useState({
+    includeGallery: true,
+    includeReleases: true,
+    includeArtists: true,
+    includeCuratedTracks: true,
+    platforms: ["facebook", "instagram", "tiktok"],
+  });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -167,6 +207,8 @@ export default function AdminSocialPage() {
         setNextPending(data.data.nextPending || []);
         setRecentLogs(data.data.recentLogs || []);
         setMetaStatus(data.data.metaStatus);
+        setTikTokStatus(data.data.tiktokStatus);
+        setContentCounts(data.data.contentCounts);
       }
     } catch (error) {
       console.error("Error fetching social data:", error);
@@ -175,8 +217,36 @@ export default function AdminSocialPage() {
     }
   }, []);
 
+  // Check for TikTok OAuth callback params in URL
+  const [tiktokOAuthResult, setTiktokOAuthResult] = useState<{
+    success: boolean;
+    accessToken?: string;
+    refreshToken?: string;
+    openId?: string;
+    error?: string;
+  } | null>(null);
+
   useEffect(() => {
     fetchData();
+
+    // Check URL for TikTok OAuth callback results
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tiktok_success") === "true") {
+      setTiktokOAuthResult({
+        success: true,
+        accessToken: params.get("tiktok_access_token") || undefined,
+        refreshToken: params.get("tiktok_refresh_token") || undefined,
+        openId: params.get("tiktok_open_id") || undefined,
+      });
+      // Clean URL params
+      window.history.replaceState({}, "", "/admin/social");
+    } else if (params.get("tiktok_error")) {
+      setTiktokOAuthResult({
+        success: false,
+        error: params.get("tiktok_error") || "Unknown error",
+      });
+      window.history.replaceState({}, "", "/admin/social");
+    }
   }, [fetchData]);
 
   const processNext = async () => {
@@ -198,6 +268,38 @@ export default function AdminSocialPage() {
     }
   };
 
+  const populateQueue = async () => {
+    setPopulating(true);
+    setLastResult(null);
+    try {
+      const res = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "populate",
+          options: {
+            includeGallery: populateOptions.includeGallery,
+            includeReleases: populateOptions.includeReleases,
+            includeArtists: populateOptions.includeArtists,
+            includeCuratedTracks: populateOptions.includeCuratedTracks,
+            platforms: populateOptions.platforms,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLastResult(`${data.message} — ${JSON.stringify(data.details)}`);
+      } else {
+        setLastResult(`Error: ${data.message || data.error}`);
+      }
+      fetchData();
+    } catch (error) {
+      setLastResult("Error populating queue");
+    } finally {
+      setPopulating(false);
+    }
+  };
+
   const skipItem = async (queueId: string) => {
     try {
       await fetch("/api/admin/social", {
@@ -212,7 +314,7 @@ export default function AdminSocialPage() {
   };
 
   const resetCycle = async () => {
-    if (!confirm("Reset all posted items to pending for a new cycle?")) return;
+    if (!confirm("Reiniciar todos los items publicados a pendientes para un nuevo ciclo?")) return;
     try {
       const res = await fetch("/api/admin/social", {
         method: "POST",
@@ -228,7 +330,7 @@ export default function AdminSocialPage() {
   };
 
   const retryFailed = async () => {
-    if (!confirm("Retry all failed items?")) return;
+    if (!confirm("Reintentar todos los items fallidos?")) return;
     try {
       const res = await fetch("/api/admin/social", {
         method: "POST",
@@ -240,6 +342,22 @@ export default function AdminSocialPage() {
       fetchData();
     } catch (error) {
       setLastResult("Error retrying failed items");
+    }
+  };
+
+  const clearQueue = async () => {
+    if (!confirm("Eliminar todos los items pendientes de la cola? Esta accion no se puede deshacer.")) return;
+    try {
+      const res = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear-queue" }),
+      });
+      const data = await res.json();
+      setLastResult(data.message);
+      fetchData();
+    } catch (error) {
+      setLastResult("Error clearing queue");
     }
   };
 
@@ -258,6 +376,32 @@ export default function AdminSocialPage() {
     } finally {
       setValidating(false);
     }
+  };
+
+  const validateTikTokToken = async () => {
+    setValidatingTikTok(true);
+    try {
+      const res = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "validate-tiktok" }),
+      });
+      const data = await res.json();
+      setTikTokTokenInfo(data.data);
+    } catch (error) {
+      setTikTokTokenInfo({ isValid: false, error: "Validation failed" });
+    } finally {
+      setValidatingTikTok(false);
+    }
+  };
+
+  const togglePlatform = (platform: string) => {
+    setPopulateOptions((prev) => ({
+      ...prev,
+      platforms: prev.platforms.includes(platform)
+        ? prev.platforms.filter((p) => p !== platform)
+        : [...prev.platforms, platform],
+    }));
   };
 
   // ===========================================
@@ -282,7 +426,7 @@ export default function AdminSocialPage() {
             Social Auto-Post
           </h1>
           <p className="text-slc-muted mt-1">
-            Publicación automática a Facebook e Instagram — 3x al día
+            Publicación automática a Facebook, Instagram y TikTok — 3x al día
           </p>
         </div>
         <div className="flex gap-2">
@@ -318,6 +462,58 @@ export default function AdminSocialPage() {
         </div>
       )}
 
+      {/* TikTok OAuth Result Banner */}
+      {tiktokOAuthResult && (
+        <div className={`mb-6 p-4 rounded-lg border ${tiktokOAuthResult.success ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20"}`}>
+          <div className="flex items-start gap-3">
+            {tiktokOAuthResult.success ? (
+              <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+            )}
+            <div className="flex-1 text-sm">
+              {tiktokOAuthResult.success ? (
+                <>
+                  <p className="text-green-300 font-medium">TikTok conectado exitosamente</p>
+                  <p className="text-green-300/70 mt-1">
+                    Para completar la configuración, agrega estas variables de entorno en Netlify:
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <div className="bg-slc-dark p-2 rounded font-mono text-xs">
+                      <span className="text-slc-muted">TIKTOK_ACCESS_TOKEN=</span>
+                      <span className="text-primary break-all">{tiktokOAuthResult.accessToken}</span>
+                    </div>
+                    {tiktokOAuthResult.refreshToken && (
+                      <div className="bg-slc-dark p-2 rounded font-mono text-xs">
+                        <span className="text-slc-muted">TIKTOK_REFRESH_TOKEN=</span>
+                        <span className="text-primary break-all">{tiktokOAuthResult.refreshToken}</span>
+                      </div>
+                    )}
+                    {tiktokOAuthResult.openId && (
+                      <div className="bg-slc-dark p-2 rounded font-mono text-xs">
+                        <span className="text-slc-muted">TIKTOK_OPEN_ID=</span>
+                        <span className="text-primary">{tiktokOAuthResult.openId}</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-green-300/70 mt-2">
+                    Copia estos valores a las variables de entorno de Netlify y redeployea el sitio.
+                  </p>
+                </>
+              ) : (
+                <p className="text-red-300">Error al conectar TikTok: {tiktokOAuthResult.error}</p>
+              )}
+            </div>
+            <button
+              onClick={() => setTiktokOAuthResult(null)}
+              className="text-slc-muted hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Meta Config Warning */}
       {metaStatus && !metaStatus.configured && (
         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">
@@ -333,7 +529,7 @@ export default function AdminSocialPage() {
       )}
 
       {/* Queue Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
         <StatCard
           label="Total"
           value={queueSummary?.total || 0}
@@ -359,22 +555,40 @@ export default function AdminSocialPage() {
           color="text-red-400"
         />
         <StatCard
-          label="Ciclo Actual"
+          label="Ciclo"
           value={queueSummary?.currentCycle || 0}
           icon={<RotateCcw className="w-4 h-4" />}
           color="text-blue-400"
         />
         <StatCard
-          label="Fotos / Tracks / Artistas"
-          value={`${queueSummary?.byContentType?.gallery_photo || 0} / ${queueSummary?.byContentType?.spotify_track || 0} / ${queueSummary?.byContentType?.artist_profile || 0}`}
+          label="Fotos"
+          value={queueSummary?.byContentType?.gallery_photo || 0}
           icon={<ImageIcon className="w-4 h-4" />}
           color="text-purple-400"
+        />
+        <StatCard
+          label="Tracks / Artistas / Curados"
+          value={`${queueSummary?.byContentType?.spotify_track || 0} / ${queueSummary?.byContentType?.artist_profile || 0} / ${queueSummary?.byContentType?.curated_track || 0}`}
+          icon={<Disc3 className="w-4 h-4" />}
+          color="text-cyan-400"
           small
         />
       </div>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3 mb-8">
+        <Button
+          onClick={populateQueue}
+          disabled={populating}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          {populating ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Database className="w-4 h-4 mr-2" />
+          )}
+          Poblar Cola
+        </Button>
         <Button variant="outline" size="sm" onClick={retryFailed} disabled={!queueSummary?.failed}>
           <RefreshCw className="w-4 h-4 mr-2" />
           Reintentar Fallidos ({queueSummary?.failed || 0})
@@ -382,6 +596,10 @@ export default function AdminSocialPage() {
         <Button variant="outline" size="sm" onClick={resetCycle}>
           <RotateCcw className="w-4 h-4 mr-2" />
           Reiniciar Ciclo
+        </Button>
+        <Button variant="outline" size="sm" onClick={clearQueue} className="text-red-400 hover:text-red-300">
+          <Trash2 className="w-4 h-4 mr-2" />
+          Limpiar Pendientes
         </Button>
       </div>
 
@@ -413,11 +631,18 @@ export default function AdminSocialPage() {
               <h3 className="text-xl font-medium mb-2">Cola vacía</h3>
               <p className="text-slc-muted mb-4">
                 Todos los items han sido publicados o la cola está vacía.
+                Haz clic en &quot;Poblar Cola&quot; para agregar contenido.
               </p>
-              <Button variant="outline" onClick={resetCycle}>
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reiniciar Ciclo
-              </Button>
+              <div className="flex gap-3 justify-center">
+                <Button variant="outline" onClick={resetCycle}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reiniciar Ciclo
+                </Button>
+                <Button onClick={populateQueue} className="bg-green-600 hover:bg-green-700">
+                  <Database className="w-4 h-4 mr-2" />
+                  Poblar Cola
+                </Button>
+              </div>
             </div>
           ) : (
             nextPending.map((item, index) => {
@@ -460,12 +685,15 @@ export default function AdminSocialPage() {
                       {truncate(item.caption, 120)}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      {platforms.map((p) => (
-                        <span key={p} className="flex items-center gap-1 text-xs text-slc-muted">
-                          {p === "facebook" ? <Facebook className="w-3 h-3" /> : <Instagram className="w-3 h-3" />}
-                          {platformLabels[p]}
-                        </span>
-                      ))}
+                      {platforms.map((p) => {
+                        const PIcon = platformIcons[p] || Music;
+                        return (
+                          <span key={p} className="flex items-center gap-1 text-xs text-slc-muted">
+                            <PIcon className="w-3 h-3" />
+                            {platformLabels[p]}
+                          </span>
+                        );
+                      })}
                       {item.linkUrl && (
                         <a
                           href={item.linkUrl}
@@ -522,8 +750,10 @@ export default function AdminSocialPage() {
                 <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slc-dark">
                   {log.platform === "facebook" ? (
                     <Facebook className="w-4 h-4 text-blue-400" />
-                  ) : (
+                  ) : log.platform === "instagram" ? (
                     <Instagram className="w-4 h-4 text-pink-400" />
+                  ) : (
+                    <Music className="w-4 h-4 text-white" />
                   )}
                 </div>
 
@@ -531,10 +761,13 @@ export default function AdminSocialPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-sm font-medium">
-                      {contentTypeLabels[log.contentType]}
+                      {contentTypeLabels[log.contentType] || log.contentType}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs ${logStatusColors[log.status]}`}>
                       {log.status}
+                    </span>
+                    <span className="text-xs text-slc-muted">
+                      {platformLabels[log.platform] || log.platform}
                     </span>
                   </div>
                   <p className="text-xs text-slc-muted truncate">
@@ -576,11 +809,127 @@ export default function AdminSocialPage() {
 
       {activeTab === "config" && (
         <div className="space-y-6">
+          {/* Populate Queue Section — NEW */}
+          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+            <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+              <Database className="w-5 h-5 text-primary" />
+              Poblar Cola
+            </h2>
+            <p className="text-sm text-slc-muted mb-4">
+              Selecciona el contenido que quieres agregar a la cola de publicación.
+              Solo se agregarán items nuevos (no duplicados).
+            </p>
+
+            {/* Content Sources */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <label className="flex items-center gap-2 p-3 bg-slc-dark rounded-lg cursor-pointer hover:bg-slc-dark/80 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={populateOptions.includeGallery}
+                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeGallery: e.target.checked }))}
+                  className="rounded border-slc-border"
+                />
+                <ImageIcon className="w-4 h-4 text-purple-400" />
+                <div>
+                  <p className="text-sm font-medium">Galería</p>
+                  <p className="text-xs text-slc-muted">{contentCounts?.galleryPhotos || 0} fotos</p>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2 p-3 bg-slc-dark rounded-lg cursor-pointer hover:bg-slc-dark/80 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={populateOptions.includeReleases}
+                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeReleases: e.target.checked }))}
+                  className="rounded border-slc-border"
+                />
+                <Music className="w-4 h-4 text-green-400" />
+                <div>
+                  <p className="text-sm font-medium">Lanzamientos</p>
+                  <p className="text-xs text-slc-muted">{contentCounts?.releases || 0} releases</p>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2 p-3 bg-slc-dark rounded-lg cursor-pointer hover:bg-slc-dark/80 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={populateOptions.includeArtists}
+                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeArtists: e.target.checked }))}
+                  className="rounded border-slc-border"
+                />
+                <Users className="w-4 h-4 text-blue-400" />
+                <div>
+                  <p className="text-sm font-medium">Artistas</p>
+                  <p className="text-xs text-slc-muted">{contentCounts?.artists || 0} perfiles</p>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2 p-3 bg-slc-dark rounded-lg cursor-pointer hover:bg-slc-dark/80 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={populateOptions.includeCuratedTracks}
+                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeCuratedTracks: e.target.checked }))}
+                  className="rounded border-slc-border"
+                />
+                <Disc3 className="w-4 h-4 text-cyan-400" />
+                <div>
+                  <p className="text-sm font-medium">Tracks Curados</p>
+                  <p className="text-xs text-slc-muted">{contentCounts?.curatedTracks || 0} tracks</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Platform Selection */}
+            <div className="mb-4">
+              <p className="text-sm text-slc-muted mb-2">Plataformas destino:</p>
+              <div className="flex gap-3">
+                {(["facebook", "instagram", "tiktok"] as const).map((platform) => (
+                  <label
+                    key={platform}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                      populateOptions.platforms.includes(platform)
+                        ? "bg-primary/20 border border-primary/50"
+                        : "bg-slc-dark border border-slc-border"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={populateOptions.platforms.includes(platform)}
+                      onChange={() => togglePlatform(platform)}
+                      className="rounded border-slc-border"
+                    />
+                    {platform === "facebook" ? (
+                      <Facebook className="w-4 h-4 text-blue-400" />
+                    ) : platform === "instagram" ? (
+                      <Instagram className="w-4 h-4 text-pink-400" />
+                    ) : (
+                      <Music className="w-4 h-4 text-white" />
+                    )}
+                    <span className="text-sm">{platformLabels[platform]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              onClick={populateQueue}
+              disabled={populating || populateOptions.platforms.length === 0}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {populating ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Database className="w-4 h-4 mr-2" />
+              )}
+              Poblar Cola Ahora
+            </Button>
+          </div>
+
           {/* Meta API Configuration */}
           <div className="bg-slc-card border border-slc-border rounded-xl p-6">
             <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
               <Key className="w-5 h-5 text-primary" />
-              Meta API Configuration
+              Meta API (Facebook + Instagram)
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ConfigItem
@@ -616,7 +965,7 @@ export default function AdminSocialPage() {
                   ) : (
                     <Key className="w-4 h-4 mr-2" />
                   )}
-                  Validar Token
+                  Validar Token Meta
                 </Button>
                 {tokenInfo && (
                   <div className="flex items-center gap-2 text-sm">
@@ -625,10 +974,7 @@ export default function AdminSocialPage() {
                         <CheckCircle2 className="w-4 h-4 text-green-400" />
                         <span className="text-green-400">Token válido</span>
                         <span className="text-slc-muted">
-                          — Scopes: {tokenInfo.scopes?.join(", ") || "none"}
-                        </span>
-                        <span className="text-slc-muted">
-                          — Tipo: {tokenInfo.type || "unknown"}
+                          — FB Page: {tokenInfo.pageAccessible ? "✓" : "✗"} | IG: {tokenInfo.igAccountAccessible ? "✓" : "✗"}
                         </span>
                         <span className="text-slc-muted">
                           — Expira: {tokenInfo.expiresAt ? formatDate(tokenInfo.expiresAt) : "Nunca"}
@@ -646,6 +992,115 @@ export default function AdminSocialPage() {
             </div>
           </div>
 
+          {/* TikTok Configuration */}
+          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+            <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+              <Music className="w-5 h-5 text-white" />
+              TikTok
+            </h2>
+            {tiktokStatus && !tiktokStatus.configured && (
+              <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-300">
+                <p className="font-medium">TikTok no configurado aún</p>
+                <p className="text-yellow-300/70 mt-1">
+                  Para publicar en TikTok automáticamente, necesitas:
+                </p>
+                <ol className="text-yellow-300/70 mt-1 list-decimal list-inside space-y-1">
+                  <li>Crear una app en developers.tiktok.com</li>
+                  <li>Solicitar acceso al Content Posting API (Direct Post)</li>
+                  <li>Obtener client_key y client_secret</li>
+                  <li>Completar el flujo OAuth para obtener un access token</li>
+                  <li>Configurar las variables de entorno abajo</li>
+                </ol>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <ConfigItem
+                label="TIKTOK_CLIENT_KEY"
+                configured={tiktokStatus?.clientKey || false}
+              />
+              <ConfigItem
+                label="TIKTOK_CLIENT_SECRET"
+                configured={tiktokStatus?.clientSecret || false}
+              />
+              <ConfigItem
+                label="TIKTOK_ACCESS_TOKEN"
+                configured={tiktokStatus?.accessToken || false}
+              />
+            </div>
+
+            {/* TikTok OAuth Connect / Token Display */}
+            <div className="mt-6 pt-4 border-t border-slc-border space-y-4">
+              {/* Connect Button (shown when Client Key is set but no Access Token) */}
+              {tiktokStatus?.clientKey && !tiktokStatus?.accessToken && (
+                <div>
+                  <p className="text-sm text-slc-muted mb-3">
+                    Conecta tu cuenta de TikTok para autorizar la publicación automática:
+                  </p>
+                  <a href="/api/auth/tiktok?returnUrl=/admin/social">
+                    <Button className="bg-black hover:bg-gray-800 text-white">
+                      <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15.2a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.88a8.28 8.28 0 0 0 4.76 1.5V6.93a4.84 4.84 0 0 1-1-.24z"/>
+                      </svg>
+                      Conectar con TikTok
+                    </Button>
+                  </a>
+                </div>
+              )}
+
+              {/* Token Validation Button */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={validateTikTokToken}
+                  disabled={validatingTikTok || !tiktokStatus?.configured}
+                >
+                  {validatingTikTok ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Key className="w-4 h-4 mr-2" />
+                  )}
+                  Validar Token TikTok
+                </Button>
+                {tiktokTokenInfo && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {tiktokTokenInfo.isValid ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        <span className="text-green-400">Token válido</span>
+                        <span className="text-slc-muted">
+                          — Open ID: {tiktokTokenInfo.openId || "N/A"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 text-red-400" />
+                        <span className="text-red-400">Token inválido</span>
+                        {tiktokTokenInfo.error && (
+                          <span className="text-slc-muted">— {tiktokTokenInfo.error}</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Setup Instructions (shown when Client Key not set) */}
+              {!tiktokStatus?.clientKey && (
+                <div className="p-3 bg-slc-dark rounded-lg text-sm text-slc-muted">
+                  <p className="font-medium text-white mb-2">Configuración paso a paso:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Crea una app en <a href="https://developers.tiktok.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">developers.tiktok.com</a></li>
+                    <li>Solicita acceso al <strong>Content Posting API (Direct Post)</strong></li>
+                    <li>Agrega la Redirect URI: <code className="text-primary">https://sonidoliquido.com/api/auth/tiktok/callback</code></li>
+                    <li>Copia el Client Key y Client Secret a las variables de entorno de Netlify</li>
+                    <li>Regresa aquí y haz clic en &quot;Conectar con TikTok&quot;</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Schedule Info */}
           <div className="bg-slc-card border border-slc-border rounded-xl p-6">
             <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
@@ -659,23 +1114,9 @@ export default function AdminSocialPage() {
             </div>
             <p className="text-sm text-slc-muted mt-4">
               La función programada publica 1 item por ejecución. Con 3 ejecuciones/día,
-              se publican 3 items/día (6 posts totales: 3 FB + 3 IG).
+              se publican 3 items/día. Cada item se publica en todas las plataformas configuradas
+              (FB + IG + TikTok = hasta 9 posts/día).
             </p>
-          </div>
-
-          {/* Queue Population */}
-          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
-            <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
-              <ArrowRight className="w-5 h-5 text-primary" />
-              Poblar Cola
-            </h2>
-            <p className="text-sm text-slc-muted mb-4">
-              Para llenar la cola con fotos de galería, lanzamientos y perfiles de artistas existentes,
-              ejecuta el script de población desde tu terminal:
-            </p>
-            <code className="block bg-slc-dark p-3 rounded-lg text-sm text-primary font-mono">
-              npx tsx scripts/populate-social-queue.ts
-            </code>
           </div>
         </div>
       )}
