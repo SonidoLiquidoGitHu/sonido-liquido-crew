@@ -253,6 +253,16 @@ async function runAutoMigration(client: Client): Promise<void> {
         added_at INTEGER NOT NULL DEFAULT (unixepoch()),
         updated_at INTEGER NOT NULL DEFAULT (unixepoch())
       )`,
+      `CREATE TABLE IF NOT EXISTS social_credentials (
+        id TEXT PRIMARY KEY NOT NULL,
+        platform TEXT NOT NULL CHECK(platform IN ('meta','tiktok')),
+        key TEXT NOT NULL,
+        value TEXT NOT NULL,
+        is_from_ui INTEGER DEFAULT 1 NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_social_credentials_platform_key ON social_credentials(platform, key)`,
     ];
 
     // Add missing columns (safe - ignores "duplicate column" errors)

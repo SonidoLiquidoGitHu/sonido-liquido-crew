@@ -27,6 +27,7 @@ import {
   type PostQueueItemResult,
 } from "@/lib/clients/meta";
 import { isTikTokConfigured, validateTikTokToken } from "@/lib/clients/tiktok";
+import { socialCredentials } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -92,20 +93,39 @@ export async function GET(request: NextRequest) {
       .limit(10);
 
     // Meta API configuration status
+    // Check both env vars and DB credentials
+    const metaDbCreds = await db
+      .select()
+      .from(socialCredentials)
+      .where(eq(socialCredentials.platform, "meta"));
+    const metaCredMap = new Map(metaDbCreds.map((c) => [c.key, c.value]));
+
     const metaStatus = {
-      configured: isMetaConfigured(),
-      appId: !!process.env.META_APP_ID,
-      appSecret: !!process.env.META_APP_SECRET,
-      systemUserToken: !!process.env.META_SYSTEM_USER_TOKEN,
-      facebookPageId: !!process.env.FACEBOOK_PAGE_ID,
+      configured: !!(
+        (process.env.META_SYSTEM_USER_TOKEN || metaCredMap.get("META_SYSTEM_USER_TOKEN")) &&
+        (process.env.FACEBOOK_PAGE_ID || metaCredMap.get("FACEBOOK_PAGE_ID"))
+      ),
+      appId: !!(process.env.META_APP_ID || metaCredMap.get("META_APP_ID")),
+      appSecret: !!(process.env.META_APP_SECRET || metaCredMap.get("META_APP_SECRET")),
+      systemUserToken: !!(process.env.META_SYSTEM_USER_TOKEN || metaCredMap.get("META_SYSTEM_USER_TOKEN")),
+      facebookPageId: !!(process.env.FACEBOOK_PAGE_ID || metaCredMap.get("FACEBOOK_PAGE_ID")),
     };
 
     // TikTok configuration status
+    const tiktokDbCreds = await db
+      .select()
+      .from(socialCredentials)
+      .where(eq(socialCredentials.platform, "tiktok"));
+    const tiktokCredMap = new Map(tiktokDbCreds.map((c) => [c.key, c.value]));
+
     const tiktokStatus = {
-      configured: isTikTokConfigured(),
-      clientKey: !!process.env.TIKTOK_CLIENT_KEY,
-      clientSecret: !!process.env.TIKTOK_CLIENT_SECRET,
-      accessToken: !!process.env.TIKTOK_ACCESS_TOKEN,
+      configured: !!(
+        (process.env.TIKTOK_CLIENT_KEY || tiktokCredMap.get("TIKTOK_CLIENT_KEY")) &&
+        (process.env.TIKTOK_ACCESS_TOKEN || tiktokCredMap.get("TIKTOK_ACCESS_TOKEN"))
+      ),
+      clientKey: !!(process.env.TIKTOK_CLIENT_KEY || tiktokCredMap.get("TIKTOK_CLIENT_KEY")),
+      clientSecret: !!(process.env.TIKTOK_CLIENT_SECRET || tiktokCredMap.get("TIKTOK_CLIENT_SECRET")),
+      accessToken: !!(process.env.TIKTOK_ACCESS_TOKEN || tiktokCredMap.get("TIKTOK_ACCESS_TOKEN")),
     };
 
     // Get available content counts for population

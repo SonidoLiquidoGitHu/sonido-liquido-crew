@@ -73,3 +73,6 @@ export * from "./curated-channels";
 
 // Social Auto-Posting (Instagram & Facebook)
 export * from "./social-posts";
+
+// Social Credentials (API keys stored in DB)
+export * from "./social-credentials";

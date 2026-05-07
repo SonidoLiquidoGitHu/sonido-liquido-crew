@@ -3,14 +3,43 @@
 // ===========================================
 // Handles the OAuth callback from TikTok.
 // Exchanges the authorization code for access + refresh tokens,
-// then redirects to the admin Social Auto-Post page with the token info.
+// saves them to the DB, then redirects to the admin page.
 
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeTikTokCode } from "@/lib/clients/tiktok";
+import { db } from "@/db/client";
+import { socialCredentials } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 const REDIRECT_URI =
   process.env.TIKTOK_REDIRECT_URI ||
   "https://sonidoliquido.com/api/auth/tiktok/callback";
+
+/**
+ * Save a credential to the DB, upserting if it already exists.
+ */
+async function saveCredential(platform: "meta" | "tiktok", key: string, value: string) {
+  const existing = await db
+    .select()
+    .from(socialCredentials)
+    .where(and(eq(socialCredentials.platform, platform), eq(socialCredentials.key, key)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(socialCredentials)
+      .set({ value, isFromUi: true, updatedAt: new Date() })
+      .where(eq(socialCredentials.id, existing[0].id));
+  } else {
+    await db.insert(socialCredentials).values({
+      id: crypto.randomUUID(),
+      platform,
+      key,
+      value,
+      isFromUi: true,
+    });
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -60,8 +89,17 @@ export async function GET(request: NextRequest) {
 
     console.log("[TikTok OAuth] Token exchange successful! Open ID:", tokens.openId);
 
-    // Redirect back to admin page with token info in URL params
-    // The admin page will display these for the user to save as env vars
+    // Save tokens to DB so they're available immediately (no need for env vars)
+    try {
+      await saveCredential("tiktok", "TIKTOK_ACCESS_TOKEN", tokens.accessToken);
+      await saveCredential("tiktok", "TIKTOK_REFRESH_TOKEN", tokens.refreshToken);
+      await saveCredential("tiktok", "TIKTOK_OPEN_ID", tokens.openId);
+      console.log("[TikTok OAuth] Tokens saved to DB");
+    } catch (dbErr) {
+      console.warn("[TikTok OAuth] Could not save tokens to DB:", dbErr);
+    }
+
+    // Redirect back to admin page with success
     const successUrl = new URL(returnUrl, request.url);
     successUrl.searchParams.set("tiktok_success", "true");
     successUrl.searchParams.set("tiktok_access_token", tokens.accessToken);

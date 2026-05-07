@@ -25,6 +25,9 @@ import {
   Disc3,
   Database,
   Trash2,
+  Save,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 // ===========================================
@@ -102,6 +105,12 @@ interface ContentCounts {
   releases: number;
   artists: number;
   curatedTracks: number;
+}
+
+interface CredentialInfo {
+  maskedValue: string;
+  hasValue: boolean;
+  source: "db" | "env" | "none";
 }
 
 // ===========================================
@@ -187,6 +196,13 @@ export default function AdminSocialPage() {
   const [tiktokTokenInfo, setTikTokTokenInfo] = useState<any>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"queue" | "history" | "config">("queue");
+
+  // Credentials state
+  const [credentialInfo, setCredentialInfo] = useState<Record<string, CredentialInfo> | null>(null);
+  const [credentialEdits, setCredentialEdits] = useState<Record<string, string>>({});
+  const [savingCredentials, setSavingCredentials] = useState(false);
+  const [showCredentialValues, setShowCredentialValues] = useState<Record<string, boolean>>({});
+  const [credentialSaveResult, setCredentialSaveResult] = useState<string | null>(null);
 
   // Populate options
   const [populateOptions, setPopulateOptions] = useState({
@@ -403,6 +419,68 @@ export default function AdminSocialPage() {
         : [...prev.platforms, platform],
     }));
   };
+
+  // Fetch credentials from the API
+  const fetchCredentials = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/social/credentials");
+      const data = await res.json();
+      if (data.success) {
+        setCredentialInfo(data.data.credentials);
+      }
+    } catch (error) {
+      console.error("Error fetching credentials:", error);
+    }
+  }, []);
+
+  // Save credentials to the API
+  const saveCredentials = async () => {
+    setSavingCredentials(true);
+    setCredentialSaveResult(null);
+    try {
+      // Only send credentials that have been edited with non-empty values
+      const changedCredentials: Record<string, string> = {};
+      for (const [key, value] of Object.entries(credentialEdits)) {
+        if (value !== undefined && value !== "" && value !== "__CANCEL__") {
+          changedCredentials[key] = value;
+        }
+      }
+
+      if (Object.keys(changedCredentials).length === 0) {
+        setCredentialSaveResult("No hay cambios para guardar.");
+        setSavingCredentials(false);
+        return;
+      }
+
+      const res = await fetch("/api/admin/social/credentials", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credentials: changedCredentials }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCredentialSaveResult(data.message);
+        setCredentialEdits({});
+        // Refresh credential info
+        await fetchCredentials();
+        // Also refresh the main social data (config status may have changed)
+        fetchData();
+      } else {
+        setCredentialSaveResult(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      setCredentialSaveResult("Error al guardar credenciales");
+    } finally {
+      setSavingCredentials(false);
+    }
+  };
+
+  // Load credentials when config tab is opened
+  useEffect(() => {
+    if (activeTab === "config" && !credentialInfo) {
+      fetchCredentials();
+    }
+  }, [activeTab, credentialInfo, fetchCredentials]);
 
   // ===========================================
   // RENDER
@@ -931,23 +1009,71 @@ export default function AdminSocialPage() {
               <Key className="w-5 h-5 text-primary" />
               Meta API (Facebook + Instagram)
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ConfigItem
+            <p className="text-sm text-slc-muted mb-4">
+              Ingresa las credenciales de Meta para publicar en Facebook e Instagram.
+              Los valores guardados aquí tienen prioridad sobre las variables de entorno de Netlify.
+            </p>
+            <div className="space-y-3">
+              <CredentialInput
                 label="META_APP_ID"
-                configured={metaStatus?.appId || false}
+                info={credentialInfo?.META_APP_ID}
+                editValue={credentialEdits.META_APP_ID}
+                onEdit={(val) => {
+                  if (val === "__CANCEL__") {
+                    const { META_APP_ID, ...rest } = credentialEdits;
+                    setCredentialEdits(rest);
+                  } else {
+                    setCredentialEdits((prev) => ({ ...prev, META_APP_ID: val }));
+                  }
+                }}
+                showValue={showCredentialValues.META_APP_ID}
+                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, META_APP_ID: !prev.META_APP_ID }))}
               />
-              <ConfigItem
+              <CredentialInput
                 label="META_APP_SECRET"
-                configured={metaStatus?.appSecret || false}
+                info={credentialInfo?.META_APP_SECRET}
+                editValue={credentialEdits.META_APP_SECRET}
+                onEdit={(val) => {
+                  if (val === "__CANCEL__") {
+                    const { META_APP_SECRET, ...rest } = credentialEdits;
+                    setCredentialEdits(rest);
+                  } else {
+                    setCredentialEdits((prev) => ({ ...prev, META_APP_SECRET: val }));
+                  }
+                }}
+                showValue={showCredentialValues.META_APP_SECRET}
+                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, META_APP_SECRET: !prev.META_APP_SECRET }))}
               />
-              <ConfigItem
+              <CredentialInput
                 label="META_SYSTEM_USER_TOKEN"
-                configured={metaStatus?.systemUserToken || false}
+                info={credentialInfo?.META_SYSTEM_USER_TOKEN}
+                editValue={credentialEdits.META_SYSTEM_USER_TOKEN}
+                onEdit={(val) => {
+                  if (val === "__CANCEL__") {
+                    const { META_SYSTEM_USER_TOKEN, ...rest } = credentialEdits;
+                    setCredentialEdits(rest);
+                  } else {
+                    setCredentialEdits((prev) => ({ ...prev, META_SYSTEM_USER_TOKEN: val }));
+                  }
+                }}
+                showValue={showCredentialValues.META_SYSTEM_USER_TOKEN}
+                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, META_SYSTEM_USER_TOKEN: !prev.META_SYSTEM_USER_TOKEN }))}
               />
-              <ConfigItem
+              <CredentialInput
                 label="FACEBOOK_PAGE_ID"
-                configured={metaStatus?.facebookPageId || false}
-                value="163429477044436"
+                info={credentialInfo?.FACEBOOK_PAGE_ID}
+                editValue={credentialEdits.FACEBOOK_PAGE_ID}
+                onEdit={(val) => {
+                  if (val === "__CANCEL__") {
+                    const { FACEBOOK_PAGE_ID, ...rest } = credentialEdits;
+                    setCredentialEdits(rest);
+                  } else {
+                    setCredentialEdits((prev) => ({ ...prev, FACEBOOK_PAGE_ID: val }));
+                  }
+                }}
+                showValue={showCredentialValues.FACEBOOK_PAGE_ID}
+                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, FACEBOOK_PAGE_ID: !prev.FACEBOOK_PAGE_ID }))}
+                placeholder="163429477044436"
               />
             </div>
 
@@ -972,7 +1098,7 @@ export default function AdminSocialPage() {
                     {tokenInfo.isValid ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        <span className="text-green-400">Token válido</span>
+                        <span className="text-green-400">Token valido</span>
                         <span className="text-slc-muted">
                           — FB Page: {tokenInfo.pageAccessible ? "✓" : "✗"} | IG: {tokenInfo.igAccountAccessible ? "✓" : "✗"}
                         </span>
@@ -983,7 +1109,7 @@ export default function AdminSocialPage() {
                     ) : (
                       <>
                         <XCircle className="w-4 h-4 text-red-400" />
-                        <span className="text-red-400">Token inválido</span>
+                        <span className="text-red-400">Token invalido</span>
                       </>
                     )}
                   </div>
@@ -998,43 +1124,79 @@ export default function AdminSocialPage() {
               <Music className="w-5 h-5 text-white" />
               TikTok
             </h2>
+            <p className="text-sm text-slc-muted mb-4">
+              Ingresa las credenciales de TikTok para publicar automaticamente.
+              Los valores guardados aqui tienen prioridad sobre las variables de entorno de Netlify.
+            </p>
             {tiktokStatus && !tiktokStatus.configured && (
               <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-300">
-                <p className="font-medium">TikTok no configurado aún</p>
+                <p className="font-medium">TikTok no configurado aun</p>
                 <p className="text-yellow-300/70 mt-1">
-                  Para publicar en TikTok automáticamente, necesitas:
+                  Para publicar en TikTok automaticamente, necesitas:
                 </p>
                 <ol className="text-yellow-300/70 mt-1 list-decimal list-inside space-y-1">
                   <li>Crear una app en developers.tiktok.com</li>
                   <li>Solicitar acceso al Content Posting API (Direct Post)</li>
                   <li>Obtener client_key y client_secret</li>
-                  <li>Completar el flujo OAuth para obtener un access token</li>
-                  <li>Configurar las variables de entorno abajo</li>
+                  <li>Ingresar las credenciales abajo y luego conectar tu cuenta</li>
                 </ol>
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <ConfigItem
+            <div className="space-y-3">
+              <CredentialInput
                 label="TIKTOK_CLIENT_KEY"
-                configured={tiktokStatus?.clientKey || false}
+                info={credentialInfo?.TIKTOK_CLIENT_KEY}
+                editValue={credentialEdits.TIKTOK_CLIENT_KEY}
+                onEdit={(val) => {
+                  if (val === "__CANCEL__") {
+                    const { TIKTOK_CLIENT_KEY, ...rest } = credentialEdits;
+                    setCredentialEdits(rest);
+                  } else {
+                    setCredentialEdits((prev) => ({ ...prev, TIKTOK_CLIENT_KEY: val }));
+                  }
+                }}
+                showValue={showCredentialValues.TIKTOK_CLIENT_KEY}
+                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, TIKTOK_CLIENT_KEY: !prev.TIKTOK_CLIENT_KEY }))}
               />
-              <ConfigItem
+              <CredentialInput
                 label="TIKTOK_CLIENT_SECRET"
-                configured={tiktokStatus?.clientSecret || false}
+                info={credentialInfo?.TIKTOK_CLIENT_SECRET}
+                editValue={credentialEdits.TIKTOK_CLIENT_SECRET}
+                onEdit={(val) => {
+                  if (val === "__CANCEL__") {
+                    const { TIKTOK_CLIENT_SECRET, ...rest } = credentialEdits;
+                    setCredentialEdits(rest);
+                  } else {
+                    setCredentialEdits((prev) => ({ ...prev, TIKTOK_CLIENT_SECRET: val }));
+                  }
+                }}
+                showValue={showCredentialValues.TIKTOK_CLIENT_SECRET}
+                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, TIKTOK_CLIENT_SECRET: !prev.TIKTOK_CLIENT_SECRET }))}
               />
-              <ConfigItem
+              <CredentialInput
                 label="TIKTOK_ACCESS_TOKEN"
-                configured={tiktokStatus?.accessToken || false}
+                info={credentialInfo?.TIKTOK_ACCESS_TOKEN}
+                editValue={credentialEdits.TIKTOK_ACCESS_TOKEN}
+                onEdit={(val) => {
+                  if (val === "__CANCEL__") {
+                    const { TIKTOK_ACCESS_TOKEN, ...rest } = credentialEdits;
+                    setCredentialEdits(rest);
+                  } else {
+                    setCredentialEdits((prev) => ({ ...prev, TIKTOK_ACCESS_TOKEN: val }));
+                  }
+                }}
+                showValue={showCredentialValues.TIKTOK_ACCESS_TOKEN}
+                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, TIKTOK_ACCESS_TOKEN: !prev.TIKTOK_ACCESS_TOKEN }))}
               />
             </div>
 
-            {/* TikTok OAuth Connect / Token Display */}
+            {/* TikTok OAuth Connect */}
             <div className="mt-6 pt-4 border-t border-slc-border space-y-4">
               {/* Connect Button (shown when Client Key is set but no Access Token) */}
-              {tiktokStatus?.clientKey && !tiktokStatus?.accessToken && (
+              {(tiktokStatus?.clientKey || credentialEdits.TIKTOK_CLIENT_KEY) && !tiktokStatus?.accessToken && !credentialEdits.TIKTOK_ACCESS_TOKEN && (
                 <div>
                   <p className="text-sm text-slc-muted mb-3">
-                    Conecta tu cuenta de TikTok para autorizar la publicación automática:
+                    Conecta tu cuenta de TikTok para autorizar la publicacion automatica:
                   </p>
                   <a href="/api/auth/tiktok?returnUrl=/admin/social">
                     <Button className="bg-black hover:bg-gray-800 text-white">
@@ -1067,7 +1229,7 @@ export default function AdminSocialPage() {
                     {tiktokTokenInfo.isValid ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        <span className="text-green-400">Token válido</span>
+                        <span className="text-green-400">Token valido</span>
                         <span className="text-slc-muted">
                           — Open ID: {tiktokTokenInfo.openId || "N/A"}
                         </span>
@@ -1075,7 +1237,7 @@ export default function AdminSocialPage() {
                     ) : (
                       <>
                         <XCircle className="w-4 h-4 text-red-400" />
-                        <span className="text-red-400">Token inválido</span>
+                        <span className="text-red-400">Token invalido</span>
                         {tiktokTokenInfo.error && (
                           <span className="text-slc-muted">— {tiktokTokenInfo.error}</span>
                         )}
@@ -1086,17 +1248,45 @@ export default function AdminSocialPage() {
               </div>
 
               {/* Setup Instructions (shown when Client Key not set) */}
-              {!tiktokStatus?.clientKey && (
+              {!tiktokStatus?.clientKey && !credentialEdits.TIKTOK_CLIENT_KEY && (
                 <div className="p-3 bg-slc-dark rounded-lg text-sm text-slc-muted">
-                  <p className="font-medium text-white mb-2">Configuración paso a paso:</p>
+                  <p className="font-medium text-white mb-2">Configuracion paso a paso:</p>
                   <ol className="list-decimal list-inside space-y-1">
                     <li>Crea una app en <a href="https://developers.tiktok.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">developers.tiktok.com</a></li>
                     <li>Solicita acceso al <strong>Content Posting API (Direct Post)</strong></li>
                     <li>Agrega la Redirect URI: <code className="text-primary">https://sonidoliquido.com/api/auth/tiktok/callback</code></li>
-                    <li>Copia el Client Key y Client Secret a las variables de entorno de Netlify</li>
-                    <li>Regresa aquí y haz clic en &quot;Conectar con TikTok&quot;</li>
+                    <li>Copia el Client Key y Client Secret en los campos de arriba</li>
+                    <li>Guarda los cambios y luego haz clic en &quot;Conectar con TikTok&quot;</li>
                   </ol>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Save Credentials Button */}
+          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={saveCredentials}
+                disabled={savingCredentials || Object.keys(credentialEdits).filter(k => credentialEdits[k] && credentialEdits[k] !== "__CANCEL__").length === 0}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {savingCredentials ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Guardar Credenciales
+              </Button>
+              {credentialSaveResult && (
+                <span className={`text-sm ${credentialSaveResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>
+                  {credentialSaveResult}
+                </span>
+              )}
+              {Object.keys(credentialEdits).filter(k => credentialEdits[k] && credentialEdits[k] !== "__CANCEL__").length > 0 && (
+                <span className="text-xs text-slc-muted">
+                  {Object.keys(credentialEdits).filter(k => credentialEdits[k] && credentialEdits[k] !== "__CANCEL__").length} cambio(s) pendiente(s)
+                </span>
               )}
             </div>
           </div>
@@ -1171,6 +1361,96 @@ function ConfigItem({
         <CheckCircle2 className="w-5 h-5 text-green-400" />
       ) : (
         <XCircle className="w-5 h-5 text-red-400" />
+      )}
+    </div>
+  );
+}
+
+function CredentialInput({
+  label,
+  info,
+  editValue,
+  onEdit,
+  showValue,
+  onToggleShow,
+  placeholder,
+}: {
+  label: string;
+  info?: CredentialInfo;
+  editValue?: string;
+  onEdit: (value: string) => void;
+  showValue?: boolean;
+  onToggleShow: () => void;
+  placeholder?: string;
+}) {
+  const hasValue = info?.hasValue || false;
+  const source = info?.source || "none";
+  const maskedValue = info?.maskedValue || "";
+  const isEditing = editValue !== undefined;
+
+  return (
+    <div className="p-3 bg-slc-dark rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium">{label}</p>
+          {hasValue ? (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              source === "db"
+                ? "bg-blue-500/20 text-blue-400"
+                : "bg-green-500/20 text-green-400"
+            }`}>
+              {source === "db" ? "DB" : "Env Var"}
+            </span>
+          ) : (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
+              Sin configurar
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {hasValue && !isEditing && (
+            <button
+              onClick={onToggleShow}
+              className="p-1 text-slc-muted hover:text-white transition-colors"
+              title={showValue ? "Ocultar valor" : "Mostrar valor"}
+            >
+              {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          )}
+          {!isEditing ? (
+            <button
+              onClick={() => onEdit("")}
+              className="text-xs text-primary hover:underline"
+            >
+              {hasValue ? "Editar" : "Agregar"}
+            </button>
+          ) : (
+            <button
+              onClick={() => onEdit("__CANCEL__")}
+              className="text-xs text-slc-muted hover:text-white"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Display current value (masked or shown) */}
+      {hasValue && !isEditing && (
+        <p className="text-xs font-mono text-slc-muted break-all">
+          {showValue ? maskedValue : maskedValue}
+        </p>
+      )}
+
+      {/* Edit input */}
+      {isEditing && (
+        <input
+          type={showValue ? "text" : "password"}
+          value={editValue}
+          onChange={(e) => onEdit(e.target.value)}
+          placeholder={placeholder || (hasValue ? "Dejar vacio para mantener el valor actual" : `Ingresa ${label}`)}
+          className="w-full mt-1 px-3 py-2 bg-slc-card border border-slc-border rounded text-sm text-white placeholder:text-slc-muted focus:outline-none focus:border-primary"
+        />
       )}
     </div>
   );

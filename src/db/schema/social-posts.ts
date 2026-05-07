@@ -14,7 +14,7 @@ export const socialPostQueue = sqliteTable("social_post_queue", {
 
   // Content source — which entity this post promotes
   contentType: text("content_type", {
-    enum: ["gallery_photo", "spotify_track", "artist_profile"],
+    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track"],
   }).notNull(),
 
   // Reference to the source entity (gallery_photo_id, release_id, or artist_id)
@@ -78,12 +78,12 @@ export const socialPostsLog = sqliteTable("social_posts_log", {
 
   // Which platform this log entry is for
   platform: text("platform", {
-    enum: ["facebook", "instagram"],
+    enum: ["facebook", "instagram", "tiktok"],
   }).notNull(),
 
   // The content type that was posted
   contentType: text("content_type", {
-    enum: ["gallery_photo", "spotify_track", "artist_profile"],
+    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track"],
   }).notNull(),
 
   sourceId: text("source_id").notNull(),

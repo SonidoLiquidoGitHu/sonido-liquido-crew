@@ -29,20 +29,74 @@ import { socialPostsLog } from "@/db/schema";
 
 const TIKTOK_API_BASE = "https://open.tiktokapis.com/v2";
 
-function getClientKey(): string {
-  return process.env.TIKTOK_CLIENT_KEY || "";
+// Cached DB credentials (fetched once per process lifetime, or when invalidated)
+let _dbCredentials: Record<string, string> | null = null;
+
+/**
+ * Fetch TikTok credentials from the DB (social_credentials table).
+ * DB values take priority over env vars.
+ */
+async function getDbCredentials(): Promise<Record<string, string>> {
+  if (_dbCredentials) return _dbCredentials;
+
+  try {
+    const { db } = await import("@/db/client");
+    const { socialCredentials } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const rows = await db
+      .select()
+      .from(socialCredentials)
+      .where(eq(socialCredentials.platform, "tiktok"));
+
+    _dbCredentials = {};
+    for (const row of rows) {
+      _dbCredentials[row.key] = row.value;
+    }
+    return _dbCredentials;
+  } catch (error) {
+    console.warn("[TikTok] Could not fetch DB credentials:", error);
+    return {};
+  }
 }
 
-function getClientSecret(): string {
-  return process.env.TIKTOK_CLIENT_SECRET || "";
+/**
+ * Get a credential value: DB first, then env var fallback.
+ */
+async function getCredential(envKey: string): Promise<string> {
+  const dbCreds = await getDbCredentials();
+  return dbCreds[envKey] || process.env[envKey] || "";
 }
 
-function getAccessToken(): string {
-  return process.env.TIKTOK_ACCESS_TOKEN || "";
+async function getClientKey(): Promise<string> {
+  return getCredential("TIKTOK_CLIENT_KEY");
 }
 
+async function getClientSecret(): Promise<string> {
+  return getCredential("TIKTOK_CLIENT_SECRET");
+}
+
+async function getAccessToken(): Promise<string> {
+  return getCredential("TIKTOK_ACCESS_TOKEN");
+}
+
+/**
+ * Synchronous check for TikTok configuration status.
+ * Uses env vars only (for quick UI status checks without DB hit).
+ */
 export function isTikTokConfigured(): boolean {
-  return !!(getClientKey() && getAccessToken());
+  return !!(
+    (process.env.TIKTOK_CLIENT_KEY || _dbCredentials?.TIKTOK_CLIENT_KEY) &&
+    (process.env.TIKTOK_ACCESS_TOKEN || _dbCredentials?.TIKTOK_ACCESS_TOKEN)
+  );
+}
+
+/**
+ * Invalidate the cached DB credentials so they're re-fetched on next use.
+ * Call this after saving credentials via the admin UI.
+ */
+export function invalidateTikTokCredentialsCache(): void {
+  _dbCredentials = null;
 }
 
 // ===========================================
@@ -82,7 +136,7 @@ export async function postToTikTok(
     };
   }
 
-  const token = getAccessToken();
+  const token = await getAccessToken();
 
   try {
     // ========================================
@@ -239,7 +293,7 @@ async function postToTikTokAsVideo(
   caption: string,
   linkUrl?: string
 ): Promise<TikTokPostResult> {
-  const token = getAccessToken();
+  const token = await getAccessToken();
 
   // For now, we'll try the INBOX post approach which allows
   // the user to review and adjust the post before publishing
@@ -317,7 +371,7 @@ export async function validateTikTokToken(): Promise<TikTokTokenInfo> {
     };
   }
 
-  const token = getAccessToken();
+  const token = await getAccessToken();
 
   try {
     // TikTok's token validation endpoint
@@ -333,7 +387,7 @@ export async function validateTikTokToken(): Promise<TikTokTokenInfo> {
     if (data.error) {
       return {
         isValid: false,
-        clientKey: getClientKey(),
+        clientKey: await getClientKey(),
         openId: "",
         scopes: [],
         error: `${data.error.code}: ${data.error.message}`,
@@ -342,7 +396,7 @@ export async function validateTikTokToken(): Promise<TikTokTokenInfo> {
 
     return {
       isValid: true,
-      clientKey: getClientKey(),
+      clientKey: await getClientKey(),
       openId: data.data?.user?.open_id || "",
       scopes: data.data?.scope?.split(",") || [],
     };
@@ -350,7 +404,7 @@ export async function validateTikTokToken(): Promise<TikTokTokenInfo> {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
     return {
       isValid: false,
-      clientKey: getClientKey(),
+      clientKey: await getClientKey(),
       openId: "",
       scopes: [],
       error: errMsg,
@@ -366,8 +420,8 @@ export async function validateTikTokToken(): Promise<TikTokTokenInfo> {
  * Generate the TikTok OAuth authorization URL.
  * The user needs to visit this URL to authorize the app.
  */
-export function getTikTokAuthUrl(redirectUri: string, state?: string): string {
-  const clientKey = getClientKey();
+export async function getTikTokAuthUrl(redirectUri: string, state?: string): Promise<string> {
+  const clientKey = await getClientKey();
   const scopes = "video.publish,video.list";
 
   const params = new URLSearchParams({
@@ -389,8 +443,8 @@ export async function exchangeTikTokCode(
   code: string,
   redirectUri: string
 ): Promise<{ accessToken: string; refreshToken: string; openId: string } | null> {
-  const clientKey = getClientKey();
-  const clientSecret = getClientSecret();
+  const clientKey = await getClientKey();
+  const clientSecret = await getClientSecret();
 
   try {
     const response = await fetch(`${TIKTOK_API_BASE}/oauth/token/`, {

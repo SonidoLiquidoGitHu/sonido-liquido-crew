@@ -25,24 +25,81 @@ import { postToTikTok, isTikTokConfigured, type TikTokPostResult } from "./tikto
 
 const META_GRAPH_API = "https://graph.facebook.com/v21.0";
 
-function getAppId(): string {
-  return process.env.META_APP_ID || "";
+// Cached DB credentials (fetched once per process lifetime, or when invalidated)
+let _dbCredentials: Record<string, string> | null = null;
+
+/**
+ * Fetch credentials from the DB (social_credentials table).
+ * DB values take priority over env vars.
+ */
+async function getDbCredentials(): Promise<Record<string, string>> {
+  if (_dbCredentials) return _dbCredentials;
+
+  try {
+    const { db } = await import("@/db/client");
+    const { socialCredentials } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const rows = await db
+      .select()
+      .from(socialCredentials)
+      .where(eq(socialCredentials.platform, "meta"));
+
+    _dbCredentials = {};
+    for (const row of rows) {
+      _dbCredentials[row.key] = row.value;
+    }
+    return _dbCredentials;
+  } catch (error) {
+    console.warn("[Meta] Could not fetch DB credentials:", error);
+    return {};
+  }
 }
 
-function getAppSecret(): string {
-  return process.env.META_APP_SECRET || "";
+/**
+ * Get a credential value: DB first, then env var fallback.
+ */
+async function getCredential(envKey: string): Promise<string> {
+  const dbCreds = await getDbCredentials();
+  return dbCreds[envKey] || process.env[envKey] || "";
 }
 
-function getSystemUserToken(): string {
-  return process.env.META_SYSTEM_USER_TOKEN || "";
+async function getAppId(): Promise<string> {
+  return getCredential("META_APP_ID");
 }
 
-function getFacebookPageId(): string {
-  return process.env.FACEBOOK_PAGE_ID || "163429477044436";
+async function getAppSecret(): Promise<string> {
+  return getCredential("META_APP_SECRET");
 }
 
+async function getSystemUserToken(): Promise<string> {
+  return getCredential("META_SYSTEM_USER_TOKEN");
+}
+
+async function getFacebookPageId(): Promise<string> {
+  return getCredential("FACEBOOK_PAGE_ID");
+}
+
+/**
+ * Synchronous check for Meta configuration status.
+ * Uses env vars only (for quick UI status checks without DB hit).
+ * The actual posting functions use the async versions.
+ */
 function isMetaConfigured(): boolean {
-  return !!(getSystemUserToken() && getFacebookPageId());
+  return !!(
+    (process.env.META_SYSTEM_USER_TOKEN || _dbCredentials?.META_SYSTEM_USER_TOKEN) &&
+    (process.env.FACEBOOK_PAGE_ID || _dbCredentials?.FACEBOOK_PAGE_ID)
+  );
+}
+
+/**
+ * Invalidate the cached DB credentials so they're re-fetched on next use.
+ * Call this after saving credentials via the admin UI.
+ */
+export function invalidateMetaCredentialsCache(): void {
+  _dbCredentials = null;
+  _pageAccessToken = null;
+  _igBusinessAccountId = null;
 }
 
 // ===========================================
@@ -54,8 +111,8 @@ let _pageAccessToken: string | null = null;
 async function getPageAccessToken(): Promise<string> {
   if (_pageAccessToken) return _pageAccessToken;
 
-  const systemToken = getSystemUserToken();
-  const pageId = getFacebookPageId();
+  const systemToken = await getSystemUserToken();
+  const pageId = await getFacebookPageId();
 
   try {
     const response = await fetch(
@@ -85,8 +142,8 @@ let _igBusinessAccountId: string | null = null;
 async function getInstagramBusinessAccountId(): Promise<string | null> {
   if (_igBusinessAccountId) return _igBusinessAccountId;
 
-  const token = getSystemUserToken(); // System token works for IG
-  const pageId = getFacebookPageId();
+  const token = await getSystemUserToken(); // System token works for IG
+  const pageId = await getFacebookPageId();
 
   try {
     const response = await fetch(
@@ -124,7 +181,7 @@ export interface TokenInfo {
 }
 
 export async function validateToken(token?: string): Promise<TokenInfo> {
-  const tokenToCheck = token || getSystemUserToken();
+  const tokenToCheck = token || await getSystemUserToken();
   if (!tokenToCheck) {
     return {
       isValid: false,
@@ -164,9 +221,10 @@ export async function validateToken(token?: string): Promise<TokenInfo> {
 
     // 2. Try to access the Facebook Page
     let pageAccessible = false;
+    const fbPageId = await getFacebookPageId();
     try {
       const pageRes = await fetch(
-        `${META_GRAPH_API}/${getFacebookPageId()}?fields=id,name,access_token&access_token=${tokenToCheck}`
+        `${META_GRAPH_API}/${fbPageId}?fields=id,name,access_token&access_token=${tokenToCheck}`
       );
       const pageData = await pageRes.json();
       pageAccessible = !pageData.error && !!pageData.access_token;
@@ -181,7 +239,7 @@ export async function validateToken(token?: string): Promise<TokenInfo> {
     let igAccountAccessible = false;
     try {
       const igRes = await fetch(
-        `${META_GRAPH_API}/${getFacebookPageId()}?fields=instagram_business_account&access_token=${tokenToCheck}`
+        `${META_GRAPH_API}/${fbPageId}?fields=instagram_business_account&access_token=${tokenToCheck}`
       );
       const igData = await igRes.json();
       igAccountAccessible = !igData.error && !!igData.instagram_business_account?.id;
@@ -198,10 +256,12 @@ export async function validateToken(token?: string): Promise<TokenInfo> {
     let expiresAt: number | null = null;
     let tokenType = "system_user";
 
-    if (getAppId() && getAppSecret()) {
+    const appIdValue = await getAppId();
+    const appSecretValue = await getAppSecret();
+    if (appIdValue && appSecretValue) {
       try {
         const debugRes = await fetch(
-          `${META_GRAPH_API}/debug_token?input_token=${tokenToCheck}&access_token=${getAppId()}|${getAppSecret()}`
+          `${META_GRAPH_API}/debug_token?input_token=${tokenToCheck}&access_token=${appIdValue}|${appSecretValue}`
         );
         const debugData = await debugRes.json();
         if (!debugData.error && debugData.data) {
@@ -271,7 +331,7 @@ export async function postToFacebook(
   }
 
   const pageToken = await getPageAccessToken();
-  const pageId = getFacebookPageId();
+  const pageId = await getFacebookPageId();
 
   try {
     // Strategy 1: Link post via /feed endpoint
@@ -382,7 +442,7 @@ export async function postToInstagram(
   }
 
   // Use system user token for IG operations (tested and works)
-  const token = getSystemUserToken();
+  const token = await getSystemUserToken();
 
   try {
     // Step 1: Create media container
@@ -523,7 +583,7 @@ export async function deleteFacebookPost(postId: string): Promise<boolean> {
  */
 export async function deleteInstagramPost(mediaId: string): Promise<boolean> {
   try {
-    const token = getSystemUserToken();
+    const token = await getSystemUserToken();
     const response = await fetch(
       `${META_GRAPH_API}/${mediaId}?access_token=${token}`,
       { method: "DELETE" }
@@ -573,7 +633,7 @@ export async function getFacebookPostMetrics(postId: string): Promise<PostMetric
 
 export async function getInstagramPostMetrics(mediaId: string): Promise<PostMetrics | null> {
   try {
-    const token = getSystemUserToken();
+    const token = await getSystemUserToken();
     const response = await fetch(
       `${META_GRAPH_API}/${mediaId}?fields=like_count,comments_count&access_token=${token}`
     );
