@@ -27,6 +27,7 @@ import {
   Save,
   Eye,
   EyeOff,
+  Video,
 } from "lucide-react";
 
 // ===========================================
@@ -45,7 +46,7 @@ interface QueueSummary {
 
 interface QueueItem {
   id: string;
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video";
   sourceId: string;
   artistId: string | null;
   releaseId: string | null;
@@ -66,7 +67,7 @@ interface PostLog {
   id: string;
   queueId: string;
   platform: "facebook" | "instagram" | "tiktok";
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video";
   sourceId: string;
   imageUrl: string;
   caption: string | null;
@@ -104,6 +105,7 @@ interface ContentCounts {
   releases: number;
   artists: number;
   curatedTracks: number;
+  verticalVideos: number;
 }
 
 interface CredentialInfo {
@@ -155,6 +157,7 @@ const contentTypeLabels: Record<string, string> = {
   spotify_track: "Lanzamiento",
   artist_profile: "Perfil de Artista",
   curated_track: "Track Curado",
+  vertical_video: "Reel / Video",
 };
 
 const contentTypeIcons: Record<string, typeof ImageIcon> = {
@@ -162,6 +165,7 @@ const contentTypeIcons: Record<string, typeof ImageIcon> = {
   spotify_track: Music,
   artist_profile: Users,
   curated_track: Disc3,
+  vertical_video: Video,
 };
 
 const platformLabels: Record<string, string> = {
@@ -243,6 +247,7 @@ export default function AdminSocialPage() {
     includeReleases: true,
     includeArtists: true,
     includeCuratedTracks: true,
+    includeVerticalVideos: true,
     platforms: ["facebook", "instagram", "tiktok"],
   });
 
@@ -331,6 +336,7 @@ export default function AdminSocialPage() {
             includeReleases: populateOptions.includeReleases,
             includeArtists: populateOptions.includeArtists,
             includeCuratedTracks: populateOptions.includeCuratedTracks,
+            includeVerticalVideos: populateOptions.includeVerticalVideos,
             platforms: populateOptions.platforms,
           },
         }),
@@ -999,6 +1005,20 @@ export default function AdminSocialPage() {
                 <div>
                   <p className="text-sm font-medium">Tracks Curados</p>
                   <p className="text-xs text-slc-muted">{contentCounts?.curatedTracks || 0} tracks</p>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2 p-3 bg-slc-dark rounded-lg cursor-pointer hover:bg-slc-dark/80 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={populateOptions.includeVerticalVideos}
+                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeVerticalVideos: e.target.checked }))}
+                  className="rounded border-slc-border"
+                />
+                <Video className="w-4 h-4 text-red-400" />
+                <div>
+                  <p className="text-sm font-medium">Reels / Videos</p>
+                  <p className="text-xs text-slc-muted">{contentCounts?.verticalVideos || 0} videos</p>
                 </div>
               </label>
             </div>

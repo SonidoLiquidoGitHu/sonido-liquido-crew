@@ -862,7 +862,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
 // ===========================================
 
 export interface CaptionContext {
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video";
   artistName?: string;
   artistRole?: string;
   releaseTitle?: string;
@@ -874,6 +874,8 @@ export interface CaptionContext {
   spotifyUrl?: string;
   trackName?: string;
   albumName?: string;
+  videoTitle?: string;
+  videoPlatform?: string;
 }
 
 /**
@@ -957,6 +959,26 @@ export function generateCaption(ctx: CaptionContext): string {
         `Escucha: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
         "",
         hashtags,
+      ].join("\n");
+    }
+
+    case "vertical_video": {
+      const artistLine = ctx.artistName || "Sonido Liquido Crew";
+      const titleLine = ctx.videoTitle ? `${ctx.videoTitle}` : "Video exclusivo";
+      const platformLabel = ctx.videoPlatform === "tiktok" ? "TikTok"
+        : ctx.videoPlatform === "youtube" ? "YouTube"
+        : ctx.videoPlatform === "instagram" ? "Instagram"
+        : "";
+
+      return [
+        `${artistLine} — ${titleLine}`,
+        "",
+        platformLabel ? `Mira el video completo en ${platformLabel}` : "Mira el video completo",
+        "",
+        `Mas contenido: ${ctx.linkUrl || `${siteUrl}/reels`}`,
+        "",
+        hashtags,
+        "#Reels #Shorts #VideoMusical",
       ].join("\n");
     }
 

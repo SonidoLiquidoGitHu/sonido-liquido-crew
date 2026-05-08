@@ -15,6 +15,7 @@ import {
   galleryPhotos,
   curatedTracks,
   curatedSpotifyChannels,
+  verticalVideos,
 } from "@/db/schema";
 import { eq, desc, sql as drizzleSql, and, count, isNotNull } from "drizzle-orm";
 import {
@@ -248,6 +249,7 @@ async function handlePopulate(options: {
   includeReleases?: boolean;
   includeArtists?: boolean;
   includeCuratedTracks?: boolean;
+  includeVerticalVideos?: boolean;
   platforms?: string[];
 }) {
   try {
@@ -256,6 +258,7 @@ async function handlePopulate(options: {
       includeReleases = true,
       includeArtists = true,
       includeCuratedTracks = true,
+      includeVerticalVideos = true,
       platforms,
     } = options;
 
@@ -276,6 +279,7 @@ async function handlePopulate(options: {
     let releasesCount = 0;
     let artistsCount = 0;
     let curatedCount = 0;
+    let reelsCount = 0;
 
     // ========================================
     // 1. Gallery Photos
@@ -530,9 +534,84 @@ async function handlePopulate(options: {
     }
 
     // ========================================
+    // 5. Vertical Videos (Reels / Shorts)
+    // ========================================
+    if (includeVerticalVideos) {
+      console.log("[Social API Populate] Processing vertical videos (reels)...");
+
+      try {
+        const videos = await db
+          .select({
+            id: verticalVideos.id,
+            title: verticalVideos.title,
+            thumbnailUrl: verticalVideos.thumbnailUrl,
+            videoUrl: verticalVideos.videoUrl,
+            artistId: verticalVideos.artistId,
+            platform: verticalVideos.platform,
+            platformUrl: verticalVideos.platformUrl,
+          })
+          .from(verticalVideos)
+          .where(eq(verticalVideos.isPublished, true))
+          .orderBy(verticalVideos.displayOrder);
+
+        // Get artist names (reuse the allArtists map if available, otherwise fetch)
+        const allArtistsVV = await db.select({
+          id: artists.id,
+          name: artists.name,
+          slug: artists.slug,
+          role: artists.role,
+        }).from(artists).where(eq(artists.isActive, true));
+        const artistMapVV = new Map(allArtistsVV.map((a) => [a.id, a]));
+
+        for (const video of videos) {
+          // Use thumbnail as the image for social post; skip if no thumbnail
+          const imageUrl = video.thumbnailUrl;
+          if (!imageUrl) continue;
+
+          const key = `vertical_video:${video.id}`;
+          if (existingSourceIds.has(key)) continue;
+
+          const artist = video.artistId ? artistMapVV.get(video.artistId) : null;
+          const caption = generateCaption({
+            contentType: "vertical_video",
+            artistName: artist?.name,
+            videoTitle: video.title || undefined,
+            videoPlatform: video.platform || undefined,
+            linkUrl: artist
+              ? `${SITE_URL}/artistas/${artist.slug}`
+              : `${SITE_URL}/reels`,
+          });
+
+          await db.insert(socialPostQueue).values({
+            id: crypto.randomUUID(),
+            contentType: "vertical_video",
+            sourceId: video.id,
+            artistId: video.artistId || null,
+            releaseId: null,
+            imageUrl,
+            caption,
+            linkUrl: artist
+              ? `${SITE_URL}/artistas/${artist.slug}`
+              : video.platformUrl || `${SITE_URL}/reels`,
+            queueOrder: queueOrder++,
+            cycleNumber: 1,
+            status: "pending",
+            platforms: platformsJson,
+            postedPlatforms: "[]",
+          });
+
+          existingSourceIds.add(key);
+          reelsCount++;
+        }
+      } catch (err) {
+        console.warn("[Social API Populate] Vertical videos table may not exist yet:", err);
+      }
+    }
+
+    // ========================================
     // Summary
     // ========================================
-    const totalAdded = galleryCount + releasesCount + artistsCount + curatedCount;
+    const totalAdded = galleryCount + releasesCount + artistsCount + curatedCount + reelsCount;
     console.log(`[Social API Populate] Complete! Added ${totalAdded} new items`);
 
     return NextResponse.json({
@@ -543,6 +622,7 @@ async function handlePopulate(options: {
         releases: releasesCount,
         artistProfiles: artistsCount,
         curatedTracks: curatedCount,
+        verticalVideos: reelsCount,
         totalAdded,
         platforms: targetPlatforms,
       },
@@ -720,11 +800,23 @@ async function getContentCounts() {
       // Table may not exist yet
     }
 
+    let verticalVideosCount = 0;
+    try {
+      const vvCount = await db
+        .select({ count: count() })
+        .from(verticalVideos)
+        .where(eq(verticalVideos.isPublished, true));
+      verticalVideosCount = vvCount[0]?.count || 0;
+    } catch {
+      // Table may not exist yet
+    }
+
     return {
       galleryPhotos: galleryCount[0]?.count || 0,
       releases: releasesCount[0]?.count || 0,
       artists: artistsCount[0]?.count || 0,
       curatedTracks: curatedTracksCount,
+      verticalVideos: verticalVideosCount,
     };
   } catch (error) {
     console.warn("[Social API] Error getting content counts:", error);
@@ -733,6 +825,7 @@ async function getContentCounts() {
       releases: 0,
       artists: 0,
       curatedTracks: 0,
+      verticalVideos: 0,
     };
   }
 }
