@@ -1,6 +1,8 @@
 import { Suspense } from "react";
-import { Smartphone } from "lucide-react";
+import Link from "next/link";
+import { Smartphone, PlayCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { verticalVideos, verticalVideoTags, tags, artists } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -94,6 +96,19 @@ export default async function ReelsPage() {
             Videos verticales, Reels, TikToks y YouTube Shorts
           </p>
           <div className="section-divider" />
+
+          {/* Immersive feed CTA */}
+          {videos.length > 0 && (
+            <div className="mt-6">
+              <Button asChild size="lg" className="gap-2">
+                <Link href="/reels/feed">
+                  <PlayCircle className="w-5 h-5" />
+                  Modo Inmersivo
+                </Link>
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">Desliza como en TikTok</p>
+            </div>
+          )}
         </div>
 
         {/* Videos Grid */}

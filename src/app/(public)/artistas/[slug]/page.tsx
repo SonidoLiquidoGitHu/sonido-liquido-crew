@@ -10,6 +10,7 @@ import { InstagramEmbed } from "@/components/public/embeds/InstagramEmbed";
 import { ArtistYouTubeSection } from "@/components/public/ArtistYouTubeSection";
 import { ArtistUpcomingReleases } from "@/components/public/ArtistUpcomingReleases";
 import { ArtistGallerySection } from "@/components/public/sections/ArtistGallerySection";
+import { ArtistReelsSection } from "@/components/public/sections/ArtistReelsSection";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -269,6 +270,15 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
               postsToShow={6}
             />
           </section>
+        )}
+
+        {/* Artist Reels / Vertical Videos */}
+        {artist?.id && (
+          <ArtistReelsSection
+            artistId={artist.id}
+            artistSlug={slug}
+            artistName={artistName}
+          />
         )}
 
         {/* YouTube Videos Section */}

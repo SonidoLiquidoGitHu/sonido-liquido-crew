@@ -5,6 +5,7 @@ import {
   MarqueeBanner,
   FeaturedArtists,
   UpcomingReleasesHero,
+  ReelsStoriesBar,
 } from "@/components/public";
 import {
   LazySection,
@@ -22,8 +23,8 @@ import {
   beatsService,
 } from "@/lib/services";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { upcomingReleases, releaseArtists, artists, releases as releasesTable } from "@/db/schema";
-import { eq, and, gte, inArray, like } from "drizzle-orm";
+import { upcomingReleases, releaseArtists, artists, releases as releasesTable, verticalVideos } from "@/db/schema";
+import { eq, and, gte, inArray, like, desc } from "drizzle-orm";
 
 // ===========================================
 // PERFORMANCE: Lazy load below-the-fold sections
@@ -160,12 +161,30 @@ export default async function HomePage() {
     upcomingEvents,
     pastEvents,
     featuredBeats,
+    featuredReels,
   ] = await Promise.all([
     safeFetch(releasesService.getLatest(10), []),
     safeFetch(videosService.getFeatured(4), []),
     safeFetch(eventsService.getUpcoming(20), []),
     safeFetch(eventsService.getPast(100), []),
     safeFetch(beatsService.getFeatured(5), []),
+    safeFetch(
+      db.select({
+        id: verticalVideos.id,
+        title: verticalVideos.title,
+        thumbnailUrl: verticalVideos.thumbnailUrl,
+        platform: verticalVideos.platform,
+        isFeatured: verticalVideos.isFeatured,
+        artistName: artists.name,
+        artistSlug: artists.slug,
+      })
+      .from(verticalVideos)
+      .leftJoin(artists, eq(verticalVideos.artistId, artists.id))
+      .where(eq(verticalVideos.isPublished, true))
+      .orderBy(desc(verticalVideos.isFeatured), desc(verticalVideos.createdAt))
+      .limit(15),
+      []
+    ),
   ]);
 
   // Enrich releases with artist info (same pattern as discografia page)
@@ -231,6 +250,15 @@ export default async function HomePage() {
         <HeroSection />
         <MarqueeBanner />
       </section>
+
+      {/* ===========================================
+          2b. STORIES BAR - Reels (Instagram-style)
+          =========================================== */}
+      {featuredReels.length > 0 && (
+        <section id="reels-stories">
+          <ReelsStoriesBar videos={featuredReels} />
+        </section>
+      )}
 
       {/* ===========================================
           3. FEATURED ARTISTS (pop-art grid)

@@ -25,6 +25,8 @@ export { RosterSocials } from "./sections/RosterSocials";
 export { GallerySection } from "./sections/GallerySection";
 export { VerticalVideoSection } from "./sections/VerticalVideoSection";
 export { RandomVideoCarousel } from "./sections/RandomVideoCarousel";
+export { ReelsStoriesBar } from "./sections/ReelsStoriesBar";
+export { ArtistReelsSection } from "./sections/ArtistReelsSection";
 
 // Visual Effects
 export * from "./effects";

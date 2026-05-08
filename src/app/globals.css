@@ -418,6 +418,21 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Story ring pulse animation */
+  @keyframes storyPulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(249, 115, 22, 0);
+    }
+  }
+
+  .animate-story-pulse {
+    animation: storyPulse 2s ease-in-out infinite;
+    border-radius: 9999px;
+  }
 }
 
 /* ================================
