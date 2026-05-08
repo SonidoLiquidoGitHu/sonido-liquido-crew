@@ -9,11 +9,18 @@ const ALLOWED_HOSTS = [
   "dl.dropboxusercontent.com",
   "dropboxusercontent.com",
   "www.dropbox.com",
+  "dropbox.com",
   "ucarecdn.com",
   "images.unsplash.com",
   "i.ytimg.com",
   "img.youtube.com",
+  "yt3.ggpht.com",
+  "yt3.googleusercontent.com",
   "f4.bcbits.com",
+  "i.scdn.co",
+  "mosaic.scdn.co",
+  "image-cdn-fa.spotifycdn.com",
+  "image-cdn-ak.spotifycdn.com",
 ];
 
 const TIMEOUT_MS = 10000; // 10s timeout for upstream fetch

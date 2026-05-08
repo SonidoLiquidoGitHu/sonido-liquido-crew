@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Share2,
@@ -116,6 +115,40 @@ interface CredentialInfo {
 // ===========================================
 // HELPERS
 // ===========================================
+
+// ===========================================
+// IMAGE URL HELPER
+// ===========================================
+
+/**
+ * Route image URLs through the image proxy for mobile compatibility.
+ * Dropbox URLs return content-type: application/json which mobile Safari rejects.
+ * The proxy re-serves images with the correct MIME type.
+ */
+function getProxiedImageUrl(url: string): string {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    // Route Dropbox and other problematic hosts through the proxy
+    const needsProxy = [
+      "dl.dropboxusercontent.com",
+      "dropboxusercontent.com",
+      "www.dropbox.com",
+      "dropbox.com",
+      "ucarecdn.com",
+    ].some(
+      (host) =>
+        parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+    );
+    if (needsProxy) {
+      return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+    }
+    // Spotify CDN, YouTube, etc. work fine directly
+    return url;
+  } catch {
+    return url;
+  }
+}
 
 const contentTypeLabels: Record<string, string> = {
   gallery_photo: "Foto de Galería",
@@ -729,40 +762,48 @@ export default function AdminSocialPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-4 p-4 bg-slc-card border border-slc-border rounded-lg hover:border-primary/30 transition-colors"
+                  className="flex items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-slc-card border border-slc-border rounded-lg hover:border-primary/30 transition-colors"
                 >
                   {/* Order indicator */}
-                  <div className="text-lg font-oswald text-slc-muted w-8 text-center">
+                  <div className="text-lg font-oswald text-slc-muted w-6 sm:w-8 text-center flex-shrink-0">
                     #{item.queueOrder}
                   </div>
 
                   {/* Thumbnail */}
-                  <div className="w-16 h-16 relative rounded-lg overflow-hidden flex-shrink-0 bg-slc-dark">
-                    <Image
-                      src={item.imageUrl}
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 relative rounded-lg overflow-hidden flex-shrink-0 bg-slc-dark">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getProxiedImageUrl(item.imageUrl)}
                       alt={truncate(item.caption, 50)}
-                      fill
-                      className="object-cover"
-                      unoptimized
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        // Fallback: try original URL if proxy fails
+                        const img = e.currentTarget;
+                        if (!img.dataset.retried) {
+                          img.dataset.retried = 'true';
+                          img.src = item.imageUrl;
+                        }
+                      }}
                     />
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <IconComp className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+                      <IconComp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                      <span className="text-xs sm:text-sm font-medium">
                         {contentTypeLabels[item.contentType] || item.contentType}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[item.status]}`}>
+                      <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${statusColors[item.status]}`}>
                         {item.status}
                       </span>
-                      <span className="text-xs text-slc-muted">Ciclo {item.cycleNumber}</span>
+                      <span className="text-[10px] sm:text-xs text-slc-muted">Ciclo {item.cycleNumber}</span>
                     </div>
-                    <p className="text-sm text-slc-muted truncate">
-                      {truncate(item.caption, 120)}
+                    <p className="text-xs sm:text-sm text-slc-muted truncate">
+                      {truncate(item.caption, 80)}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mt-1 flex-wrap">
                       {platforms.map((p) => {
                         const PIcon = platformIcons[p] || Music;
                         return (
@@ -787,11 +828,16 @@ export default function AdminSocialPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                     {index === 0 && (
-                      <Button size="sm" onClick={processNext} disabled={processing}>
+                      <Button size="sm" onClick={processNext} disabled={processing} className="hidden sm:inline-flex">
                         <Play className="w-3 h-3 mr-1" />
                         Publicar
+                      </Button>
+                    )}
+                    {index === 0 && (
+                      <Button size="sm" onClick={processNext} disabled={processing} className="sm:hidden">
+                        <Play className="w-3 h-3" />
                       </Button>
                     )}
                     <Button
@@ -822,10 +868,10 @@ export default function AdminSocialPage() {
             recentLogs.map((log) => (
               <div
                 key={log.id}
-                className="flex items-center gap-4 p-3 bg-slc-card border border-slc-border rounded-lg"
+                className="flex items-start sm:items-center gap-3 p-3 bg-slc-card border border-slc-border rounded-lg"
               >
                 {/* Platform icon */}
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slc-dark">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slc-dark flex-shrink-0">
                   {log.platform === "facebook" ? (
                     <Facebook className="w-4 h-4 text-blue-400" />
                   ) : log.platform === "instagram" ? (
@@ -837,27 +883,27 @@ export default function AdminSocialPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 flex-wrap">
+                    <span className="text-xs sm:text-sm font-medium">
                       {contentTypeLabels[log.contentType] || log.contentType}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${logStatusColors[log.status]}`}>
+                    <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${logStatusColors[log.status]}`}>
                       {log.status}
                     </span>
-                    <span className="text-xs text-slc-muted">
+                    <span className="text-[10px] sm:text-xs text-slc-muted">
                       {platformLabels[log.platform] || log.platform}
                     </span>
                   </div>
                   <p className="text-xs text-slc-muted truncate">
-                    {truncate(log.caption, 100)}
+                    {truncate(log.caption, 80)}
                   </p>
                   {log.errorMessage && (
                     <p className="text-xs text-red-400 truncate mt-0.5">{log.errorMessage}</p>
                   )}
                 </div>
 
-                {/* Metrics */}
-                <div className="flex items-center gap-4 text-xs text-slc-muted">
+                {/* Metrics - hide on very small screens */}
+                <div className="hidden sm:flex items-center gap-4 text-xs text-slc-muted">
                   {log.likes > 0 && <span>❤ {log.likes}</span>}
                   {log.comments > 0 && <span>💬 {log.comments}</span>}
                   {log.shares > 0 && <span>🔄 {log.shares}</span>}
@@ -1438,7 +1484,7 @@ function CredentialInput({
       {/* Display current value (masked or shown) */}
       {hasValue && !isEditing && (
         <p className="text-xs font-mono text-slc-muted break-all">
-          {showValue ? maskedValue : maskedValue}
+          {showValue ? maskedValue : "••••••••••••"}
         </p>
       )}
 
