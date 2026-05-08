@@ -23,6 +23,74 @@ import {
 } from "lucide-react";
 import { uploadToDropboxDirect, type DropboxUploadProgress } from "@/lib/clients/dropbox-browser";
 
+// Extract a thumbnail frame from a video file using canvas
+async function extractVideoThumbnail(
+  file: File,
+  seekTime: number = 1.0
+): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.muted = true;
+    video.playsInline = true;
+    video.src = URL.createObjectURL(file);
+
+    const cleanup = () => {
+      URL.revokeObjectURL(video.src);
+      video.remove();
+    };
+
+    video.onloadedmetadata = () => {
+      // Seek to the desired time, but not beyond 80% of the video duration
+      const targetTime = Math.min(seekTime, video.duration * 0.8);
+      video.currentTime = targetTime;
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        // Use video dimensions but cap at reasonable thumbnail size
+        const maxDim = 720;
+        const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          cleanup();
+          resolve(null);
+          return;
+        }
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => {
+            cleanup();
+            canvas.remove();
+            resolve(blob);
+          },
+          "image/jpeg",
+          0.85
+        );
+      } catch {
+        cleanup();
+        resolve(null);
+      }
+    };
+
+    video.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    // Timeout in case seeking takes too long
+    setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 10000);
+  });
+}
+
 // TikTok icon (custom)
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -243,12 +311,17 @@ export function VideoUploader({
     setError(null);
 
     try {
-      // Detect orientation BEFORE upload (so we can show it while uploading)
+      // Detect orientation AND extract thumbnail in parallel with upload
       let detectedOrientation: VideoOrientation = "unknown";
+      let thumbnailBlob: Blob | null = null;
+
       try {
         const video = document.createElement("video");
-        video.preload = "metadata";
+        video.preload = "auto";
+        video.muted = true;
+        video.playsInline = true;
         video.src = URL.createObjectURL(file);
+
         await new Promise<void>((resolve) => {
           video.onloadedmetadata = () => {
             if (video.videoWidth > video.videoHeight) {
@@ -258,44 +331,103 @@ export function VideoUploader({
             } else {
               detectedOrientation = "square";
             }
-            URL.revokeObjectURL(video.src);
-            resolve();
+
+            // Seek to 1 second to capture a good frame
+            const targetTime = Math.min(1.0, video.duration * 0.25);
+            video.currentTime = targetTime;
           };
+
+          video.onseeked = () => {
+            // Capture thumbnail frame from canvas
+            try {
+              const canvas = document.createElement("canvas");
+              const maxDim = 720;
+              const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+              canvas.width = Math.round(video.videoWidth * scale);
+              canvas.height = Math.round(video.videoHeight * scale);
+
+              const ctx = canvas.getContext("2d");
+              if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(
+                  (blob) => {
+                    thumbnailBlob = blob;
+                    canvas.remove();
+                    URL.revokeObjectURL(video.src);
+                    video.remove();
+                    resolve();
+                  },
+                  "image/jpeg",
+                  0.85
+                );
+              } else {
+                URL.revokeObjectURL(video.src);
+                video.remove();
+                resolve();
+              }
+            } catch {
+              URL.revokeObjectURL(video.src);
+              video.remove();
+              resolve();
+            }
+          };
+
           video.onerror = () => {
             URL.revokeObjectURL(video.src);
+            video.remove();
             resolve();
           };
-          // Timeout in case metadata never loads
+
+          // Timeout in case metadata/seek never completes
           setTimeout(() => {
             URL.revokeObjectURL(video.src);
+            video.remove();
             resolve();
-          }, 5000);
+          }, 15000);
         });
       } catch (e) {
-        console.error("Error detecting video orientation:", e);
+        console.error("Error detecting video orientation / extracting thumbnail:", e);
       }
 
       // Format file size for display
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
       setUploadStatus(`Subiendo video (${fileSizeMB} MB)...`);
 
-      // Use DIRECT browser upload to Dropbox (bypasses serverless timeout)
-      const result = await uploadToDropboxDirect(
+      // Start video upload to Dropbox
+      const videoUploadPromise = uploadToDropboxDirect(
         file,
         folder,
         (progress: DropboxUploadProgress) => {
-          setUploadProgress(progress.percent);
+          // Show video upload as 80% of total progress
+          const totalProgress = Math.round(progress.percent * 0.8);
+          setUploadProgress(totalProgress);
           if (progress.percent < 30) {
-            setUploadStatus(`Preparando video (${fileSizeMB} MB)...`);
+            setUploadStatus(`Subiendo video (${fileSizeMB} MB)...`);
           } else if (progress.percent < 80) {
             setUploadStatus(`Subiendo a Dropbox (${progress.percent}%)...`);
           } else if (progress.percent < 100) {
             setUploadStatus("Creando enlace compartido...");
-          } else {
-            setUploadStatus("¡Completado!");
           }
         }
       );
+
+      // Upload thumbnail in parallel if we captured one
+      const thumbnailUploadPromise = thumbnailBlob
+        ? uploadToDropboxDirect(
+            new File([thumbnailBlob], "thumbnail.jpg", { type: "image/jpeg" }),
+            `${folder}/thumbnails`,
+            undefined
+          ).catch((err) => {
+            console.warn("Thumbnail upload failed, continuing without it:", err);
+            return null;
+          })
+        : Promise.resolve(null);
+
+      // Wait for both uploads
+      const [result, thumbnailResult] = await Promise.all([
+        videoUploadPromise,
+        thumbnailUploadPromise,
+      ]);
 
       if (!result.success) {
         throw new Error(result.error || "Error al subir video");
@@ -305,12 +437,15 @@ export function VideoUploader({
         throw new Error("No se pudo obtener el enlace del video");
       }
 
+      const thumbnailUrl = thumbnailResult?.success ? thumbnailResult.url : undefined;
+
       setUploadProgress(100);
       setUploadStatus("¡Video subido exitosamente!");
 
       onChange({
         source: "upload",
         url: result.url,
+        thumbnailUrl,
         platform: "Dropbox",
         orientation: detectedOrientation,
         title: file.name.replace(/\.[^/.]+$/, ""),

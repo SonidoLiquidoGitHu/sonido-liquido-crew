@@ -784,14 +784,22 @@ export default function AdminSocialPage() {
                       className="w-full h-full object-cover"
                       loading="lazy"
                       onError={(e) => {
-                        // Fallback: try original URL if proxy fails
+                        // Fallback: try original URL if proxy fails, then show icon
                         const img = e.currentTarget;
                         if (!img.dataset.retried) {
                           img.dataset.retried = 'true';
                           img.src = item.imageUrl;
+                        } else {
+                          // Both proxy and original failed — hide img and show icon
+                          img.style.display = 'none';
+                          const sibling = img.nextElementSibling as HTMLElement;
+                          if (sibling) sibling.style.display = 'flex';
                         }
                       }}
                     />
+                    <div className="absolute inset-0 items-center justify-center hidden" style={{ display: 'none' }}>
+                      <IconComp className="w-6 h-6 text-slc-muted" />
+                    </div>
                   </div>
 
                   {/* Info */}

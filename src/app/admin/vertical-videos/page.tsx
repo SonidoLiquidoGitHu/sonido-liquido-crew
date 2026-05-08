@@ -27,6 +27,7 @@ import {
   Play,
   Video,
   Pencil,
+  ImageIcon,
   Save,
   Link as LinkIcon,
 } from "lucide-react";
@@ -82,6 +83,7 @@ export default function AdminVerticalVideosPage() {
   const [uploadArtistId, setUploadArtistId] = useState("");
   const [uploadTagIds, setUploadTagIds] = useState<string[]>([]);
   const [uploadIsFeatured, setUploadIsFeatured] = useState(false);
+  const [uploadThumbnailUrl, setUploadThumbnailUrl] = useState("");
 
   // Edit modal state
   const [editingVideo, setEditingVideo] = useState<VerticalVideo | null>(null);
@@ -92,6 +94,7 @@ export default function AdminVerticalVideosPage() {
     isFeatured: false,
     isPublished: true,
     tagIds: [] as string[],
+    thumbnailUrl: "",
   });
 
   // Share modal state
@@ -241,7 +244,7 @@ export default function AdminVerticalVideosPage() {
           title: uploadTitle || uploadVideoInfo.title || null,
           description: uploadDescription || null,
           videoUrl: uploadVideoInfo.url,
-          thumbnailUrl: uploadVideoInfo.thumbnailUrl || null,
+          thumbnailUrl: uploadThumbnailUrl || uploadVideoInfo.thumbnailUrl || null,
           platform: uploadVideoInfo.platform || parsed?.platform?.toLowerCase() || null,
           platformUrl: uploadVideoInfo.url,
           embedUrl: uploadVideoInfo.embedUrl || parsed?.embedUrl || null,
@@ -275,6 +278,7 @@ export default function AdminVerticalVideosPage() {
     setUploadArtistId("");
     setUploadTagIds([]);
     setUploadIsFeatured(false);
+    setUploadThumbnailUrl("");
   };
 
   // Open edit modal
@@ -287,6 +291,7 @@ export default function AdminVerticalVideosPage() {
       isFeatured: video.isFeatured,
       isPublished: video.isPublished,
       tagIds: video.tags.map((t) => t.id),
+      thumbnailUrl: video.thumbnailUrl || "",
     });
   };
 
@@ -306,6 +311,7 @@ export default function AdminVerticalVideosPage() {
           isFeatured: editForm.isFeatured,
           isPublished: editForm.isPublished,
           tagIds: editForm.tagIds,
+          ...(editForm.thumbnailUrl ? { thumbnailUrl: editForm.thumbnailUrl } : {}),
         }),
       });
       const data = await res.json();
@@ -703,6 +709,25 @@ export default function AdminVerticalVideosPage() {
                 </div>
               </div>
 
+              {/* Thumbnail URL override */}
+              <div>
+                <label className="block text-sm text-slc-muted mb-1.5 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  URL de miniatura (opcional)
+                </label>
+                <Input
+                  value={uploadThumbnailUrl}
+                  onChange={(e) => setUploadThumbnailUrl(e.target.value)}
+                  placeholder={uploadVideoInfo?.thumbnailUrl ? "Ya generada automáticamente" : "Se genera automáticamente al subir video"}
+                  className="text-sm"
+                />
+                {uploadVideoInfo?.thumbnailUrl && !uploadThumbnailUrl && (
+                  <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" /> Miniatura generada automáticamente
+                  </p>
+                )}
+              </div>
+
               {/* Featured toggle */}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -794,6 +819,34 @@ export default function AdminVerticalVideosPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+              {/* Thumbnail URL */}
+              <div>
+                <label className="block text-sm text-slc-muted mb-1.5 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  URL de miniatura
+                </label>
+                <Input
+                  value={editForm.thumbnailUrl}
+                  onChange={(e) => setEditForm({ ...editForm, thumbnailUrl: e.target.value })}
+                  placeholder="https://ejemplo.com/thumbnail.jpg"
+                  className="text-sm"
+                />
+                {!editForm.thumbnailUrl && editingVideo.thumbnailUrl && (
+                  <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Dejar vacío para mantener la miniatura actual
+                  </p>
+                )}
+                {editingVideo.thumbnailUrl && (
+                  <div className="mt-2 relative w-20 h-32 rounded overflow-hidden bg-black">
+                    <Image
+                      src={editingVideo.thumbnailUrl}
+                      alt="Miniatura actual"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">

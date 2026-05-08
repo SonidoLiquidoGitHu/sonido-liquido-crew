@@ -602,8 +602,13 @@ async function handlePopulate(options: {
             }
           }
 
-          // Skip if still no image available
-          if (!imageUrl) continue;
+          // Don't skip videos without thumbnails — include them in the queue
+          // For videos without thumbnails, use the video URL itself as imageUrl
+          // The admin UI handles broken images with a fallback icon
+          // When posting to Meta, the ensurePublicImageUrl will try its best
+          if (!imageUrl) {
+            imageUrl = video.videoUrl || `${SITE_URL}/reels`;
+          }
 
           const key = `vertical_video:${video.id}`;
           if (existingSourceIds.has(key)) continue;
