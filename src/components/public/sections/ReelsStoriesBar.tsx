@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -32,6 +38,20 @@ interface StoriesBarVideo {
 interface ReelsStoriesBarProps {
   videos: StoriesBarVideo[];
 }
+
+// ===========================================
+// CONSTANTS
+// ===========================================
+
+const SEEN_STORAGE_KEY = "slc-seen-reels";
+const AUTO_SCROLL_INTERVAL = 3000;
+const ENTRANCE_STAGGER_MS = 50;
+
+// Progress ring uses a 100×100 viewBox for scaling
+const RING_VIEWBOX = 100;
+const RING_STROKE = 3;
+const RING_RADIUS = (RING_VIEWBOX - RING_STROKE * 2) / 2;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS; // ≈ 295.3
 
 // ===========================================
 // PLATFORM ICON HELPER
@@ -74,29 +94,86 @@ function getPlaceholderGradient(platform: string | null): string {
 function StoryCircle({
   video,
   isNew,
+  isSeen,
+  index,
+  isVisible,
+  onMarkSeen,
 }: {
   video: StoriesBarVideo;
   isNew: boolean;
+  isSeen: boolean;
+  index: number;
+  isVisible: boolean;
+  onMarkSeen: (id: string) => void;
 }) {
-  const ringGradient = video.isFeatured
-    ? "from-yellow-400 via-orange-500 to-red-500"
-    : "from-primary via-purple-500 to-pink-500";
+  const [hovered, setHovered] = useState(false);
+
+  // Ring gradient: seen stories get gray, unseen keep colorful
+  const ringGradient = isSeen
+    ? "from-gray-500 via-gray-600 to-gray-700"
+    : video.isFeatured
+      ? "from-yellow-400 via-orange-500 to-red-500"
+      : "from-primary via-purple-500 to-pink-500";
 
   const href = `/reels/${video.id}`;
+
+  const handleClick = useCallback(() => {
+    onMarkSeen(video.id);
+  }, [onMarkSeen, video.id]);
 
   return (
     <Link
       href={href}
-      className="group flex flex-col items-center gap-1.5 shrink-0 w-[86px] sm:w-[96px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+      onClick={handleClick}
+      className={cn(
+        "group flex flex-col items-center gap-1.5 shrink-0 w-[86px] sm:w-[96px]",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg",
+        "snap-center scroll-mx-3 sm:scroll-mx-4"
+      )}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "scale(1)" : "scale(0.6)",
+        transition: `opacity 0.4s ease-out ${index * ENTRANCE_STAGGER_MS}ms, transform 0.4s ease-out ${index * ENTRANCE_STAGGER_MS}ms`,
+      }}
     >
       {/* Gradient Ring */}
       <div
         className={cn(
-          "relative rounded-full p-[3px] bg-gradient-to-br transition-transform duration-300 group-hover:scale-105",
+          "relative rounded-full p-[3px] bg-gradient-to-br transition-all duration-300 group-hover:scale-105",
           ringGradient,
-          isNew && "animate-story-pulse"
+          !isSeen && isNew && "animate-story-pulse"
         )}
       >
+        {/* Progress ring on hover — always in DOM, toggled via opacity + animation */}
+        <div
+          className={cn(
+            "absolute inset-0 z-10 pointer-events-none",
+            "transition-opacity duration-150",
+            hovered ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <svg
+            className="w-full h-full"
+            viewBox={`0 0 ${RING_VIEWBOX} ${RING_VIEWBOX}`}
+            style={{ transform: "rotate(-90deg)" }}
+          >
+            <circle
+              cx={RING_VIEWBOX / 2}
+              cy={RING_VIEWBOX / 2}
+              r={RING_RADIUS}
+              fill="none"
+              stroke="rgba(249, 115, 22, 0.85)"
+              strokeWidth={RING_STROKE}
+              strokeLinecap="round"
+              strokeDasharray={RING_CIRCUMFERENCE}
+              strokeDashoffset={RING_CIRCUMFERENCE}
+              className={cn(hovered && "animate-story-ring-fill")}
+            />
+          </svg>
+        </div>
+
         {/* Inner border (dark gap between gradient ring and thumbnail) */}
         <div className="rounded-full p-[2px] bg-slc-dark">
           {/* Thumbnail circle */}
@@ -111,14 +188,18 @@ function StoryCircle({
                 src={video.thumbnailUrl}
                 alt={video.title || video.artistName || "Reel"}
                 fill
-                className="object-cover"
+                className={cn(
+                  "object-cover transition-opacity duration-300",
+                  isSeen && "opacity-70 group-hover:opacity-100"
+                )}
                 sizes="86px"
               />
             ) : (
               <div
                 className={cn(
                   "w-full h-full flex items-center justify-center bg-gradient-to-br",
-                  getPlaceholderGradient(video.platform)
+                  getPlaceholderGradient(video.platform),
+                  isSeen && "opacity-60 group-hover:opacity-100 transition-opacity duration-300"
                 )}
               >
                 <PlatformIcon
@@ -140,7 +221,7 @@ function StoryCircle({
 
         {/* Featured star indicator */}
         {video.isFeatured && (
-          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg shadow-yellow-400/30">
+          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg shadow-yellow-400/30 z-20">
             <span className="text-[8px] sm:text-[9px] text-black font-bold">★</span>
           </div>
         )}
@@ -150,7 +231,11 @@ function StoryCircle({
       <span
         className={cn(
           "text-[10px] sm:text-xs text-center w-full truncate px-1",
-          video.isFeatured ? "text-yellow-300 font-medium" : "text-slc-muted group-hover:text-white transition-colors"
+          video.isFeatured && !isSeen
+            ? "text-yellow-300 font-medium"
+            : isSeen
+              ? "text-slc-muted/60 group-hover:text-slc-muted transition-colors"
+              : "text-slc-muted group-hover:text-white transition-colors"
         )}
       >
         {video.artistName || video.title || "Reel"}
@@ -165,17 +250,102 @@ function StoryCircle({
 
 export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
 
   // Determine which videos are "new" (featured ones, plus first 3)
-  const newVideoIds = new Set(
-    videos
-      .filter((v) => v.isFeatured)
-      .slice(0, 3)
-      .map((v) => v.id)
+  const newVideoIds = useMemo(
+    () =>
+      new Set(
+        videos
+          .filter((v) => v.isFeatured)
+          .slice(0, 3)
+          .map((v) => v.id)
+      ),
+    [videos]
   );
+
+  // ===========================================
+  // SEEN / UNSEEN STATE (localStorage)
+  // ===========================================
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SEEN_STORAGE_KEY);
+      if (raw) {
+        const parsed: string[] = JSON.parse(raw);
+        setSeenIds(new Set(parsed));
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  const markSeen = useCallback((id: string) => {
+    setSeenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify([...next]));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  }, []);
+
+  // ===========================================
+  // INTERSECTION OBSERVER (animated entrance)
+  // ===========================================
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // ===========================================
+  // AUTO-SCROLL (pauses on hover or drag)
+  // ===========================================
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    if (isHovering || isDragging) return;
+
+    const timer = setInterval(() => {
+      if (!container) return;
+
+      const itemWidth = 96;
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+
+      if (container.scrollLeft >= maxScrollLeft - 2) {
+        container.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        container.scrollBy({ left: itemWidth, behavior: "smooth" });
+      }
+    }, AUTO_SCROLL_INTERVAL);
+
+    return () => clearInterval(timer);
+  }, [isHovering, isDragging]);
 
   // ===========================================
   // DRAG SCROLL HANDLERS
@@ -206,23 +376,31 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
     setIsDragging(false);
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseEnterBar = useCallback(() => {
+    setIsHovering(true);
+  }, []);
+
+  const handleMouseLeaveBar = useCallback(() => {
     setIsDragging(false);
+    setIsHovering(false);
   }, []);
 
   // ===========================================
-  // TOUCH SCROLL (native behavior works, just need drag for desktop)
+  // RENDER
   // ===========================================
 
   if (videos.length === 0) return null;
 
   return (
-    <section className="relative py-6 sm:py-8 bg-gradient-to-b from-slc-black via-slc-darker to-slc-black overflow-hidden">
+    <section
+      ref={sectionRef}
+      className="relative py-6 sm:py-8 bg-gradient-to-b from-slc-black via-slc-darker to-slc-black overflow-hidden"
+    >
       {/* Subtle background radial glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(249,115,22,0.04)_0%,transparent_70%)] pointer-events-none" />
 
       <div className="section-container relative z-10">
-        {/* Header - glass-morphism style */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-5 sm:mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-full bg-primary/15 backdrop-blur-sm border border-primary/20">
@@ -251,37 +429,60 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
           </Button>
         </div>
 
-        {/* Stories bar - horizontal scroll */}
+        {/* Stories bar - horizontal scroll with snap */}
         <div
           ref={scrollRef}
           className={cn(
             "flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide pb-2",
-            "select-none",
+            "select-none snap-x snap-mandatory",
             isDragging ? "cursor-grabbing" : "cursor-grab"
           )}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
+          onMouseEnter={handleMouseEnterBar}
+          onMouseLeave={handleMouseLeaveBar}
         >
           {/* Story circles */}
-          {videos.map((video) => (
+          {videos.map((video, index) => (
             <StoryCircle
               key={video.id}
               video={video}
               isNew={newVideoIds.has(video.id)}
+              isSeen={seenIds.has(video.id)}
+              index={index}
+              isVisible={isVisible}
+              onMarkSeen={markSeen}
             />
           ))}
 
-          {/* "Ver todos" end card */}
+          {/* "Ver todos" end card — enhanced with gradient + pulse */}
           <Link
             href="/reels"
-            className="group flex flex-col items-center justify-center shrink-0 w-[72px] sm:w-[86px] gap-2"
+            className={cn(
+              "group flex flex-col items-center justify-center shrink-0 w-[86px] sm:w-[96px] gap-2",
+              "snap-center scroll-mx-3 sm:scroll-mx-4"
+            )}
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? "scale(1)" : "scale(0.6)",
+              transition: `opacity 0.4s ease-out ${videos.length * ENTRANCE_STAGGER_MS}ms, transform 0.4s ease-out ${videos.length * ENTRANCE_STAGGER_MS}ms`,
+            }}
           >
-            <div className="w-[72px] h-[72px] sm:w-[86px] sm:h-[86px] rounded-full border-2 border-dashed border-slc-border group-hover:border-primary/50 flex items-center justify-center bg-slc-card/50 transition-colors">
-              <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-slc-muted group-hover:text-primary transition-colors" />
+            <div
+              className={cn(
+                "relative w-[72px] h-[72px] sm:w-[86px] sm:h-[86px] rounded-full flex items-center justify-center overflow-hidden",
+                "bg-gradient-to-br from-primary/30 via-purple-500/20 to-pink-500/30",
+                "group-hover:from-primary/50 group-hover:via-purple-500/40 group-hover:to-pink-500/50",
+                "transition-all duration-300 group-hover:scale-105",
+                "animate-story-pulse"
+              )}
+            >
+              {/* Inner dashed ring */}
+              <div className="absolute inset-[3px] rounded-full border-2 border-dashed border-white/20 group-hover:border-primary/60 transition-colors" />
+              <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-white/70 group-hover:text-primary transition-colors relative z-10" />
             </div>
-            <span className="text-[10px] sm:text-xs text-slc-muted group-hover:text-white transition-colors text-center">
+            <span className="text-[10px] sm:text-xs text-slc-muted group-hover:text-white transition-colors text-center font-medium">
               Ver todos
             </span>
           </Link>

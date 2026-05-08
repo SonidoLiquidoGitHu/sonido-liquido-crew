@@ -23,6 +23,7 @@ import {
   Smartphone,
   Music,
   ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,59 @@ function formatViewCount(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
   return count.toString();
+}
+
+// ===========================================
+// CIRCULAR PROGRESS RING COMPONENT
+// (Feature #4: Video progress indicator)
+// ===========================================
+
+function CircularProgressRing({
+  progress,
+  size = 80,
+  strokeWidth = 3,
+  className,
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      className={className}
+      style={{ transform: "rotate(-90deg)" }}
+    >
+      {/* Background track */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="rgba(255,255,255,0.2)"
+        strokeWidth={strokeWidth}
+      />
+      {/* Progress arc */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="white"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        style={{ transition: "stroke-dashoffset 0.3s ease-linear" }}
+      />
+    </svg>
+  );
 }
 
 // ===========================================
@@ -326,6 +380,8 @@ function ShareModal({
 
 // ===========================================
 // VIDEO PLAYER COMPONENT
+// (Enhanced with: #4 progress ring, #5 auto-advance,
+//  #6 blurred thumbnail loading, #3 preload)
 // ===========================================
 
 function VideoPlayer({
@@ -335,6 +391,8 @@ function VideoPlayer({
   onToggleMute,
   onTogglePlay,
   isPlaying,
+  onVideoEnd,
+  onProgress,
 }: {
   video: ReelVideo;
   isVisible: boolean;
@@ -342,10 +400,13 @@ function VideoPlayer({
   onToggleMute: () => void;
   onTogglePlay: () => void;
   isPlaying: boolean;
+  onVideoEnd?: () => void;
+  onProgress?: (progress: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [showPlayIndicator, setShowPlayIndicator] = useState(false);
 
   // Autoplay / pause based on visibility
   useEffect(() => {
@@ -366,14 +427,22 @@ function VideoPlayer({
     el.muted = isMuted;
   }, [isMuted]);
 
-  // Progress tracking
+  // Reset loading when video changes
+  useEffect(() => {
+    setIsLoading(true);
+    setProgress(0);
+  }, [video.id]);
+
+  // Progress tracking & events
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
 
     const onTimeUpdate = () => {
       if (el.duration > 0) {
-        setProgress((el.currentTime / el.duration) * 100);
+        const p = (el.currentTime / el.duration) * 100;
+        setProgress(p);
+        onProgress?.(p);
       }
     };
 
@@ -381,18 +450,34 @@ function VideoPlayer({
     const onWaiting = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
 
+    // Feature #5: Auto-advance when video ends
+    const onEnded = () => {
+      onVideoEnd?.();
+    };
+
     el.addEventListener("timeupdate", onTimeUpdate);
     el.addEventListener("loadeddata", onLoadedData);
     el.addEventListener("waiting", onWaiting);
     el.addEventListener("canplay", onCanPlay);
+    el.addEventListener("ended", onEnded);
 
     return () => {
       el.removeEventListener("timeupdate", onTimeUpdate);
       el.removeEventListener("loadeddata", onLoadedData);
       el.removeEventListener("waiting", onWaiting);
       el.removeEventListener("canplay", onCanPlay);
+      el.removeEventListener("ended", onEnded);
     };
-  }, []);
+  }, [onVideoEnd, onProgress]);
+
+  // Show play/pause indicator briefly
+  useEffect(() => {
+    if (isVisible) {
+      setShowPlayIndicator(true);
+      const timer = setTimeout(() => setShowPlayIndicator(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isPlaying, isVisible]);
 
   // Handle Dropbox URLs — convert dl=0 to dl=1 for direct playback
   const videoSrc = (() => {
@@ -408,9 +493,22 @@ function VideoPlayer({
 
   return (
     <div className="relative w-full h-full">
-      {/* Loading spinner */}
+      {/* Feature #6: Blurred thumbnail background while loading */}
+      {isLoading && video.thumbnailUrl && (
+        <div
+          className="absolute inset-0 z-[5] scale-105"
+          style={{
+            backgroundImage: `url(${video.thumbnailUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(20px)",
+          }}
+        />
+      )}
+
+      {/* Loading spinner on top of blurred thumbnail */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/30">
+        <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
           <Loader2 className="w-10 h-10 text-white animate-spin" />
         </div>
       )}
@@ -421,13 +519,56 @@ function VideoPlayer({
         src={videoSrc}
         className="w-full h-full object-cover"
         playsInline
-        loop
         muted={isMuted}
-        preload="metadata"
+        preload="auto"
         poster={video.thumbnailUrl || undefined}
       />
 
-      {/* Progress bar */}
+      {/* Feature #4: Circular progress ring + play/pause indicator (center) */}
+      {isVisible && (showPlayIndicator || !isPlaying) && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+          <div className="relative w-20 h-20 flex items-center justify-center">
+            {/* Progress ring */}
+            <CircularProgressRing
+              progress={progress}
+              size={80}
+              strokeWidth={3}
+              className="absolute inset-0"
+            />
+            {/* Play/Pause icon */}
+            <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+              {isPlaying ? (
+                <Pause className="w-8 h-8 text-white" fill="white" />
+              ) : (
+                <Play className="w-8 h-8 text-white ml-1" fill="white" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feature #4: Progress ring always visible (small, top-right) when playing */}
+      {isVisible && isPlaying && !showPlayIndicator && (
+        <div className="absolute top-4 right-4 z-20 pointer-events-none">
+          <div className="relative w-8 h-8 flex items-center justify-center">
+            <CircularProgressRing
+              progress={progress}
+              size={32}
+              strokeWidth={2}
+              className="absolute inset-0"
+            />
+            <div className="w-5 h-5 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+              {isLoading ? (
+                <Loader2 className="w-3 h-3 text-white animate-spin" />
+              ) : (
+                <Pause className="w-2.5 h-2.5 text-white" fill="white" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress bar at bottom (kept from original) */}
       <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20 z-20">
         <div
           className="h-full bg-white transition-[width] duration-300 ease-linear"
@@ -477,6 +618,111 @@ function YouTubePlayer({
 }
 
 // ===========================================
+// NEXT VIDEO PREVIEW COMPONENT
+// (Feature #8: Pull-up next preview)
+// ===========================================
+
+function NextVideoPreview({
+  nextVideo,
+  onSwipeUp,
+}: {
+  nextVideo: ReelVideo | null;
+  onSwipeUp: () => void;
+}) {
+  if (!nextVideo) return null;
+
+  return (
+    <div className="absolute bottom-20 left-0 right-0 z-30 pointer-events-none">
+      <div
+        className="flex items-center gap-3 px-4 py-2 cursor-pointer pointer-events-auto"
+        onClick={onSwipeUp}
+      >
+        {/* Mini thumbnail */}
+        <div className="relative w-12 h-[4.5rem] rounded-lg overflow-hidden flex-shrink-0 border border-white/20">
+          {nextVideo.thumbnailUrl ? (
+            <img
+              src={nextVideo.thumbnailUrl}
+              alt={nextVideo.title || "Next video"}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-white/10 flex items-center justify-center">
+              <Play className="w-4 h-4 text-white/60" fill="white" />
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-white/60 text-[10px] uppercase tracking-wider font-medium flex items-center gap-1">
+            <ChevronUp className="w-3 h-3" />
+            Siguiente
+          </p>
+          <p className="text-white text-xs truncate mt-0.5">
+            {nextVideo.title || "Video"}
+          </p>
+          {nextVideo.artistName && (
+            <p className="text-white/50 text-[10px] truncate">
+              {nextVideo.artistName}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================
+// AUTO-ADVANCE COUNTDOWN INDICATOR
+// (Feature #5: Countdown indicator)
+// ===========================================
+
+function AutoAdvanceCountdown({
+  countdown,
+  onCancel,
+}: {
+  countdown: number | null;
+  onCancel: () => void;
+}) {
+  if (countdown === null) return null;
+
+  return (
+    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
+      <button
+        onClick={onCancel}
+        className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white text-sm hover:bg-black/80 transition-colors"
+      >
+        <span className="relative w-5 h-5">
+          <svg width="20" height="20" className="-rotate-90">
+            <circle
+              cx="10"
+              cy="10"
+              r="8"
+              fill="none"
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth="2"
+            />
+            <circle
+              cx="10"
+              cy="10"
+              r="8"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 8}`}
+              strokeDashoffset={`${2 * Math.PI * 8 * (1 - countdown / 1000)}`}
+              style={{ transition: "stroke-dashoffset 0.1s linear" }}
+            />
+          </svg>
+        </span>
+        <span>Siguiente en {Math.ceil(countdown / 1000)}s</span>
+      </button>
+    </div>
+  );
+}
+
+// ===========================================
 // SINGLE REEL ITEM
 // ===========================================
 
@@ -484,10 +730,14 @@ function ReelItem({
   video,
   isActive,
   onTrackView,
+  nextVideo,
+  onGoToNext,
 }: {
   video: ReelVideo;
   isActive: boolean;
   onTrackView: (id: string) => void;
+  nextVideo: ReelVideo | null;
+  onGoToNext: () => void;
 }) {
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -497,8 +747,12 @@ function ReelItem({
   >([]);
   const [showShare, setShowShare] = useState(false);
   const [viewTracked, setViewTracked] = useState(false);
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null);
   const lastTapRef = useRef<number>(0);
   const burstIdRef = useRef(0);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownStartRef = useRef<number>(0);
 
   const ytId = getYouTubeId(video);
   const isDirect = isDirectVideo(video);
@@ -518,6 +772,64 @@ function ReelItem({
     };
   }, []);
 
+  // Feature #5: Auto-advance when direct video ends
+  const handleVideoEnd = useCallback(() => {
+    if (!nextVideo) return; // Don't auto-advance if no next video
+
+    // Start 1-second countdown
+    countdownStartRef.current = Date.now();
+    setAutoAdvanceCountdown(1000);
+
+    countdownIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - countdownStartRef.current;
+      const remaining = 1000 - elapsed;
+      if (remaining <= 0) {
+        setAutoAdvanceCountdown(null);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        onGoToNext();
+      } else {
+        setAutoAdvanceCountdown(remaining);
+      }
+    }, 50);
+
+    autoAdvanceTimerRef.current = setTimeout(() => {
+      setAutoAdvanceCountdown(null);
+      onGoToNext();
+    }, 1000);
+  }, [nextVideo, onGoToNext]);
+
+  // Cancel auto-advance
+  const cancelAutoAdvance = useCallback(() => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setAutoAdvanceCountdown(null);
+  }, []);
+
+  // Clean up timers on unmount or when leaving
+  useEffect(() => {
+    if (!isActive) {
+      cancelAutoAdvance();
+    }
+    return () => {
+      cancelAutoAdvance();
+    };
+  }, [isActive, cancelAutoAdvance]);
+
+  // Reset playing state when becoming active again
+  useEffect(() => {
+    if (isActive) {
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(false);
+    }
+  }, [isActive]);
+
   // Track share
   const trackShare = useCallback(
     async (platform: string) => {
@@ -532,7 +844,7 @@ function ReelItem({
     [video.id]
   );
 
-  // Double-tap to like
+  // Double-tap to like (Feature #7: haptic feedback added)
   const handleTap = useCallback(
     (e: React.MouseEvent<HTMLDivElement> | ReactTouchEvent<HTMLDivElement>) => {
       const now = Date.now();
@@ -552,6 +864,14 @@ function ReelItem({
       if (now - lastTapRef.current < 300) {
         // Double tap — like
         setIsLiked(true);
+        // Feature #7: Haptic feedback on mobile
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          try {
+            navigator.vibrate(10);
+          } catch {
+            // Silently fail if vibration not supported
+          }
+        }
         const id = ++burstIdRef.current;
         setHeartBursts((prev) => [
           ...prev,
@@ -564,11 +884,13 @@ function ReelItem({
         // Single tap — toggle play (for direct videos only)
         if (isDirect) {
           setIsPlaying((prev) => !prev);
+          // Cancel auto-advance on user interaction
+          cancelAutoAdvance();
         }
       }
       lastTapRef.current = now;
     },
-    [isDirect]
+    [isDirect, cancelAutoAdvance]
   );
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
@@ -578,7 +900,8 @@ function ReelItem({
 
   const togglePlay = useCallback(() => {
     setIsPlaying((prev) => !prev);
-  }, []);
+    cancelAutoAdvance();
+  }, [cancelAutoAdvance]);
 
   return (
     <section
@@ -606,6 +929,7 @@ function ReelItem({
             onToggleMute={() => setIsMuted((m) => !m)}
             onTogglePlay={togglePlay}
             isPlaying={isPlaying}
+            onVideoEnd={handleVideoEnd}
           />
         ) : (
           /* Fallback: show thumbnail with external link */
@@ -654,6 +978,12 @@ function ReelItem({
           onClick={(e) => {
             e.stopPropagation();
             setIsLiked((prev) => !prev);
+            // Feature #7: Haptic feedback on explicit like too
+            if (!isLiked && typeof navigator !== "undefined" && "vibrate" in navigator) {
+              try {
+                navigator.vibrate(10);
+              } catch {}
+            }
           }}
           className="flex flex-col items-center gap-1"
           aria-label="Like"
@@ -699,16 +1029,17 @@ function ReelItem({
         </div>
       </div>
 
-      {/* Play/Pause overlay for direct videos (center indicator) */}
-      {isDirect && !isPlaying && isActive && (
-        <div
-          className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
-            <Play className="w-10 h-10 text-white ml-1" fill="white" />
-          </div>
-        </div>
+      {/* Play/Pause overlay for direct videos — now handled inside VideoPlayer with progress ring */}
+
+      {/* Feature #5: Auto-advance countdown indicator */}
+      <AutoAdvanceCountdown
+        countdown={autoAdvanceCountdown}
+        onCancel={cancelAutoAdvance}
+      />
+
+      {/* Feature #8: Next video preview at bottom */}
+      {isActive && nextVideo && (
+        <NextVideoPreview nextVideo={nextVideo} onSwipeUp={onGoToNext} />
       )}
 
       {/* Bottom info overlay with gradient */}
@@ -768,14 +1099,106 @@ function ReelItem({
 }
 
 // ===========================================
+// PRELOAD MANAGER
+// (Feature #3: Preload next video)
+// ===========================================
+
+function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
+  const preloadedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Preload the next video when active index changes
+    const nextIndex = activeIndex + 1;
+    const afterNextIndex = activeIndex + 2;
+
+    const preloadVideo = (index: number) => {
+      if (index >= videos.length) return;
+      const video = videos[index];
+      if (preloadedRef.current.has(video.id)) return;
+
+      // Preload thumbnail via Image
+      if (video.thumbnailUrl) {
+        const img = new Image();
+        img.src = video.thumbnailUrl;
+      }
+
+      // For direct videos, preload the video element
+      if (isDirectVideo(video)) {
+        const videoEl = document.createElement("video");
+        videoEl.preload = "auto";
+        videoEl.src = video.videoUrl;
+        // Don't need to append to DOM — just creating starts preloading in most browsers
+        preloadedRef.current.add(video.id);
+      }
+
+      // For YouTube, we can preload the thumbnail at least
+      if (getYouTubeId(video)) {
+        const ytId = getYouTubeId(video);
+        if (ytId && video.thumbnailUrl) {
+          const img = new Image();
+          img.src = video.thumbnailUrl;
+          preloadedRef.current.add(video.id);
+        }
+      }
+    };
+
+    preloadVideo(nextIndex);
+    preloadVideo(afterNextIndex);
+  }, [activeIndex, videos]);
+}
+
+// ===========================================
 // MAIN TIKTOK FEED COMPONENT
+// (Enhanced with: #1 swipe gestures, #2 smooth transitions, #3 preloading)
 // ===========================================
 
 export function TikTokFeed({ videos }: TikTokFeedProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
   const trackedViewsRef = useRef<Set<string>>(new Set());
+
+  // Feature #1: Swipe gesture state
+  const touchStartYRef = useRef<number>(0);
+  const touchStartXRef = useRef<number>(0);
+  const isSwipingRef = useRef<boolean>(false);
+
+  // Feature #3: Preload next video
+  usePreloadManager(videos, activeIndex);
+
+  // Navigate to a specific index with smooth scrolling
+  const goToIndex = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= videos.length || isTransitioning) return;
+      setIsTransitioning(true);
+      setActiveIndex(index);
+
+      const container = containerRef.current;
+      if (container) {
+        const target = container.querySelector(`[data-index="${index}"]`);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+
+      // Reset transition lock after animation completes
+      setTimeout(() => setIsTransitioning(false), 400);
+    },
+    [videos.length, isTransitioning]
+  );
+
+  const goToNext = useCallback(() => {
+    if (activeIndex < videos.length - 1) {
+      goToIndex(activeIndex + 1);
+    }
+  }, [activeIndex, videos.length, goToIndex]);
+
+  const goToPrev = useCallback(() => {
+    if (activeIndex > 0) {
+      goToIndex(activeIndex - 1);
+    }
+  }, [activeIndex, goToIndex]);
 
   // Empty state
   if (videos.length === 0) {
@@ -826,6 +1249,51 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
 
     return () => observer.disconnect();
   }, [videos]);
+
+  // Feature #1: Touch swipe handlers
+  const handleTouchStart = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartYRef.current = touch.clientY;
+    touchStartXRef.current = touch.clientX;
+    isSwipingRef.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    const deltaY = Math.abs(touch.clientY - touchStartYRef.current);
+    const deltaX = Math.abs(touch.clientX - touchStartXRef.current);
+    // Consider it a vertical swipe if Y delta > X delta
+    if (deltaY > deltaX && deltaY > 10) {
+      isSwipingRef.current = true;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: ReactTouchEvent<HTMLDivElement>) => {
+      if (!isSwipingRef.current) return;
+
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+
+      const deltaY = touchStartYRef.current - touch.clientY;
+      const SWIPE_THRESHOLD = 50;
+
+      if (Math.abs(deltaY) >= SWIPE_THRESHOLD) {
+        if (deltaY > 0) {
+          // Swiped up → next video
+          goToNext();
+        } else {
+          // Swiped down → previous video
+          goToPrev();
+        }
+      }
+
+      isSwipingRef.current = false;
+    },
+    [goToNext, goToPrev]
+  );
 
   // Track view via API
   const handleTrackView = useCallback(async (videoId: string) => {
@@ -894,6 +1362,27 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
             transform: rotate(30deg) translateY(-50px);
           }
         }
+        /* Feature #2: Smooth slide transition */
+        @keyframes slide-in-up {
+          0% {
+            transform: translateY(100%);
+            opacity: 0.7;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slide-in-down {
+          0% {
+            transform: translateY(-100%);
+            opacity: 0.7;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
         /* Custom scrollbar for feed */
         .tiktok-feed::-webkit-scrollbar {
           width: 0px;
@@ -902,6 +1391,16 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
         .tiktok-feed {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        /* Feature #2: Smooth scroll behavior */
+        .tiktok-feed-reel {
+          transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .tiktok-feed-reel.entering-up {
+          animation: slide-in-up 0.35s ease-out forwards;
+        }
+        .tiktok-feed-reel.entering-down {
+          animation: slide-in-down 0.35s ease-out forwards;
         }
       `}</style>
 
@@ -913,6 +1412,9 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
           scrollSnapType: "y mandatory",
           WebkitOverflowScrolling: "touch",
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {videos.map((video, index) => (
           <div
@@ -927,6 +1429,8 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
               video={video}
               isActive={activeIndex === index}
               onTrackView={handleTrackView}
+              nextVideo={index < videos.length - 1 ? videos[index + 1] : null}
+              onGoToNext={goToNext}
             />
           </div>
         ))}
@@ -951,7 +1455,49 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
               {activeIndex + 1}/{videos.length}
             </div>
           </div>
+
+          {/* Feature #1/#2: Swipe hint indicator (subtle) */}
+          {activeIndex < videos.length - 1 && (
+            <div className="flex justify-center -mt-4 mb-2">
+              <div className="flex flex-col items-center gap-0.5 animate-bounce">
+                <ChevronUp className="w-4 h-4 text-white/40" />
+                <span className="text-[9px] text-white/30 uppercase tracking-widest">
+                  Desliza
+                </span>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Feature #1: Navigation arrows for desktop */}
+      <div className="hidden md:flex fixed right-4 top-1/2 -translate-y-1/2 z-40 flex-col gap-2">
+        <button
+          onClick={goToPrev}
+          disabled={activeIndex === 0}
+          className={cn(
+            "w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-all",
+            activeIndex === 0
+              ? "opacity-30 cursor-not-allowed"
+              : "hover:bg-black/60 hover:scale-110"
+          )}
+          aria-label="Previous video"
+        >
+          <ChevronUp className="w-5 h-5" />
+        </button>
+        <button
+          onClick={goToNext}
+          disabled={activeIndex === videos.length - 1}
+          className={cn(
+            "w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-all",
+            activeIndex === videos.length - 1
+              ? "opacity-30 cursor-not-allowed"
+              : "hover:bg-black/60 hover:scale-110"
+          )}
+          aria-label="Next video"
+        >
+          <ChevronDown className="w-5 h-5" />
+        </button>
       </div>
     </>
   );

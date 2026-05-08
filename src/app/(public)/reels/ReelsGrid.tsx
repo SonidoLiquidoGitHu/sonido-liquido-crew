@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -14,10 +20,16 @@ import {
   CheckCircle,
   Smartphone,
   Loader2,
+  Heart,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
+
+// ===========================================
+// TYPES
+// ===========================================
 
 interface ReelVideo {
   id: string;
@@ -43,12 +55,186 @@ interface ReelsGridProps {
   videos: ReelVideo[];
 }
 
+// ===========================================
+// HELPERS
+// ===========================================
+
+function getYouTubeId(video: ReelVideo) {
+  if (video.embedUrl) {
+    const match = video.embedUrl.match(/embed\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+  }
+  if (video.platformUrl) {
+    const match = video.platformUrl.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+  }
+  if (video.videoUrl) {
+    const match = video.videoUrl.match(/(?:shorts\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+const isDirectVideo = (video: ReelVideo) => {
+  const ytId = getYouTubeId(video);
+  if (ytId) return false;
+  const url = video.videoUrl?.toLowerCase() || "";
+  return (
+    url.includes(".mp4") ||
+    url.includes(".webm") ||
+    url.includes("dropbox") ||
+    url.includes("dropboxusercontent")
+  );
+};
+
+// ===========================================
+// HEART BURST ANIMATION COMPONENT
+// (Feature #4: Double-tap to like)
+// ===========================================
+
+function HeartBurst({ x, y }: { x: number; y: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute z-50"
+      style={{ left: x - 40, top: y - 40 }}
+    >
+      {[...Array(6)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute left-1/2 top-1/2"
+          style={{
+            animation: `reels-heart-burst-${i % 2 === 0 ? "out" : "spin"} 0.8s ease-out forwards`,
+            transform: `rotate(${i * 60}deg)`,
+          }}
+        >
+          <Heart
+            className="text-red-500"
+            fill="currentColor"
+            style={{
+              transform: `translateY(-30px) scale(${0.6 + Math.random() * 0.6})`,
+              opacity: 0,
+              animation: `reels-heart-fade 0.8s ease-out ${i * 0.05}s forwards`,
+            }}
+            size={20 + Math.random() * 12}
+          />
+        </div>
+      ))}
+      {/* Central big heart */}
+      <Heart
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-red-500"
+        fill="currentColor"
+        style={{
+          animation: "reels-heart-pop 0.6s ease-out forwards",
+        }}
+        size={80}
+      />
+    </div>
+  );
+}
+
+// ===========================================
+// STORY DOTS INDICATOR
+// (Feature #5: Video counter dots)
+// ===========================================
+
+function StoryDots({
+  total,
+  activeIndex,
+  progress,
+}: {
+  total: number;
+  activeIndex: number;
+  progress: number;
+}) {
+  return (
+    <div className="flex items-center gap-1 px-3 pt-2 pb-1 z-20">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className="flex-1 h-[2px] rounded-full bg-white/30 overflow-hidden"
+        >
+          {i < activeIndex ? (
+            <div className="h-full w-full bg-white rounded-full" />
+          ) : i === activeIndex ? (
+            <div
+              className="h-full bg-white rounded-full transition-[width] duration-100 ease-linear"
+              style={{ width: `${progress}%` }}
+            />
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ===========================================
+// KEYBOARD SHORTCUTS TOOLTIP
+// (Feature #6: Keyboard shortcuts tooltip)
+// ===========================================
+
+function KeyboardTooltip({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 pointer-events-auto animate-fade-in"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-black/70 backdrop-blur-md border border-white/15 text-white text-xs whitespace-nowrap">
+        <Keyboard className="w-4 h-4 text-white/60 shrink-0" />
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">←</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">→</kbd>
+            <span className="text-white/60">Navegar</span>
+          </span>
+          <span className="w-px h-3 bg-white/20" />
+          <span className="flex items-center gap-1.5">
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">Esc</kbd>
+            <span className="text-white/60">Cerrar</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
+
 export function ReelsGrid({ videos }: ReelsGridProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [shareModalIndex, setShareModalIndex] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [playingIds, setPlayingIds] = useState<Set<string>>(new Set());
-  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+
+  // Feature #1: Fade-in + slide transition state
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(null);
+  const [slideKey, setSlideKey] = useState(0);
+  const slideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Feature #2: Video progress bar
+  const [videoProgress, setVideoProgress] = useState(0);
+  const fullscreenVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Feature #3: Swipe gesture state
+  const touchStartYRef = useRef<number>(0);
+  const touchStartXRef = useRef<number>(0);
+
+  // Feature #4: Double-tap to like
+  const [isLiked, setIsLiked] = useState(false);
+  const [heartBursts, setHeartBursts] = useState<{ id: number; x: number; y: number }[]>([]);
+  const lastTapRef = useRef<number>(0);
+  const burstIdRef = useRef(0);
+  const viewerContentRef = useRef<HTMLDivElement>(null);
+
+  // Feature #6: Keyboard shortcut tooltip (show on first open)
+  const [showTooltip, setShowTooltip] = useState(false);
+  const hasShownTooltipRef = useRef(false);
 
   if (videos.length === 0) {
     return (
@@ -60,13 +246,62 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
     );
   }
 
-  const openReel = (index: number) => setActiveIndex(index);
-  const closeReel = () => setActiveIndex(null);
-  const nextReel = () => {
-    if (activeIndex !== null) setActiveIndex((activeIndex + 1) % videos.length);
+  const openReel = (index: number) => {
+    setActiveIndex(index);
+    setIsLiked(false);
+    setVideoProgress(0);
+    setSlideDirection(null);
+    setSlideKey((k) => k + 1);
+    // Feature #1: Trigger fade-in
+    setViewerVisible(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setViewerVisible(true);
+      });
+    });
+    // Feature #6: Show tooltip on first open
+    if (!hasShownTooltipRef.current) {
+      hasShownTooltipRef.current = true;
+      setShowTooltip(true);
+    }
   };
+
+  const closeReel = () => {
+    setViewerVisible(false);
+    setTimeout(() => {
+      setActiveIndex(null);
+      setSlideDirection(null);
+      setShowTooltip(false);
+    }, 300);
+  };
+
+  const navigateReel = (newIndex: number, direction: "left" | "right") => {
+    if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
+
+    setSlideDirection(direction);
+    setSlideKey((k) => k + 1);
+    setIsLiked(false);
+    setVideoProgress(0);
+
+    // Brief delay for exit animation, then swap
+    slideTimerRef.current = setTimeout(() => {
+      setActiveIndex(newIndex);
+      setSlideDirection(null);
+    }, 150);
+  };
+
+  const nextReel = () => {
+    if (activeIndex !== null) {
+      const nextIdx = (activeIndex + 1) % videos.length;
+      navigateReel(nextIdx, "right");
+    }
+  };
+
   const prevReel = () => {
-    if (activeIndex !== null) setActiveIndex((activeIndex - 1 + videos.length) % videos.length);
+    if (activeIndex !== null) {
+      const prevIdx = (activeIndex - 1 + videos.length) % videos.length;
+      navigateReel(prevIdx, "left");
+    }
   };
 
   // Keyboard navigation
@@ -79,6 +314,26 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeIndex]);
+
+  // Feature #2: Track progress for direct video in fullscreen
+  useEffect(() => {
+    const el = fullscreenVideoRef.current;
+    if (!el) return;
+
+    const onTimeUpdate = () => {
+      if (el.duration > 0) {
+        setVideoProgress((el.currentTime / el.duration) * 100);
+      }
+    };
+
+    el.addEventListener("timeupdate", onTimeUpdate);
+    return () => el.removeEventListener("timeupdate", onTimeUpdate);
+  }, [activeIndex, slideKey]);
+
+  // Reset progress when video changes
+  useEffect(() => {
+    setVideoProgress(0);
   }, [activeIndex]);
 
   // Track share
@@ -153,26 +408,71 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
     }
   };
 
-  // Check if a video is a YouTube short (can be embedded)
-  const isYouTubeShort = (video: ReelVideo) => {
-    return video.platform?.toLowerCase() === "youtube" || video.embedUrl;
+  // Feature #3: Swipe handler for fullscreen viewer
+  const handleTouchStart = (e: ReactTouchEvent<HTMLDivElement>) => {
+    touchStartYRef.current = e.touches[0].clientY;
+    touchStartXRef.current = e.touches[0].clientX;
   };
 
-  // Get YouTube video ID from embed URL
-  const getYouTubeId = (video: ReelVideo) => {
-    if (video.embedUrl) {
-      const match = video.embedUrl.match(/embed\/([a-zA-Z0-9_-]+)/);
-      if (match) return match[1];
+  const handleTouchEnd = (e: ReactTouchEvent<HTMLDivElement>) => {
+    const deltaY = touchStartYRef.current - e.changedTouches[0].clientY;
+    const deltaX = Math.abs(touchStartXRef.current - e.changedTouches[0].clientX);
+    // Only trigger if vertical swipe is dominant and > 50px
+    if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > deltaX) {
+      if (deltaY > 0) {
+        nextReel(); // Swipe up → next
+      } else {
+        prevReel(); // Swipe down → prev
+      }
     }
-    if (video.platformUrl) {
-      const match = video.platformUrl.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
-      if (match) return match[1];
-    }
-    if (video.videoUrl) {
-      const match = video.videoUrl.match(/(?:shorts\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-      if (match) return match[1];
-    }
-    return null;
+  };
+
+  // Feature #4: Double-tap to like handler
+  const handleViewerTap = useCallback(
+    (e: React.MouseEvent<HTMLDivElement> | ReactTouchEvent<HTMLDivElement>) => {
+      if (!viewerContentRef.current) return;
+
+      const now = Date.now();
+      const rect = viewerContentRef.current.getBoundingClientRect();
+      let clientX: number, clientY: number;
+
+      if ("touches" in e) {
+        const touch = e.changedTouches?.[0];
+        if (!touch) return;
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+
+      if (now - lastTapRef.current < 300) {
+        // Double tap → like
+        setIsLiked(true);
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          try {
+            navigator.vibrate(10);
+          } catch {}
+        }
+        const id = ++burstIdRef.current;
+        setHeartBursts((prev) => [
+          ...prev,
+          { id, x: clientX - rect.left, y: clientY - rect.top },
+        ]);
+        setTimeout(() => {
+          setHeartBursts((prev) => prev.filter((b) => b.id !== id));
+        }, 900);
+      }
+      lastTapRef.current = now;
+    },
+    []
+  );
+
+  // Compute slide animation class for video content swap
+  const getSlideClass = () => {
+    if (!slideDirection) return "translate-x-0 opacity-100";
+    if (slideDirection === "left") return "-translate-x-8 opacity-0";
+    return "translate-x-8 opacity-0";
   };
 
   return (
@@ -272,39 +572,73 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
       {/* Full-screen Reel Viewer */}
       {activeIndex !== null && videos[activeIndex] && (
         <div
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+          className={cn(
+            "fixed inset-0 bg-black/95 z-50 flex items-center justify-center transition-opacity duration-300",
+            viewerVisible ? "opacity-100" : "opacity-0"
+          )}
           onClick={closeReel}
         >
           {/* Close */}
           <button
             onClick={closeReel}
-            className="absolute top-4 right-4 z-10 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+            className="absolute top-4 right-4 z-20 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <X className="w-6 h-6 text-white" />
           </button>
 
-          {/* Navigation */}
+          {/* Feature #5: Story dots indicator at top */}
+          <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
+            <div className="max-w-sm mx-auto">
+              <StoryDots
+                total={videos.length}
+                activeIndex={activeIndex}
+                progress={videoProgress}
+              />
+            </div>
+          </div>
+
+          {/* Navigation arrows */}
           <button
             onClick={(e) => { e.stopPropagation(); prevReel(); }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <ChevronLeft className="w-6 h-6 text-white" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); nextReel(); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <ChevronRight className="w-6 h-6 text-white" />
           </button>
 
-          {/* Video Content */}
+          {/* Video Content — with slide transition (Feature #1) */}
           <div
-            className="relative max-h-[90vh] w-full max-w-sm aspect-[9/16]"
+            ref={viewerContentRef}
+            key={slideKey}
+            className={cn(
+              "relative max-h-[90vh] w-full max-w-sm aspect-[9/16] transition-all duration-150 ease-out",
+              getSlideClass()
+            )}
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => {
+              handleTouchEnd(e);
+              handleViewerTap(e);
+            }}
+            onDoubleClick={(e) => {
+              // Also handle double-click for desktop
+              const now = Date.now();
+              if (now - lastTapRef.current < 400) {
+                handleViewerTap(e);
+              }
+              lastTapRef.current = now;
+            }}
           >
             {(() => {
               const video = videos[activeIndex];
               const ytId = getYouTubeId(video);
+              const direct = isDirectVideo(video);
+
               if (ytId) {
                 return (
                   <div className="w-full h-full rounded-xl overflow-hidden">
@@ -312,16 +646,34 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                   </div>
                 );
               }
-              if (video.videoUrl && (video.videoUrl.includes(".mp4") || video.videoUrl.includes(".webm") || video.videoUrl.includes("dropbox"))) {
+              if (direct) {
+                // Handle Dropbox URLs
+                let videoSrc = video.videoUrl;
+                if (videoSrc.includes("dropbox.com") && videoSrc.includes("dl=0")) {
+                  videoSrc = videoSrc.replace("dl=0", "dl=1");
+                }
+                if (videoSrc.includes("dropbox.com") && !videoSrc.includes("dl=")) {
+                  videoSrc += "?dl=1";
+                }
                 return (
-                  <video
-                    src={video.videoUrl}
-                    className="w-full h-full object-contain rounded-xl"
-                    controls
-                    autoPlay
-                    playsInline
-                    loop
-                  />
+                  <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
+                    <video
+                      ref={fullscreenVideoRef}
+                      src={videoSrc}
+                      className="w-full h-full object-contain"
+                      controls
+                      autoPlay
+                      playsInline
+                      loop
+                    />
+                    {/* Feature #2: Instagram Stories-style progress bar at top */}
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/20 z-10">
+                      <div
+                        className="h-full bg-white rounded-full transition-[width] duration-150 ease-linear"
+                        style={{ width: `${videoProgress}%` }}
+                      />
+                    </div>
+                  </div>
                 );
               }
               // Fallback: show thumbnail with play link
@@ -341,15 +693,45 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                 </div>
               );
             })()}
+
+            {/* Feature #4: Heart burst animations */}
+            {heartBursts.map((burst) => (
+              <HeartBurst key={burst.id} x={burst.x} y={burst.y} />
+            ))}
+
+            {/* Feature #4: Like indicator (heart icon on right side) */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLiked((prev) => !prev);
+                if (!isLiked && typeof navigator !== "undefined" && "vibrate" in navigator) {
+                  try { navigator.vibrate(10); } catch {}
+                }
+              }}
+              className="absolute bottom-28 right-3 z-20 flex flex-col items-center gap-1"
+              aria-label="Like"
+            >
+              <div
+                className={cn(
+                  "w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center transition-all duration-200",
+                  isLiked ? "text-red-500 scale-110" : "text-white hover:bg-black/60"
+                )}
+              >
+                <Heart
+                  className="w-6 h-6 transition-transform duration-200"
+                  fill={isLiked ? "currentColor" : "none"}
+                />
+              </div>
+            </button>
           </div>
 
           {/* Video Info */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none">
             <div className="max-w-sm mx-auto">
               {videos[activeIndex].artistName && (
                 <Link
                   href={`/artistas/${videos[activeIndex].artistSlug}`}
-                  className="text-sm text-primary hover:underline"
+                  className="text-sm text-primary hover:underline pointer-events-auto"
                 >
                   {videos[activeIndex].artistName}
                 </Link>
@@ -368,7 +750,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                     e.stopPropagation();
                     nativeShare(videos[activeIndex]);
                   }}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full hover:bg-white/20 text-white text-sm transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full hover:bg-white/20 text-white text-sm transition-colors pointer-events-auto"
                 >
                   <Share2 className="w-4 h-4" />
                   Compartir
@@ -376,6 +758,11 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
               </div>
             </div>
           </div>
+
+          {/* Feature #6: Keyboard shortcuts tooltip */}
+          {showTooltip && (
+            <KeyboardTooltip onClose={() => setShowTooltip(false)} />
+          )}
         </div>
       )}
 
