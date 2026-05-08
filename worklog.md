@@ -53,3 +53,35 @@ Stage Summary:
 - Netlify auto-deploy should be triggered by the push
 - Key new files: src/db/schema/social-credentials.ts, src/app/api/admin/social/credentials/route.ts
 - Key modified files: meta.ts, tiktok.ts, admin/social/page.tsx, social-posts.ts, db/client.ts
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Add Reels / Vertical Videos (9:16) section with sharing capability
+
+Work Log:
+- Created DB schema for vertical_videos and vertical_video_tags tables (src/db/schema/vertical-videos.ts)
+- Added auto-migration SQL for vertical_videos and vertical_video_tags to db/client.ts
+- Created admin API routes: GET/POST/PATCH/DELETE at /api/admin/vertical-videos
+- Created public API routes: GET at /api/vertical-videos, GET/POST at /api/vertical-videos/[id]
+- Created admin page at /admin/vertical-videos with upload modal, edit modal, share modal, grid view with 9:16 cards
+- Created public /reels page with ReelsGrid component (phone-shaped cards, full-screen viewer, keyboard nav)
+- Created public /reels/[id] page with ReelDetail component (individual video view + sharing)
+- Created VerticalVideoSection component for homepage (horizontal scroll on mobile, grid on desktop)
+- Added VerticalVideoSection to homepage between Videos and Stats sections
+- Added "Reels" link to public Header navigation
+- Added "Reels" to SectionNavDots
+- Added "Reels / Verticales" to admin sidebar with Smartphone icon
+- Added VerticalVideoSection export to public components index
+- Share functionality includes: WhatsApp, X/Twitter, Facebook, native Web Share API, copy link
+- Share and view count tracking via API
+- Build passes cleanly
+
+Stage Summary:
+- New DB table: vertical_videos (id, title, description, videoUrl, thumbnailUrl, platform, platformUrl, embedUrl, isFeatured, isPublished, shareCount, viewCount, etc.)
+- New DB table: vertical_video_tags (junction table)
+- Admin can upload vertical videos via VideoUploader (URL paste + Dropbox file upload), edit metadata, manage tags/artists
+- Public /reels page shows 9:16 grid with click-to-view full-screen reel viewer
+- Individual /reels/[id] pages for shareable links with Open Graph support
+- Sharing: WhatsApp, Twitter, Facebook, native share API, copy link - all tracked in DB
+- Homepage has VerticalVideoSection between Videos and Gallery sections

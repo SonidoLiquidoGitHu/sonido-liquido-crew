@@ -76,3 +76,6 @@ export * from "./social-posts";
 
 // Social Credentials (API keys stored in DB)
 export * from "./social-credentials";
+
+// Vertical Videos (9:16 Reels / Shorts)
+export * from "./vertical-videos";

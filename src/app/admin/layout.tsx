@@ -32,6 +32,7 @@ import {
   Download,
   Brush,
   Share2,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +50,7 @@ const sidebarLinks = [
   { href: "/admin/youtube-channels", label: "Canales YouTube", icon: Youtube },
   { href: "/admin/curated-channels", label: "Canales Spotify", icon: ListMusic },
   { href: "/admin/curated-channels/playlists", label: "Playlists Curadas", icon: Music },
+  { href: "/admin/vertical-videos", label: "Reels / Verticales", icon: Smartphone },
   { href: "/admin/gallery", label: "Galería", icon: Image },
   { href: "/admin/uploads", label: "Test Uploads", icon: Cloud },
   { href: "/admin/products", label: "Productos", icon: ShoppingBag },

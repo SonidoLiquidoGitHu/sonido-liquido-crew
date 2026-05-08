@@ -263,6 +263,41 @@ async function runAutoMigration(client: Client): Promise<void> {
         updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_social_credentials_platform_key ON social_credentials(platform, key)`,
+      // Vertical Videos (9:16 Reels / Shorts)
+      `CREATE TABLE IF NOT EXISTS vertical_videos (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT,
+        description TEXT,
+        video_url TEXT NOT NULL,
+        thumbnail_url TEXT,
+        duration INTEGER,
+        width INTEGER,
+        height INTEGER,
+        file_size INTEGER,
+        mime_type TEXT,
+        platform TEXT,
+        platform_id TEXT,
+        platform_url TEXT,
+        embed_url TEXT,
+        artist_id TEXT,
+        is_featured INTEGER DEFAULT 0 NOT NULL,
+        is_published INTEGER DEFAULT 1 NOT NULL,
+        display_order INTEGER DEFAULT 0 NOT NULL,
+        share_count INTEGER DEFAULT 0 NOT NULL,
+        view_count INTEGER DEFAULT 0 NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS vertical_video_tags (
+        id TEXT PRIMARY KEY,
+        video_id TEXT NOT NULL REFERENCES vertical_videos(id) ON DELETE CASCADE,
+        tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_vertical_videos_published ON vertical_videos(is_published, display_order)`,
+      `CREATE INDEX IF NOT EXISTS idx_vertical_videos_featured ON vertical_videos(is_featured)`,
+      `CREATE INDEX IF NOT EXISTS idx_vertical_videos_artist ON vertical_videos(artist_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_vertical_video_tags_video ON vertical_video_tags(video_id)`,
     ];
 
     // Add missing columns (safe - ignores "duplicate column" errors)

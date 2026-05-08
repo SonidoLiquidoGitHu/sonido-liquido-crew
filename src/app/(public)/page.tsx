@@ -63,6 +63,11 @@ const StatsSection = dynamic(
   { ssr: true }
 );
 
+const VerticalVideoSection = dynamic(
+  () => import("@/components/public/sections/VerticalVideoSection").then(m => ({ default: m.VerticalVideoSection })),
+  { ssr: true }
+);
+
 // ===========================================
 // CACHING: Revalidate every 5 minutes for fresh content
 // ===========================================
@@ -260,7 +265,16 @@ export default async function HomePage() {
       </LazySection>
 
       {/* ===========================================
-          7. STATS (inline, compact)
+          7. REELS (vertical videos 9:16)
+          =========================================== */}
+      <section id="reels">
+        <LazySection minHeight="400px">
+          <VerticalVideoSection limit={8} />
+        </LazySection>
+      </section>
+
+      {/* ===========================================
+          8. STATS (inline, compact)
           =========================================== */}
       <LazySection minHeight="200px">
         <StatsSection />

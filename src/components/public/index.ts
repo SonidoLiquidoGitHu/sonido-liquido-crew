@@ -23,6 +23,7 @@ export { ArtistChannels } from "./sections/ArtistChannels";
 export { DiscographyExplorer } from "./sections/DiscographyExplorer";
 export { RosterSocials } from "./sections/RosterSocials";
 export { GallerySection } from "./sections/GallerySection";
+export { VerticalVideoSection } from "./sections/VerticalVideoSection";
 export { RandomVideoCarousel } from "./sections/RandomVideoCarousel";
 
 // Visual Effects

@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/discografia", label: "Discografía" },
   { href: "/beats", label: "Beats" },
   { href: "/videos", label: "Videos" },
+  { href: "/reels", label: "Reels" },
   { href: "/galeria", label: "Galería" },
   { href: "/eventos", label: "Eventos" },
   { href: "/comunidad", label: "Comunidad" },

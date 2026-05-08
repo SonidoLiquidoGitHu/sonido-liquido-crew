@@ -20,6 +20,7 @@ const SECTIONS: SectionNavDot[] = [
   { id: "discografia", label: "Discografía" },
   { id: "musica", label: "Música" },
   { id: "videos", label: "Videos" },
+  { id: "reels", label: "Reels" },
   { id: "galeria", label: "Galería" },
   { id: "eventos", label: "Eventos" },
   { id: "newsletter", label: "Newsletter" },
