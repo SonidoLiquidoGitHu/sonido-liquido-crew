@@ -18,7 +18,7 @@ import {
 } from "@/db/schema";
 import { eq, desc, sql as drizzleSql, and, count, isNotNull } from "drizzle-orm";
 import {
-  isMetaConfigured,
+  isMetaConfiguredAsync,
   validateToken,
   processQueueItem,
   getNextPendingItem,
@@ -205,10 +205,10 @@ export async function POST(request: NextRequest) {
 // ===========================================
 
 async function handleProcessNext() {
-  if (!isMetaConfigured()) {
+  if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API not configured. Set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID env vars.",
+      message: "Meta API not configured. Set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID in the credentials section below, or as Netlify env vars.",
     });
   }
 

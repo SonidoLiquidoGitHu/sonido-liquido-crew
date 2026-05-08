@@ -81,9 +81,22 @@ async function getFacebookPageId(): Promise<string> {
 }
 
 /**
+ * Async check for Meta configuration status.
+ * Checks DB credentials first, then env vars as fallback.
+ * This ensures serverless cold starts (where cache is empty)
+ * still detect credentials stored in the DB.
+ */
+export async function isMetaConfiguredAsync(): Promise<boolean> {
+  const token = await getCredential("META_SYSTEM_USER_TOKEN");
+  const pageId = await getCredential("FACEBOOK_PAGE_ID");
+  return !!(token && pageId);
+}
+
+/**
  * Synchronous check for Meta configuration status.
- * Uses env vars only (for quick UI status checks without DB hit).
- * The actual posting functions use the async versions.
+ * Uses cached DB credentials + env vars only.
+ * Prefer isMetaConfiguredAsync() for accurate checks,
+ * especially in serverless functions where cache may be empty.
  */
 function isMetaConfigured(): boolean {
   return !!(
@@ -326,7 +339,7 @@ export async function postToFacebook(
   caption: string,
   linkUrl?: string
 ): Promise<FacebookPostResult> {
-  if (!isMetaConfigured()) {
+  if (!(await isMetaConfiguredAsync())) {
     return { success: false, postId: null, postUrl: null, error: "Meta API not configured" };
   }
 
@@ -427,7 +440,7 @@ export async function postToInstagram(
   imageUrl: string,
   caption: string
 ): Promise<InstagramPostResult> {
-  if (!isMetaConfigured()) {
+  if (!(await isMetaConfiguredAsync())) {
     return { success: false, mediaId: null, permalink: null, error: "Meta API not configured" };
   }
 
@@ -1053,14 +1066,30 @@ function isDatabaseConfiguredLocal(): boolean {
 
 /**
  * Ensure an image URL is publicly accessible.
- * For Dropbox URLs, route through the image proxy.
+ * For Dropbox URLs and other problematic hosts, route through the image proxy.
  * For Spotify CDN and other public URLs, use as-is.
+ *
+ * Meta API (especially Instagram) requires the image URL to be publicly
+ * accessible and return the correct content-type. Some hosts (like Dropbox)
+ * return incorrect content-type headers, which causes IG container creation to fail.
  */
 export function ensurePublicImageUrl(imageUrl: string): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || "https://sonidoliquido.com";
 
-  // Dropbox URLs need proxying for Meta API
-  if (imageUrl.includes("dropboxusercontent.com") || imageUrl.includes("dropbox.com")) {
+  // Hosts that need proxying for Meta API (incorrect content-type or auth requirements)
+  const needsProxyHosts = [
+    "dl.dropboxusercontent.com",
+    "dropboxusercontent.com",
+    "www.dropbox.com",
+    "dropbox.com",
+    "ucarecdn.com",
+  ];
+
+  const needsProxy = needsProxyHosts.some(
+    (host) => imageUrl.includes(host)
+  );
+
+  if (needsProxy) {
     return `${siteUrl}/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
   }
 
@@ -1070,4 +1099,4 @@ export function ensurePublicImageUrl(imageUrl: string): string {
 }
 
 // Re-export for convenience
-export { isMetaConfigured, getInstagramBusinessAccountId, getPageAccessToken };
+export { getInstagramBusinessAccountId, getPageAccessToken };

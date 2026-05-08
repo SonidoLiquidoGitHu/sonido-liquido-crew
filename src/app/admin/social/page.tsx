@@ -632,7 +632,7 @@ export default function AdminSocialPage() {
           <div className="text-sm">
             <p className="text-red-300 font-medium">Meta API no configurada</p>
             <p className="text-red-300/70 mt-1">
-              Configura las variables de entorno: META_APP_ID, META_APP_SECRET,
+              Agrega tus credenciales en la seccion &quot;Credenciales&quot; abajo, o configura las variables de entorno en Netlify:
               META_SYSTEM_USER_TOKEN, FACEBOOK_PAGE_ID
             </p>
           </div>
