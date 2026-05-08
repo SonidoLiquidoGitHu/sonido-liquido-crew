@@ -84,6 +84,7 @@ export default function AdminVerticalVideosPage() {
   const [uploadTagIds, setUploadTagIds] = useState<string[]>([]);
   const [uploadIsFeatured, setUploadIsFeatured] = useState(false);
   const [uploadThumbnailUrl, setUploadThumbnailUrl] = useState("");
+  const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
 
   // Edit modal state
   const [editingVideo, setEditingVideo] = useState<VerticalVideo | null>(null);
@@ -237,6 +238,7 @@ export default function AdminVerticalVideosPage() {
     setUploading(true);
     try {
       const parsed = parseVideoUrl(uploadVideoInfo.url);
+      const hasThumbnail = !!(uploadThumbnailUrl || uploadVideoInfo.thumbnailUrl);
       const res = await fetch("/api/admin/vertical-videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -257,10 +259,38 @@ export default function AdminVerticalVideosPage() {
 
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: "success", text: "Video agregado exitosamente" });
-        setShowUploader(false);
-        resetUploadForm();
-        fetchData();
+        // If no thumbnail was provided, auto-generate one server-side
+        if (!hasThumbnail && data.data?.id) {
+          setMessage({ type: "success", text: "Video agregado. Generando miniatura automáticamente..." });
+          setShowUploader(false);
+          resetUploadForm();
+          fetchData();
+
+          // Fire-and-forget thumbnail generation
+          fetch("/api/admin/vertical-videos/generate-thumbnails", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ videoId: data.data.id }),
+          })
+            .then((thumbRes) => thumbRes.json())
+            .then((thumbData) => {
+              if (thumbData.success && thumbData.generated > 0) {
+                setMessage({ type: "success", text: "Miniatura generada automáticamente" });
+                fetchData(); // Refresh to show the new thumbnail
+              } else if (thumbData.error) {
+                setMessage({ type: "error", text: `Video agregado, pero: ${thumbData.error}` });
+              }
+              setTimeout(() => setMessage(null), 5000);
+            })
+            .catch(() => {
+              // Thumbnail generation failed silently - video is still saved
+            });
+        } else {
+          setMessage({ type: "success", text: "Video agregado exitosamente" });
+          setShowUploader(false);
+          resetUploadForm();
+          fetchData();
+        }
       } else {
         setMessage({ type: "error", text: data.error || "Error al agregar video" });
       }
@@ -347,6 +377,43 @@ export default function AdminVerticalVideosPage() {
     }
   };
 
+  // Generate missing thumbnails
+  const generateMissingThumbnails = async () => {
+    const videosWithoutThumbnail = videos.filter((v) => !v.thumbnailUrl);
+    if (videosWithoutThumbnail.length === 0) {
+      setMessage({ type: "success", text: "Todos los videos ya tienen miniatura" });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    setGeneratingThumbnails(true);
+    try {
+      const res = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: false }), // Only videos without thumbnails
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setMessage({
+          type: "success",
+          text: data.message || `Se generaron ${data.generated} miniaturas`,
+        });
+        fetchData(); // Refresh to show new thumbnails
+      } else {
+        setMessage({
+          type: "error",
+          text: data.error || "Error al generar miniaturas",
+        });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error de conexión al generar miniaturas" });
+    }
+    setGeneratingThumbnails(false);
+    setTimeout(() => setMessage(null), 5000);
+  };
+
   // Get platform badge color
   const getPlatformColor = (platform: string | null) => {
     switch (platform?.toLowerCase()) {
@@ -383,10 +450,25 @@ export default function AdminVerticalVideosPage() {
             Videos verticales 9:16 - Reels, TikTok, YouTube Shorts
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={fetchData} disabled={loading}>
             Actualizar
           </Button>
+          {videos.some((v) => !v.thumbnailUrl) && (
+            <Button
+              variant="outline"
+              onClick={generateMissingThumbnails}
+              disabled={generatingThumbnails}
+              className="border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
+            >
+              {generatingThumbnails ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ImageIcon className="w-4 h-4 mr-2" />
+              )}
+              {generatingThumbnails ? "Generando..." : "Generar Miniaturas"}
+            </Button>
+          )}
           <Button onClick={() => setShowUploader(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Agregar Video
