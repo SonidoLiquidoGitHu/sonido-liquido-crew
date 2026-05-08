@@ -35,6 +35,31 @@ export const maxDuration = 60;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
 
+/**
+ * Extract YouTube video ID from various URL formats.
+ * Works with watch URLs, shorts URLs, embed URLs, and youtu.be shortlinks.
+ */
+function extractYouTubeId(
+  videoUrl?: string | null,
+  platformUrl?: string | null,
+  embedUrl?: string | null
+): string | null {
+  const urls = [embedUrl, platformUrl, videoUrl].filter(Boolean);
+  for (const url of urls) {
+    if (!url) continue;
+    // embed/VIDEO_ID
+    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]+)/);
+    if (embedMatch) return embedMatch[1];
+    // shorts/VIDEO_ID or watch?v=VIDEO_ID
+    const watchMatch = url.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
+    if (watchMatch) return watchMatch[1];
+    // youtu.be/VIDEO_ID
+    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+    if (shortMatch) return shortMatch[1];
+  }
+  return null;
+}
+
 // ===========================================
 // GET — Queue status & summary
 // ===========================================
@@ -549,6 +574,7 @@ async function handlePopulate(options: {
             artistId: verticalVideos.artistId,
             platform: verticalVideos.platform,
             platformUrl: verticalVideos.platformUrl,
+            embedUrl: verticalVideos.embedUrl,
           })
           .from(verticalVideos)
           .where(eq(verticalVideos.isPublished, true))
@@ -564,8 +590,19 @@ async function handlePopulate(options: {
         const artistMapVV = new Map(allArtistsVV.map((a) => [a.id, a]));
 
         for (const video of videos) {
-          // Use thumbnail as the image for social post; skip if no thumbnail
-          const imageUrl = video.thumbnailUrl;
+          // Use thumbnail as the image for social post
+          // Auto-generate YouTube thumbnails if no explicit thumbnail exists
+          let imageUrl = video.thumbnailUrl;
+
+          if (!imageUrl) {
+            // Try to auto-generate YouTube thumbnail from video URL
+            const ytId = extractYouTubeId(video.videoUrl, video.platformUrl, video.embedUrl);
+            if (ytId) {
+              imageUrl = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+            }
+          }
+
+          // Skip if still no image available
           if (!imageUrl) continue;
 
           const key = `vertical_video:${video.id}`;

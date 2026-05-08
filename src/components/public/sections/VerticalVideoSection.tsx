@@ -27,6 +27,8 @@ interface VerticalVideo {
   videoUrl: string;
   thumbnailUrl: string | null;
   platform: string | null;
+  platformUrl: string | null;
+  embedUrl: string | null;
   isFeatured: boolean;
   shareCount: number;
   viewCount: number;
@@ -97,6 +99,31 @@ function PlatformIconBadge({ platform }: { platform: string | null }) {
       {c.icon}
     </div>
   );
+}
+
+// ===========================================
+// HELPERS
+// ===========================================
+
+function getYouTubeId(video: VerticalVideo) {
+  const urls = [video.embedUrl, video.platformUrl, video.videoUrl].filter(Boolean);
+  for (const url of urls) {
+    if (!url) continue;
+    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]+)/);
+    if (embedMatch) return embedMatch[1];
+    const watchMatch = url.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
+    if (watchMatch) return watchMatch[1];
+    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+    if (shortMatch) return shortMatch[1];
+  }
+  return null;
+}
+
+function getVideoThumbnail(video: VerticalVideo): string | null {
+  if (video.thumbnailUrl) return video.thumbnailUrl;
+  const ytId = getYouTubeId(video);
+  if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+  return null;
 }
 
 // ===========================================
@@ -366,9 +393,9 @@ function VideoCard({
         className="group relative block cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
       >
         <div className="relative aspect-[9/16]">
-          {video.thumbnailUrl ? (
+          {getVideoThumbnail(video) ? (
             <Image
-              src={video.thumbnailUrl}
+              src={getVideoThumbnail(video)!}
               alt={video.title || "Video"}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"

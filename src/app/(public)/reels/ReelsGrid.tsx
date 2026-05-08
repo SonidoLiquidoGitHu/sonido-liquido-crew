@@ -87,6 +87,23 @@ const isDirectVideo = (video: ReelVideo) => {
   );
 };
 
+/**
+ * Get the best available thumbnail URL for a video.
+ * Falls back to auto-generated YouTube thumbnails if no thumbnailUrl is stored.
+ */
+function getVideoThumbnail(video: ReelVideo): string | null {
+  // If the video has an explicit thumbnail, use it
+  if (video.thumbnailUrl) return video.thumbnailUrl;
+
+  // Auto-generate YouTube thumbnail from video ID
+  const ytId = getYouTubeId(video);
+  if (ytId) {
+    return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+  }
+
+  return null;
+}
+
 // ===========================================
 // HEART BURST ANIMATION COMPONENT
 // (Feature #4: Double-tap to like)
@@ -486,9 +503,9 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
             className="group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
           >
             <div className="relative aspect-[9/16]">
-              {video.thumbnailUrl ? (
+              {getVideoThumbnail(video) ? (
                 <Image
-                  src={video.thumbnailUrl}
+                  src={getVideoThumbnail(video)!}
                   alt={video.title || "Video"}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -679,8 +696,8 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
               // Fallback: show thumbnail with play link
               return (
                 <div className="w-full h-full relative rounded-xl overflow-hidden bg-black flex items-center justify-center">
-                  {video.thumbnailUrl && (
-                    <Image src={video.thumbnailUrl} alt={video.title || "Video"} fill className="object-cover" />
+                  {getVideoThumbnail(video) && (
+                    <Image src={getVideoThumbnail(video)!} alt={video.title || "Video"} fill className="object-cover" />
                   )}
                   <a
                     href={video.platformUrl || video.videoUrl}

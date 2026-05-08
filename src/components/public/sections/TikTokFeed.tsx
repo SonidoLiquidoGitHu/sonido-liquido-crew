@@ -92,6 +92,17 @@ const isDirectVideo = (video: ReelVideo) => {
   );
 };
 
+/**
+ * Get the best available thumbnail for a video.
+ * Auto-generates YouTube thumbnails when no explicit thumbnail is stored.
+ */
+const getVideoThumbnail = (video: ReelVideo): string | null => {
+  if (video.thumbnailUrl) return video.thumbnailUrl;
+  const ytId = getYouTubeId(video);
+  if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+  return null;
+};
+
 function formatViewCount(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
@@ -494,11 +505,11 @@ function VideoPlayer({
   return (
     <div className="relative w-full h-full">
       {/* Feature #6: Blurred thumbnail background while loading */}
-      {isLoading && video.thumbnailUrl && (
+      {isLoading && getVideoThumbnail(video) && (
         <div
           className="absolute inset-0 z-[5] scale-105"
           style={{
-            backgroundImage: `url(${video.thumbnailUrl})`,
+            backgroundImage: `url(${getVideoThumbnail(video)})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             filter: "blur(20px)",
@@ -521,7 +532,7 @@ function VideoPlayer({
         playsInline
         muted={isMuted}
         preload="auto"
-        poster={video.thumbnailUrl || undefined}
+        poster={getVideoThumbnail(video) || undefined}
       />
 
       {/* Feature #4: Circular progress ring + play/pause indicator (center) */}
@@ -596,10 +607,10 @@ function YouTubePlayer({
 }) {
   return (
     <div className="relative w-full h-full">
-      {video.thumbnailUrl && !isVisible && (
+      {getVideoThumbnail(video) && !isVisible && (
         <div
           className="absolute inset-0 bg-cover bg-center z-10"
-          style={{ backgroundImage: `url(${video.thumbnailUrl})` }}
+          style={{ backgroundImage: `url(${getVideoThumbnail(video)})` }}
         >
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="w-10 h-10 text-white animate-spin" />
@@ -639,9 +650,9 @@ function NextVideoPreview({
       >
         {/* Mini thumbnail */}
         <div className="relative w-12 h-[4.5rem] rounded-lg overflow-hidden flex-shrink-0 border border-white/20">
-          {nextVideo.thumbnailUrl ? (
+          {getVideoThumbnail(nextVideo) ? (
             <img
-              src={nextVideo.thumbnailUrl}
+              src={getVideoThumbnail(nextVideo)!}
               alt={nextVideo.title || "Next video"}
               className="w-full h-full object-cover"
             />
@@ -934,9 +945,9 @@ function ReelItem({
         ) : (
           /* Fallback: show thumbnail with external link */
           <div className="w-full h-full relative flex items-center justify-center">
-            {video.thumbnailUrl && (
+            {getVideoThumbnail(video) && (
               <img
-                src={video.thumbnailUrl}
+                src={getVideoThumbnail(video)!}
                 alt={video.title || "Video"}
                 className="absolute inset-0 w-full h-full object-cover"
               />
@@ -1117,9 +1128,10 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
       if (preloadedRef.current.has(video.id)) return;
 
       // Preload thumbnail via Image
-      if (video.thumbnailUrl) {
+      const thumb = getVideoThumbnail(video);
+      if (thumb) {
         const img = new Image();
-        img.src = video.thumbnailUrl;
+        img.src = thumb;
       }
 
       // For direct videos, preload the video element
@@ -1134,9 +1146,10 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
       // For YouTube, we can preload the thumbnail at least
       if (getYouTubeId(video)) {
         const ytId = getYouTubeId(video);
-        if (ytId && video.thumbnailUrl) {
+        const thumb = getVideoThumbnail(video);
+        if (ytId && thumb) {
           const img = new Image();
-          img.src = video.thumbnailUrl;
+          img.src = thumb;
           preloadedRef.current.add(video.id);
         }
       }
