@@ -25,6 +25,7 @@ import { uploadToDropboxDirect, type DropboxUploadProgress } from "@/lib/clients
 
 // Extract a thumbnail frame from a video file using canvas
 // Tries multiple seek positions to find the first non-black frame
+// IMPORTANT: Never saves a black frame — returns null if all positions are black
 async function extractVideoThumbnail(
   file: File,
   initialSeekTime: number = 1.0
@@ -36,9 +37,17 @@ async function extractVideoThumbnail(
     video.playsInline = true;
     video.src = URL.createObjectURL(file);
 
+    const objectUrl = video.src;
+    let resolved = false;
+
     const cleanup = () => {
-      URL.revokeObjectURL(video.src);
+      if (resolved) return;
+      resolved = true;
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
       video.remove();
+      URL.revokeObjectURL(objectUrl);
     };
 
     // Check if a canvas image is mostly black
@@ -60,9 +69,53 @@ async function extractVideoThumbnail(
       }
     };
 
+    // Wait for the video to actually decode the frame at the current time
+    // before attempting to draw it on canvas. This prevents black frames
+    // caused by drawing before the decoder has produced a visible frame.
+    const waitForFrameReady = (): Promise<void> => {
+      return new Promise((frameResolve) => {
+        // If readyState >= HAVE_CURRENT_DATA (2), the frame is available
+        if (video.readyState >= 2 && video.videoWidth > 0) {
+          // Still wait one animation frame to ensure the compositor has the frame
+          requestAnimationFrame(() => frameResolve());
+          return;
+        }
+        // Otherwise wait for the loadeddata event
+        const onData = () => {
+          video.removeEventListener("loadeddata", onData);
+          video.removeEventListener("canplay", onData);
+          requestAnimationFrame(() => frameResolve());
+        };
+        video.addEventListener("loadeddata", onData);
+        video.addEventListener("canplay", onData);
+        // Safety timeout
+        setTimeout(() => {
+          video.removeEventListener("loadeddata", onData);
+          video.removeEventListener("canplay", onData);
+          frameResolve();
+        }, 3000);
+      });
+    };
+
     // Seek positions to try (in seconds)
     const seekPositions = [initialSeekTime, 0.5, 1.0, 2.0, 3.0];
     let currentSeekIndex = 0;
+
+    const tryNextSeek = () => {
+      currentSeekIndex++;
+      if (currentSeekIndex < seekPositions.length) {
+        const nextTime = seekPositions[currentSeekIndex];
+        const duration = video.duration;
+        if (isFinite(nextTime) && isFinite(duration) && nextTime < duration) {
+          video.currentTime = nextTime;
+          return;
+        }
+      }
+      // All positions gave black frames — do NOT save a black thumbnail
+      console.warn("[Thumbnail] All seek positions produced black frames, not saving");
+      cleanup();
+      resolve(null);
+    };
 
     video.onloadedmetadata = () => {
       const duration = video.duration;
@@ -70,14 +123,24 @@ async function extractVideoThumbnail(
       if (isFinite(duration) && duration > 0) {
         seekPositions.push(duration * 0.1);
         seekPositions.push(duration * 0.25);
+        seekPositions.push(duration * 0.5);
       }
       // Clamp initial seek time
       const targetTime = Math.min(seekPositions[0], duration * 0.8);
       video.currentTime = targetTime;
     };
 
-    video.onseeked = () => {
+    video.onseeked = async () => {
+      if (resolved) return;
       try {
+        // Wait for the frame to be fully decoded before drawing
+        await waitForFrameReady();
+
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+          tryNextSeek();
+          return;
+        }
+
         const canvas = document.createElement("canvas");
         const maxDim = 720;
         const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
@@ -96,50 +159,22 @@ async function extractVideoThumbnail(
         // Check if this frame is mostly black — if so, try next seek position
         if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
           canvas.remove();
-          currentSeekIndex++;
-          if (currentSeekIndex < seekPositions.length) {
-            const nextTime = seekPositions[currentSeekIndex];
-            const duration = video.duration;
-            if (isFinite(nextTime) && isFinite(duration) && nextTime < duration) {
-              video.currentTime = nextTime;
-              return;
-            }
-          }
-          // All positions gave black frames — save the last one anyway
-          const retryCanvas = document.createElement("canvas");
-          retryCanvas.width = Math.round(video.videoWidth * scale);
-          retryCanvas.height = Math.round(video.videoHeight * scale);
-          const retryCtx = retryCanvas.getContext("2d");
-          if (retryCtx) {
-            retryCtx.drawImage(video, 0, 0, retryCanvas.width, retryCanvas.height);
-            retryCanvas.toBlob(
-              (blob) => {
-                retryCanvas.remove();
-                cleanup();
-                resolve(blob);
-              },
-              "image/jpeg",
-              0.85
-            );
-            return;
-          }
-          cleanup();
-          resolve(null);
+          tryNextSeek();
           return;
         }
 
+        // Found a non-black frame! Convert and save
         canvas.toBlob(
           (blob) => {
-            cleanup();
             canvas.remove();
+            cleanup();
             resolve(blob);
           },
           "image/jpeg",
           0.85
         );
       } catch {
-        cleanup();
-        resolve(null);
+        tryNextSeek();
       }
     };
 
@@ -152,7 +187,7 @@ async function extractVideoThumbnail(
     setTimeout(() => {
       cleanup();
       resolve(null);
-    }, 15000);
+    }, 20000);
   });
 }
 

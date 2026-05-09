@@ -403,6 +403,7 @@ export default function AdminVerticalVideosPage() {
 
   // Extract a thumbnail from a video blob/object URL using canvas
   // This works with a complete video blob (no moov atom issues)
+  // IMPORTANT: Never saves a black frame — returns null if all positions are black
   const extractThumbnailFromBlob = async (
     videoBlob: Blob
   ): Promise<string | null> => {
@@ -414,13 +415,41 @@ export default function AdminVerticalVideosPage() {
 
       const objectUrl = URL.createObjectURL(videoBlob);
       video.src = objectUrl;
+      let resolved = false;
 
       const cleanup = () => {
+        if (resolved) return;
+        resolved = true;
         video.pause();
         video.removeAttribute("src");
         video.load();
         video.remove();
         URL.revokeObjectURL(objectUrl);
+      };
+
+      // Wait for the video to actually decode the frame at the current time
+      // before attempting to draw it on canvas. This prevents black frames
+      // caused by drawing before the decoder has produced a visible frame.
+      const waitForFrameReady = (): Promise<void> => {
+        return new Promise((frameResolve) => {
+          if (video.readyState >= 2 && video.videoWidth > 0) {
+            // Wait one animation frame to ensure compositor has the frame
+            requestAnimationFrame(() => frameResolve());
+            return;
+          }
+          const onData = () => {
+            video.removeEventListener("loadeddata", onData);
+            video.removeEventListener("canplay", onData);
+            requestAnimationFrame(() => frameResolve());
+          };
+          video.addEventListener("loadeddata", onData);
+          video.addEventListener("canplay", onData);
+          setTimeout(() => {
+            video.removeEventListener("loadeddata", onData);
+            video.removeEventListener("canplay", onData);
+            frameResolve();
+          }, 3000);
+        });
       };
 
       // Try multiple seek positions to find a non-black frame
@@ -497,6 +526,21 @@ export default function AdminVerticalVideosPage() {
         }
       };
 
+      const tryNextSeek = () => {
+        currentSeekIndex++;
+        if (currentSeekIndex < seekPositions.length) {
+          const nextTime = seekPositions[currentSeekIndex];
+          if (isFinite(nextTime) && nextTime < (video.duration || Infinity)) {
+            video.currentTime = nextTime;
+            return;
+          }
+        }
+        // All positions gave black frames — do NOT save a black thumbnail
+        console.warn("[Thumbnail] All seek positions produced black frames, skipping");
+        cleanup();
+        resolve(null);
+      };
+
       video.onloadedmetadata = () => {
         const duration = video.duration;
         // Add percentage-based positions
@@ -507,30 +551,18 @@ export default function AdminVerticalVideosPage() {
         video.currentTime = seekPositions[0] || 0.5;
       };
 
-      video.onseeked = () => {
-        const found = tryCaptureFrame();
-        if (found) return; // Good frame captured, will call finish()
+      video.onseeked = async () => {
+        if (resolved) return;
+        try {
+          // Wait for the frame to be fully decoded before drawing
+          await waitForFrameReady();
 
-        currentSeekIndex++;
-        if (currentSeekIndex < seekPositions.length) {
-          const nextTime = seekPositions[currentSeekIndex];
-          if (isFinite(nextTime) && nextTime < (video.duration || Infinity)) {
-            video.currentTime = nextTime;
-            return;
-          }
-        }
+          const found = tryCaptureFrame();
+          if (found) return; // Good frame captured, will call finish()
 
-        // All positions gave black frames — do NOT save a black thumbnail
-        console.warn("[Thumbnail] All seek positions produced black frames, skipping");
-        cleanup();
-        resolve(null);
-      };
-
-      // Also try to capture when data is loaded (first frame)
-      video.onloadeddata = () => {
-        if (video.readyState >= 2 && video.videoWidth > 0) {
-          // Try capturing the very first frame
-          video.currentTime = 0.1; // Seek slightly past 0 to avoid pre-roll black
+          tryNextSeek();
+        } catch {
+          tryNextSeek();
         }
       };
 
