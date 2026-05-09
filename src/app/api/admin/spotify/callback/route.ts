@@ -36,11 +36,11 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
 
   // Determine the redirect URI — must match what was used in the /auth endpoint
-  const explicitBase = process.env.SPOTIFY_REDIRECT_URI 
-    ? process.env.SPOTIFY_REDIRECT_URI.replace("/api/admin/spotify/callback", "")
-    : process.env.NEXT_PUBLIC_BASE_URL;
-  
-  const baseUrl = explicitBase || new URL(request.url).origin;
+  // Use the same logic as the auth route to ensure consistency
+  const PRODUCTION_BASE_URL = "https://sonidoliquido.com";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+    || PRODUCTION_BASE_URL
+    || new URL(request.url).origin;
   const redirectUri = `${baseUrl}/api/admin/spotify/callback`;
 
   try {

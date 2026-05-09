@@ -13,20 +13,20 @@ import { NextRequest } from "next/server";
  *
  * IMPORTANT: The redirect URI must be registered in the Spotify Developer Dashboard.
  * Go to https://developer.spotify.com/dashboard → App Settings → Redirect URIs
- * Add: https://nidoliquido.com/api/admin/spotify/callback
+ * Add: https://sonidoliquido.com/api/admin/spotify/callback
  */
 export async function GET(request: NextRequest) {
   const clientId = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
 
   // Determine the callback URL:
-  // 1. Explicit env var (most reliable)
-  // 2. From the request origin (works in production)
-  // 3. Fallback to localhost
-  const explicitBase = process.env.SPOTIFY_REDIRECT_URI 
-    ? process.env.SPOTIFY_REDIRECT_URI.replace("/api/admin/spotify/callback", "")
-    : process.env.NEXT_PUBLIC_BASE_URL;
-  
-  const baseUrl = explicitBase || new URL(request.url).origin;
+  // 1. NEXT_PUBLIC_BASE_URL env var (most reliable, set in Netlify)
+  // 2. Hardcoded production URL (failsafe)
+  // 3. From the request origin (works in production)
+  // 4. Fallback to localhost for local dev
+  const PRODUCTION_BASE_URL = "https://sonidoliquido.com";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+    || PRODUCTION_BASE_URL
+    || new URL(request.url).origin;
   const redirectUri = `${baseUrl}/api/admin/spotify/callback`;
 
   console.log("[Spotify OAuth] Redirect URI:", redirectUri);

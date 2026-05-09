@@ -6,7 +6,11 @@ import { eq, asc, inArray } from "drizzle-orm";
 // Spotify OAuth configuration — NO hardcoded fallbacks, must be set via env
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
-const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || "http://localhost:3000/api/auth/spotify/callback";
+const PRODUCTION_BASE_URL = "https://sonidoliquido.com";
+const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI
+  || (process.env.NEXT_PUBLIC_BASE_URL
+    ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/spotify/callback`
+    : `${PRODUCTION_BASE_URL}/api/auth/spotify/callback`);
 
 // Playlist default descriptions
 const PLAYLIST_DESCRIPTIONS: Record<string, string> = {
