@@ -36,57 +36,58 @@ async function ensureTmpDir() {
 
 /**
  * Check if a JPEG buffer is mostly black (over 95% dark pixels).
- * Used to reject thumbnails that the Dropbox API generates as blank/black frames.
- * Samples pixels from the JPEG by checking average brightness.
+ * Uses two methods:
+ * 1. Size check: Black JPEGs are typically very small (< 5KB)
+ * 2. Byte sampling: Check JPEG scan data for low values
+ * 3. If ffmpeg is available, also check actual pixel values
+ *
+ * IMPORTANT: The Dropbox get_thumbnail_v2 API often returns black/blank frames
+ * for video files. This function tries to detect those.
  */
 function isMostlyBlack(jpegBuffer: Buffer): boolean {
-  // Quick heuristic: scan the raw JPEG bytes for the image data segment.
-  // A simpler approach: check if almost all bytes in the image data are
-  // very low values (near 0 = black in JPEG).
-  // 
-  // More reliable: look at the JPEG entropy. Black images have very low entropy
-  // because most of the compressed data is repetitive.
-  // 
-  // Simplest reliable check: find the SOS marker (FF DA) and sample bytes after it.
-  // A truly black JPEG will have very short scan data and mostly zeros.
-  
-  // Find the Start of Scan marker
-  for (let i = 0; i < Math.min(jpegBuffer.length - 1, 50000); i++) {
-    if (jpegBuffer[i] === 0xFF && jpegBuffer[i + 1] === 0xDA) {
-      // Found SOS marker - the actual image data follows
-      // Skip the SOS header (2 bytes + header data)
-      const headerLen = jpegBuffer[i + 2] * 256 + jpegBuffer[i + 3];
-      const dataStart = i + 2 + headerLen;
-      
-      if (dataStart >= jpegBuffer.length) break;
-      
-      // Sample 2000 bytes from the scan data
-      const sampleSize = Math.min(2000, jpegBuffer.length - dataStart);
-      let zeroCount = 0;
-      let lowValueCount = 0;
-      
-      for (let j = dataStart; j < dataStart + sampleSize; j++) {
-        if (jpegBuffer[j] === 0x00) zeroCount++;
-        if (jpegBuffer[j] < 0x05) lowValueCount++;
-      }
-      
-      // If more than 85% of bytes are zero or very low, the image is mostly black
-      const lowRatio = lowValueCount / sampleSize;
-      const zeroRatio = zeroCount / sampleSize;
-      
-      console.log(`[Thumbnail Gen] Black detection: zero=${(zeroRatio * 100).toFixed(1)}%, low=${(lowRatio * 100).toFixed(1)}%`);
-      
-      return lowRatio > 0.85;
-    }
-  }
-  
-  // If we couldn't find SOS marker, check file size as a fallback
-  // Black JPEGs are typically very small (< 5KB for a thumbnail)
-  if (jpegBuffer.length < 5000) {
+  // Method 1: File size check — black JPEGs are very small
+  if (jpegBuffer.length < 3000) {
     console.log(`[Thumbnail Gen] File very small (${jpegBuffer.length} bytes), likely black/empty`);
     return true;
   }
-  
+
+  // Method 2: Check JPEG scan data for low values
+  // Find the Start of Scan marker (FF DA)
+  let foundSOS = false;
+  for (let i = 0; i < Math.min(jpegBuffer.length - 1, 50000); i++) {
+    if (jpegBuffer[i] === 0xFF && jpegBuffer[i + 1] === 0xDA) {
+      foundSOS = true;
+      const headerLen = jpegBuffer[i + 2] * 256 + jpegBuffer[i + 3];
+      const dataStart = i + 2 + headerLen;
+
+      if (dataStart >= jpegBuffer.length) break;
+
+      // Sample bytes from the scan data
+      const sampleSize = Math.min(3000, jpegBuffer.length - dataStart);
+      let lowValueCount = 0;
+
+      for (let j = dataStart; j < dataStart + sampleSize; j++) {
+        // In JPEG, after byte stuffing (0xFF 0x00 → 0xFF), values below 0x10
+        // in the DC coefficient area indicate very small pixel differences (near-black)
+        if (jpegBuffer[j] < 0x08) lowValueCount++;
+      }
+
+      const lowRatio = lowValueCount / sampleSize;
+      console.log(`[Thumbnail Gen] Black detection (byte scan): low=${(lowRatio * 100).toFixed(1)}%`);
+
+      if (lowRatio > 0.85) {
+        return true;
+      }
+      break;
+    }
+  }
+
+  // Method 3: If no SOS marker found and file is small, likely black
+  if (!foundSOS && jpegBuffer.length < 8000) {
+    console.log(`[Thumbnail Gen] No SOS marker and small file (${jpegBuffer.length} bytes), likely black`);
+    return true;
+  }
+
   return false;
 }
 
@@ -518,9 +519,40 @@ export async function POST(request: NextRequest) {
 
         // Strategy 2: Try Dropbox get_thumbnail API (works on Netlify without ffmpeg)
         // This is less reliable — it often returns black frames for vertical videos
+        // We still try it but with strict black-frame detection
         if (!thumbnailBuffer) {
-          console.log("[Thumbnail Gen] Trying Dropbox thumbnail API...");
+          console.log("[Thumbnail Gen] Trying Dropbox thumbnail API (unreliable for videos)...");
           thumbnailBuffer = await getDropboxThumbnail(video.videoUrl);
+        }
+
+        // Strategy 3: If both ffmpeg and Dropbox failed, try downloading the video
+        // and extracting a frame with ffmpeg from the downloaded file
+        // (Only works if ffmpeg is available — skip on Netlify)
+        if (!thumbnailBuffer && hasFfmpeg) {
+          console.log("[Thumbnail Gen] Trying full download + ffmpeg extraction...");
+          let downloadUrl = video.videoUrl;
+          if (downloadUrl.includes("dropbox")) {
+            const filePath = await resolveDropboxFilePath(downloadUrl);
+            if (filePath) {
+              const tempLink = await getDropboxTemporaryLink(filePath);
+              if (tempLink) downloadUrl = tempLink;
+            }
+          }
+          const videoTmpPath = path.join(TMP_DIR, `${video.id}_full_video.tmp`);
+          const thumbnailTmpPath = path.join(TMP_DIR, `${video.id}_full_thumb.jpg`);
+          try {
+            const downloaded = await downloadVideoPartial(downloadUrl, videoTmpPath, 50 * 1024 * 1024);
+            if (downloaded) {
+              const extracted = await extractThumbnailFfmpeg(videoTmpPath, thumbnailTmpPath);
+              if (extracted) {
+                thumbnailBuffer = await readFile(thumbnailTmpPath);
+              }
+            }
+          } catch (dlErr) {
+            console.warn("[Thumbnail Gen] Full download + ffmpeg extraction failed:", dlErr);
+          } finally {
+            await cleanup(videoTmpPath, thumbnailTmpPath);
+          }
         }
 
         if (!thumbnailBuffer) {
@@ -530,7 +562,7 @@ export async function POST(request: NextRequest) {
             success: false,
             error: hasFfmpeg
               ? "No se pudo generar la miniatura (ffmpeg y Dropbox API fallaron)"
-              : "No se pudo generar la miniatura. El servidor no tiene ffmpeg y la API de Dropbox no pudo generarla.",
+              : "No se pudo generar la miniatura. El servidor no tiene ffmpeg y la API de Dropbox no pudo generarla. Usa la regeneración desde el navegador.",
           });
           continue;
         }

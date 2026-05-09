@@ -683,19 +683,30 @@ export default function PlaylistsPage() {
   const [isSyncingSpotify, setIsSyncingSpotify] = useState(false);
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [spotifyChecking, setSpotifyChecking] = useState(true);
+  const [spotifyRedirecting, setSpotifyRedirecting] = useState(false);
 
   useEffect(() => {
     fetchPlaylists();
-    checkSpotifyConnection();
 
-    // Handle Spotify OAuth callback URL parameters
+    // Handle Spotify OAuth callback URL parameters FIRST
     const params = new URLSearchParams(window.location.search);
-    if (params.get("spotify_connected") === "true") {
+    const isSpotifyCallback = params.get("spotify_connected") === "true";
+    const hasSpotifyError = params.has("spotify_error");
+
+    if (isSpotifyCallback) {
+      // Trust the callback success — tokens were stored server-side before redirect
       setSpotifyConnected(true);
+      setSpotifyChecking(false);
       alert("Spotify conectado exitosamente. Ya puedes importar tracks.");
       // Clean up URL
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
-    } else if (params.get("spotify_error")) {
+
+      // Do a delayed verification after 3 seconds (not immediately) to confirm tokens are in DB
+      // This avoids the race condition where the API check overrides our optimistic state
+      setTimeout(() => {
+        checkSpotifyConnection();
+      }, 3000);
+    } else if (hasSpotifyError) {
       const error = params.get("spotify_error");
       const errorMessages: Record<string, string> = {
         access_denied: "Autorización de Spotify denegada.",
@@ -703,9 +714,16 @@ export default function PlaylistsPage() {
         token_exchange_failed: "Error al intercambiar el código de Spotify.",
         no_refresh_token: "No se recibió el refresh token de Spotify.",
         callback_error: "Error en el callback de Spotify.",
+        db_write_failed: "Error al guardar los tokens de Spotify en la base de datos. Intenta de nuevo.",
+        token_verify_failed: "No se pudieron verificar los tokens guardados. Intenta de nuevo.",
       };
       alert(errorMessages[error || ""] || "Error al conectar Spotify.");
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
+      // Still check connection after error
+      checkSpotifyConnection();
+    } else {
+      // Normal page load — check Spotify connection
+      checkSpotifyConnection();
     }
   }, []);
 
@@ -896,15 +914,20 @@ export default function PlaylistsPage() {
   };
 
   const handleConnectSpotify = () => {
+    // Prevent double-redirect (guard against infinite loops)
+    if (spotifyRedirecting) return;
+    setSpotifyRedirecting(true);
     // Redirect to Spotify OAuth flow
     window.location.href = "/api/admin/spotify/auth";
   };
 
   const handleSyncFromSpotify = async (playlistId: string) => {
     if (!spotifyConnected) {
-      // Auto-redirect to Spotify OAuth instead of just showing an alert
-      alert("Necesitas conectar tu cuenta de Spotify. Te redirigiremos a Spotify para autorizar el acceso.");
-      handleConnectSpotify();
+      // Show message and redirect, with loop guard
+      if (!spotifyRedirecting) {
+        alert("Necesitas conectar tu cuenta de Spotify. Te redirigiremos a Spotify para autorizar el acceso.");
+        handleConnectSpotify();
+      }
       return;
     }
     setIsSyncingSpotify(true);
@@ -920,9 +943,9 @@ export default function PlaylistsPage() {
         fetchPlaylistTracks(playlistId);
       } else if (data.needsAuth) {
         setSpotifyConnected(false);
-        // Auto-redirect to Spotify reconnection instead of just showing an alert
-        alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Te redirigiremos a Spotify.");
-        handleConnectSpotify();
+        // Show error but DON'T auto-redirect — let the user click "Connect Spotify" manually
+        // This prevents the infinite OAuth loop
+        alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Haz clic en 'Conectar Spotify' para reconectar.");
       } else {
         alert(data.error || "Error syncing from Spotify");
       }

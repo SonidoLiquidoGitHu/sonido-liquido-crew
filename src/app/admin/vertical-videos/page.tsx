@@ -432,16 +432,40 @@ export default function AdminVerticalVideosPage() {
       // caused by drawing before the decoder has produced a visible frame.
       const waitForFrameReady = (): Promise<void> => {
         return new Promise((frameResolve) => {
-          if (video.readyState >= 2 && video.videoWidth > 0) {
-            // Wait one animation frame to ensure compositor has the frame
-            requestAnimationFrame(() => frameResolve());
+          // Use requestVideoFrameCallback if available (modern browsers) —
+          // this guarantees that a decoded video frame is available for painting.
+          if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+            const onVFC = () => {
+              video.removeEventListener('requestVideoFrameCallback', onVFC as any);
+              frameResolve();
+            };
+            (video as any).requestVideoFrameCallback(onVFC);
+            // Safety timeout in case requestVideoFrameCallback never fires
+            setTimeout(() => {
+              video.removeEventListener('requestVideoFrameCallback', onVFC as any);
+              frameResolve();
+            }, 2000);
             return;
           }
-          const onData = () => {
+
+          // Fallback: wait for loadeddata/canplay + a small delay for decoder
+          const onReady = () => {
             video.removeEventListener("loadeddata", onData);
             video.removeEventListener("canplay", onData);
-            requestAnimationFrame(() => frameResolve());
+            // Give the decoder 150ms to actually produce a visible frame
+            // after the seek. Without this delay, the canvas may capture
+            // a black intermediate frame.
+            setTimeout(() => frameResolve(), 150);
           };
+          const onData = () => {
+            onReady();
+          };
+
+          if (video.readyState >= 3 && video.videoWidth > 0) {
+            // HAVE_FUTURE_DATA — decoder should have a frame available
+            setTimeout(() => frameResolve(), 150);
+            return;
+          }
           video.addEventListener("loadeddata", onData);
           video.addEventListener("canplay", onData);
           setTimeout(() => {
@@ -580,6 +604,8 @@ export default function AdminVerticalVideosPage() {
   };
 
   // Regenerate thumbnail for a single video (downloads full video then extracts frame)
+  // Includes a retry mechanism: if the first attempt produces a black frame,
+  // it retries with a longer delay to ensure the video decoder has caught up.
   const regenerateThumbnail = async (videoId: string) => {
     setUpdatingId(videoId);
     setMessage({ type: "success", text: "Descargando video para extraer miniatura..." });
@@ -607,13 +633,22 @@ export default function AdminVerticalVideosPage() {
       setMessage({ type: "success", text: "Extrayendo frame del video..." });
 
       // Step 3: Extract thumbnail from the complete video blob
-      const thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+      let thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+
+      // Step 4: If first attempt failed (returned null = all black frames),
+      // retry with a delay — the video decoder might need more time
+      if (!thumbnailUrl) {
+        console.log("[Thumbnail] First attempt failed, retrying in 2 seconds...");
+        setMessage({ type: "success", text: "Reintentando extracción de miniatura..." });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+      }
 
       if (!thumbnailUrl) {
         throw new Error("No se pudo extraer un frame del video (posible video negro o corrupto)");
       }
 
-      // Step 4: Save to database
+      // Step 5: Save to database
       const saveRes = await fetch("/api/admin/vertical-videos", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

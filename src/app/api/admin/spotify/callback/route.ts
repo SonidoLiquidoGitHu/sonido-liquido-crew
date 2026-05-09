@@ -82,10 +82,38 @@ export async function GET(request: NextRequest) {
 
     console.log("[Spotify OAuth] Successfully obtained tokens. Expires in:", expiresIn, "seconds");
 
-    // Store the tokens in site_settings
-    await upsertSetting("spotify_refresh_token", refreshToken, "string", "Spotify OAuth refresh token for playlist access");
-    await upsertSetting("spotify_access_token", accessToken, "string", "Spotify OAuth access token (temporary)");
-    await upsertSetting("spotify_access_token_expiry", String(Date.now() + (expiresIn - 60) * 1000), "number", "Spotify access token expiry timestamp");
+    // Store the tokens in site_settings — THROW on failure instead of silently catching
+    try {
+      await upsertSetting("spotify_refresh_token", refreshToken, "string", "Spotify OAuth refresh token for playlist access");
+      await upsertSetting("spotify_access_token", accessToken, "string", "Spotify OAuth access token (temporary)");
+      await upsertSetting("spotify_access_token_expiry", String(Date.now() + (expiresIn - 60) * 1000), "number", "Spotify access token expiry timestamp");
+    } catch (dbError) {
+      console.error("[Spotify OAuth] CRITICAL: Failed to store tokens in database:", dbError);
+      return NextResponse.redirect(
+        new URL("/admin/curated-channels/playlists?spotify_error=db_write_failed", request.url)
+      );
+    }
+
+    // Verify tokens were actually stored by reading them back
+    try {
+      const [verifyRefresh] = await db
+        .select()
+        .from(siteSettings)
+        .where(eq(siteSettings.key, "spotify_refresh_token"))
+        .limit(1);
+
+      if (!verifyRefresh?.value) {
+        console.error("[Spotify OAuth] CRITICAL: Token verification failed — refresh_token not found in DB after write");
+        return NextResponse.redirect(
+          new URL("/admin/curated-channels/playlists?spotify_error=token_verify_failed", request.url)
+        );
+      }
+
+      console.log("[Spotify OAuth] Token storage verified successfully");
+    } catch (verifyError) {
+      console.error("[Spotify OAuth] Token verification check failed:", verifyError);
+      // Don't fail the whole flow — the tokens might be stored, we just can't verify
+    }
 
     // Redirect back to the playlists page with success indicator
     return NextResponse.redirect(
@@ -101,30 +129,27 @@ export async function GET(request: NextRequest) {
 
 /**
  * Insert or update a site setting
+ * THROWS on error instead of catching silently — caller must handle errors
  */
 async function upsertSetting(key: string, value: string, type: string, description: string) {
-  try {
-    const [existing] = await db
-      .select()
-      .from(siteSettings)
-      .where(eq(siteSettings.key, key))
-      .limit(1);
+  const [existing] = await db
+    .select()
+    .from(siteSettings)
+    .where(eq(siteSettings.key, key))
+    .limit(1);
 
-    if (existing) {
-      await db
-        .update(siteSettings)
-        .set({ value, updatedAt: new Date() })
-        .where(eq(siteSettings.key, key));
-    } else {
-      await db.insert(siteSettings).values({
-        id: crypto.randomUUID(),
-        key,
-        value,
-        type: type as "string" | "number" | "boolean" | "json",
-        description,
-      });
-    }
-  } catch (error) {
-    console.error(`[Spotify OAuth] Failed to save setting ${key}:`, error);
+  if (existing) {
+    await db
+      .update(siteSettings)
+      .set({ value, updatedAt: new Date() })
+      .where(eq(siteSettings.key, key));
+  } else {
+    await db.insert(siteSettings).values({
+      id: crypto.randomUUID(),
+      key,
+      value,
+      type: type as "string" | "number" | "boolean" | "json",
+      description,
+    });
   }
 }

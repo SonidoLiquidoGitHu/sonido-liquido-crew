@@ -66,15 +66,16 @@ export async function GET() {
         grant_type: "refresh_token",
         refresh_token: refreshToken,
       }).toString(),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!refreshResponse.ok) {
       const errorBody = await refreshResponse.text();
       console.error("[Spotify Token] Refresh failed:", refreshResponse.status, errorBody);
 
-      // If refresh token is invalid, user needs to re-authorize
-      if (refreshResponse.status === 400 || refreshResponse.status === 401 || refreshResponse.status === 403) {
-        // Clear the stored tokens
+      // Only clear tokens on definitive auth failures (400 = invalid refresh token, 401 = bad client)
+      // Do NOT clear on 403 (could be temporary) or 5xx (server error)
+      if (refreshResponse.status === 400 || refreshResponse.status === 401) {
         await clearSpotifyTokens();
         return NextResponse.json({
           connected: false,
@@ -82,9 +83,13 @@ export async function GET() {
         });
       }
 
+      // For 403 or server errors, don't clear tokens — they might still be valid later
+      // Return the expired access token info so the client knows we had a connection
+      // but the refresh failed temporarily
       return NextResponse.json({
         connected: false,
-        error: "Failed to refresh Spotify access token.",
+        error: "Failed to refresh Spotify access token. Please try again in a moment.",
+        refreshFailed: true,
       });
     }
 
@@ -139,10 +144,12 @@ async function upsertSetting(key: string, value: string, type: string) {
         key,
         value,
         type: type as "string" | "number" | "boolean" | "json",
+        description: `Spotify ${key}`,
       });
     }
   } catch (error) {
     console.error(`[Spotify Token] Failed to save setting ${key}:`, error);
+    throw error; // Re-throw so caller knows the write failed
   }
 }
 
