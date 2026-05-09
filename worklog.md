@@ -94,3 +94,19 @@ Stage Summary:
 - Fixed deployment by pushing to `master` instead of `main`
 - Netlify should now deploy automatically from the master branch push
 - Key lesson: Always push to `master`, not `main` — Netlify watches master
+---
+Task ID: 3
+Agent: main
+Task: Fix TypeScript build error causing Netlify deploy failure
+
+Work Log:
+- Netlify deploy failed: TypeScript error at spotify.ts:365 - 'single' not assignable to '"album" | "artist" | "track"'
+- Root cause: my previous getAllArtistAlbumsFallback() iterated over ["album", "single"] and passed type to this.search(), but Spotify search API doesn't accept "single" as a type
+- Fix: removed the for-loop, just search with ["album"] type which returns both albums and singles from Spotify
+- Also cleaned up indentation and stray closing brace from the previous edit
+- Pushed to master (4c6a892) and main
+
+Stage Summary:
+- TypeScript build error fixed
+- Pushed to master for Netlify deploy
+- Spotify search "album" type already returns both albums and singles, no need for separate search
