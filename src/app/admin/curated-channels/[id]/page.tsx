@@ -124,22 +124,31 @@ export default function CuratedChannelDetailPage({
     setSyncing(true);
 
     try {
-      // First try the fast "recent tracks" method (1-2 API calls, ~3-5 seconds)
-      // This is much more reliable than full album sync on Netlify
+      // First try the fast "recent tracks" method (~3-5 seconds)
       const topRes = await fetch(`/api/admin/curated-channels/${id}/top-tracks`, {
         method: "POST",
       });
 
       if (topRes.ok) {
         const topData = await topRes.json();
-        if (topData.success && (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0)) {
-          alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
-          fetchChannel();
+        if (topData.success) {
+          if (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0) {
+            alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
+            fetchChannel();
+            return;
+          }
+          // Top-tracks worked but found nothing new — try full sync
+        } else {
+          // Top-tracks returned an error — show it and stop
+          alert(`Error en tracks recientes: ${topData.error || "Error desconocido"}`);
           return;
         }
+      } else if (topRes.status === 504 || topRes.status === 502) {
+        alert("El servidor tardó en responder. Intenta usar el botón ★ (Tracks Recientes) primero.");
+        return;
       }
 
-      // If recent tracks didn't find anything new, try full album sync
+      // Full album sync (batched)
       let totalAdded = 0;
       let totalSkipped = 0;
       let totalErrors = 0;
@@ -157,7 +166,7 @@ export default function CuratedChannelDetailPage({
             const data = await res.json();
             errorMsg = data.error || errorMsg;
           } catch {
-            errorMsg = `Error al sincronizar (HTTP ${res.status}). El servidor tardó en responder. Intenta usar "Tracks Recientes" primero.`;
+            errorMsg = `Error al sincronizar (HTTP ${res.status}). El servidor tardó en responder. Intenta usar ★ (Tracks Recientes) primero.`;
           }
           alert(errorMsg);
           return;
@@ -188,7 +197,7 @@ export default function CuratedChannelDetailPage({
       alert(msg);
       fetchChannel();
     } catch (error) {
-      alert("Error de conexión - la sincronización puede tardar más de lo esperado. Intenta usar 'Tracks Recientes' primero.");
+      alert("Error de conexión - la sincronización tarda. Intenta usar ★ (Tracks Recientes) primero.");
     } finally {
       setSyncing(false);
     }

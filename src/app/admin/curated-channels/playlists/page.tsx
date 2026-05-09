@@ -314,7 +314,7 @@ function PlaylistFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="bg-slc-dark border-slc-border text-white max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-slc-dark border-slc-border text-white max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-oswald uppercase">
             {isEditing ? "Editar Playlist" : "Crear Playlist"}
@@ -326,7 +326,7 @@ function PlaylistFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1 min-h-0 pr-1">
           {/* Name */}
           <div>
             <label className="text-sm font-medium text-slc-muted mb-1.5 block">
@@ -569,11 +569,12 @@ function PlaylistFormDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+        <DialogFooter className="flex-shrink-0 border-t border-slc-border/30 pt-4 mt-2">
+          <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button
+            type="button"
             onClick={() => onSubmit(formData)}
             disabled={isSubmitting || !formData.name.trim()}
           >
@@ -625,11 +626,12 @@ function DeleteConfirmDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button
             variant="destructive"
+            type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
           >

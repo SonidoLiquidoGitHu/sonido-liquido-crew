@@ -139,29 +139,39 @@ export default function CuratedChannelsPage() {
     setSyncing(channelId);
 
     try {
-      // First try the fast "recent tracks" method (1-2 API calls, ~3-5 seconds)
-      // This is much more reliable than full album sync on Netlify
+      // First try the fast "recent tracks" method (~3-5 seconds)
+      // Much more reliable than full album sync on Netlify
       const topRes = await fetch(`/api/admin/curated-channels/${channelId}/top-tracks`, {
         method: "POST",
       });
 
       if (topRes.ok) {
         const topData = await topRes.json();
-        if (topData.success && (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0)) {
-          alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
-          fetchChannels();
+        if (topData.success) {
+          if (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0) {
+            alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
+            fetchChannels();
+            return;
+          }
+          // Top-tracks worked but found nothing new — try full sync
+        } else {
+          // Top-tracks returned an error — show it and stop
+          alert(`Error en tracks recientes: ${topData.error || "Error desconocido"}`);
           return;
         }
+      } else if (topRes.status === 504 || topRes.status === 502) {
+        alert("El servidor tardó en responder. Intenta usar el botón ★ (Tracks Recientes) primero.");
+        return;
       }
+      // If top-tracks returned non-ok status other than timeout, try full sync
 
-      // If recent tracks didn't find anything new, try full album sync
+      // Full album sync (batched to avoid timeouts)
       let totalAdded = 0;
       let totalSkipped = 0;
       let totalErrors = 0;
       let offset = 0;
       let totalAlbums = 0;
 
-      // Loop through batches until all albums are processed
       while (true) {
         const res = await fetch(`/api/admin/curated-channels/${channelId}/sync?offset=${offset}`, {
           method: "POST",
@@ -173,7 +183,6 @@ export default function CuratedChannelsPage() {
             const data = await res.json();
             errorMsg = data.error || errorMsg;
           } catch {
-            // Server returned non-JSON (e.g. 502 timeout page)
             errorMsg = `Error al sincronizar (HTTP ${res.status}). El servidor tardó en responder. Intenta usar "Tracks Recientes" primero.`;
           }
           alert(errorMsg);
@@ -193,7 +202,6 @@ export default function CuratedChannelsPage() {
 
         if (data.data.hasMore) {
           offset = data.data.nextOffset;
-          // Small delay between batches to avoid overwhelming the server
           await new Promise(resolve => setTimeout(resolve, 300));
         } else {
           break;
@@ -206,7 +214,7 @@ export default function CuratedChannelsPage() {
       alert(msg);
       fetchChannels();
     } catch (error) {
-      alert("Error de conexión - la sincronización tarda. Intenta desde la página del canal.");
+      alert("Error de conexión - la sincronización tarda. Intenta usar ★ (Tracks Recientes) primero.");
     } finally {
       setSyncing(null);
     }
