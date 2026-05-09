@@ -24,9 +24,10 @@ import {
 import { uploadToDropboxDirect, type DropboxUploadProgress } from "@/lib/clients/dropbox-browser";
 
 // Extract a thumbnail frame from a video file using canvas
+// Tries multiple seek positions to find the first non-black frame
 async function extractVideoThumbnail(
   file: File,
-  seekTime: number = 1.0
+  initialSeekTime: number = 1.0
 ): Promise<Blob | null> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
@@ -40,16 +41,44 @@ async function extractVideoThumbnail(
       video.remove();
     };
 
+    // Check if a canvas image is mostly black
+    const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
+      try {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        let totalBrightness = 0;
+        let sampledCount = 0;
+        // Sample every 10th pixel for performance
+        for (let i = 0; i < data.length; i += 40) {
+          totalBrightness += (data[i] + data[i + 1] + data[i + 2]) / 3;
+          sampledCount++;
+        }
+        const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
+        return avgBrightness < 15; // Below 15/255 = mostly black
+      } catch {
+        return false;
+      }
+    };
+
+    // Seek positions to try (in seconds)
+    const seekPositions = [initialSeekTime, 0.5, 1.0, 2.0, 3.0];
+    let currentSeekIndex = 0;
+
     video.onloadedmetadata = () => {
-      // Seek to the desired time, but not beyond 80% of the video duration
-      const targetTime = Math.min(seekTime, video.duration * 0.8);
+      const duration = video.duration;
+      // Add percentage-based positions
+      if (isFinite(duration) && duration > 0) {
+        seekPositions.push(duration * 0.1);
+        seekPositions.push(duration * 0.25);
+      }
+      // Clamp initial seek time
+      const targetTime = Math.min(seekPositions[0], duration * 0.8);
       video.currentTime = targetTime;
     };
 
     video.onseeked = () => {
       try {
         const canvas = document.createElement("canvas");
-        // Use video dimensions but cap at reasonable thumbnail size
         const maxDim = 720;
         const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
         canvas.width = Math.round(video.videoWidth * scale);
@@ -63,6 +92,42 @@ async function extractVideoThumbnail(
         }
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Check if this frame is mostly black — if so, try next seek position
+        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
+          canvas.remove();
+          currentSeekIndex++;
+          if (currentSeekIndex < seekPositions.length) {
+            const nextTime = seekPositions[currentSeekIndex];
+            const duration = video.duration;
+            if (isFinite(nextTime) && isFinite(duration) && nextTime < duration) {
+              video.currentTime = nextTime;
+              return;
+            }
+          }
+          // All positions gave black frames — save the last one anyway
+          const retryCanvas = document.createElement("canvas");
+          retryCanvas.width = Math.round(video.videoWidth * scale);
+          retryCanvas.height = Math.round(video.videoHeight * scale);
+          const retryCtx = retryCanvas.getContext("2d");
+          if (retryCtx) {
+            retryCtx.drawImage(video, 0, 0, retryCanvas.width, retryCanvas.height);
+            retryCanvas.toBlob(
+              (blob) => {
+                retryCanvas.remove();
+                cleanup();
+                resolve(blob);
+              },
+              "image/jpeg",
+              0.85
+            );
+            return;
+          }
+          cleanup();
+          resolve(null);
+          return;
+        }
+
         canvas.toBlob(
           (blob) => {
             cleanup();
@@ -87,7 +152,7 @@ async function extractVideoThumbnail(
     setTimeout(() => {
       cleanup();
       resolve(null);
-    }, 10000);
+    }, 15000);
   });
 }
 
@@ -316,75 +381,39 @@ export function VideoUploader({
       let thumbnailBlob: Blob | null = null;
 
       try {
-        const video = document.createElement("video");
-        video.preload = "auto";
-        video.muted = true;
-        video.playsInline = true;
-        video.src = URL.createObjectURL(file);
-
-        await new Promise<void>((resolve) => {
-          video.onloadedmetadata = () => {
-            if (video.videoWidth > video.videoHeight) {
-              detectedOrientation = "horizontal";
-            } else if (video.videoHeight > video.videoWidth) {
-              detectedOrientation = "vertical";
-            } else {
-              detectedOrientation = "square";
-            }
-
-            // Seek to 1 second to capture a good frame
-            const targetTime = Math.min(1.0, video.duration * 0.25);
-            video.currentTime = targetTime;
-          };
-
-          video.onseeked = () => {
-            // Capture thumbnail frame from canvas
-            try {
-              const canvas = document.createElement("canvas");
-              const maxDim = 720;
-              const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
-              canvas.width = Math.round(video.videoWidth * scale);
-              canvas.height = Math.round(video.videoHeight * scale);
-
-              const ctx = canvas.getContext("2d");
-              if (ctx) {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob(
-                  (blob) => {
-                    thumbnailBlob = blob;
-                    canvas.remove();
-                    URL.revokeObjectURL(video.src);
-                    video.remove();
-                    resolve();
-                  },
-                  "image/jpeg",
-                  0.85
-                );
-              } else {
-                URL.revokeObjectURL(video.src);
-                video.remove();
-                resolve();
-              }
-            } catch {
-              URL.revokeObjectURL(video.src);
-              video.remove();
-              resolve();
-            }
-          };
-
-          video.onerror = () => {
-            URL.revokeObjectURL(video.src);
-            video.remove();
-            resolve();
-          };
-
-          // Timeout in case metadata/seek never completes
-          setTimeout(() => {
-            URL.revokeObjectURL(video.src);
-            video.remove();
-            resolve();
-          }, 15000);
-        });
+        // Use the shared extractVideoThumbnail function which handles
+        // black-frame detection and multiple seek positions
+        const [orientationInfo, thumbBlob] = await Promise.all([
+          // Detect orientation
+          new Promise<VideoOrientation>((resolve) => {
+            const v = document.createElement("video");
+            v.preload = "auto";
+            v.muted = true;
+            v.playsInline = true;
+            v.src = URL.createObjectURL(file);
+            v.onloadedmetadata = () => {
+              URL.revokeObjectURL(v.src);
+              v.remove();
+              if (v.videoWidth > v.videoHeight) resolve("horizontal");
+              else if (v.videoHeight > v.videoWidth) resolve("vertical");
+              else resolve("square");
+            };
+            v.onerror = () => {
+              URL.revokeObjectURL(v.src);
+              v.remove();
+              resolve("unknown");
+            };
+            setTimeout(() => {
+              URL.revokeObjectURL(v.src);
+              v.remove();
+              resolve("unknown");
+            }, 10000);
+          }),
+          // Extract thumbnail with black-frame detection
+          extractVideoThumbnail(file),
+        ]);
+        detectedOrientation = orientationInfo;
+        thumbnailBlob = thumbBlob;
       } catch (e) {
         console.error("Error detecting video orientation / extracting thumbnail:", e);
       }

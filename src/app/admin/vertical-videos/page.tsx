@@ -386,6 +386,31 @@ export default function AdminVerticalVideosPage() {
     }
   };
 
+  // Check if a canvas image is mostly black (average brightness too low)
+  const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
+    try {
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      let totalBrightness = 0;
+      const pixelCount = width * height;
+      // Sample every 10th pixel for performance
+      const step = 10;
+      let sampledCount = 0;
+      for (let i = 0; i < data.length; i += 4 * step) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        totalBrightness += (r + g + b) / 3;
+        sampledCount++;
+      }
+      const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
+      // If average brightness is below 15 (out of 255), consider it black
+      return avgBrightness < 15;
+    } catch {
+      return false;
+    }
+  };
+
   // Extract a thumbnail from a video URL using the video proxy + canvas
   const extractThumbnailFromProxy = async (
     videoId: string
@@ -407,9 +432,19 @@ export default function AdminVerticalVideosPage() {
         video.remove();
       };
 
+      // Try multiple seek positions to find a non-black frame
+      const seekPositions = [0.5, 1.0, 2.0, 3.0];
+      let currentSeekIndex = 0;
+
       video.onloadedmetadata = () => {
-        const targetTime = Math.min(1.0, video.duration * 0.25);
-        video.currentTime = targetTime;
+        const duration = video.duration;
+        // Add percentage-based positions
+        if (isFinite(duration) && duration > 0) {
+          seekPositions.push(duration * 0.1);
+          seekPositions.push(duration * 0.25);
+        }
+        // Start seeking
+        video.currentTime = seekPositions[0] || 0.5;
       };
 
       video.onseeked = () => {
@@ -432,6 +467,24 @@ export default function AdminVerticalVideosPage() {
           }
 
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          // Check if this frame is mostly black
+          if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
+            canvas.remove();
+            currentSeekIndex++;
+            if (currentSeekIndex < seekPositions.length) {
+              // Try next seek position
+              const nextTime = seekPositions[currentSeekIndex];
+              if (isFinite(nextTime) && nextTime < video.duration) {
+                video.currentTime = nextTime;
+                return;
+              }
+            }
+            // All positions gave black frames — save anyway as last resort
+            // (but try drawing one more time at the current position)
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          }
+
           canvas.toBlob(
             async (blob) => {
               canvas.remove();

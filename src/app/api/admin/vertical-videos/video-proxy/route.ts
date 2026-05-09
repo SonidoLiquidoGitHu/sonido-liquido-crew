@@ -17,7 +17,12 @@ import { dropboxClient } from "@/lib/clients/dropbox";
  * moov atom + a few frames.
  */
 
-const MAX_BYTES = 2 * 1024 * 1024; // 2 MB – enough for metadata + first frames
+// 15 MB — enough for the browser to decode at least the first few frames.
+// 2 MB was too small: most MP4s store the moov atom at the end of the file,
+// and without it the browser cannot seek to any frame, resulting in a black
+// canvas when trying to extract a thumbnail.  15 MB gives the browser a
+// fighting chance of having enough data to render the first visible frame.
+const MAX_BYTES = 15 * 1024 * 1024;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
