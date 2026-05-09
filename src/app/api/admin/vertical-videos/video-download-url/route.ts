@@ -44,6 +44,10 @@ export async function GET(request: NextRequest) {
         if (sharedLink.includes("dl.dropboxusercontent.com")) {
           sharedLink = sharedLink.replace("dl.dropboxusercontent.com", "www.dropbox.com");
         }
+        // Handle ?raw=1 URLs — convert back to standard shared link format
+        if (sharedLink.includes("raw=1")) {
+          sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+        }
         if (!sharedLink.includes("?")) {
           sharedLink += "?dl=0";
         }
@@ -90,11 +94,15 @@ export async function GET(request: NextRequest) {
       } catch (err) {
         console.warn("[Video Download URL] Could not resolve Dropbox path:", err);
 
-        // Fallback: convert shared link to direct download
-        downloadUrl = downloadUrl.replace("www.dropbox.com", "dl.dropboxusercontent.com");
-        downloadUrl = downloadUrl.replace("?dl=0", "").replace("&dl=0", "");
-        if (!downloadUrl.includes("dropboxusercontent")) {
-          downloadUrl = downloadUrl + "?dl=1";
+        // Fallback: try ?raw=1 or ?dl=1 for direct download
+        if (downloadUrl.includes("dl.dropboxusercontent.com")) {
+          // Old format — keep as-is
+        } else if (downloadUrl.includes("www.dropbox.com")) {
+          // New format — ensure ?raw=1 for direct access
+          if (!downloadUrl.includes("raw=1") && !downloadUrl.includes("dl=1")) {
+            downloadUrl += (downloadUrl.includes("?") ? "&" : "?") + "raw=1";
+          }
+          downloadUrl = downloadUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
         }
       }
     }

@@ -95,6 +95,7 @@ export default function AdminVerticalVideosPage() {
   const [uploadThumbnailUrl, setUploadThumbnailUrl] = useState("");
   const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
   const [thumbnailProgress, setThumbnailProgress] = useState("");
+  const [fixingUrls, setFixingUrls] = useState(false);
 
   // Edit modal state
   const [editingVideo, setEditingVideo] = useState<VerticalVideo | null>(null);
@@ -1009,6 +1010,32 @@ export default function AdminVerticalVideosPage() {
     setTimeout(() => setMessage(null), 5000);
   };
 
+  // Fix broken thumbnail/video URLs (dl.dropboxusercontent.com → ?raw=1)
+  const fixThumbnailUrls = async () => {
+    setFixingUrls(true);
+    try {
+      const res = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fixUrls: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({
+          type: "success",
+          text: data.message || "URLs arregladas",
+        });
+        fetchData();
+      } else {
+        setMessage({ type: "error", text: data.error || "Error arreglando URLs" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error de conexión" });
+    }
+    setFixingUrls(false);
+    setTimeout(() => setMessage(null), 5000);
+  };
+
   // Get platform badge color
   const getPlatformColor = (platform: string | null) => {
     switch (platform?.toLowerCase()) {
@@ -1064,6 +1091,21 @@ export default function AdminVerticalVideosPage() {
               {generatingThumbnails
                 ? thumbnailProgress || "Generando..."
                 : "Generar Miniaturas"}
+            </Button>
+          )}
+          {videos.some((v) => v.thumbnailUrl?.includes("dl.dropboxusercontent.com") || v.videoUrl?.includes("dl.dropboxusercontent.com")) && (
+            <Button
+              variant="outline"
+              onClick={fixThumbnailUrls}
+              disabled={fixingUrls}
+              className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10"
+            >
+              {fixingUrls ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {fixingUrls ? "Arreglando URLs..." : "Arreglar URLs Dropbox"}
             </Button>
           )}
           <Button onClick={() => setShowUploader(true)}>

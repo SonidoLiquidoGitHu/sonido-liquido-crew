@@ -99,6 +99,59 @@ export async function GET(request: NextRequest) {
     }
 
     const upstreamContentType = response.headers.get("content-type") || undefined;
+
+    // SECURITY: Detect non-image responses from upstream.
+    // Dropbox shared links can return HTML pages (login, error, file viewer)
+    // instead of the raw image. Serving these as "images" causes the browser
+    // to display a broken/black image, and the aggressive caching means it
+    // stays broken for up to 24 hours. We must reject non-image responses.
+    if (upstreamContentType && !upstreamContentType.startsWith("image/")) {
+      // For Dropbox URLs, try fetching with ?raw=1 if not already present
+      if (imageUrl.includes("dropbox.com") && !imageUrl.includes("raw=1")) {
+        const retryUrl = imageUrl + (imageUrl.includes("?") ? "&" : "?") + "raw=1";
+        console.log(`[image-proxy] Upstream returned ${upstreamContentType}, retrying with ?raw=1: ${retryUrl}`);
+
+        const retryController = new AbortController();
+        const retryTimeout = setTimeout(() => retryController.abort(), TIMEOUT_MS);
+
+        try {
+          const retryResponse = await fetch(retryUrl, {
+            signal: retryController.signal,
+            headers: { "User-Agent": "SonidoLiquido-ImageProxy/1.0" },
+          });
+          clearTimeout(retryTimeout);
+
+          if (retryResponse.ok) {
+            const retryContentType = retryResponse.headers.get("content-type") || "";
+            if (retryContentType.startsWith("image/")) {
+              const retryBody = await retryResponse.arrayBuffer();
+              if (retryBody.byteLength <= MAX_SIZE) {
+                const mimeType = getMimeType(retryUrl, retryContentType);
+                return new NextResponse(retryBody, {
+                  status: 200,
+                  headers: {
+                    "Content-Type": mimeType,
+                    "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+                    "X-Content-Type-Options": "nosniff",
+                    "Content-Length": retryBody.byteLength.toString(),
+                    Vary: "Accept-Encoding",
+                  },
+                });
+              }
+            }
+          }
+        } catch {
+          // Retry failed, fall through to error
+        }
+      }
+
+      console.warn(`[image-proxy] Upstream returned non-image content-type: ${upstreamContentType} for URL: ${imageUrl.substring(0, 100)}`);
+      return NextResponse.json(
+        { error: `Upstream returned non-image content type: ${upstreamContentType}` },
+        { status: 502 }
+      );
+    }
+
     const mimeType = getMimeType(imageUrl, upstreamContentType);
 
     // Re-serve with correct content-type and caching headers

@@ -323,11 +323,19 @@ export async function uploadToDropboxDirect(
 
       if (shareResponse.ok) {
         const shareData = await shareResponse.json();
-        // Convert to direct link
+        // Convert shared link to a direct-access URL.
+        // IMPORTANT: We use ?raw=1 instead of replacing www.dropbox.com with
+        // dl.dropboxusercontent.com because Dropbox has migrated to a new
+        // shared link format (/scl/fi/...?rlkey=...) that is NOT compatible
+        // with dl.dropboxusercontent.com. The ?raw=1 parameter works with
+        // BOTH old (/s/...) and new (/scl/fi/...) URL formats.
         sharedUrl = shareData.url
-          .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-          .replace("?dl=0", "")
-          .replace("&dl=0", "");
+          .replace("?dl=0", "?raw=1")
+          .replace("&dl=0", "&raw=1");
+        // If the URL didn't have dl=0, just append raw=1
+        if (!sharedUrl.includes("raw=1")) {
+          sharedUrl += (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+        }
       } else {
         // Try to get existing link (might already exist)
         const errorData = await shareResponse.json().catch(() => ({}));
@@ -350,10 +358,13 @@ export async function uploadToDropboxDirect(
           if (existingResponse.ok) {
             const existingData = await existingResponse.json();
             if (existingData.links && existingData.links.length > 0) {
+              // Use ?raw=1 instead of dl.dropboxusercontent.com (see comment above)
               sharedUrl = existingData.links[0].url
-                .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-                .replace("?dl=0", "")
-                .replace("&dl=0", "");
+                .replace("?dl=0", "?raw=1")
+                .replace("&dl=0", "&raw=1");
+              if (!sharedUrl.includes("raw=1")) {
+                sharedUrl += (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+              }
             }
           }
         }
@@ -369,6 +380,19 @@ export async function uploadToDropboxDirect(
     }
 
     onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
+
+    // If we couldn't get a shared link URL, the upload succeeded but
+    // the file is not publicly accessible. Report this as a partial failure
+    // so that callers know the thumbnail URL is missing.
+    if (!sharedUrl) {
+      console.warn("[Dropbox Browser] File uploaded but shared link could not be created");
+      return {
+        success: false,
+        url: "",
+        path: dropboxPath,
+        error: "Archivo subido pero no se pudo crear el enlace compartido",
+      };
+    }
 
     return {
       success: true,

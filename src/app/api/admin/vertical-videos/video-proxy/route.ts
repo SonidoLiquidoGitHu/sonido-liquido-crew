@@ -63,6 +63,10 @@ export async function GET(request: NextRequest) {
         if (sharedLink.includes("dl.dropboxusercontent.com")) {
           sharedLink = sharedLink.replace("dl.dropboxusercontent.com", "www.dropbox.com");
         }
+        // Handle ?raw=1 URLs — convert back to standard shared link format
+        if (sharedLink.includes("raw=1")) {
+          sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+        }
         if (!sharedLink.includes("?")) {
           sharedLink += "?dl=0";
         }

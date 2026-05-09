@@ -103,6 +103,10 @@ async function resolveDropboxFilePath(videoUrl: string): Promise<string | null> 
     if (sharedLink.includes("dl.dropboxusercontent.com")) {
       sharedLink = sharedLink.replace("dl.dropboxusercontent.com", "www.dropbox.com");
     }
+    // Handle ?raw=1 URLs — convert back to standard shared link format
+    if (sharedLink.includes("raw=1")) {
+      sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+    }
     // Ensure it has ?dl=0 for the metadata API
     if (!sharedLink.includes("?")) {
       sharedLink += "?dl=0";
@@ -402,7 +406,68 @@ async function cleanup(...paths: string[]) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { videoId, all, force } = body as { videoId?: string; all?: boolean; force?: boolean };
+    const { videoId, all, force, fixUrls } = body as { videoId?: string; all?: boolean; force?: boolean; fixUrls?: boolean };
+
+    // ===========================================
+    // Fix broken thumbnail URLs (dl.dropboxusercontent.com → ?raw=1)
+    // ===========================================
+    if (fixUrls) {
+      const allVideos = await db.select().from(verticalVideos);
+      let fixed = 0;
+      for (const video of allVideos) {
+        let needsUpdate = false;
+        let newThumbnailUrl = video.thumbnailUrl;
+        let newVideoUrl = video.videoUrl;
+
+        // Fix thumbnail URLs: dl.dropboxusercontent.com → www.dropbox.com?raw=1
+        if (newThumbnailUrl && newThumbnailUrl.includes("dl.dropboxusercontent.com")) {
+          newThumbnailUrl = newThumbnailUrl
+            .replace("dl.dropboxusercontent.com", "www.dropbox.com");
+          if (newThumbnailUrl.includes("?")) {
+            newThumbnailUrl = newThumbnailUrl.replace(/\?dl=\d+/, "?raw=1").replace(/&dl=\d+/, "&raw=1");
+            if (!newThumbnailUrl.includes("raw=1")) {
+              newThumbnailUrl += "&raw=1";
+            }
+          } else {
+            newThumbnailUrl += "?raw=1";
+          }
+          needsUpdate = true;
+        }
+
+        // Fix video URLs: dl.dropboxusercontent.com → www.dropbox.com?raw=1
+        if (newVideoUrl && newVideoUrl.includes("dl.dropboxusercontent.com")) {
+          newVideoUrl = newVideoUrl
+            .replace("dl.dropboxusercontent.com", "www.dropbox.com");
+          if (newVideoUrl.includes("?")) {
+            newVideoUrl = newVideoUrl.replace(/\?dl=\d+/, "?raw=1").replace(/&dl=\d+/, "&raw=1");
+            if (!newVideoUrl.includes("raw=1")) {
+              newVideoUrl += "&raw=1";
+            }
+          } else {
+            newVideoUrl += "?raw=1";
+          }
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          const updateData: Record<string, unknown> = { updatedAt: new Date() };
+          if (newThumbnailUrl !== video.thumbnailUrl) updateData.thumbnailUrl = newThumbnailUrl;
+          if (newVideoUrl !== video.videoUrl) updateData.videoUrl = newVideoUrl;
+          await db
+            .update(verticalVideos)
+            .set(updateData)
+            .where(eq(verticalVideos.id, video.id));
+          console.log(`[Thumbnail Fix] Fixed URLs for ${video.id}`);
+          fixed++;
+        }
+      }
+      return NextResponse.json({
+        success: true,
+        message: `Fixed ${fixed} video URLs out of ${allVideos.length} videos`,
+        fixed,
+        total: allVideos.length,
+      });
+    }
 
     // Check if Dropbox is configured
     const dropboxReady = await dropboxClient.isConfiguredAsync();
@@ -486,11 +551,15 @@ export async function POST(request: NextRequest) {
               if (tempLink) {
                 downloadUrl = tempLink;
               } else {
-                // Fallback: convert shared link to direct download
-                downloadUrl = downloadUrl.replace("www.dropbox.com", "dl.dropboxusercontent.com");
-                downloadUrl = downloadUrl.replace("?dl=0", "").replace("&dl=0", "");
-                if (!downloadUrl.includes("dropboxusercontent")) {
-                  downloadUrl = downloadUrl + "?dl=1";
+                // Fallback: use ?raw=1 for direct download
+                // (dl.dropboxusercontent.com doesn't work with new /scl/fi/ URL format)
+                if (downloadUrl.includes("dl.dropboxusercontent.com")) {
+                  // Old format — keep as-is
+                } else if (downloadUrl.includes("www.dropbox.com")) {
+                  downloadUrl = downloadUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+                  if (!downloadUrl.includes("raw=1")) {
+                    downloadUrl += (downloadUrl.includes("?") ? "&" : "?") + "raw=1";
+                  }
                 }
               }
             }
