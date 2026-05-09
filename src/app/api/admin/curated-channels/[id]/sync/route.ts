@@ -72,6 +72,87 @@ async function processAlbumTracks(
   return { added, skipped, errors };
 }
 
+// Helper to insert top tracks as a fallback when album sync is not available
+async function insertTopTracksAsFallback(
+  channelId: string,
+  channelName: string,
+): Promise<{ added: number; skipped: number } | null> {
+  try {
+    const topTracks = await spotifyClient.getArtistTopTracks(
+      (await db
+        .select({ spotifyArtistId: curatedSpotifyChannels.spotifyArtistId })
+        .from(curatedSpotifyChannels)
+        .where(eq(curatedSpotifyChannels.id, channelId))
+        .limit(1)
+      )[0]?.spotifyArtistId || ""
+    );
+
+    if (!topTracks || topTracks.length === 0) return null;
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const track of topTracks) {
+      if (!track?.id) continue;
+      try {
+        const existing = await db
+          .select({ id: curatedTracks.id })
+          .from(curatedTracks)
+          .where(eq(curatedTracks.spotifyTrackId, track.id))
+          .limit(1);
+        if (existing.length > 0) { skipped++; continue; }
+
+        const newTrack = {
+          id: generateUUID(),
+          spotifyTrackId: track.id as string,
+          spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+          spotifyAlbumId: (track as any).album?.id || null,
+          name: (track.name || "Unknown") as string,
+          artistName: (track as any).artists?.map((a: any) => a.name).join(", ") || channelName,
+          artistIds: JSON.stringify((track as any).artists?.map((a: any) => a.id) || []),
+          albumName: ((track as any).album?.name || null) as string | null,
+          albumImageUrl: ((track as any).album?.images?.[0]?.url ?? null) as string | null,
+          durationMs: (track.duration_ms ?? null) as number | null,
+          previewUrl: (track.preview_url ?? null) as string | null,
+          releaseDate: ((track as any).album?.release_date ?? null) as string | null,
+          popularity: ((track as any).popularity ?? null) as number | null,
+          explicit: Boolean((track as any).explicit),
+          curatedChannelId: channelId,
+          isAvailableForPlaylist: true,
+          isFeatured: true,
+        };
+
+        await db.insert(curatedTracks).values(newTrack);
+        added++;
+      } catch (trackErr) {
+        console.warn(`[Sync] Error inserting top track ${track?.id}:`, trackErr);
+      }
+    }
+
+    return { added, skipped };
+  } catch (err) {
+    console.warn(`[Sync] Top-tracks fallback failed:`, err);
+    return null;
+  }
+}
+
+// Helper to build a success response for fallback sync
+function fallbackSyncResponse(added: number, skipped: number, message: string) {
+  return NextResponse.json({
+    success: true,
+    data: {
+      albumsProcessed: 0,
+      totalAlbums: 0,
+      tracksAdded: added,
+      tracksSkipped: skipped,
+      errors: 0,
+      hasMore: false,
+      nextOffset: 0,
+    },
+    message,
+  });
+}
+
 // POST - Sync tracks from a curated channel (resumable batch mode)
 // Query params:
 //   ?offset=N  — start processing from album index N (default: 0)
@@ -112,7 +193,7 @@ export async function POST(
       );
     }
 
-    // Fetch album list from Spotify
+    // Fetch album list from Spotify (with built-in 403/400 fallback in the client)
     console.log(`[Sync] Fetching albums for ${channel.name}...`);
     let albumList: any[] = [];
     try {
@@ -121,13 +202,73 @@ export async function POST(
     } catch (albumFetchErr) {
       console.error(`[Sync] Error fetching album list for ${channel.name}:`, albumFetchErr);
       const errMsg = (albumFetchErr as Error).message || "";
+
+      // Try fallback: fetch top tracks instead of full album sync
+      console.log(`[Sync] Attempting top-tracks fallback for ${channel.name}...`);
+      const result = await insertTopTracksAsFallback(id, channel.name);
+      if (result) {
+        // Update sync metadata
+        await db.update(curatedSpotifyChannels).set({
+          lastSyncedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(curatedSpotifyChannels.id, id));
+
+        return fallbackSyncResponse(
+          result.added,
+          result.skipped,
+          `Sincronización parcial: ${result.added} tracks obtenidos (fallback - la API de álbumes no está disponible)`
+        );
+      }
+
+      // Both methods failed
       if (errMsg.includes("400") || errMsg.includes("403")) {
         return NextResponse.json({
           success: false,
-          error: "Spotify API no permite listar álbumes (400/403). La API de Spotify ha restringido algunos endpoints.",
+          error: "Spotify API no permite listar álbumes ni obtener tracks. Verifica las credenciales de Spotify en las variables de entorno.",
         }, { status: 500 });
       }
-      throw albumFetchErr;
+      return NextResponse.json({
+        success: false,
+        error: `Error al obtener álbumes: ${errMsg}`,
+      }, { status: 500 });
+    }
+
+    // If no albums found at all (search fallback returned empty), try top tracks as a last resort
+    if (albumList.length === 0) {
+      console.log(`[Sync] No albums found for ${channel.name}, trying top tracks fallback...`);
+      const result = await insertTopTracksAsFallback(id, channel.name);
+      if (result && result.added > 0) {
+        await db.update(curatedSpotifyChannels).set({
+          lastSyncedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(curatedSpotifyChannels.id, id));
+
+        return fallbackSyncResponse(
+          result.added,
+          result.skipped,
+          `Sincronización parcial: ${result.added} tracks obtenidos de top tracks (no se encontraron álbumes)`
+        );
+      }
+
+      // No albums and no top tracks — still update sync time to avoid repeated failures
+      await db.update(curatedSpotifyChannels).set({
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(curatedSpotifyChannels.id, id));
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          albumsProcessed: 0,
+          totalAlbums: 0,
+          tracksAdded: 0,
+          tracksSkipped: 0,
+          errors: 0,
+          hasMore: false,
+          nextOffset: 0,
+        },
+        message: "No se encontraron álbumes ni tracks para este artista en Spotify.",
+      });
     }
 
     // Determine the batch slice

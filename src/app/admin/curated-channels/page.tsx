@@ -151,11 +151,14 @@ export default function CuratedChannelsPage() {
         });
 
         if (!res.ok) {
-          let errorMsg = "Error al sincronizar";
+          let errorMsg = `Error al sincronizar (HTTP ${res.status})`;
           try {
             const data = await res.json();
             errorMsg = data.error || errorMsg;
-          } catch {}
+          } catch {
+            // Server returned non-JSON (e.g. 502 timeout page)
+            errorMsg = `Error al sincronizar (HTTP ${res.status}). El servidor tardó en responder. Intenta usar "Tracks Recientes" primero.`;
+          }
           alert(errorMsg);
           return;
         }

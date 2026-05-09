@@ -290,6 +290,7 @@ class SpotifyClient {
   /**
    * Get all albums for an artist (handles pagination)
    * Fetches albums and singles (the most reliable types)
+   * Falls back to search-based approach if the albums endpoint returns 400/403
    */
   async getAllArtistAlbums(artistId: string): Promise<SpotifyAlbum[]> {
     const albums: SpotifyAlbum[] = [];
@@ -300,31 +301,103 @@ class SpotifyClient {
     let offset = 0;
     const limit = 10; // Spotify reduced max limit to 10 for client credentials
 
-    while (true) {
-      const response = await this.getArtistAlbums(artistId, {
-        includeGroups,
-        limit,
-        offset
-      });
+    try {
+      while (true) {
+        const response = await this.getArtistAlbums(artistId, {
+          includeGroups,
+          limit,
+          offset
+        });
 
-      // Filter out duplicates
-      for (const album of response.items) {
-        if (!seenIds.has(album.id)) {
-          seenIds.add(album.id);
-          albums.push(album);
+        // Filter out duplicates
+        for (const album of response.items) {
+          if (!seenIds.has(album.id)) {
+            seenIds.add(album.id);
+            albums.push(album);
+          }
+        }
+
+        if (!response.next || response.items.length < limit) {
+          break;
+        }
+        offset += limit;
+
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      return albums;
+    } catch (error) {
+      const errMsg = (error as Error).message || "";
+      // If 403/400, try fallback via search API
+      if (errMsg.includes("403") || errMsg.includes("400")) {
+        console.log(`[Spotify API] Albums endpoint failed (${errMsg.slice(0, 80)}), using search-based fallback...`);
+        return this.getAllArtistAlbumsFallback(artistId);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Fallback: Get artist albums using search API
+   * Used when /artists/{id}/albums returns 400/403 (restricted for client credentials)
+   * Strategy: search for the artist name + "album" / "single" to find their releases
+   */
+  private async getAllArtistAlbumsFallback(artistId: string): Promise<SpotifyAlbum[]> {
+    try {
+      // First get the artist name
+      const artist = await this.getArtist(artistId);
+      const artistName = artist.name;
+
+      if (!artistName) {
+        console.log("[Spotify API] Fallback: Could not get artist name");
+        return [];
+      }
+
+      const albums: SpotifyAlbum[] = [];
+      const seenIds = new Set<string>();
+
+      // Search for albums and singles by this artist
+      for (const type of ["album", "single"] as const) {
+        try {
+          const searchResult = await this.search(
+            `artist:"${artistName}"`,
+            [type],
+            10
+          );
+
+          const items = type === "album" ? searchResult.albums?.items : searchResult.albums?.items;
+          if (items) {
+            for (const album of items) {
+              // Only include albums where this artist is credited
+              const isByArtist = (album as any).artists?.some((a: any) => a.id === artistId);
+              if (isByArtist && !seenIds.has(album.id)) {
+                seenIds.add(album.id);
+                albums.push(album);
+              }
+            }
+          }
+
+          // Small delay between searches
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (searchErr) {
+          console.warn(`[Spotify API] Fallback: Search for ${type}s failed:`, (searchErr as Error).message);
         }
       }
 
-      if (!response.next || response.items.length < limit) {
-        break;
-      }
-      offset += limit;
+      // Sort by release date (newest first)
+      albums.sort((a, b) => {
+        const dateA = (a as any).release_date || "";
+        const dateB = (b as any).release_date || "";
+        return dateB.localeCompare(dateA);
+      });
 
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log(`[Spotify API] Fallback: Found ${albums.length} albums via search for ${artistName}`);
+      return albums;
+    } catch (fallbackErr) {
+      console.error("[Spotify API] Album search fallback failed:", fallbackErr);
+      return [];
     }
-
-    return albums;
   }
 
   /**
