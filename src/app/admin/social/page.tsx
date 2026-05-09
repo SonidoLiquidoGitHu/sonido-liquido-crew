@@ -249,6 +249,7 @@ export default function AdminSocialPage() {
     includeCuratedTracks: true,
     includeVerticalVideos: true,
     platforms: ["facebook", "instagram", "tiktok"],
+    force: false,
   });
 
   const fetchData = useCallback(async () => {
@@ -338,6 +339,7 @@ export default function AdminSocialPage() {
             includeCuratedTracks: populateOptions.includeCuratedTracks,
             includeVerticalVideos: populateOptions.includeVerticalVideos,
             platforms: populateOptions.platforms,
+            force: populateOptions.force,
           },
         }),
       });
@@ -1075,6 +1077,20 @@ export default function AdminSocialPage() {
               )}
               Poblar Cola Ahora
             </Button>
+
+            {/* Force re-add toggle */}
+            <label className="flex items-center gap-2 mt-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={populateOptions.force}
+                onChange={(e) => setPopulateOptions((prev) => ({ ...prev, force: e.target.checked }))}
+                className="rounded border-slc-border"
+              />
+              <span className="text-sm text-yellow-400">Forzar re-agregado</span>
+              <span className="text-xs text-slc-muted">
+                (Re-agregar items que ya existen en la cola — útil si los tracks curados no se agregaron antes)
+              </span>
+            </label>
           </div>
 
           {/* Meta API Configuration */}

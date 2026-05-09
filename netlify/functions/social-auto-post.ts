@@ -26,7 +26,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
   try {
     // Call the app's internal API to process the next queue item
-    const processUrl = `${siteUrl}/api/admin/social/process-next`;
+    // The API route is POST /api/admin/social with {action: "process-next"}
+    const processUrl = `${siteUrl}/api/admin/social`;
 
     const response = await fetch(processUrl, {
       method: "POST",
@@ -34,6 +35,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         "Content-Type": "application/json",
         ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
       },
+      body: JSON.stringify({ action: "process-next" }),
       signal: AbortSignal.timeout(50_000), // 50 second timeout
     });
 

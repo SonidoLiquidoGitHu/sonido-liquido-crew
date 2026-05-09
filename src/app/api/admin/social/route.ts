@@ -276,6 +276,7 @@ async function handlePopulate(options: {
   includeCuratedTracks?: boolean;
   includeVerticalVideos?: boolean;
   platforms?: string[];
+  force?: boolean; // If true, re-add items even if they already exist in the queue
 }) {
   try {
     const {
@@ -285,16 +286,19 @@ async function handlePopulate(options: {
       includeCuratedTracks = true,
       includeVerticalVideos = true,
       platforms,
+      force = false,
     } = options;
 
     // Default platforms: FB + IG + TikTok (TikTok is included but will be skipped if not configured)
     const targetPlatforms = platforms || ["facebook", "instagram", "tiktok"];
     const platformsJson = JSON.stringify(targetPlatforms);
 
-    // Get existing items to avoid duplicates
+    // Get existing items to avoid duplicates (unless force is enabled)
     const existing = await db.select().from(socialPostQueue);
-    const existingSourceIds = new Set(existing.map((item) => `${item.contentType}:${item.sourceId}`));
-    console.log(`[Social API Populate] Found ${existing.length} existing queue items`);
+    const existingSourceIds = force
+      ? new Set<string>() // Force mode: allow duplicates
+      : new Set(existing.map((item) => `${item.contentType}:${item.sourceId}`));
+    console.log(`[Social API Populate] Found ${existing.length} existing queue items${force ? " (force mode: duplicates allowed)" : ""}`);
 
     let queueOrder = existing.length > 0
       ? Math.max(...existing.map((item) => item.queueOrder)) + 1
@@ -514,16 +518,32 @@ async function handlePopulate(options: {
             albumName: curatedTracks.albumName,
             albumImageUrl: curatedTracks.albumImageUrl,
             curatedChannelId: curatedTracks.curatedChannelId,
+            popularity: curatedTracks.popularity,
           })
           .from(curatedTracks)
           .where(eq(curatedTracks.isAvailableForPlaylist, true))
           .orderBy(desc(curatedTracks.popularity));
 
+        console.log(`[Social API Populate] Found ${tracks.length} curated tracks available for playlist`);
+
+        let skippedNoImage = 0;
+        let skippedDuplicate = 0;
+
         for (const track of tracks) {
-          if (!track.albumImageUrl) continue;
+          if (!track.albumImageUrl) {
+            skippedNoImage++;
+            continue;
+          }
 
           const key = `curated_track:${track.id}`;
-          if (existingSourceIds.has(key)) continue;
+          if (existingSourceIds.has(key)) {
+            skippedDuplicate++;
+            continue;
+          }
+
+          // Use the specific Spotify track URL as the link
+          // This gives users a direct link to listen to the track
+          const trackLinkUrl = track.spotifyTrackUrl || `${SITE_URL}/discografia`;
 
           const caption = generateCaption({
             contentType: "curated_track",
@@ -531,7 +551,7 @@ async function handlePopulate(options: {
             trackName: track.name,
             albumName: track.albumName || undefined,
             spotifyUrl: track.spotifyTrackUrl,
-            linkUrl: `${SITE_URL}/discografia`,
+            linkUrl: trackLinkUrl,
           });
 
           await db.insert(socialPostQueue).values({
@@ -542,7 +562,7 @@ async function handlePopulate(options: {
             releaseId: null,
             imageUrl: track.albumImageUrl,
             caption,
-            linkUrl: `${SITE_URL}/discografia`,
+            linkUrl: trackLinkUrl,
             queueOrder: queueOrder++,
             cycleNumber: 1,
             status: "pending",
@@ -553,8 +573,26 @@ async function handlePopulate(options: {
           existingSourceIds.add(key);
           curatedCount++;
         }
+
+        console.log(
+          `[Social API Populate] Curated tracks: ${curatedCount} added, ${skippedNoImage} skipped (no image), ${skippedDuplicate} skipped (duplicate)`
+        );
       } catch (err) {
-        console.warn("[Social API Populate] Curated tracks table may not exist yet:", err);
+        console.error("[Social API Populate] Curated tracks error:", err);
+        // Return the error details in the response so the admin can see what went wrong
+        return NextResponse.json({
+          success: false,
+          message: `Error al procesar tracks curados: ${err instanceof Error ? err.message : String(err)}`,
+          error: "curated_tracks_error",
+          details: {
+            galleryPhotos: galleryCount,
+            releases: releasesCount,
+            artistProfiles: artistsCount,
+            curatedTracks: curatedCount,
+            verticalVideos: reelsCount,
+            totalAdded: galleryCount + releasesCount + artistsCount + curatedCount + reelsCount,
+          },
+        }, { status: 500 });
       }
     }
 
