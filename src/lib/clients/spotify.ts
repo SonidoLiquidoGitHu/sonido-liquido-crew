@@ -83,7 +83,7 @@ class SpotifyClient {
   /**
    * Make authenticated API request with retry logic and timeout
    */
-  private async request<T>(endpoint: string, retries = 3, timeoutMs = 15_000): Promise<T> {
+  private async request<T>(endpoint: string, retries = 2, timeoutMs = 8_000): Promise<T> {
     const token = await this.getAccessToken();
     const url = `https://api.spotify.com/v1${endpoint}`;
 

@@ -1,47 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { spotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 second timeout for Netlify
 
-// Max albums to process per request to stay within 60s timeout
-// Each album takes ~300-500ms (API call + DB inserts + delay)
-// With 5 albums we use ~2-3s of API time, leaving plenty of headroom
-const ALBUMS_PER_BATCH = 5;
+// Reduced batch size — 3 albums per request to stay well within Netlify's 26s function timeout
+// Each album: ~300ms API + ~100ms DB bulk check + ~100ms inserts = ~500ms total
+// 3 albums ≈ 1.5s + overhead = ~3-4s total per request
+const ALBUMS_PER_BATCH = 3;
 
-// Helper to process tracks from a single album
+// Helper: bulk-check which track IDs already exist in the DB
+// Returns a Set of existing spotifyTrackId strings
+async function getExistingTrackIds(trackIds: string[]): Promise<Set<string>> {
+  if (trackIds.length === 0) return new Set();
+
+  // Query in chunks of 50 to avoid SQL parameter limits
+  const existing = new Set<string>();
+  const chunkSize = 50;
+
+  for (let i = 0; i < trackIds.length; i += chunkSize) {
+    const chunk = trackIds.slice(i, i + chunkSize);
+    try {
+      const rows = await db
+        .select({ spotifyTrackId: curatedTracks.spotifyTrackId })
+        .from(curatedTracks)
+        .where(inArray(curatedTracks.spotifyTrackId, chunk));
+      for (const row of rows) {
+        existing.add(row.spotifyTrackId);
+      }
+    } catch (err) {
+      console.warn("[Sync] Bulk check failed, falling back to empty set:", err);
+    }
+  }
+
+  return existing;
+}
+
+// Helper to process tracks from a single album using bulk existence check
 async function processAlbumTracks(
   fullAlbum: any,
   channelId: string,
   channelName: string,
 ): Promise<{ added: number; skipped: number; errors: number }> {
+  if (!fullAlbum?.tracks?.items) return { added: 0, skipped: 0, errors: 0 };
+
+  const tracks = (fullAlbum.tracks.items as any[]).filter(t => t?.id);
+  if (tracks.length === 0) return { added: 0, skipped: 0, errors: 0 };
+
+  // Bulk check: which tracks already exist?
+  const trackIds = tracks.map(t => t.id as string);
+  const existingIds = await getExistingTrackIds(trackIds);
+
   let added = 0;
   let skipped = 0;
   let errors = 0;
 
-  if (!fullAlbum?.tracks?.items) return { added, skipped, errors };
+  // Build values for all new tracks, then batch insert
+  const newTracks: any[] = [];
 
-  for (const track of fullAlbum.tracks.items as any[]) {
-    if (!track?.id) continue;
+  for (const track of tracks) {
+    if (existingIds.has(track.id)) {
+      skipped++;
+      continue;
+    }
 
     try {
-      // Check if track already exists
-      const existing = await db
-        .select({ id: curatedTracks.id })
-        .from(curatedTracks)
-        .where(eq(curatedTracks.spotifyTrackId, track.id))
-        .limit(1);
-
-      if (existing.length > 0) {
-        skipped++;
-        continue;
-      }
-
-      const newTrack = {
+      newTracks.push({
         id: generateUUID(),
         spotifyTrackId: track.id as string,
         spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
@@ -59,13 +87,30 @@ async function processAlbumTracks(
         curatedChannelId: channelId,
         isAvailableForPlaylist: true,
         isFeatured: false,
-      };
-
-      await db.insert(curatedTracks).values(newTrack);
-      added++;
+      });
     } catch (trackErr) {
-      console.error(`[Sync] Error inserting track ${track?.id}:`, trackErr);
+      console.error(`[Sync] Error building track ${track?.id}:`, trackErr);
       errors++;
+    }
+  }
+
+  // Batch insert all new tracks
+  if (newTracks.length > 0) {
+    try {
+      await db.insert(curatedTracks).values(newTracks);
+      added = newTracks.length;
+    } catch (batchErr) {
+      // If batch insert fails (e.g. race condition with duplicate), fall back to one-by-one
+      console.warn(`[Sync] Batch insert failed, falling back to one-by-one:`, batchErr);
+      for (const newTrack of newTracks) {
+        try {
+          await db.insert(curatedTracks).values(newTrack);
+          added++;
+        } catch (insertErr) {
+          // Likely duplicate — skip
+          skipped++;
+        }
+      }
     }
   }
 
@@ -76,33 +121,26 @@ async function processAlbumTracks(
 async function insertTopTracksAsFallback(
   channelId: string,
   channelName: string,
+  spotifyArtistId: string,
 ): Promise<{ added: number; skipped: number } | null> {
   try {
-    const topTracks = await spotifyClient.getArtistTopTracks(
-      (await db
-        .select({ spotifyArtistId: curatedSpotifyChannels.spotifyArtistId })
-        .from(curatedSpotifyChannels)
-        .where(eq(curatedSpotifyChannels.id, channelId))
-        .limit(1)
-      )[0]?.spotifyArtistId || ""
-    );
-
+    const topTracks = await spotifyClient.getArtistTopTracks(spotifyArtistId);
     if (!topTracks || topTracks.length === 0) return null;
+
+    // Bulk check existing tracks
+    const trackIds = topTracks.filter(t => t?.id).map(t => t.id as string);
+    const existingIds = await getExistingTrackIds(trackIds);
 
     let added = 0;
     let skipped = 0;
+    const newTracks: any[] = [];
 
     for (const track of topTracks) {
       if (!track?.id) continue;
-      try {
-        const existing = await db
-          .select({ id: curatedTracks.id })
-          .from(curatedTracks)
-          .where(eq(curatedTracks.spotifyTrackId, track.id))
-          .limit(1);
-        if (existing.length > 0) { skipped++; continue; }
+      if (existingIds.has(track.id)) { skipped++; continue; }
 
-        const newTrack = {
+      try {
+        newTracks.push({
           id: generateUUID(),
           spotifyTrackId: track.id as string,
           spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
@@ -120,16 +158,31 @@ async function insertTopTracksAsFallback(
           curatedChannelId: channelId,
           isAvailableForPlaylist: true,
           isFeatured: true,
-        };
-
-        await db.insert(curatedTracks).values(newTrack);
-        added++;
+        });
       } catch (trackErr) {
-        console.warn(`[Sync] Error inserting top track ${track?.id}:`, trackErr);
+        console.warn(`[Sync] Error building top track ${track?.id}:`, trackErr);
       }
     }
 
-    return { added, skipped };
+    // Batch insert
+    if (newTracks.length > 0) {
+      try {
+        await db.insert(curatedTracks).values(newTracks);
+        added = newTracks.length;
+      } catch (batchErr) {
+        console.warn(`[Sync] Batch insert failed, falling back to one-by-one:`, batchErr);
+        for (const newTrack of newTracks) {
+          try {
+            await db.insert(curatedTracks).values(newTrack);
+            added++;
+          } catch (insertErr) {
+            skipped++;
+          }
+        }
+      }
+    }
+
+    return added > 0 || skipped > 0 ? { added, skipped } : null;
   } catch (err) {
     console.warn(`[Sync] Top-tracks fallback failed:`, err);
     return null;
@@ -156,7 +209,7 @@ function fallbackSyncResponse(added: number, skipped: number, message: string) {
 // POST - Sync tracks from a curated channel (resumable batch mode)
 // Query params:
 //   ?offset=N  — start processing from album index N (default: 0)
-//   ?batch=N   — process N albums per request (default: 5)
+//   ?batch=N   — process N albums per request (default: 3)
 //
 // Returns { hasMore: true, nextOffset: N } if there are more albums to process.
 // The frontend should loop until hasMore is false.
@@ -176,7 +229,7 @@ export async function POST(
     const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
     const batchSize = Math.min(
       Math.max(1, parseInt(url.searchParams.get("batch") || String(ALBUMS_PER_BATCH), 10)),
-      10 // Never process more than 10 albums per request
+      5 // Reduced max — never process more than 5 albums per request to avoid 504
     );
 
     // Get the channel
@@ -205,9 +258,8 @@ export async function POST(
 
       // Try fallback: fetch top tracks instead of full album sync
       console.log(`[Sync] Attempting top-tracks fallback for ${channel.name}...`);
-      const result = await insertTopTracksAsFallback(id, channel.name);
+      const result = await insertTopTracksAsFallback(id, channel.name, channel.spotifyArtistId);
       if (result) {
-        // Update sync metadata
         await db.update(curatedSpotifyChannels).set({
           lastSyncedAt: new Date(),
           updatedAt: new Date(),
@@ -233,10 +285,10 @@ export async function POST(
       }, { status: 500 });
     }
 
-    // If no albums found at all (search fallback returned empty), try top tracks as a last resort
+    // If no albums found, try top tracks as a last resort
     if (albumList.length === 0) {
       console.log(`[Sync] No albums found for ${channel.name}, trying top tracks fallback...`);
-      const result = await insertTopTracksAsFallback(id, channel.name);
+      const result = await insertTopTracksAsFallback(id, channel.name, channel.spotifyArtistId);
       if (result && result.added > 0) {
         await db.update(curatedSpotifyChannels).set({
           lastSyncedAt: new Date(),
@@ -250,7 +302,7 @@ export async function POST(
         );
       }
 
-      // No albums and no top tracks — still update sync time to avoid repeated failures
+      // No albums and no top tracks — still update sync time
       await db.update(curatedSpotifyChannels).set({
         lastSyncedAt: new Date(),
         updatedAt: new Date(),
@@ -331,9 +383,9 @@ export async function POST(
         errorsCount++;
       }
 
-      // Rate limiting: pause between albums
+      // Rate limiting: shorter pause between albums (100ms instead of 200ms)
       if (i < albumsToProcess.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
