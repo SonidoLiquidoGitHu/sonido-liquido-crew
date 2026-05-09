@@ -73,7 +73,7 @@ export async function GET() {
       console.error("[Spotify Token] Refresh failed:", refreshResponse.status, errorBody);
 
       // If refresh token is invalid, user needs to re-authorize
-      if (refreshResponse.status === 400 || refreshResponse.status === 401) {
+      if (refreshResponse.status === 400 || refreshResponse.status === 401 || refreshResponse.status === 403) {
         // Clear the stored tokens
         await clearSpotifyTokens();
         return NextResponse.json({

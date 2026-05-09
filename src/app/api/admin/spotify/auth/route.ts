@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     scope: scopes,
     redirect_uri: redirectUri,
     state: crypto.randomUUID(),
-    show_dialog: "false",
+    show_dialog: "true",
   });
 
   const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;

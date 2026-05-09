@@ -902,7 +902,9 @@ export default function PlaylistsPage() {
 
   const handleSyncFromSpotify = async (playlistId: string) => {
     if (!spotifyConnected) {
-      alert("Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify'.");
+      // Auto-redirect to Spotify OAuth instead of just showing an alert
+      alert("Necesitas conectar tu cuenta de Spotify. Te redirigiremos a Spotify para autorizar el acceso.");
+      handleConnectSpotify();
       return;
     }
     setIsSyncingSpotify(true);
@@ -918,7 +920,9 @@ export default function PlaylistsPage() {
         fetchPlaylistTracks(playlistId);
       } else if (data.needsAuth) {
         setSpotifyConnected(false);
-        alert(data.error || "Necesitas reconectar tu cuenta de Spotify.");
+        // Auto-redirect to Spotify reconnection instead of just showing an alert
+        alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Te redirigiremos a Spotify.");
+        handleConnectSpotify();
       } else {
         alert(data.error || "Error syncing from Spotify");
       }
