@@ -23,13 +23,27 @@ import {
 } from "lucide-react";
 import { uploadToDropboxDirect, type DropboxUploadProgress } from "@/lib/clients/dropbox-browser";
 
-// Extract a thumbnail frame from a video file using canvas
-// Tries multiple seek positions to find the first non-black frame
+// Extract a thumbnail frame from a video file using canvas.
+// Uses requestVideoFrameCallback for guaranteed frame-ready detection,
+// with a playback-based fallback when seeking produces only black frames.
 // IMPORTANT: Never saves a black frame — returns null if all positions are black
 async function extractVideoThumbnail(
   file: File,
   initialSeekTime: number = 1.0
 ): Promise<Blob | null> {
+  // Strategy: First try seek-based extraction (fast). If all frames are
+  // black (common when the decoder hasn't caught up), fall back to
+  // playback-based extraction (slower but guaranteed to produce real frames).
+
+  const seekResult = await extractViaSeek(file, initialSeekTime);
+  if (seekResult) return seekResult;
+
+  console.log("[VideoUploader Thumbnail] Seek-based extraction failed, trying playback-based...");
+  return extractViaPlayback(file);
+}
+
+// Seek-based extraction: seeks to multiple positions and tries to capture a non-black frame.
+function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob | null> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
     video.preload = "auto";
@@ -50,54 +64,88 @@ async function extractVideoThumbnail(
       URL.revokeObjectURL(objectUrl);
     };
 
-    // Check if a canvas image is mostly black
+    // Check if a canvas image is mostly black using dual criteria:
+    // average brightness AND percentage of dark pixels.
     const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
       try {
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
         let totalBrightness = 0;
         let sampledCount = 0;
-        // Sample every 10th pixel for performance
-        for (let i = 0; i < data.length; i += 40) {
-          totalBrightness += (data[i] + data[i + 1] + data[i + 2]) / 3;
+        let darkPixelCount = 0;
+        // Sample every 4th pixel for better coverage
+        for (let i = 0; i < data.length; i += 16) {
+          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          totalBrightness += brightness;
+          if (brightness < 20) darkPixelCount++;
           sampledCount++;
         }
         const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
-        return avgBrightness < 15; // Below 15/255 = mostly black
+        const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
+        // Consider it black if average brightness is below 25 OR >90% of pixels are very dark
+        return avgBrightness < 25 || darkRatio > 0.9;
       } catch {
         return false;
       }
     };
 
-    // Wait for the video to actually decode the frame at the current time
-    // before attempting to draw it on canvas. This prevents black frames
-    // caused by drawing before the decoder has produced a visible frame.
+    // Wait for a video frame to be truly ready for canvas capture.
+    // Uses requestVideoFrameCallback when available (the ONLY reliable method).
     const waitForFrameReady = (): Promise<void> => {
       return new Promise((frameResolve) => {
-        // If readyState >= HAVE_CURRENT_DATA (2), the frame is available
-        if (video.readyState >= 2 && video.videoWidth > 0) {
-          // Still wait one animation frame to ensure the compositor has the frame
-          requestAnimationFrame(() => frameResolve());
-          return;
+        const MAX_WAIT = 8000;
+        const startTime = Date.now();
+
+        // Method 1: requestVideoFrameCallback (Chrome 83+, Edge 83+)
+        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+          const onFrame = () => {
+            requestAnimationFrame(() => {
+              if (video.videoWidth > 0 && video.videoHeight > 0) {
+                frameResolve();
+              } else {
+                const pollDimensions = () => {
+                  if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    frameResolve();
+                  } else if (Date.now() - startTime < MAX_WAIT) {
+                    setTimeout(pollDimensions, 100);
+                  } else {
+                    frameResolve();
+                  }
+                };
+                pollDimensions();
+              }
+            });
+          };
+
+          try {
+            video.requestVideoFrameCallback(onFrame);
+            setTimeout(() => {
+              if (video.readyState >= 2 && video.videoWidth > 0) {
+                frameResolve();
+              }
+            }, 2000);
+            return;
+          } catch {
+            // Fall through to poll-based
+          }
         }
-        // Otherwise wait for the loadeddata event
-        const onData = () => {
-          video.removeEventListener("loadeddata", onData);
-          video.removeEventListener("canplay", onData);
-          requestAnimationFrame(() => frameResolve());
+
+        // Method 2: Poll-based fallback
+        const checkReady = () => {
+          if (Date.now() - startTime > MAX_WAIT) {
+            frameResolve();
+            return;
+          }
+          if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+            setTimeout(() => frameResolve(), 800);
+            return;
+          }
+          setTimeout(checkReady, 100);
         };
-        video.addEventListener("loadeddata", onData);
-        video.addEventListener("canplay", onData);
-        // Safety timeout
-        setTimeout(() => {
-          video.removeEventListener("loadeddata", onData);
-          video.removeEventListener("canplay", onData);
-          frameResolve();
-        }, 3000);
+        checkReady();
       });
     };
 
-    // Seek positions to try (in seconds)
     const seekPositions = [initialSeekTime, 0.5, 1.0, 2.0, 3.0];
     let currentSeekIndex = 0;
 
@@ -111,29 +159,38 @@ async function extractVideoThumbnail(
           return;
         }
       }
-      // All positions gave black frames — do NOT save a black thumbnail
-      console.warn("[Thumbnail] All seek positions produced black frames, not saving");
+      console.warn("[VideoUploader Thumbnail] All seek positions produced black frames");
       cleanup();
       resolve(null);
     };
 
-    video.onloadedmetadata = () => {
+    // KEY FIX: Wait for 'loadeddata' instead of 'loadedmetadata'.
+    // 'loadedmetadata' fires when we know duration/dimensions but NO frames are decoded.
+    // 'loadeddata' fires when the first frame is actually decoded and available.
+    video.addEventListener("loadeddata", () => {
       const duration = video.duration;
-      // Add percentage-based positions
       if (isFinite(duration) && duration > 0) {
-        seekPositions.push(duration * 0.1);
-        seekPositions.push(duration * 0.25);
-        seekPositions.push(duration * 0.5);
+        seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
       }
-      // Clamp initial seek time
       const targetTime = Math.min(seekPositions[0], duration * 0.8);
       video.currentTime = targetTime;
-    };
+    }, { once: true });
+
+    // Safety net: if loadeddata never fires, fall back to loadedmetadata
+    video.addEventListener("loadedmetadata", () => {
+      if (video.readyState >= 2) return; // loadeddata already fired
+      const duration = video.duration;
+      if (isFinite(duration) && duration > 0) {
+        seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
+      }
+      setTimeout(() => {
+        if (!resolved) video.currentTime = Math.min(seekPositions[0], duration * 0.8);
+      }, 500);
+    }, { once: true });
 
     video.onseeked = async () => {
       if (resolved) return;
       try {
-        // Wait for the frame to be fully decoded before drawing
         await waitForFrameReady();
 
         if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -156,14 +213,12 @@ async function extractVideoThumbnail(
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Check if this frame is mostly black — if so, try next seek position
         if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
           canvas.remove();
           tryNextSeek();
           return;
         }
 
-        // Found a non-black frame! Convert and save
         canvas.toBlob(
           (blob) => {
             canvas.remove();
@@ -183,11 +238,129 @@ async function extractVideoThumbnail(
       resolve(null);
     };
 
-    // Timeout in case seeking takes too long
     setTimeout(() => {
       cleanup();
       resolve(null);
-    }, 20000);
+    }, 30000);
+  });
+}
+
+// Playback-based extraction: plays the video and captures a frame during playback.
+// This forces the decoder to produce real frames, making canvas capture reliable.
+// Used as a fallback when seek-based extraction produces only black frames.
+function extractViaPlayback(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.src = URL.createObjectURL(file);
+
+    const objectUrl = video.src;
+    let resolved = false;
+
+    const cleanup = () => {
+      if (resolved) return;
+      resolved = true;
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      video.remove();
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
+      try {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        let totalBrightness = 0;
+        let sampledCount = 0;
+        let darkPixelCount = 0;
+        for (let i = 0; i < data.length; i += 16) {
+          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          totalBrightness += brightness;
+          if (brightness < 20) darkPixelCount++;
+          sampledCount++;
+        }
+        const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
+        const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
+        return avgBrightness < 25 || darkRatio > 0.9;
+      } catch {
+        return false;
+      }
+    };
+
+    let captureAttempts = 0;
+    const MAX_CAPTURE_ATTEMPTS = 20; // Try for up to ~4 seconds of playback
+
+    const tryCapture = (): Blob | null => {
+      try {
+        if (video.videoWidth === 0 || video.videoHeight === 0) return null;
+        const canvas = document.createElement("canvas");
+        const maxDim = 720;
+        const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
+          canvas.remove();
+          return null;
+        }
+        // Synchronous blob extraction for small canvases
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        canvas.remove();
+        // Convert data URL to blob
+        const byteString = atob(dataUrl.split(",")[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: "image/jpeg" });
+      } catch {
+        return null;
+      }
+    };
+
+    video.addEventListener("playing", () => {
+      // Start capturing after a delay to let the first few real frames render
+      const attemptCapture = () => {
+        if (resolved) return;
+        captureAttempts++;
+        const blob = tryCapture();
+        if (blob) {
+          cleanup();
+          resolve(blob);
+          return;
+        }
+        if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
+          setTimeout(attemptCapture, 200);
+        } else {
+          cleanup();
+          resolve(null);
+        }
+      };
+      setTimeout(attemptCapture, 300);
+    }, { once: true });
+
+    video.addEventListener("loadeddata", () => {
+      video.play().catch(() => {
+        cleanup();
+        resolve(null);
+      });
+    }, { once: true });
+
+    video.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 30000);
   });
 }
 
