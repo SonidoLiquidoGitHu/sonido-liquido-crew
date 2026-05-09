@@ -56,3 +56,23 @@ Stage Summary:
 - Commit: b5856c9 "fix: curated tracks autopublish + cron function URL"
 - Both fixes are now live on the main branch
 - Netlify will auto-deploy from the main branch push
+---
+Task ID: 1
+Agent: main
+Task: Push previous thumbnail commits to GitHub and fix Spotify curated channels sync error
+
+Work Log:
+- Pushed previous commits (thumbnail generation fix) to GitHub using provided PAT
+- Analyzed screenshot showing "Error al sincronizar" in curated channels page
+- Investigated full sync flow: frontend → API → Spotify client
+- Identified root cause: getAllArtistAlbums() had no 400/403 fallback (unlike getArtistTopTracks)
+- Added search-based fallback in getAllArtistAlbums() when albums endpoint returns 400/403
+- Added top-tracks fallback in sync route when album fetch fails completely
+- Refactored sync route to use helper functions (insertTopTracksAsFallback, fallbackSyncResponse)
+- Improved frontend error messages in both channels list and detail pages to show HTTP status
+- Committed and pushed as 8ba02a4
+
+Stage Summary:
+- Pushed: thumbnail fixes (0612aee), previous commits to main
+- Fixed: Spotify sync now has multi-layer fallback: albums endpoint → search API → top tracks
+- Improved: Error messages now show actual error details instead of generic "Error al sincronizar"
