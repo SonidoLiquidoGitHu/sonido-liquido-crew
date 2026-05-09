@@ -357,32 +357,27 @@ class SpotifyClient {
       const albums: SpotifyAlbum[] = [];
       const seenIds = new Set<string>();
 
-      // Search for albums and singles by this artist
-      for (const type of ["album", "single"] as const) {
-        try {
-          const searchResult = await this.search(
-            `artist:"${artistName}"`,
-            [type],
-            10
-          );
+      // Search for albums by this artist (Spotify search "album" type returns both albums and singles)
+      try {
+        const searchResult = await this.search(
+          `artist:"${artistName}"`,
+          ["album"],
+          10
+        );
 
-          const items = type === "album" ? searchResult.albums?.items : searchResult.albums?.items;
-          if (items) {
-            for (const album of items) {
-              // Only include albums where this artist is credited
-              const isByArtist = (album as any).artists?.some((a: any) => a.id === artistId);
-              if (isByArtist && !seenIds.has(album.id)) {
-                seenIds.add(album.id);
-                albums.push(album);
-              }
+        const items = searchResult.albums?.items;
+        if (items) {
+          for (const album of items) {
+            // Only include albums where this artist is credited
+            const isByArtist = (album as any).artists?.some((a: any) => a.id === artistId);
+            if (isByArtist && !seenIds.has(album.id)) {
+              seenIds.add(album.id);
+              albums.push(album);
             }
           }
-
-          // Small delay between searches
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (searchErr) {
-          console.warn(`[Spotify API] Fallback: Search for ${type}s failed:`, (searchErr as Error).message);
         }
+      } catch (searchErr) {
+        console.warn(`[Spotify API] Fallback: Album search failed:`, (searchErr as Error).message);
       }
 
       // Sort by release date (newest first)
