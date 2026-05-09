@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Share2,
@@ -14,7 +13,15 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
+import {
+  getYouTubeId,
+  getVideoThumbnail,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+} from "@/lib/video-utils";
 
 interface ReelVideo {
   id: string;
@@ -87,24 +94,8 @@ export function ReelDetail({ video }: ReelDetailProps) {
     }
   };
 
-  // Get YouTube ID
-  const getYouTubeId = () => {
-    if (video.embedUrl) {
-      const match = video.embedUrl.match(/embed\/([a-zA-Z0-9_-]+)/);
-      if (match) return match[1];
-    }
-    if (video.platformUrl) {
-      const match = video.platformUrl.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
-      if (match) return match[1];
-    }
-    if (video.videoUrl) {
-      const match = video.videoUrl.match(/(?:shorts\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-      if (match) return match[1];
-    }
-    return null;
-  };
-
-  const ytId = getYouTubeId();
+  // Use shared YouTube ID extraction utility
+  const ytId = getYouTubeId(video);
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center py-8 px-4">
@@ -125,7 +116,17 @@ export function ReelDetail({ video }: ReelDetailProps) {
           <YouTubeEmbed videoId={ytId} autoplay />
         ) : video.videoUrl && (video.videoUrl.includes(".mp4") || video.videoUrl.includes(".webm") || video.videoUrl.includes("dropbox")) ? (
           <video
-            src={video.videoUrl}
+            src={(() => {
+              let videoSrc = video.videoUrl;
+              // Convert Dropbox shared links to direct download
+              if (videoSrc.includes("dropbox.com") && videoSrc.includes("dl=0")) {
+                videoSrc = videoSrc.replace("dl=0", "dl=1");
+              }
+              if (videoSrc.includes("dropbox.com") && !videoSrc.includes("dl=")) {
+                videoSrc += "?dl=1";
+              }
+              return videoSrc;
+            })()}
             className="w-full h-full object-contain"
             controls
             autoPlay
@@ -134,8 +135,20 @@ export function ReelDetail({ video }: ReelDetailProps) {
           />
         ) : (
           <div className="w-full h-full relative flex items-center justify-center">
-            {video.thumbnailUrl && (
-              <Image src={video.thumbnailUrl} alt={video.title || "Video"} fill className="object-cover" />
+            {getVideoThumbnail(video) && (
+              <SafeImage
+                src={getVideoThumbnail(video)!}
+                alt={video.title || "Video"}
+                fill
+                className="object-cover"
+                fallbackSrc={(() => {
+                  const thumb = getVideoThumbnail(video)!;
+                  if (ytId && isYouTubeThumbnailUrl(thumb)) {
+                    return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+                  }
+                  return getVideoPlaceholderSvg("9/16");
+                })()}
+              />
             )}
             <a
               href={video.platformUrl || video.videoUrl}

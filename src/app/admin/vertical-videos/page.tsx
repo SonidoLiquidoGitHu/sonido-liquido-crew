@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
+import {
+  getYouTubeId,
+  getVideoThumbnail,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+} from "@/lib/video-utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -721,12 +728,21 @@ export default function AdminVerticalVideosPage() {
               >
                 {/* Thumbnail - 9:16 aspect ratio */}
                 <div className="relative aspect-[9/16] bg-black">
-                  {video.thumbnailUrl ? (
-                    <Image
-                      src={video.thumbnailUrl}
+                  {getVideoThumbnail(video) ? (
+                    <SafeImage
+                      src={getVideoThumbnail(video)!}
                       alt={video.title || "Video"}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
+                      fallbackSrc={(() => {
+                        const thumb = getVideoThumbnail(video)!;
+                        const ytId = getYouTubeId(video);
+                        if (ytId && isYouTubeThumbnailUrl(thumb)) {
+                          return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+                        }
+                        return getVideoPlaceholderSvg("9/16");
+                      })()}
                     />
                   ) : (
                     <div className="w-full h-full bg-slc-card flex items-center justify-center">
@@ -1087,11 +1103,12 @@ export default function AdminVerticalVideosPage() {
                 )}
                 {editingVideo.thumbnailUrl && (
                   <div className="mt-2 relative w-20 h-32 rounded overflow-hidden bg-black">
-                    <Image
+                    <SafeImage
                       src={editingVideo.thumbnailUrl}
                       alt="Miniatura actual"
                       fill
                       className="object-cover"
+                      fallbackSrc={getVideoPlaceholderSvg("9/16")}
                     />
                   </div>
                 )}
