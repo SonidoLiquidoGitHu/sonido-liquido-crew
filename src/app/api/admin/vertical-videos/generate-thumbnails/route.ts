@@ -200,7 +200,10 @@ async function uploadThumbnailToDropbox(
   try {
     const dropboxPath = `/vertical-videos/thumbnails/${videoId}.jpg`;
 
-    await dropboxClient.uploadFile(dropboxPath, thumbnailBuffer.buffer as ArrayBuffer);
+    // Create a clean ArrayBuffer from the Buffer — Buffer.buffer may include
+    // extra bytes from the shared pool, so we copy only the relevant slice.
+    const cleanBuffer = new Uint8Array(thumbnailBuffer);
+    await dropboxClient.uploadFile(dropboxPath, cleanBuffer.buffer as ArrayBuffer);
     const sharedUrl = await dropboxClient.getSharedLink(dropboxPath);
 
     return sharedUrl;

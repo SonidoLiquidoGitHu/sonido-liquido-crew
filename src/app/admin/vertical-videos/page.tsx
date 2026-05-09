@@ -32,6 +32,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
 
 interface VerticalVideo {
   id: string;
@@ -85,6 +86,7 @@ export default function AdminVerticalVideosPage() {
   const [uploadIsFeatured, setUploadIsFeatured] = useState(false);
   const [uploadThumbnailUrl, setUploadThumbnailUrl] = useState("");
   const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
+  const [thumbnailProgress, setThumbnailProgress] = useState("");
 
   // Edit modal state
   const [editingVideo, setEditingVideo] = useState<VerticalVideo | null>(null);
@@ -377,6 +379,99 @@ export default function AdminVerticalVideosPage() {
     }
   };
 
+  // Extract a thumbnail from a video URL using the video proxy + canvas
+  const extractThumbnailFromProxy = async (
+    videoId: string
+  ): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const video = document.createElement("video");
+      video.crossOrigin = "anonymous";
+      video.preload = "auto";
+      video.muted = true;
+      video.playsInline = true;
+
+      // Use our CORS-safe video proxy so the canvas is not tainted
+      video.src = `/api/admin/vertical-videos/video-proxy?videoId=${videoId}`;
+
+      const cleanup = () => {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        video.remove();
+      };
+
+      video.onloadedmetadata = () => {
+        const targetTime = Math.min(1.0, video.duration * 0.25);
+        video.currentTime = targetTime;
+      };
+
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const maxDim = 480;
+          const scale = Math.min(
+            maxDim / video.videoWidth,
+            maxDim / video.videoHeight,
+            1
+          );
+          canvas.width = Math.round(video.videoWidth * scale);
+          canvas.height = Math.round(video.videoHeight * scale);
+
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            cleanup();
+            resolve(null);
+            return;
+          }
+
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(
+            async (blob) => {
+              canvas.remove();
+              cleanup();
+
+              if (!blob) {
+                resolve(null);
+                return;
+              }
+
+              // Upload thumbnail to Dropbox
+              try {
+                const thumbFile = new File([blob], "thumbnail.jpg", {
+                  type: "image/jpeg",
+                });
+                const result = await uploadToDropboxDirect(
+                  thumbFile,
+                  "/vertical-videos/thumbnails",
+                  undefined
+                );
+                resolve(result.success ? result.url || null : null);
+              } catch {
+                resolve(null);
+              }
+            },
+            "image/jpeg",
+            0.85
+          );
+        } catch {
+          cleanup();
+          resolve(null);
+        }
+      };
+
+      video.onerror = () => {
+        cleanup();
+        resolve(null);
+      };
+
+      // Timeout – if the proxy or seek takes too long
+      setTimeout(() => {
+        cleanup();
+        resolve(null);
+      }, 20000);
+    });
+  };
+
   // Generate missing thumbnails
   const generateMissingThumbnails = async () => {
     const videosWithoutThumbnail = videos.filter((v) => !v.thumbnailUrl);
@@ -387,30 +482,99 @@ export default function AdminVerticalVideosPage() {
     }
 
     setGeneratingThumbnails(true);
+    setThumbnailProgress("");
+
+    // Step 1: Try server-side generation (works with ffmpeg on dev server)
     try {
-      const res = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ all: false }), // Only videos without thumbnails
-      });
+      setThumbnailProgress("Intentando generación del servidor...");
+      const res = await fetch(
+        "/api/admin/vertical-videos/generate-thumbnails",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ all: false }),
+        }
+      );
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && data.generated > 0) {
         setMessage({
           type: "success",
           text: data.message || `Se generaron ${data.generated} miniaturas`,
         });
-        fetchData(); // Refresh to show new thumbnails
-      } else {
-        setMessage({
-          type: "error",
-          text: data.error || "Error al generar miniaturas",
-        });
+        fetchData();
+        setGeneratingThumbnails(false);
+        setThumbnailProgress("");
+        setTimeout(() => setMessage(null), 5000);
+        return;
       }
+
+      // Server-side didn't generate any – fall through to client-side
+      console.log(
+        "[Thumbnails] Server-side generated 0, falling back to client-side"
+      );
     } catch {
-      setMessage({ type: "error", text: "Error de conexión al generar miniaturas" });
+      console.log(
+        "[Thumbnails] Server-side failed, falling back to client-side"
+      );
     }
+
+    // Step 2: Client-side extraction via video proxy + canvas
+    const remaining = videos.filter((v) => !v.thumbnailUrl);
+    if (remaining.length === 0) {
+      setMessage({ type: "success", text: "Todas las miniaturas fueron generadas" });
+      setGeneratingThumbnails(false);
+      setThumbnailProgress("");
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    let generated = 0;
+    for (let i = 0; i < remaining.length; i++) {
+      const video = remaining[i];
+      setThumbnailProgress(
+        `Extrayendo miniatura ${i + 1}/${remaining.length}...`
+      );
+
+      try {
+        const thumbnailUrl = await extractThumbnailFromProxy(video.id);
+
+        if (thumbnailUrl) {
+          // Save to database
+          await fetch("/api/admin/vertical-videos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: video.id, thumbnailUrl }),
+          });
+          generated++;
+
+          // Optimistic update
+          setVideos((prev) =>
+            prev.map((v) =>
+              v.id === video.id ? { ...v, thumbnailUrl } : v
+            )
+          );
+        }
+      } catch {
+        // Skip this video, continue with the rest
+      }
+    }
+
+    if (generated > 0) {
+      setMessage({
+        type: "success",
+        text: `Se generaron ${generated} miniaturas de ${remaining.length} videos`,
+      });
+      fetchData();
+    } else {
+      setMessage({
+        type: "error",
+        text: "No se pudieron generar miniaturas. Intenta subir los videos nuevamente.",
+      });
+    }
+
     setGeneratingThumbnails(false);
+    setThumbnailProgress("");
     setTimeout(() => setMessage(null), 5000);
   };
 
@@ -466,7 +630,9 @@ export default function AdminVerticalVideosPage() {
               ) : (
                 <ImageIcon className="w-4 h-4 mr-2" />
               )}
-              {generatingThumbnails ? "Generando..." : "Generar Miniaturas"}
+              {generatingThumbnails
+                ? thumbnailProgress || "Generando..."
+                : "Generar Miniaturas"}
             </Button>
           )}
           <Button onClick={() => setShowUploader(true)}>
