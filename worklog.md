@@ -76,3 +76,21 @@ Stage Summary:
 - Pushed: thumbnail fixes (0612aee), previous commits to main
 - Fixed: Spotify sync now has multi-layer fallback: albums endpoint → search API → top tracks
 - Improved: Error messages now show actual error details instead of generic "Error al sincronizar"
+---
+Task ID: 2
+Agent: main
+Task: Fix deployment branch - push to master instead of main
+
+Work Log:
+- Discovered Netlify watches `master` branch, not `main`
+- Previous pushes went to `main` which doesn't trigger Netlify deploys
+- Local master was at bd52c63 (outdated), origin/master was also at bd52c63
+- Had issues with git checkout master (post-checkout hook switched back to main)
+- Used `git branch -f master main` to force master to main's HEAD
+- Successfully pushed master to origin: bd52c63..5fde807
+- All 6 commits now on master: thumbnail fix, autopublish fix, Spotify sync fix, etc.
+
+Stage Summary:
+- Fixed deployment by pushing to `master` instead of `main`
+- Netlify should now deploy automatically from the master branch push
+- Key lesson: Always push to `master`, not `main` — Netlify watches master
