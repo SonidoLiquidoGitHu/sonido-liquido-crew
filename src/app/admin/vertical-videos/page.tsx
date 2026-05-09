@@ -269,21 +269,43 @@ export default function AdminVerticalVideosPage() {
 
       const data = await res.json();
       if (data.success) {
-        // If no thumbnail was provided, auto-generate one client-side
+        // If no thumbnail was provided, auto-generate one
         if (!hasThumbnail && data.data?.id) {
           setMessage({ type: "success", text: "Video agregado. Generando miniatura automáticamente..." });
           setShowUploader(false);
           resetUploadForm();
           fetchData();
 
-          // Use the new blob-based thumbnail extraction
-          regenerateThumbnail(data.data.id)
-            .then(() => {
-              fetchData(); // Refresh to show the new thumbnail
-            })
-            .catch(() => {
-              // Thumbnail generation failed silently - video is still saved
-            });
+          // Try server-side generation first (uses ffmpeg when available, which is
+          // much more reliable than client-side canvas capture).
+          // Falls back to client-side if the server can't do it (e.g. Netlify).
+          const videoId = data.data.id;
+          (async () => {
+            try {
+              const serverRes = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ videoId }),
+              });
+              const serverData = await serverRes.json();
+              if (serverData.success && serverData.generated > 0) {
+                console.log("[Thumbnail] Server-side generation succeeded");
+                fetchData();
+                return;
+              }
+            } catch {
+              console.log("[Thumbnail] Server-side generation failed, trying client-side");
+            }
+
+            // Server-side didn't work — fall back to client-side canvas extraction
+            regenerateThumbnail(videoId)
+              .then(() => {
+                fetchData();
+              })
+              .catch(() => {
+                // Thumbnail generation failed silently - video is still saved
+              });
+          })();
         } else {
           setMessage({ type: "success", text: "Video agregado exitosamente" });
           setShowUploader(false);
@@ -376,33 +398,43 @@ export default function AdminVerticalVideosPage() {
     }
   };
 
-  // Check if a canvas image is mostly black (average brightness too low)
+  // Check if a canvas image is mostly black.
+  // Uses TWO checks: average brightness AND percentage of dark pixels.
+  // A single average check can miss cases where a few bright pixels
+  // (e.g. from codec artifacts) pull the average above the threshold
+  // while the image is visually black.
   const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
     try {
       const imageData = ctx.getImageData(0, 0, width, height);
       const data = imageData.data;
       let totalBrightness = 0;
-      const pixelCount = width * height;
-      // Sample every 10th pixel for performance
-      const step = 10;
+      // Sample every 4th pixel for better coverage
+      const step = 4;
       let sampledCount = 0;
+      let darkPixelCount = 0;
       for (let i = 0; i < data.length; i += 4 * step) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
-        totalBrightness += (r + g + b) / 3;
+        const brightness = (r + g + b) / 3;
+        totalBrightness += brightness;
+        if (brightness < 20) darkPixelCount++;
         sampledCount++;
       }
       const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
-      // If average brightness is below 15 (out of 255), consider it black
-      return avgBrightness < 15;
+      const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
+      // Consider it black if:
+      // 1. Average brightness is below 25, OR
+      // 2. More than 90% of pixels are very dark (below 20)
+      return avgBrightness < 25 || darkRatio > 0.9;
     } catch {
       return false;
     }
   };
 
-  // Extract a thumbnail from a video blob/object URL using canvas
-  // This works with a complete video blob (no moov atom issues)
+  // Extract a thumbnail from a video blob/object URL using canvas.
+  // Uses requestVideoFrameCallback for guaranteed frame-ready detection,
+  // with a reliable fallback for browsers that don't support it.
   // IMPORTANT: Never saves a black frame — returns null if all positions are black
   const extractThumbnailFromBlob = async (
     videoBlob: Blob
@@ -411,7 +443,7 @@ export default function AdminVerticalVideosPage() {
       const video = document.createElement("video");
       video.muted = true;
       video.playsInline = true;
-      video.preload = "auto"; // Force full preload for reliable frame capture
+      video.preload = "auto";
       // No crossOrigin needed — blob URLs are same-origin
 
       const objectUrl = URL.createObjectURL(videoBlob);
@@ -428,40 +460,75 @@ export default function AdminVerticalVideosPage() {
         URL.revokeObjectURL(objectUrl);
       };
 
-      // Wait for the video to actually decode the frame at the current time.
-      // This is the CRITICAL fix — we must ensure the video decoder has produced
-      // a visible frame before we attempt canvas.drawImage().
-      //
-      // Strategy:
-      // 1. Wait for readyState >= 2 (HAVE_CURRENT_DATA) + videoWidth > 0
-      // 2. Then wait an additional 500ms for the compositor to paint the frame
-      // 3. If the capture is still black, retry at the same position (up to 2x)
+      // Wait for a video frame to be truly ready for canvas capture.
+      // Uses requestVideoFrameCallback when available (the ONLY reliable method),
+      // falling back to a poll-based approach with longer delays.
       const waitForFrameReady = (): Promise<void> => {
         return new Promise((frameResolve) => {
-          const MAX_WAIT = 5000; // Max 5s wait for a single frame
+          const MAX_WAIT = 8000; // Max 8s wait for a single frame
           const startTime = Date.now();
 
+          // Method 1: requestVideoFrameCallback (Chrome 83+, Edge 83+)
+          // This is the ONLY API that guarantees the video has produced a
+          // composited frame that canvas.drawImage() can capture.
+          if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+            const onFrame = () => {
+              // The callback fired — the video has at least one composited frame.
+              // Wait one more animation frame to ensure the GPU has finished
+              // any pending decode work before we try canvas.drawImage().
+              requestAnimationFrame(() => {
+                // Double-check that the video dimensions are valid
+                if (video.videoWidth > 0 && video.videoHeight > 0) {
+                  frameResolve();
+                } else {
+                  // Dimensions not ready yet — poll briefly
+                  const pollDimensions = () => {
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                      frameResolve();
+                    } else if (Date.now() - startTime < MAX_WAIT) {
+                      setTimeout(pollDimensions, 100);
+                    } else {
+                      console.warn("[Thumbnail] Timed out waiting for video dimensions");
+                      frameResolve();
+                    }
+                  };
+                  pollDimensions();
+                }
+              });
+            };
+
+            try {
+              video.requestVideoFrameCallback(onFrame);
+              // If the video is already at a frame, the callback might never fire
+              // (it only fires on NEW frames). Also set up a timeout fallback.
+              setTimeout(() => {
+                if (video.readyState >= 2 && video.videoWidth > 0) {
+                  frameResolve();
+                }
+              }, 2000);
+              return;
+            } catch {
+              // requestVideoFrameCallback not actually available, fall through
+            }
+          }
+
+          // Method 2: Poll-based fallback (Firefox, Safari, older browsers)
+          // Wait for readyState >= 2 (HAVE_CURRENT_DATA) + videoWidth > 0,
+          // then add a generous delay for the decoder to fully render.
           const checkReady = () => {
-            // Check if we've exceeded the max wait
             if (Date.now() - startTime > MAX_WAIT) {
-              console.warn("[Thumbnail] waitForFrameReady timed out after 5s");
+              console.warn("[Thumbnail] waitForFrameReady timed out after 8s");
               frameResolve();
               return;
             }
-
-            // Must have decoded data AND know the video dimensions
             if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-              // Give the decoder extra time to actually produce a visible frame.
-              // 500ms is conservative but reliable — the canvas capture is
-              // fast so the extra wait is worth it to avoid black frames.
-              setTimeout(() => frameResolve(), 500);
+              // Use a longer delay (800ms) for the poll-based fallback since
+              // we can't be certain the frame is composited yet.
+              setTimeout(() => frameResolve(), 800);
               return;
             }
-
-            // Not ready yet — check again in 100ms
             setTimeout(checkReady, 100);
           };
-
           checkReady();
         });
       };
@@ -469,15 +536,15 @@ export default function AdminVerticalVideosPage() {
       // Try multiple seek positions to find a non-black frame
       const seekPositions = [0.5, 1.0, 2.0, 3.0, 5.0];
       let currentSeekIndex = 0;
-      let bestBlob: Blob | null = null; // Track best (least-black) result
-      let retryCountAtPosition = 0; // Track retries at the same seek position
-      const MAX_RETRIES_PER_POSITION = 2; // Retry up to 2 times at each position
+      let bestBlob: Blob | null = null;
+      let retryCountAtPosition = 0;
+      const MAX_RETRIES_PER_POSITION = 2;
 
-      const tryCaptureFrame = () => {
+      const tryCaptureFrame = (): boolean => {
         try {
           if (video.videoWidth === 0 || video.videoHeight === 0) {
             console.warn(`[Thumbnail] Video dimensions not ready: ${video.videoWidth}x${video.videoHeight}`);
-            return false; // Video not decoded yet
+            return false;
           }
 
           const canvas = document.createElement("canvas");
@@ -507,18 +574,17 @@ export default function AdminVerticalVideosPage() {
                 if (blob) {
                   bestBlob = blob;
                 }
-                // Done — upload the best result
                 finish();
               },
               "image/jpeg",
               0.85
             );
-            return true; // Stop seeking
+            return true;
           }
 
           canvas.remove();
           console.log(`[Thumbnail] Frame at ${video.currentTime}s is black (retry ${retryCountAtPosition}/${MAX_RETRIES_PER_POSITION})`);
-          return false; // Continue seeking or retry
+          return false;
         } catch (e) {
           console.warn("[Thumbnail] tryCaptureFrame error:", e);
           return false;
@@ -551,13 +617,13 @@ export default function AdminVerticalVideosPage() {
         // If we haven't retried enough times at this position, retry with longer wait
         if (retryCountAtPosition < MAX_RETRIES_PER_POSITION) {
           retryCountAtPosition++;
-          console.log(`[Thumbnail] Retrying same position with longer delay (attempt ${retryCountAtPosition})`);
+          console.log(`[Thumbnail] Retrying same position (attempt ${retryCountAtPosition})`);
           // Re-seek to the same position to force a fresh decode
           const currentTime = video.currentTime;
-          video.currentTime = 0; // Brief reset
+          video.currentTime = 0;
           setTimeout(() => {
             if (!resolved) video.currentTime = currentTime;
-          }, 100);
+          }, 200);
           return;
         }
 
@@ -577,25 +643,45 @@ export default function AdminVerticalVideosPage() {
         resolve(null);
       };
 
-      video.onloadedmetadata = () => {
+      // KEY FIX: Wait for 'loadeddata' instead of 'loadedmetadata'.
+      // 'loadedmetadata' fires when we know duration/dimensions but the decoder
+      // hasn't produced any frames yet. 'loadeddata' fires when the first frame
+      // is actually decoded and available for rendering/canvas capture.
+      video.addEventListener("loadeddata", () => {
         const duration = video.duration;
-        console.log(`[Thumbnail] Video loaded: duration=${duration}s, dimensions=${video.videoWidth}x${video.videoHeight}`);
+        console.log(`[Thumbnail] Video data loaded: duration=${duration}s, dimensions=${video.videoWidth}x${video.videoHeight}, readyState=${video.readyState}`);
         // Add percentage-based positions
         if (isFinite(duration) && duration > 0) {
           seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
         }
         // Start seeking
         video.currentTime = seekPositions[0] || 1.0;
-      };
+      }, { once: true });
+
+      // Also listen for loadedmetadata as a safety net — if loadeddata never fires
+      // (rare, but possible with some codecs), we still want to proceed.
+      video.addEventListener("loadedmetadata", () => {
+        // If loadeddata already fired, this is redundant. If not, this is our fallback.
+        if (video.readyState >= 2) return; // loadeddata already happened
+        console.log("[Thumbnail] loadedmetadata fired (loadeddata fallback)");
+        const duration = video.duration;
+        if (isFinite(duration) && duration > 0) {
+          seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
+        }
+        // Wait a bit longer before seeking since we don't have decoded frames yet
+        setTimeout(() => {
+          if (!resolved) video.currentTime = seekPositions[0] || 1.0;
+        }, 500);
+      }, { once: true });
 
       video.onseeked = async () => {
         if (resolved) return;
         try {
-          // Wait for the frame to be fully decoded before drawing
+          // Wait for the frame to be truly ready for canvas capture
           await waitForFrameReady();
 
           const found = tryCaptureFrame();
-          if (found) return; // Good frame captured, will call finish()
+          if (found) return;
 
           tryNextSeek();
         } catch {
@@ -608,17 +694,127 @@ export default function AdminVerticalVideosPage() {
         resolve(null);
       };
 
-      // Timeout — 45s to allow for larger videos and retries
+      // Timeout — 60s to allow for larger videos and retries
       setTimeout(() => {
         cleanup();
         resolve(null);
-      }, 45000);
+      }, 60000);
+    });
+  };
+
+  // Extract a thumbnail by PLAYING the video and capturing a frame during playback.
+  // This is a last-resort fallback when seeking produces only black frames.
+  // Playing forces the decoder to produce real frames, which canvas can capture.
+  const extractThumbnailViaPlayback = (videoBlob: Blob): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const video = document.createElement("video");
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = "auto";
+
+      const objectUrl = URL.createObjectURL(videoBlob);
+      video.src = objectUrl;
+      let resolved = false;
+
+      const cleanup = () => {
+        if (resolved) return;
+        resolved = true;
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        video.remove();
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      const captureFrame = (): string | null => {
+        try {
+          if (video.videoWidth === 0 || video.videoHeight === 0) return null;
+          const canvas = document.createElement("canvas");
+          const maxDim = 480;
+          const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+          canvas.width = Math.round(video.videoWidth * scale);
+          canvas.height = Math.round(video.videoHeight * scale);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return null;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
+            canvas.remove();
+            return null;
+          }
+          // Convert to data URL synchronously (small thumbnail)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          canvas.remove();
+          return dataUrl;
+        } catch {
+          return null;
+        }
+      };
+
+      // Wait for the video to start playing, then try to capture frames
+      let captureAttempts = 0;
+      const MAX_CAPTURE_ATTEMPTS = 15; // Try for up to ~3 seconds of playback
+
+      video.addEventListener("playing", () => {
+        // Try capturing frames at intervals during playback
+        const tryCapture = () => {
+          if (resolved) return;
+          captureAttempts++;
+
+          const dataUrl = captureFrame();
+          if (dataUrl) {
+            // Got a good frame! Upload it.
+            cleanup();
+            // Convert data URL to blob for upload
+            fetch(dataUrl)
+              .then(r => r.blob())
+              .then(blob => {
+                const thumbFile = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
+                return uploadToDropboxDirect(thumbFile, "/vertical-videos/thumbnails", undefined);
+              })
+              .then(result => {
+                resolve(result.success ? result.url || null : null);
+              })
+              .catch(() => resolve(null));
+            return;
+          }
+
+          if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
+            // Try again in 200ms
+            setTimeout(tryCapture, 200);
+          } else {
+            // Give up
+            cleanup();
+            resolve(null);
+          }
+        };
+
+        // Start capturing after a short delay to let the first few frames render
+        setTimeout(tryCapture, 300);
+      }, { once: true });
+
+      video.addEventListener("loadeddata", () => {
+        // Start playback — this forces the decoder to produce frames
+        video.play().catch(() => {
+          cleanup();
+          resolve(null);
+        });
+      }, { once: true });
+
+      video.onerror = () => {
+        cleanup();
+        resolve(null);
+      };
+
+      // Timeout
+      setTimeout(() => {
+        cleanup();
+        resolve(null);
+      }, 30000);
     });
   };
 
   // Regenerate thumbnail for a single video (downloads full video then extracts frame)
-  // Includes a retry mechanism: if the first attempt produces a black frame,
-  // it retries with a longer delay to ensure the video decoder has caught up.
+  // Uses multiple strategies: seek-based extraction, then playback-based as fallback.
   const regenerateThumbnail = async (videoId: string) => {
     setUpdatingId(videoId);
     setMessage({ type: "success", text: "Descargando video para extraer miniatura..." });
@@ -645,16 +841,16 @@ export default function AdminVerticalVideosPage() {
 
       setMessage({ type: "success", text: "Extrayendo frame del video..." });
 
-      // Step 3: Extract thumbnail from the complete video blob
+      // Step 3: Try seek-based thumbnail extraction
       let thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
 
-      // Step 4: If first attempt failed (returned null = all black frames),
-      // retry with a delay — the video decoder might need more time
+      // Step 4: If seek-based failed, try playback-based extraction.
+      // This forces the video to actually play, which guarantees the decoder
+      // produces real frames that canvas can capture.
       if (!thumbnailUrl) {
-        console.log("[Thumbnail] First attempt failed, retrying in 2 seconds...");
-        setMessage({ type: "success", text: "Reintentando extracción de miniatura..." });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+        console.log("[Thumbnail] Seek-based extraction failed, trying playback-based...");
+        setMessage({ type: "success", text: "Reintentando con reproducción..." });
+        thumbnailUrl = await extractThumbnailViaPlayback(videoBlob);
       }
 
       if (!thumbnailUrl) {
@@ -765,8 +961,14 @@ export default function AdminVerticalVideosPage() {
         if (!videoRes.ok) continue;
         const videoBlob = await videoRes.blob();
 
-        // Extract thumbnail from the complete video
-        const thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+        // Extract thumbnail from the complete video (seek-based first, playback-based fallback)
+        let thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+
+        // If seek-based extraction failed, try playback-based
+        if (!thumbnailUrl) {
+          console.log(`[Thumbnails] Seek-based failed for ${video.id}, trying playback-based...`);
+          thumbnailUrl = await extractThumbnailViaPlayback(videoBlob);
+        }
 
         if (thumbnailUrl) {
           // Save to database
