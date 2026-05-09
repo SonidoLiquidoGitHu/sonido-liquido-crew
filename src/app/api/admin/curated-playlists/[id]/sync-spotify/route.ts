@@ -1,11 +1,121 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { curatedPlaylists, playlistTracks, curatedTracks } from "@/db/schema";
+import { curatedPlaylists, playlistTracks, curatedTracks, siteSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { spotifyClient, SpotifyClient } from "@/lib/clients/spotify";
+import { SpotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Get a valid Spotify user access token from site_settings.
+ * If the stored token is expired, refreshes it using the stored refresh token.
+ * Returns null if no user token is available.
+ */
+async function getSpotifyUserAccessToken(): Promise<string | null> {
+  try {
+    const [refreshTokenRow] = await db
+      .select()
+      .from(siteSettings)
+      .where(eq(siteSettings.key, "spotify_refresh_token"))
+      .limit(1);
+
+    if (!refreshTokenRow?.value) return null;
+
+    const [accessTokenRow] = await db
+      .select()
+      .from(siteSettings)
+      .where(eq(siteSettings.key, "spotify_access_token"))
+      .limit(1);
+
+    const [expiryRow] = await db
+      .select()
+      .from(siteSettings)
+      .where(eq(siteSettings.key, "spotify_access_token_expiry"))
+      .limit(1);
+
+    const accessToken = accessTokenRow?.value;
+    const expiry = parseInt(expiryRow?.value || "0", 10);
+
+    // Check if current access token is still valid (with 60s buffer)
+    if (accessToken && Date.now() < expiry) {
+      return accessToken;
+    }
+
+    // Access token expired — refresh it
+    console.log("[Spotify Sync] User access token expired, refreshing...");
+
+    const clientId = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+    const refreshResponse = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshTokenRow.value,
+      }).toString(),
+    });
+
+    if (!refreshResponse.ok) {
+      console.error("[Spotify Sync] Token refresh failed:", refreshResponse.status);
+      // Clear invalid tokens
+      await clearSpotifyTokens();
+      return null;
+    }
+
+    const tokenData = await refreshResponse.json();
+    const newAccessToken = tokenData.access_token;
+    const newExpiresIn = tokenData.expires_in;
+    const newRefreshToken = tokenData.refresh_token;
+    const newExpiry = String(Date.now() + (newExpiresIn - 60) * 1000);
+
+    // Update stored tokens
+    await upsertSetting("spotify_access_token", newAccessToken, "string");
+    await upsertSetting("spotify_access_token_expiry", newExpiry, "number");
+    if (newRefreshToken) {
+      await upsertSetting("spotify_refresh_token", newRefreshToken, "string");
+    }
+
+    console.log("[Spotify Sync] User access token refreshed successfully");
+    return newAccessToken;
+  } catch (error) {
+    console.error("[Spotify Sync] Failed to get user access token:", error);
+    return null;
+  }
+}
+
+/**
+ * Make an authenticated request to the Spotify API using the user access token.
+ * Falls back to client credentials if no user token is available.
+ */
+async function spotifyRequestWithUserAuth<T>(endpoint: string, userAccessToken: string | null): Promise<T> {
+  const token = userAccessToken;
+  if (!token) {
+    throw new Error("No Spotify user access token available. Please connect your Spotify account first.");
+  }
+
+  const url = `https://api.spotify.com/v1${endpoint}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    console.error(`[Spotify API] Error ${response.status}: ${errorBody}`);
+    const detail = errorBody ? ` - ${errorBody.slice(0, 200)}` : "";
+    throw new Error(`Spotify API error: ${response.status} ${response.statusText}${detail}`);
+  }
+
+  return response.json();
+}
 
 // POST - Sync tracks from a Spotify playlist into the local curated playlist
 // Replaces all existing tracks with the ones from Spotify
@@ -60,41 +170,136 @@ export async function POST(
       );
     }
 
-    // Check Spotify API is configured
-    if (!spotifyClient.isConfigured()) {
+    // Get Spotify user access token (OAuth — required for playlist track access)
+    const userAccessToken = await getSpotifyUserAccessToken();
+
+    if (!userAccessToken) {
       return NextResponse.json(
-        { success: false, error: "Spotify API not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET." },
-        { status: 503 }
+        {
+          success: false,
+          error: "Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso a tus playlists.",
+          needsAuth: true,
+        },
+        { status: 403 }
       );
     }
 
     console.log(`[Spotify Sync] Fetching tracks for playlist "${playlist.name}" from Spotify ID: ${spotifyPlaylistId}`);
 
-    // Fetch all tracks from Spotify
-    const spotifyData = await spotifyClient.getPlaylistTracks(spotifyPlaylistId);
+    // Fetch playlist metadata using user access token
+    const playlistMeta = await spotifyRequestWithUserAuth<{
+      id: string;
+      name: string;
+      description: string;
+      images: { url: string }[];
+      tracks: { total: number };
+      external_urls: { spotify: string };
+    }>(`/playlists/${spotifyPlaylistId}?fields=id,name,description,images,tracks.total,external_urls`, userAccessToken);
 
-    if (!spotifyData.tracks.length) {
+    // Fetch all tracks with pagination using user access token
+    const tracks: Array<{
+      spotifyTrackId: string;
+      trackName: string;
+      artistName: string;
+      artistIds: string[];
+      albumName: string;
+      albumImageUrl: string | null;
+      durationMs: number | null;
+      previewUrl: string | null;
+      releaseDate: string | null;
+      popularity: number | null;
+      explicit: boolean;
+      position: number;
+    }> = [];
+
+    const limit = 100;
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const trackParams = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+        market: "MX",
+        fields: "items(track(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit)),total,next",
+      });
+
+      const response = await spotifyRequestWithUserAuth<{
+        items: Array<{
+          track: {
+            id: string;
+            name: string;
+            artists: Array<{ id: string; name: string }>;
+            album: {
+              id: string;
+              name: string;
+              images: Array<{ url: string }>;
+              release_date: string;
+            };
+            duration_ms: number;
+            preview_url: string | null;
+            popularity: number;
+            explicit: boolean;
+          } | null;
+        }>;
+        total: number;
+        next: string | null;
+      }>(`/playlists/${spotifyPlaylistId}/tracks?${trackParams.toString()}`, userAccessToken);
+
+      if (!response.items?.length) {
+        break;
+      }
+
+      for (const item of response.items) {
+        const track = item.track;
+        if (!track || !track.id) continue;
+
+        tracks.push({
+          spotifyTrackId: track.id,
+          trackName: track.name,
+          artistName: track.artists?.map((a) => a.name).join(", ") || "Unknown",
+          artistIds: track.artists?.map((a) => a.id) || [],
+          albumName: track.album?.name || "",
+          albumImageUrl: track.album?.images?.[0]?.url || null,
+          durationMs: track.duration_ms || null,
+          previewUrl: track.preview_url || null,
+          releaseDate: track.album?.release_date || null,
+          popularity: track.popularity || null,
+          explicit: track.explicit || false,
+          position: offset + tracks.length + 1,
+        });
+      }
+
+      hasMore = response.next !== null && response.items.length === limit;
+      offset += limit;
+
+      if (hasMore) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    console.log(`[Spotify Sync] Fetched ${tracks.length} tracks from playlist ${spotifyPlaylistId}`);
+
+    if (!tracks.length) {
       return NextResponse.json(
         { success: false, error: "The Spotify playlist has no tracks or they could not be fetched." },
         { status: 400 }
       );
     }
 
-    // Update playlist metadata from Spotify (name, description, cover, spotify fields)
+    // Update playlist metadata from Spotify
     const playlistUpdates: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
-    // Only auto-fill name/description/cover if they're currently empty or match defaults
-    if (!playlist.description && spotifyData.description) {
-      playlistUpdates.description = spotifyData.description;
+    if (!playlist.description && playlistMeta.description) {
+      playlistUpdates.description = playlistMeta.description;
     }
-    if (!playlist.coverImageUrl && spotifyData.images?.[0]?.url) {
-      playlistUpdates.coverImageUrl = spotifyData.images[0].url;
+    if (!playlist.coverImageUrl && playlistMeta.images?.[0]?.url) {
+      playlistUpdates.coverImageUrl = playlistMeta.images[0].url;
     }
-    // Always update Spotify reference fields
     playlistUpdates.spotifyPlaylistId = spotifyPlaylistId;
-    playlistUpdates.spotifyPlaylistUrl = spotifyData.external_urls?.spotify || `https://open.spotify.com/playlist/${spotifyPlaylistId}`;
+    playlistUpdates.spotifyPlaylistUrl = playlistMeta.external_urls?.spotify || `https://open.spotify.com/playlist/${spotifyPlaylistId}`;
 
     await db
       .update(curatedPlaylists)
@@ -111,9 +316,8 @@ export async function POST(
     let skipped = 0;
     const errors: string[] = [];
 
-    for (const track of spotifyData.tracks) {
+    for (const track of tracks) {
       try {
-        // Try to find a matching curated track (for the curatedTrackId link)
         let curatedTrackId: string | null = null;
         try {
           const [matchingTrack] = await db
@@ -123,7 +327,7 @@ export async function POST(
             .limit(1);
           curatedTrackId = matchingTrack?.id || null;
         } catch {
-          // curated_tracks table may not have this track, that's fine
+          // curated_tracks table may not have this track
         }
 
         await db.insert(playlistTracks).values({
@@ -152,23 +356,22 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Synced ${added} tracks from Spotify playlist "${spotifyData.name}"`,
+      message: `Synced ${added} tracks from Spotify playlist "${playlistMeta.name}"`,
       results: {
-        playlistName: spotifyData.name,
+        playlistName: playlistMeta.name,
         tracksAdded: added,
         tracksSkipped: skipped,
-        errors: errors.slice(0, 5), // Limit error list
-        totalSpotifyTracks: spotifyData.tracks.length,
-        metadataUpdated: Object.keys(playlistUpdates).length > 1, // more than just updatedAt
+        errors: errors.slice(0, 5),
+        totalSpotifyTracks: tracks.length,
+        metadataUpdated: Object.keys(playlistUpdates).length > 1,
       },
     });
   } catch (error: any) {
     console.error("[Spotify Sync API] Error:", error);
 
-    // Provide user-friendly error messages
     let errorMessage = error.message || "Error syncing playlist from Spotify";
     if (errorMessage.includes("403")) {
-      errorMessage = "Spotify API returned 403. The playlist may be private or the API credentials lack access.";
+      errorMessage = "Spotify API returned 403. Tu cuenta de Spotify necesita reconectarse. Intenta hacer clic en 'Conectar Spotify' de nuevo.";
     } else if (errorMessage.includes("404")) {
       errorMessage = "Spotify playlist not found. Check the playlist URL/ID.";
     } else if (errorMessage.includes("429")) {
@@ -179,5 +382,45 @@ export async function POST(
       { success: false, error: errorMessage },
       { status: 500 }
     );
+  }
+}
+
+async function upsertSetting(key: string, value: string, type: string) {
+  try {
+    const [existing] = await db
+      .select()
+      .from(siteSettings)
+      .where(eq(siteSettings.key, key))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(siteSettings)
+        .set({ value, updatedAt: new Date() })
+        .where(eq(siteSettings.key, key));
+    } else {
+      await db.insert(siteSettings).values({
+        id: crypto.randomUUID(),
+        key,
+        value,
+        type: type as "string" | "number" | "boolean" | "json",
+      });
+    }
+  } catch (error) {
+    console.error(`[Spotify Sync] Failed to save setting ${key}:`, error);
+  }
+}
+
+async function clearSpotifyTokens() {
+  try {
+    const keys = ["spotify_access_token", "spotify_access_token_expiry", "spotify_refresh_token"];
+    for (const key of keys) {
+      await db
+        .update(siteSettings)
+        .set({ value: null, updatedAt: new Date() })
+        .where(eq(siteSettings.key, key));
+    }
+  } catch (error) {
+    console.error("[Spotify Sync] Failed to clear tokens:", error);
   }
 }
