@@ -205,6 +205,7 @@ class SpotifyClient {
    * Fallback: Get artist's top tracks from their recent albums
    * Used when /artists/{id}/top-tracks returns 403 (restricted for client credentials)
    * Strategy: fetch the artist's most recent singles/albums and extract tracks
+   * If albums also 403, falls back to search-based track lookup
    */
   private async getArtistTopTracksFallback(artistId: string): Promise<SpotifyTrack[]> {
     try {
@@ -215,8 +216,8 @@ class SpotifyClient {
       });
 
       if (!albumsResponse.items?.length) {
-        console.log("[Spotify API] Fallback: No albums found for artist");
-        return [];
+        console.log("[Spotify API] Fallback: No albums found for artist, trying search...");
+        return this.searchTopTracksFallback(artistId);
       }
 
       // Fetch each album individually (batch endpoint is 403'd)
@@ -258,7 +259,47 @@ class SpotifyClient {
       console.log(`[Spotify API] Fallback: Found ${tracks.length} tracks from recent albums`);
       return tracks.slice(0, 10);
     } catch (fallbackErr) {
+      const errMsg = (fallbackErr as Error).message || "";
+      // If albums endpoint also 403'd, try search-based fallback before giving up
+      if (errMsg.includes("403") || errMsg.includes("400")) {
+        console.log("[Spotify API] Album-based fallback also 403'd, trying search-based fallback...");
+        return this.searchTopTracksFallback(artistId);
+      }
       console.error("[Spotify API] Album-based fallback failed:", fallbackErr);
+      return [];
+    }
+  }
+
+  /**
+   * Last-resort fallback: Search for the artist's top tracks using the search API.
+   * Used when both /top-tracks and /albums endpoints return 403.
+   * The search API is more permissive and rarely 403s.
+   */
+  private async searchTopTracksFallback(artistId: string): Promise<SpotifyTrack[]> {
+    try {
+      // First get the artist name so we can search for their tracks
+      const artist = await this.getArtist(artistId);
+      const artistName = artist.name;
+
+      if (!artistName) {
+        console.log("[Spotify API] Search fallback: Could not get artist name");
+        return [];
+      }
+
+      const searchResult = await this.search(
+        `artist:"${artistName}"`,
+        ["track"],
+        10
+      );
+
+      const tracks = (searchResult.tracks?.items || []).filter(
+        (t: any) => t.artists?.some((a: any) => a.id === artistId)
+      );
+
+      console.log(`[Spotify API] Search fallback: Found ${tracks.length} tracks for ${artistName}`);
+      return tracks.slice(0, 10);
+    } catch (searchErr) {
+      console.error("[Spotify API] Search-based fallback also failed:", (searchErr as Error).message);
       return [];
     }
   }

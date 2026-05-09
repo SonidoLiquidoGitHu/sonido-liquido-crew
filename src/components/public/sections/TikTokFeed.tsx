@@ -26,8 +26,16 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
+import {
+  getYouTubeId,
+  getVideoThumbnail,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+} from "@/lib/video-utils";
 
 // ===========================================
 // TYPES
@@ -58,28 +66,10 @@ interface TikTokFeedProps {
 }
 
 // ===========================================
-// HELPERS
+// HELPERS (imported from @/lib/video-utils)
 // ===========================================
 
-const getYouTubeId = (video: ReelVideo) => {
-  if (video.embedUrl) {
-    const match = video.embedUrl.match(/embed\/([a-zA-Z0-9_-]+)/);
-    if (match) return match[1];
-  }
-  if (video.platformUrl) {
-    const match = video.platformUrl.match(
-      /(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/
-    );
-    if (match) return match[1];
-  }
-  if (video.videoUrl) {
-    const match = video.videoUrl.match(
-      /(?:shorts\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/
-    );
-    if (match) return match[1];
-  }
-  return null;
-};
+// getYouTubeId, getVideoThumbnail are now shared utilities
 
 const isDirectVideo = (video: ReelVideo) => {
   if (getYouTubeId(video)) return false;
@@ -90,17 +80,6 @@ const isDirectVideo = (video: ReelVideo) => {
     url.includes("dropbox") ||
     url.includes("dropboxusercontent")
   );
-};
-
-/**
- * Get the best available thumbnail for a video.
- * Auto-generates YouTube thumbnails when no explicit thumbnail is stored.
- */
-const getVideoThumbnail = (video: ReelVideo): string | null => {
-  if (video.thumbnailUrl) return video.thumbnailUrl;
-  const ytId = getYouTubeId(video);
-  if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
-  return null;
 };
 
 function formatViewCount(count: number): string {
@@ -651,10 +630,13 @@ function NextVideoPreview({
         {/* Mini thumbnail */}
         <div className="relative w-12 h-[4.5rem] rounded-lg overflow-hidden flex-shrink-0 border border-white/20">
           {getVideoThumbnail(nextVideo) ? (
-            <img
+            <SafeImage
               src={getVideoThumbnail(nextVideo)!}
               alt={nextVideo.title || "Next video"}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              sizes="48px"
+              fallbackSrc={getVideoPlaceholderSvg("9/16")}
             />
           ) : (
             <div className="w-full h-full bg-white/10 flex items-center justify-center">
@@ -946,10 +928,12 @@ function ReelItem({
           /* Fallback: show thumbnail with external link */
           <div className="w-full h-full relative flex items-center justify-center">
             {getVideoThumbnail(video) && (
-              <img
+              <SafeImage
                 src={getVideoThumbnail(video)!}
                 alt={video.title || "Video"}
-                className="absolute inset-0 w-full h-full object-cover"
+                fill
+                className="absolute inset-0 object-cover"
+                fallbackSrc={getVideoPlaceholderSvg("9/16")}
               />
             )}
             <a

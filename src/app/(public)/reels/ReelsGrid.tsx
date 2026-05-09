@@ -7,7 +7,6 @@ import {
   useCallback,
   type TouchEvent as ReactTouchEvent,
 } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Play,
@@ -24,8 +23,16 @@ import {
   Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
+import {
+  getYouTubeId,
+  getVideoThumbnail,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+} from "@/lib/video-utils";
 
 // ===========================================
 // TYPES
@@ -56,24 +63,10 @@ interface ReelsGridProps {
 }
 
 // ===========================================
-// HELPERS
+// HELPERS (imported from @/lib/video-utils)
 // ===========================================
 
-function getYouTubeId(video: ReelVideo) {
-  if (video.embedUrl) {
-    const match = video.embedUrl.match(/embed\/([a-zA-Z0-9_-]+)/);
-    if (match) return match[1];
-  }
-  if (video.platformUrl) {
-    const match = video.platformUrl.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
-    if (match) return match[1];
-  }
-  if (video.videoUrl) {
-    const match = video.videoUrl.match(/(?:shorts\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    if (match) return match[1];
-  }
-  return null;
-}
+// getYouTubeId, getVideoThumbnail are now shared utilities
 
 const isDirectVideo = (video: ReelVideo) => {
   const ytId = getYouTubeId(video);
@@ -86,23 +79,6 @@ const isDirectVideo = (video: ReelVideo) => {
     url.includes("dropboxusercontent")
   );
 };
-
-/**
- * Get the best available thumbnail URL for a video.
- * Falls back to auto-generated YouTube thumbnails if no thumbnailUrl is stored.
- */
-function getVideoThumbnail(video: ReelVideo): string | null {
-  // If the video has an explicit thumbnail, use it
-  if (video.thumbnailUrl) return video.thumbnailUrl;
-
-  // Auto-generate YouTube thumbnail from video ID
-  const ytId = getYouTubeId(video);
-  if (ytId) {
-    return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
-  }
-
-  return null;
-}
 
 // ===========================================
 // HEART BURST ANIMATION COMPONENT
@@ -504,12 +480,20 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
           >
             <div className="relative aspect-[9/16]">
               {getVideoThumbnail(video) ? (
-                <Image
+                <SafeImage
                   src={getVideoThumbnail(video)!}
                   alt={video.title || "Video"}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                  fallbackSrc={(() => {
+                    const thumb = getVideoThumbnail(video)!;
+                    const ytId = getYouTubeId(video);
+                    if (ytId && isYouTubeThumbnailUrl(thumb)) {
+                      return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+                    }
+                    return getVideoPlaceholderSvg("9/16");
+                  })()}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
@@ -697,7 +681,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
               return (
                 <div className="w-full h-full relative rounded-xl overflow-hidden bg-black flex items-center justify-center">
                   {getVideoThumbnail(video) && (
-                    <Image src={getVideoThumbnail(video)!} alt={video.title || "Video"} fill className="object-cover" />
+                    <SafeImage src={getVideoThumbnail(video)!} alt={video.title || "Video"} fill className="object-cover" fallbackSrc={getVideoPlaceholderSvg("9/16")} />
                   )}
                   <a
                     href={video.platformUrl || video.videoUrl}

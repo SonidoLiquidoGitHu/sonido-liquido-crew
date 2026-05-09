@@ -90,6 +90,10 @@ async function getDropboxThumbnail(videoUrl: string): Promise<Buffer | null> {
     }
 
     // Step 2: Use get_thumbnail_v2 to get a thumbnail
+    // Use w1024h768 for horizontal videos, but for vertical (9:16) content
+    // the "bestfit" mode will still work — it letterboxes within the bounds.
+    // Note: Dropbox API doesn't offer portrait-specific sizes, so we use
+    // the largest available and rely on CSS object-cover to crop on display.
     const thumbResponse = await fetch("https://content.dropboxapi.com/2/files/get_thumbnail_v2", {
       method: "POST",
       headers: {
@@ -98,7 +102,7 @@ async function getDropboxThumbnail(videoUrl: string): Promise<Buffer | null> {
         "Dropbox-API-Arg": JSON.stringify({
           resource: { ".tag": "path", path: filePath },
           format: { ".tag": "jpeg" },
-          size: { ".tag": "w1024h768" },
+          size: { ".tag": "w2048h1536" },
           mode: { ".tag": "bestfit" },
         }),
       },
@@ -173,6 +177,9 @@ async function extractThumbnailFfmpeg(
     const seekTime = Math.max(0.5, duration * 0.25);
 
     // Extract frame using ffmpeg
+    // Scale to max 720px wide for landscape or 720px tall for portrait,
+    // preserving the original aspect ratio. This ensures vertical videos
+    // get a proper portrait thumbnail rather than a squished landscape one.
     await execFileAsync("ffmpeg", [
       "-y",                    // Overwrite output
       "-ss", seekTime.toString(), // Seek position

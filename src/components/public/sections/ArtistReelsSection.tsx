@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Smartphone,
@@ -19,7 +18,16 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
+import {
+  getYouTubeId as extractYouTubeId,
+  getVideoThumbnail,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+  type VideoLike,
+} from "@/lib/video-utils";
 
 // ===========================================
 // TYPES
@@ -45,7 +53,7 @@ interface ArtistReelsSectionProps {
 }
 
 // ===========================================
-// HELPERS
+// HELPERS (imported from @/lib/video-utils)
 // ===========================================
 
 /** Check if a video URL is a direct playable video (not an external platform embed) */
@@ -58,26 +66,8 @@ function isDirectVideo(videoUrl: string): boolean {
   );
 }
 
-function extractYouTubeId(video: ArtistVideo): string | null {
-  const urls = [video.embedUrl, video.platformUrl, video.videoUrl].filter(Boolean);
-  for (const url of urls) {
-    if (!url) continue;
-    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]+)/);
-    if (embedMatch) return embedMatch[1];
-    const watchMatch = url.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
-    if (watchMatch) return watchMatch[1];
-    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-    if (shortMatch) return shortMatch[1];
-  }
-  return null;
-}
-
-function getVideoThumbnail(video: ArtistVideo): string | null {
-  if (video.thumbnailUrl) return video.thumbnailUrl;
-  const ytId = extractYouTubeId(video);
-  if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
-  return null;
-}
+// getYouTubeId is now imported as extractYouTubeId
+// getVideoThumbnail is imported from @/lib/video-utils
 
 // ===========================================
 // PLATFORM BADGE
@@ -393,7 +383,7 @@ function VideoCard({
       <Link href={`/reels/${video.id}`} className="block relative aspect-[9/16]">
         {/* Thumbnail */}
         {getVideoThumbnail(video) && (
-          <Image
+          <SafeImage
             src={getVideoThumbnail(video)!}
             alt={video.title || "Video"}
             fill
@@ -402,6 +392,14 @@ function VideoCard({
               isPreviewPlaying ? "opacity-0" : "opacity-100"
             )}
             sizes={isSpotlight ? "352px" : "176px"}
+            fallbackSrc={(() => {
+              const thumb = getVideoThumbnail(video)!;
+              const ytId = extractYouTubeId(video);
+              if (ytId && isYouTubeThumbnailUrl(thumb)) {
+                return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+              }
+              return getVideoPlaceholderSvg("9/16");
+            })()}
           />
         )}
 

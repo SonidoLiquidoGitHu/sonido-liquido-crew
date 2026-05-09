@@ -7,7 +7,6 @@ import {
   useEffect,
   useMemo,
 } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Smartphone,
@@ -19,7 +18,15 @@ import {
   Film,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
+import {
+  getVideoThumbnail as getThumb,
+  getYouTubeId,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+} from "@/lib/video-utils";
 
 // ===========================================
 // TYPES
@@ -183,9 +190,9 @@ function StoryCircle({
               "w-[72px] h-[72px] sm:w-[86px] sm:h-[86px]"
             )}
           >
-            {video.thumbnailUrl ? (
-              <Image
-                src={video.thumbnailUrl}
+            {getThumb(video) ? (
+              <SafeImage
+                src={getThumb(video)!}
                 alt={video.title || video.artistName || "Reel"}
                 fill
                 className={cn(
@@ -193,6 +200,14 @@ function StoryCircle({
                   isSeen && "opacity-70 group-hover:opacity-100"
                 )}
                 sizes="86px"
+                fallbackSrc={(() => {
+                  const thumb = getThumb(video)!;
+                  const ytId = getYouTubeId(video);
+                  if (ytId && isYouTubeThumbnailUrl(thumb)) {
+                    return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+                  }
+                  return getVideoPlaceholderSvg("9/16");
+                })()}
               />
             ) : (
               <div

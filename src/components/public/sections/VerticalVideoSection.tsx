@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Play,
@@ -15,7 +14,16 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
+import {
+  getYouTubeId,
+  getVideoThumbnail,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+  type VideoLike,
+} from "@/lib/video-utils";
 
 // ===========================================
 // TYPES
@@ -102,29 +110,12 @@ function PlatformIconBadge({ platform }: { platform: string | null }) {
 }
 
 // ===========================================
-// HELPERS
+// HELPERS (imported from @/lib/video-utils)
 // ===========================================
 
-function getYouTubeId(video: VerticalVideo) {
-  const urls = [video.embedUrl, video.platformUrl, video.videoUrl].filter(Boolean);
-  for (const url of urls) {
-    if (!url) continue;
-    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]+)/);
-    if (embedMatch) return embedMatch[1];
-    const watchMatch = url.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
-    if (watchMatch) return watchMatch[1];
-    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-    if (shortMatch) return shortMatch[1];
-  }
-  return null;
-}
-
-function getVideoThumbnail(video: VerticalVideo): string | null {
-  if (video.thumbnailUrl) return video.thumbnailUrl;
-  const ytId = getYouTubeId(video);
-  if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
-  return null;
-}
+// getYouTubeId, getVideoThumbnail, etc. are now shared utilities.
+// The VerticalVideo type satisfies the VideoLike interface so they work
+// without any adapter.
 
 // ===========================================
 // SHIMMER SKELETON CARDS (Improvement #1)
@@ -394,12 +385,21 @@ function VideoCard({
       >
         <div className="relative aspect-[9/16]">
           {getVideoThumbnail(video) ? (
-            <Image
+            <SafeImage
               src={getVideoThumbnail(video)!}
               alt={video.title || "Video"}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 176px, (max-width: 1024px) 25vw, 20vw"
+              fallbackSrc={(() => {
+                const thumb = getVideoThumbnail(video)!;
+                const ytId = getYouTubeId(video);
+                // If this is a YouTube thumbnail, try lower tiers before the placeholder
+                if (ytId && isYouTubeThumbnailUrl(thumb)) {
+                  return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+                }
+                return getVideoPlaceholderSvg("9/16");
+              })()}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
