@@ -24,6 +24,7 @@ import {
   Palette,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
   X,
 } from "lucide-react";
@@ -312,6 +313,15 @@ function PlaylistFormDialog({
 
   const isEditing = !!playlist;
 
+  // Extract Spotify playlist ID from URL (for auto-fill in form)
+  const extractSpotifyPlaylistIdLocal = (url: string): string | null => {
+    const uriMatch = url.match(/spotify:playlist:([a-zA-Z0-9]+)/);
+    if (uriMatch) return uriMatch[1];
+    const urlMatch = url.match(/spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?playlist\/([a-zA-Z0-9]+)/);
+    if (urlMatch) return urlMatch[1];
+    return null;
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="bg-slc-dark border-slc-border text-white max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
@@ -478,40 +488,37 @@ function PlaylistFormDialog({
             </div>
           </div>
 
-          {/* Spotify Playlist ID */}
-          <div>
-            <label className="text-sm font-medium text-slc-muted mb-1.5 block">
-              Spotify Playlist ID
-            </label>
-            <Input
-              value={formData.spotifyPlaylistId}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  spotifyPlaylistId: e.target.value,
-                }))
-              }
-              placeholder="Ej: 37i9dQZF1DXcBWIGoYBM5M"
-              className="bg-slc-card border-slc-border"
-            />
-          </div>
-
-          {/* Spotify Playlist URL */}
+          {/* Spotify Playlist URL (auto-extracts ID) */}
           <div>
             <label className="text-sm font-medium text-slc-muted mb-1.5 block">
               Spotify Playlist URL
             </label>
             <Input
               value={formData.spotifyPlaylistUrl}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  spotifyPlaylistUrl: e.target.value,
-                }))
-              }
+              onChange={(e) => {
+                const url = e.target.value;
+                setFormData((prev) => {
+                  const updates = { ...prev, spotifyPlaylistUrl: url };
+                  // Auto-extract playlist ID from URL
+                  const extractedId = extractSpotifyPlaylistIdLocal(url);
+                  if (extractedId) {
+                    updates.spotifyPlaylistId = extractedId;
+                  }
+                  return updates;
+                });
+              }}
               placeholder="https://open.spotify.com/playlist/..."
               className="bg-slc-card border-slc-border"
             />
+            <p className="text-xs text-slc-muted mt-1">
+              Pega la URL de Spotify y se extraerá el ID automáticamente.
+              Luego usa "Sync Spotify" para importar los tracks.
+            </p>
+            {formData.spotifyPlaylistId && (
+              <p className="text-xs text-green-500 mt-1">
+                ID: {formData.spotifyPlaylistId}
+              </p>
+            )}
           </div>
 
           {/* Priority */}
@@ -673,6 +680,7 @@ export default function PlaylistsPage() {
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncingSpotify, setIsSyncingSpotify] = useState(false);
 
   useEffect(() => {
     fetchPlaylists();
@@ -849,6 +857,45 @@ export default function PlaylistsPage() {
     } catch (error) {
       console.error("Error moving track:", error);
     }
+  };
+
+  const handleSyncFromSpotify = async (playlistId: string) => {
+    setIsSyncingSpotify(true);
+    try {
+      const res = await fetch(
+        `/api/admin/curated-playlists/${playlistId}/sync-spotify`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || "Synced from Spotify!");
+        await fetchPlaylists();
+        fetchPlaylistTracks(playlistId);
+      } else {
+        alert(data.error || "Error syncing from Spotify");
+      }
+    } catch (error) {
+      console.error("Error syncing from Spotify:", error);
+      alert("Error syncing from Spotify");
+    } finally {
+      setIsSyncingSpotify(false);
+    }
+  };
+
+  // Helper to extract Spotify playlist ID from URL (client-side)
+  const extractSpotifyPlaylistId = (url: string): string | null => {
+    const types = ["playlist"];
+    for (const type of types) {
+      const uriMatch = url.match(new RegExp(`spotify:${type}:([a-zA-Z0-9]+)`));
+      if (uriMatch) return uriMatch[1];
+    }
+    for (const type of types) {
+      const urlMatch = url.match(
+        new RegExp(`spotify\\.com/(?:embed/)?(?:intl-[a-z]{2}/)?${type}/([a-zA-Z0-9]+)`)
+      );
+      if (urlMatch) return urlMatch[1];
+    }
+    return null;
   };
 
   const currentPlaylist = playlists.find((p) => p.id === selectedPlaylist);
@@ -1051,14 +1098,34 @@ export default function PlaylistsPage() {
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditPlaylist(currentPlaylist)}
-                      >
-                        <Pencil className="w-4 h-4 mr-1" />
-                        Editar
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSyncFromSpotify(currentPlaylist.id)}
+                          disabled={isSyncingSpotify || !currentPlaylist.spotifyPlaylistUrl}
+                          title={
+                            currentPlaylist.spotifyPlaylistUrl
+                              ? "Importar tracks desde Spotify"
+                              : "Agrega una URL de Spotify primero"
+                          }
+                        >
+                          {isSyncingSpotify ? (
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 mr-1" />
+                          )}
+                          Sync Spotify
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditPlaylist(currentPlaylist)}
+                        >
+                          <Pencil className="w-4 h-4 mr-1" />
+                          Editar
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}

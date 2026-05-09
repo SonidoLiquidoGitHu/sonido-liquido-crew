@@ -530,7 +530,7 @@ class SpotifyClient {
   }
 
   /**
-   * Get playlist by ID
+   * Get playlist by ID (metadata only)
    */
   async getPlaylist(playlistId: string): Promise<{
     id: string;
@@ -541,6 +541,133 @@ class SpotifyClient {
     external_urls: { spotify: string };
   }> {
     return this.request(`/playlists/${playlistId}?fields=id,name,description,images,tracks.total,external_urls`);
+  }
+
+  /**
+   * Get all tracks from a Spotify playlist (handles pagination)
+   * Returns simplified track info suitable for importing into the local system
+   */
+  async getPlaylistTracks(playlistId: string): Promise<{
+    id: string;
+    name: string;
+    description: string;
+    images: { url: string }[];
+    external_urls: { spotify: string };
+    tracks: Array<{
+      spotifyTrackId: string;
+      trackName: string;
+      artistName: string;
+      artistIds: string[];
+      albumName: string;
+      albumImageUrl: string | null;
+      durationMs: number | null;
+      previewUrl: string | null;
+      releaseDate: string | null;
+      popularity: number | null;
+      explicit: boolean;
+      position: number;
+    }>;
+  }> {
+    // First get the playlist metadata
+    const playlistMeta = await this.getPlaylist(playlistId);
+
+    const tracks: Array<{
+      spotifyTrackId: string;
+      trackName: string;
+      artistName: string;
+      artistIds: string[];
+      albumName: string;
+      albumImageUrl: string | null;
+      durationMs: number | null;
+      previewUrl: string | null;
+      releaseDate: string | null;
+      popularity: number | null;
+      explicit: boolean;
+      position: number;
+    }> = [];
+
+    // Fetch tracks with pagination (100 per page)
+    const limit = 100;
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const params = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+        market: "MX",
+        fields: "items(track(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit)),total,next",
+      });
+
+      const response = await this.request<{
+        items: Array<{
+          track: {
+            id: string;
+            name: string;
+            artists: Array<{ id: string; name: string }>;
+            album: {
+              id: string;
+              name: string;
+              images: Array<{ url: string }>;
+              release_date: string;
+            };
+            duration_ms: number;
+            preview_url: string | null;
+            popularity: number;
+            explicit: boolean;
+          } | null;
+        }>;
+        total: number;
+        next: string | null;
+      }>(`/playlists/${playlistId}/tracks?${params.toString()}`);
+
+      if (!response.items?.length) {
+        break;
+      }
+
+      for (const item of response.items) {
+        const track = item.track;
+        // Skip null tracks (removed/unavailable) and local tracks (no Spotify ID)
+        if (!track || !track.id) continue;
+
+        tracks.push({
+          spotifyTrackId: track.id,
+          trackName: track.name,
+          artistName: track.artists?.map((a) => a.name).join(", ") || "Unknown",
+          artistIds: track.artists?.map((a) => a.id) || [],
+          albumName: track.album?.name || "",
+          albumImageUrl: track.album?.images?.[0]?.url || null,
+          durationMs: track.duration_ms || null,
+          previewUrl: track.preview_url || null,
+          releaseDate: track.album?.release_date || null,
+          popularity: track.popularity || null,
+          explicit: track.explicit || false,
+          position: offset + tracks.length + 1,
+        });
+      }
+
+      // Check if there are more pages
+      hasMore = response.next !== null && response.items.length === limit;
+      offset += limit;
+
+      // Small delay to avoid rate limiting
+      if (hasMore) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    console.log(
+      `[Spotify API] Fetched ${tracks.length} tracks from playlist ${playlistId}`
+    );
+
+    return {
+      id: playlistMeta.id,
+      name: playlistMeta.name,
+      description: playlistMeta.description,
+      images: playlistMeta.images,
+      external_urls: playlistMeta.external_urls,
+      tracks,
+    };
   }
 
   /**
