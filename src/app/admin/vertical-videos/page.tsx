@@ -411,6 +411,7 @@ export default function AdminVerticalVideosPage() {
       const video = document.createElement("video");
       video.muted = true;
       video.playsInline = true;
+      video.preload = "auto"; // Force full preload for reliable frame capture
       // No crossOrigin needed — blob URLs are same-origin
 
       const objectUrl = URL.createObjectURL(videoBlob);
@@ -427,52 +428,41 @@ export default function AdminVerticalVideosPage() {
         URL.revokeObjectURL(objectUrl);
       };
 
-      // Wait for the video to actually decode the frame at the current time
-      // before attempting to draw it on canvas. This prevents black frames
-      // caused by drawing before the decoder has produced a visible frame.
+      // Wait for the video to actually decode the frame at the current time.
+      // This is the CRITICAL fix — we must ensure the video decoder has produced
+      // a visible frame before we attempt canvas.drawImage().
+      //
+      // Strategy:
+      // 1. Wait for readyState >= 2 (HAVE_CURRENT_DATA) + videoWidth > 0
+      // 2. Then wait an additional 500ms for the compositor to paint the frame
+      // 3. If the capture is still black, retry at the same position (up to 2x)
       const waitForFrameReady = (): Promise<void> => {
         return new Promise((frameResolve) => {
-          // Use requestVideoFrameCallback if available (modern browsers) —
-          // this guarantees that a decoded video frame is available for painting.
-          if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-            const onVFC = () => {
-              video.removeEventListener('requestVideoFrameCallback', onVFC as any);
-              frameResolve();
-            };
-            (video as any).requestVideoFrameCallback(onVFC);
-            // Safety timeout in case requestVideoFrameCallback never fires
-            setTimeout(() => {
-              video.removeEventListener('requestVideoFrameCallback', onVFC as any);
-              frameResolve();
-            }, 2000);
-            return;
-          }
+          const MAX_WAIT = 5000; // Max 5s wait for a single frame
+          const startTime = Date.now();
 
-          // Fallback: wait for loadeddata/canplay + a small delay for decoder
-          const onReady = () => {
-            video.removeEventListener("loadeddata", onData);
-            video.removeEventListener("canplay", onData);
-            // Give the decoder 150ms to actually produce a visible frame
-            // after the seek. Without this delay, the canvas may capture
-            // a black intermediate frame.
-            setTimeout(() => frameResolve(), 150);
-          };
-          const onData = () => {
-            onReady();
+          const checkReady = () => {
+            // Check if we've exceeded the max wait
+            if (Date.now() - startTime > MAX_WAIT) {
+              console.warn("[Thumbnail] waitForFrameReady timed out after 5s");
+              frameResolve();
+              return;
+            }
+
+            // Must have decoded data AND know the video dimensions
+            if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+              // Give the decoder extra time to actually produce a visible frame.
+              // 500ms is conservative but reliable — the canvas capture is
+              // fast so the extra wait is worth it to avoid black frames.
+              setTimeout(() => frameResolve(), 500);
+              return;
+            }
+
+            // Not ready yet — check again in 100ms
+            setTimeout(checkReady, 100);
           };
 
-          if (video.readyState >= 3 && video.videoWidth > 0) {
-            // HAVE_FUTURE_DATA — decoder should have a frame available
-            setTimeout(() => frameResolve(), 150);
-            return;
-          }
-          video.addEventListener("loadeddata", onData);
-          video.addEventListener("canplay", onData);
-          setTimeout(() => {
-            video.removeEventListener("loadeddata", onData);
-            video.removeEventListener("canplay", onData);
-            frameResolve();
-          }, 3000);
+          checkReady();
         });
       };
 
@@ -480,10 +470,13 @@ export default function AdminVerticalVideosPage() {
       const seekPositions = [0.5, 1.0, 2.0, 3.0, 5.0];
       let currentSeekIndex = 0;
       let bestBlob: Blob | null = null; // Track best (least-black) result
+      let retryCountAtPosition = 0; // Track retries at the same seek position
+      const MAX_RETRIES_PER_POSITION = 2; // Retry up to 2 times at each position
 
       const tryCaptureFrame = () => {
         try {
           if (video.videoWidth === 0 || video.videoHeight === 0) {
+            console.warn(`[Thumbnail] Video dimensions not ready: ${video.videoWidth}x${video.videoHeight}`);
             return false; // Video not decoded yet
           }
 
@@ -500,6 +493,8 @@ export default function AdminVerticalVideosPage() {
           const ctx = canvas.getContext("2d");
           if (!ctx) return false;
 
+          // Clear the canvas to ensure no stale data
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
           const isBlack = isCanvasMostlyBlack(ctx, canvas.width, canvas.height);
@@ -522,8 +517,10 @@ export default function AdminVerticalVideosPage() {
           }
 
           canvas.remove();
-          return false; // Continue seeking
-        } catch {
+          console.log(`[Thumbnail] Frame at ${video.currentTime}s is black (retry ${retryCountAtPosition}/${MAX_RETRIES_PER_POSITION})`);
+          return false; // Continue seeking or retry
+        } catch (e) {
+          console.warn("[Thumbnail] tryCaptureFrame error:", e);
           return false;
         }
       };
@@ -551,6 +548,21 @@ export default function AdminVerticalVideosPage() {
       };
 
       const tryNextSeek = () => {
+        // If we haven't retried enough times at this position, retry with longer wait
+        if (retryCountAtPosition < MAX_RETRIES_PER_POSITION) {
+          retryCountAtPosition++;
+          console.log(`[Thumbnail] Retrying same position with longer delay (attempt ${retryCountAtPosition})`);
+          // Re-seek to the same position to force a fresh decode
+          const currentTime = video.currentTime;
+          video.currentTime = 0; // Brief reset
+          setTimeout(() => {
+            if (!resolved) video.currentTime = currentTime;
+          }, 100);
+          return;
+        }
+
+        // Move to next position
+        retryCountAtPosition = 0;
         currentSeekIndex++;
         if (currentSeekIndex < seekPositions.length) {
           const nextTime = seekPositions[currentSeekIndex];
@@ -567,12 +579,13 @@ export default function AdminVerticalVideosPage() {
 
       video.onloadedmetadata = () => {
         const duration = video.duration;
+        console.log(`[Thumbnail] Video loaded: duration=${duration}s, dimensions=${video.videoWidth}x${video.videoHeight}`);
         // Add percentage-based positions
         if (isFinite(duration) && duration > 0) {
           seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
         }
         // Start seeking
-        video.currentTime = seekPositions[0] || 0.5;
+        video.currentTime = seekPositions[0] || 1.0;
       };
 
       video.onseeked = async () => {
@@ -595,11 +608,11 @@ export default function AdminVerticalVideosPage() {
         resolve(null);
       };
 
-      // Timeout
+      // Timeout — 45s to allow for larger videos and retries
       setTimeout(() => {
         cleanup();
         resolve(null);
-      }, 30000);
+      }, 45000);
     });
   };
 
