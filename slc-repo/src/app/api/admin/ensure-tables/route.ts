@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { executeRaw, isDatabaseConfigured, checkConnection } from "@/db/client";
+import { executeRaw, isDatabaseConfigured, checkConnection, ensureSocialTablesMigrated } from "@/db/client";
 import { db } from "@/db/client";
 import { artists, artistExternalProfiles } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -493,6 +493,16 @@ export async function POST() {
         const msg = error instanceof Error ? error.message : String(error);
         results.push({ table: "data_fix", status: "error", error: msg });
       }
+    }
+
+    // === MIGRATE SOCIAL TABLES V2 ===
+    // Ensure social_post_queue and social_posts_log don't have restrictive CHECK constraints
+    try {
+      const migrated = await ensureSocialTablesMigrated();
+      results.push({ table: "social_tables_v2_migration", status: migrated ? "ok" : "error", error: migrated ? undefined : "Migration failed" });
+    } catch (migrationError) {
+      const msg = migrationError instanceof Error ? migrationError.message : String(migrationError);
+      results.push({ table: "social_tables_v2_migration", status: "error", error: msg });
     }
 
     // === SEED ARTIST EXTERNAL PROFILES ===

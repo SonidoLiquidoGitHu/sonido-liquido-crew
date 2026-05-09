@@ -5,7 +5,7 @@
 // ===========================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db/client";
+import { db, ensureSocialTablesMigrated } from "@/db/client";
 import {
   socialPostQueue,
   socialPostsLog,
@@ -231,6 +231,10 @@ async function handlePopulate(options: {
   platforms?: string[];
 }) {
   try {
+    // Ensure social tables are migrated to v2 (no CHECK constraints) before populating
+    // This handles the case where v1 tables with restrictive CHECK constraints still exist
+    await ensureSocialTablesMigrated();
+
     const {
       includeGallery = true,
       includeReleases = true,

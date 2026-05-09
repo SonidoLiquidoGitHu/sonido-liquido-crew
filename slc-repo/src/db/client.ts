@@ -303,59 +303,48 @@ async function runAutoMigration(client: Client): Promise<void> {
  * Migrate social tables from v1 (with restrictive CHECK constraints)
  * to v2 (without CHECK constraints, supporting curated_track + tiktok).
  * Safe to run multiple times — checks if migration is needed first.
+ * Handles leftover v2 tables from previous failed migration attempts.
  */
 async function migrateSocialTablesV2(client: Client): Promise<void> {
   try {
-    // Check if migration is needed by testing if 'curated_track' is allowed
-    // in the content_type column. If the table doesn't exist yet, skip.
-    const testResult = await client.execute(
-      "SELECT content_type FROM social_post_queue LIMIT 1"
+    // First, check if the social_post_queue table exists at all
+    const tableCheck = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='social_post_queue'"
     );
+    if (tableCheck.rows.length === 0) {
+      console.log("[DB] Social tables v2 — table doesn't exist yet, no migration needed");
+      return;
+    }
 
-    if (testResult.rows.length === 0) {
-      // Empty table — just test with a dummy insert attempt
-      try {
-        await client.execute(
-          "INSERT INTO social_post_queue (id, content_type, source_id, image_url, platforms) VALUES ('__v2_test__', 'curated_track', 'test', 'test', '[]')"
-        );
-        // If it succeeded, migration not needed — clean up the test row
-        await client.execute("DELETE FROM social_post_queue WHERE id = '__v2_test__'");
-        console.log("[DB] Social tables v2 — no migration needed (already supports curated_track)");
+    // Check if migration is needed by testing if 'curated_track' is allowed
+    try {
+      await client.execute(
+        "INSERT INTO social_post_queue (id, content_type, source_id, image_url, platforms) VALUES ('__v2_test__', 'curated_track', 'test', 'test', '[]')"
+      );
+      // If it succeeded, migration not needed — clean up the test row
+      await client.execute("DELETE FROM social_post_queue WHERE id = '__v2_test__'");
+      console.log("[DB] Social tables v2 — no migration needed (already supports curated_track)");
+      return;
+    } catch (insertErr: any) {
+      // If insert failed due to CHECK constraint, we need migration
+      if (String(insertErr?.message || "").includes("CHECK constraint failed")) {
+        console.log("[DB] Social tables v2 migration needed — recreating tables without CHECK constraints");
+        // Fall through to migration below
+      } else {
+        // Some other error — skip migration
+        console.warn("[DB] Social tables v2 test insert error (skipping migration):", insertErr);
         return;
-      } catch (insertErr: any) {
-        // If insert failed due to CHECK constraint, we need migration
-        if (String(insertErr?.message || "").includes("CHECK constraint failed")) {
-          console.log("[DB] Social tables v2 migration needed — recreating tables without CHECK constraints");
-          // Fall through to migration below
-        } else {
-          // Some other error — skip migration
-          console.warn("[DB] Social tables v2 test insert error (skipping migration):", insertErr);
-          return;
-        }
-      }
-    } else {
-      // Table has data — check if the existing row's content_type would fail
-      // by looking at the table schema. We'll just try a direct approach.
-      try {
-        await client.execute(
-          "INSERT INTO social_post_queue (id, content_type, source_id, image_url, platforms) VALUES ('__v2_test__', 'curated_track', 'test', 'test', '[]')"
-        );
-        await client.execute("DELETE FROM social_post_queue WHERE id = '__v2_test__'");
-        console.log("[DB] Social tables v2 — no migration needed");
-        return;
-      } catch (insertErr: any) {
-        if (String(insertErr?.message || "").includes("CHECK constraint failed")) {
-          console.log("[DB] Social tables v2 migration needed");
-        } else {
-          console.warn("[DB] Social tables v2 test error (skipping):", insertErr);
-          return;
-        }
       }
     }
 
     // Perform the migration: recreate tables without CHECK constraints
-    // Step 1: Create new tables
-    await client.execute(`CREATE TABLE IF NOT EXISTS social_post_queue_v2 (
+    // Step 0: Clean up leftover v2 tables from previous failed migration attempts
+    try { await client.execute("DROP TABLE IF EXISTS social_post_queue_v2"); } catch {}
+    try { await client.execute("DROP TABLE IF EXISTS social_posts_log_v2"); } catch {}
+    console.log("[DB] Cleaned up any leftover v2 tables from previous attempts");
+
+    // Step 1: Create new tables (without CHECK constraints)
+    await client.execute(`CREATE TABLE social_post_queue_v2 (
       id TEXT PRIMARY KEY NOT NULL,
       content_type TEXT NOT NULL,
       source_id TEXT NOT NULL,
@@ -376,7 +365,7 @@ async function migrateSocialTablesV2(client: Client): Promise<void> {
       updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
     )`);
 
-    await client.execute(`CREATE TABLE IF NOT EXISTS social_posts_log_v2 (
+    await client.execute(`CREATE TABLE social_posts_log_v2 (
       id TEXT PRIMARY KEY NOT NULL,
       queue_id TEXT NOT NULL,
       platform TEXT NOT NULL,
@@ -403,6 +392,7 @@ async function migrateSocialTablesV2(client: Client): Promise<void> {
     // Step 2: Copy data from old tables
     await client.execute(`INSERT INTO social_post_queue_v2 SELECT * FROM social_post_queue`);
     await client.execute(`INSERT INTO social_posts_log_v2 SELECT * FROM social_posts_log`);
+    console.log("[DB] Data copied from v1 to v2 tables");
 
     // Step 3: Drop old tables and rename
     await client.execute(`DROP TABLE social_post_queue`);
@@ -412,8 +402,33 @@ async function migrateSocialTablesV2(client: Client): Promise<void> {
 
     console.log("[DB] Social tables v2 migration completed successfully");
   } catch (error) {
-    console.error("[DB] Social tables v2 migration error (non-fatal):", error);
+    console.error("[DB] Social tables v2 migration error:", error);
+    // Attempt to clean up v2 tables if migration failed partway
+    try { await client.execute("DROP TABLE IF EXISTS social_post_queue_v2"); } catch {}
+    try { await client.execute("DROP TABLE IF EXISTS social_posts_log_v2"); } catch {}
+    console.error("[DB] Cleaned up v2 tables after failed migration. Will retry next time.");
     // Don't throw — the app should still work
+  }
+}
+
+/**
+ * Ensure social tables have been migrated to v2 (no CHECK constraints).
+ * This can be called explicitly before operations that need curated_track support.
+ * Returns true if tables are ready (either already migrated or just migrated).
+ */
+export async function ensureSocialTablesMigrated(): Promise<boolean> {
+  if (!isDatabaseConfigured()) {
+    console.warn("[DB] Cannot check social tables migration — database not configured");
+    return false;
+  }
+
+  try {
+    const client = getClient();
+    await migrateSocialTablesV2(client);
+    return true;
+  } catch (error) {
+    console.error("[DB] Failed to ensure social tables migration:", error);
+    return false;
   }
 }
 
