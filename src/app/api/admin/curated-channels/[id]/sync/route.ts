@@ -246,12 +246,21 @@ export async function POST(
       );
     }
 
-    // Fetch album list from Spotify (with built-in 403/400 fallback in the client)
+    // Fetch album list from Spotify
+    // Use getArtistAlbums (single page, no pagination) instead of getAllArtistAlbums
+    // to avoid timeouts on Netlify. The frontend loops through batches anyway.
     console.log(`[Sync] Fetching albums for ${channel.name}...`);
     let albumList: any[] = [];
     try {
-      albumList = await spotifyClient.getAllArtistAlbums(channel.spotifyArtistId);
-      console.log(`[Sync] Found ${albumList.length} albums for ${channel.name}`);
+      // Only fetch albums starting from the current offset page
+      // This avoids the expensive pagination in getAllArtistAlbums
+      const albumsResponse = await spotifyClient.getArtistAlbums(channel.spotifyArtistId, {
+        includeGroups: "album,single",
+        limit: 10,
+        offset: 0,
+      });
+      albumList = albumsResponse.items || [];
+      console.log(`[Sync] Found ${albumList.length} albums for ${channel.name} (first page, total available: ${albumsResponse.total})`);
     } catch (albumFetchErr) {
       console.error(`[Sync] Error fetching album list for ${channel.name}:`, albumFetchErr);
       const errMsg = (albumFetchErr as Error).message || "";

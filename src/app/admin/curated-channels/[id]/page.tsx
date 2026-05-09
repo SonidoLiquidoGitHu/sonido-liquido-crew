@@ -122,14 +122,30 @@ export default function CuratedChannelDetailPage({
 
   const handleSync = async () => {
     setSyncing(true);
-    let totalAdded = 0;
-    let totalSkipped = 0;
-    let totalErrors = 0;
-    let offset = 0;
-    let totalAlbums = 0;
 
     try {
-      // Loop through batches until all albums are processed
+      // First try the fast "recent tracks" method (1-2 API calls, ~3-5 seconds)
+      // This is much more reliable than full album sync on Netlify
+      const topRes = await fetch(`/api/admin/curated-channels/${id}/top-tracks`, {
+        method: "POST",
+      });
+
+      if (topRes.ok) {
+        const topData = await topRes.json();
+        if (topData.success && (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0)) {
+          alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
+          fetchChannel();
+          return;
+        }
+      }
+
+      // If recent tracks didn't find anything new, try full album sync
+      let totalAdded = 0;
+      let totalSkipped = 0;
+      let totalErrors = 0;
+      let offset = 0;
+      let totalAlbums = 0;
+
       while (true) {
         const res = await fetch(`/api/admin/curated-channels/${id}/sync?offset=${offset}`, {
           method: "POST",
@@ -141,7 +157,6 @@ export default function CuratedChannelDetailPage({
             const data = await res.json();
             errorMsg = data.error || errorMsg;
           } catch {
-            // Server returned non-JSON (e.g. 502 timeout page)
             errorMsg = `Error al sincronizar (HTTP ${res.status}). El servidor tardó en responder. Intenta usar "Tracks Recientes" primero.`;
           }
           alert(errorMsg);
@@ -161,7 +176,6 @@ export default function CuratedChannelDetailPage({
 
         if (data.data.hasMore) {
           offset = data.data.nextOffset;
-          // Small delay between batches to avoid overwhelming the server
           await new Promise(resolve => setTimeout(resolve, 300));
         } else {
           break;

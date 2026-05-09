@@ -137,13 +137,30 @@ export default function CuratedChannelsPage() {
 
   const handleSyncChannel = async (channelId: string) => {
     setSyncing(channelId);
-    let totalAdded = 0;
-    let totalSkipped = 0;
-    let totalErrors = 0;
-    let offset = 0;
-    let totalAlbums = 0;
 
     try {
+      // First try the fast "recent tracks" method (1-2 API calls, ~3-5 seconds)
+      // This is much more reliable than full album sync on Netlify
+      const topRes = await fetch(`/api/admin/curated-channels/${channelId}/top-tracks`, {
+        method: "POST",
+      });
+
+      if (topRes.ok) {
+        const topData = await topRes.json();
+        if (topData.success && (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0)) {
+          alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
+          fetchChannels();
+          return;
+        }
+      }
+
+      // If recent tracks didn't find anything new, try full album sync
+      let totalAdded = 0;
+      let totalSkipped = 0;
+      let totalErrors = 0;
+      let offset = 0;
+      let totalAlbums = 0;
+
       // Loop through batches until all albums are processed
       while (true) {
         const res = await fetch(`/api/admin/curated-channels/${channelId}/sync?offset=${offset}`, {

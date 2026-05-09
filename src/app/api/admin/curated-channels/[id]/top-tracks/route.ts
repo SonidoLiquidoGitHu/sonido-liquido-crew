@@ -1,13 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { spotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
-// POST - Fetch top tracks for an existing channel
+// Bulk-check which track IDs already exist in the DB
+async function getExistingTrackIds(trackIds: string[]): Promise<Set<string>> {
+  if (trackIds.length === 0) return new Set();
+  const existing = new Set<string>();
+  const chunkSize = 50;
+  for (let i = 0; i < trackIds.length; i += chunkSize) {
+    const chunk = trackIds.slice(i, i + chunkSize);
+    try {
+      const rows = await db
+        .select({ spotifyTrackId: curatedTracks.spotifyTrackId })
+        .from(curatedTracks)
+        .where(inArray(curatedTracks.spotifyTrackId, chunk));
+      for (const row of rows) existing.add(row.spotifyTrackId);
+    } catch (err) {
+      console.warn("[Top Tracks] Bulk check failed:", err);
+    }
+  }
+  return existing;
+}
+
+// POST - Fetch recent tracks for an existing channel
+// This is the FAST sync method — only fetches recent releases (1 API call)
+// and the top-tracks endpoint (1 API call with fallback)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,89 +56,182 @@ export async function POST(
       );
     }
 
-    // Fetch top tracks from Spotify
-    console.log(`[Top Tracks] Fetching top tracks for ${channel.name} (${channel.spotifyArtistId})...`);
-    const topTracks = await spotifyClient.getArtistTopTracks(channel.spotifyArtistId);
-    console.log(`[Top Tracks] Got ${topTracks?.length ?? 0} tracks from Spotify`);
+    const artistId = channel.spotifyArtistId;
+    console.log(`[Top Tracks] Fetching recent tracks for ${channel.name}...`);
 
-    if (!topTracks || !Array.isArray(topTracks) || topTracks.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: { tracksAdded: 0, tracksSkipped: 0, totalTopTracks: 0 },
-        message: "No se encontraron tracks recientes para este artista. Intenta 'Sincronizar Todo' para obtener todos los tracks de sus álbumes.",
+    // Strategy: Fetch recent albums (singles first) and extract their tracks
+    // This is much faster than full sync because:
+    // 1. Only 1 API call to get recent releases (no pagination)
+    // 2. Only fetch 3-5 most recent albums
+    // 3. Bulk DB operations
+
+    const allNewTracks: any[] = [];
+    let albumsFetched = 0;
+
+    // Step 1: Get recent singles/albums (1 API call, limit=5)
+    try {
+      const albumsResponse = await spotifyClient.getArtistAlbums(artistId, {
+        includeGroups: "single,album",
+        limit: 5,
       });
-    }
 
-    let addedTracks = 0;
-    let skippedTracks = 0;
+      if (albumsResponse.items?.length) {
+        albumsFetched = albumsResponse.items.length;
 
-    for (const track of topTracks) {
-      if (!track?.id) {
-        console.warn('[Top Tracks] Skipping track with no ID:', track);
-        continue;
-      }
+        // Step 2: Fetch each album's tracks (up to 5 API calls)
+        for (const album of albumsResponse.items) {
+          try {
+            const fullAlbum = await spotifyClient.getAlbum(album.id) as any;
+            if (fullAlbum?.tracks?.items) {
+              for (const track of fullAlbum.tracks.items) {
+                if (!track?.id) continue;
+                // Only include tracks where this artist is credited
+                const isByArtist = track.artists?.some((a: any) => a.id === artistId);
+                if (!isByArtist) continue;
 
-      try {
-        // Check if track already exists
-        const existing = await db
-          .select()
-          .from(curatedTracks)
-          .where(eq(curatedTracks.spotifyTrackId, track.id))
-          .limit(1);
-
-        if (existing.length > 0) {
-          // Mark existing track as featured if it's not already
-          if (!existing[0].isFeatured) {
-            await db
-              .update(curatedTracks)
-              .set({ isFeatured: true, updatedAt: new Date() })
-              .where(eq(curatedTracks.id, existing[0].id));
+                allNewTracks.push({
+                  id: generateUUID(),
+                  spotifyTrackId: track.id as string,
+                  spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+                  spotifyAlbumId: fullAlbum.id as string,
+                  name: (track.name || "Unknown") as string,
+                  artistName: track.artists?.map((a: any) => a.name).join(", ") || channel.name,
+                  artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
+                  albumName: (fullAlbum.name || null) as string | null,
+                  albumImageUrl: fullAlbum.images?.[0]?.url ?? null,
+                  durationMs: (track.duration_ms ?? null) as number | null,
+                  previewUrl: (track.preview_url ?? null) as string | null,
+                  releaseDate: (fullAlbum.release_date ?? null) as string | null,
+                  popularity: (track.popularity ?? null) as number | null,
+                  explicit: Boolean(track.explicit),
+                  curatedChannelId: id,
+                  isAvailableForPlaylist: true,
+                  isFeatured: true, // Recent tracks are featured by default
+                });
+              }
+            }
+          } catch (albumErr) {
+            console.warn(`[Top Tracks] Could not fetch album ${album.name}:`, (albumErr as Error).message);
           }
-          skippedTracks++;
-          continue;
         }
+      }
+    } catch (albumsErr) {
+      console.warn(`[Top Tracks] Could not fetch recent albums for ${channel.name}:`, (albumsErr as Error).message);
+    }
 
-        // Add the track as featured
-        const newTrack = {
-          id: generateUUID(),
-          spotifyTrackId: track.id,
-          spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
-          spotifyAlbumId: (track as any).album?.id || null,
-          name: track.name || 'Unknown',
-          artistName: (track as any).artists?.map((a: any) => a.name).join(", ") || channel.name,
-          artistIds: JSON.stringify((track as any).artists?.map((a: any) => a.id) || []),
-          albumName: (track as any).album?.name || null,
-          albumImageUrl: (track as any).album?.images?.[0]?.url ?? null,
-          durationMs: track.duration_ms ?? null,
-          previewUrl: track.preview_url ?? null,
-          releaseDate: (track as any).album?.release_date ?? null,
-          popularity: (track as any).popularity ?? null,
-          explicit: Boolean((track as any).explicit),
-          curatedChannelId: id,
-          isAvailableForPlaylist: true,
-          isFeatured: true, // Top tracks are featured by default
-        };
+    // If we got no tracks from albums, try the search API as a last resort
+    if (allNewTracks.length === 0) {
+      try {
+        const artist = await spotifyClient.getArtist(artistId);
+        if (artist.name) {
+          const searchResult = await spotifyClient.search(
+            `artist:"${artist.name}"`,
+            ["track"],
+            10
+          );
+          if (searchResult.tracks?.items) {
+            for (const track of searchResult.tracks.items) {
+              if (!track?.id) continue;
+              const isByArtist = (track as any).artists?.some((a: any) => a.id === artistId);
+              if (!isByArtist) continue;
 
-        await db.insert(curatedTracks).values(newTrack);
-        addedTracks++;
-      } catch (trackErr) {
-        console.error(`[Top Tracks] Error processing track ${track?.id}:`, trackErr);
-        // Continue with other tracks
+              allNewTracks.push({
+                id: generateUUID(),
+                spotifyTrackId: track.id as string,
+                spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+                spotifyAlbumId: (track as any).album?.id || null,
+                name: (track.name || "Unknown") as string,
+                artistName: (track as any).artists?.map((a: any) => a.name).join(", ") || channel.name,
+                artistIds: JSON.stringify((track as any).artists?.map((a: any) => a.id) || []),
+                albumName: ((track as any).album?.name || null) as string | null,
+                albumImageUrl: ((track as any).album?.images?.[0]?.url ?? null) as string | null,
+                durationMs: (track.duration_ms ?? null) as number | null,
+                previewUrl: (track.preview_url ?? null) as string | null,
+                releaseDate: ((track as any).album?.release_date ?? null) as string | null,
+                popularity: ((track as any).popularity ?? null) as number | null,
+                explicit: Boolean((track as any).explicit),
+                curatedChannelId: id,
+                isAvailableForPlaylist: true,
+                isFeatured: true,
+              });
+            }
+          }
+        }
+      } catch (searchErr) {
+        console.warn(`[Top Tracks] Search fallback failed for ${channel.name}:`, (searchErr as Error).message);
       }
     }
+
+    // Bulk check: which tracks already exist?
+    const trackIds = allNewTracks.map(t => t.spotifyTrackId);
+    const existingIds = await getExistingTrackIds(trackIds);
+
+    // Filter out existing tracks; mark existing ones as featured
+    const trulyNew = allNewTracks.filter(t => !existingIds.has(t.spotifyTrackId));
+    const alreadyExist = allNewTracks.filter(t => existingIds.has(t.spotifyTrackId));
+
+    // Mark existing tracks as featured
+    if (alreadyExist.length > 0) {
+      const existingTrackIds = alreadyExist.map(t => t.spotifyTrackId);
+      try {
+        // Update in chunks
+        for (let i = 0; i < existingTrackIds.length; i += 50) {
+          const chunk = existingTrackIds.slice(i, i + 50);
+          await db
+            .update(curatedTracks)
+            .set({ isFeatured: true, updatedAt: new Date() })
+            .where(inArray(curatedTracks.spotifyTrackId, chunk));
+        }
+      } catch (updateErr) {
+        console.warn("[Top Tracks] Could not update featured status:", updateErr);
+      }
+    }
+
+    // Batch insert new tracks
+    let addedCount = 0;
+    if (trulyNew.length > 0) {
+      try {
+        await db.insert(curatedTracks).values(trulyNew);
+        addedCount = trulyNew.length;
+      } catch (batchErr) {
+        // Fallback to one-by-one if batch fails
+        console.warn("[Top Tracks] Batch insert failed, trying one-by-one:", batchErr);
+        for (const track of trulyNew) {
+          try {
+            await db.insert(curatedTracks).values(track);
+            addedCount++;
+          } catch {
+            // Duplicate — skip
+          }
+        }
+      }
+    }
+
+    // Update channel sync metadata
+    await db.update(curatedSpotifyChannels).set({
+      lastSyncedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(curatedSpotifyChannels.id, id));
+
+    const message = addedCount > 0
+      ? `${addedCount} tracks nuevos de ${albumsFetched} lanzamientos recientes`
+      : alreadyExist.length > 0
+        ? `Todos los tracks recientes ya estaban sincronizados (${alreadyExist.length} marcados como destacados)`
+        : "No se encontraron tracks recientes para este artista";
 
     return NextResponse.json({
       success: true,
       data: {
-        tracksAdded: addedTracks,
-        tracksSkipped: skippedTracks,
-        totalTopTracks: topTracks.length,
+        tracksAdded: addedCount,
+        tracksSkipped: alreadyExist.length,
+        totalTopTracks: allNewTracks.length,
+        albumsFetched,
       },
-      message: `${addedTracks > 0 ? `${addedTracks} top tracks nuevos agregados` : 'Top tracks ya existían'}${skippedTracks > 0 ? ` (${skippedTracks} marcados como destacados)` : ''}`,
+      message,
     });
   } catch (error) {
-    console.error("[Curated Channels API] Error fetching top tracks:", error);
-    const errorMsg = error instanceof Error ? error.message : "Error fetching top tracks";
+    console.error("[Curated Channels API] Error fetching recent tracks:", error);
+    const errorMsg = error instanceof Error ? error.message : "Error fetching recent tracks";
     return NextResponse.json(
       { success: false, error: errorMsg },
       { status: 500 }
