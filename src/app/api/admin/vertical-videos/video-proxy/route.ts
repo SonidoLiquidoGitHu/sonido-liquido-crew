@@ -17,12 +17,13 @@ import { dropboxClient } from "@/lib/clients/dropbox";
  * moov atom + a few frames.
  */
 
-// 15 MB — enough for the browser to decode at least the first few frames.
-// 2 MB was too small: most MP4s store the moov atom at the end of the file,
-// and without it the browser cannot seek to any frame, resulting in a black
-// canvas when trying to extract a thumbnail.  15 MB gives the browser a
-// fighting chance of having enough data to render the first visible frame.
-const MAX_BYTES = 15 * 1024 * 1024;
+// 50 MB — increased from 15 MB because many MP4s store the moov atom at the
+// end of the file. Without it, the browser cannot seek to any frame, resulting
+// in a black canvas when trying to extract a thumbnail.  50 MB gives a much
+// better chance of including the moov atom for short vertical videos.
+// NOTE: This proxy is now a fallback; the primary approach uses the
+// video-download-url endpoint to fetch the full video as a blob.
+const MAX_BYTES = 50 * 1024 * 1024;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

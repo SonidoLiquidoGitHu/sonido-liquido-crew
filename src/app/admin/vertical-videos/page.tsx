@@ -37,6 +37,7 @@ import {
   ImageIcon,
   Save,
   Link as LinkIcon,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
@@ -268,28 +269,17 @@ export default function AdminVerticalVideosPage() {
 
       const data = await res.json();
       if (data.success) {
-        // If no thumbnail was provided, auto-generate one server-side
+        // If no thumbnail was provided, auto-generate one client-side
         if (!hasThumbnail && data.data?.id) {
           setMessage({ type: "success", text: "Video agregado. Generando miniatura automáticamente..." });
           setShowUploader(false);
           resetUploadForm();
           fetchData();
 
-          // Fire-and-forget thumbnail generation
-          fetch("/api/admin/vertical-videos/generate-thumbnails", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ videoId: data.data.id }),
-          })
-            .then((thumbRes) => thumbRes.json())
-            .then((thumbData) => {
-              if (thumbData.success && thumbData.generated > 0) {
-                setMessage({ type: "success", text: "Miniatura generada automáticamente" });
-                fetchData(); // Refresh to show the new thumbnail
-              } else if (thumbData.error) {
-                setMessage({ type: "error", text: `Video agregado, pero: ${thumbData.error}` });
-              }
-              setTimeout(() => setMessage(null), 5000);
+          // Use the new blob-based thumbnail extraction
+          regenerateThumbnail(data.data.id)
+            .then(() => {
+              fetchData(); // Refresh to show the new thumbnail
             })
             .catch(() => {
               // Thumbnail generation failed silently - video is still saved
@@ -411,44 +401,39 @@ export default function AdminVerticalVideosPage() {
     }
   };
 
-  // Extract a thumbnail from a video URL using the video proxy + canvas
-  const extractThumbnailFromProxy = async (
-    videoId: string
+  // Extract a thumbnail from a video blob/object URL using canvas
+  // This works with a complete video blob (no moov atom issues)
+  const extractThumbnailFromBlob = async (
+    videoBlob: Blob
   ): Promise<string | null> => {
     return new Promise((resolve) => {
       const video = document.createElement("video");
-      video.crossOrigin = "anonymous";
-      video.preload = "auto";
       video.muted = true;
       video.playsInline = true;
+      // No crossOrigin needed — blob URLs are same-origin
 
-      // Use our CORS-safe video proxy so the canvas is not tainted
-      video.src = `/api/admin/vertical-videos/video-proxy?videoId=${videoId}`;
+      const objectUrl = URL.createObjectURL(videoBlob);
+      video.src = objectUrl;
 
       const cleanup = () => {
         video.pause();
         video.removeAttribute("src");
         video.load();
         video.remove();
+        URL.revokeObjectURL(objectUrl);
       };
 
       // Try multiple seek positions to find a non-black frame
-      const seekPositions = [0.5, 1.0, 2.0, 3.0];
+      const seekPositions = [0.5, 1.0, 2.0, 3.0, 5.0];
       let currentSeekIndex = 0;
+      let bestBlob: Blob | null = null; // Track best (least-black) result
 
-      video.onloadedmetadata = () => {
-        const duration = video.duration;
-        // Add percentage-based positions
-        if (isFinite(duration) && duration > 0) {
-          seekPositions.push(duration * 0.1);
-          seekPositions.push(duration * 0.25);
-        }
-        // Start seeking
-        video.currentTime = seekPositions[0] || 0.5;
-      };
-
-      video.onseeked = () => {
+      const tryCaptureFrame = () => {
         try {
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            return false; // Video not decoded yet
+          }
+
           const canvas = document.createElement("canvas");
           const maxDim = 480;
           const scale = Math.min(
@@ -460,62 +445,92 @@ export default function AdminVerticalVideosPage() {
           canvas.height = Math.round(video.videoHeight * scale);
 
           const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            cleanup();
-            resolve(null);
-            return;
-          }
+          if (!ctx) return false;
 
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-          // Check if this frame is mostly black
-          if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
-            canvas.remove();
-            currentSeekIndex++;
-            if (currentSeekIndex < seekPositions.length) {
-              // Try next seek position
-              const nextTime = seekPositions[currentSeekIndex];
-              if (isFinite(nextTime) && nextTime < video.duration) {
-                video.currentTime = nextTime;
-                return;
-              }
-            }
-            // All positions gave black frames — save anyway as last resort
-            // (but try drawing one more time at the current position)
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const isBlack = isCanvasMostlyBlack(ctx, canvas.width, canvas.height);
+
+          if (!isBlack) {
+            // Found a good frame! Convert to blob immediately
+            canvas.toBlob(
+              (blob) => {
+                canvas.remove();
+                if (blob) {
+                  bestBlob = blob;
+                }
+                // Done — upload the best result
+                finish();
+              },
+              "image/jpeg",
+              0.85
+            );
+            return true; // Stop seeking
           }
 
-          canvas.toBlob(
-            async (blob) => {
-              canvas.remove();
-              cleanup();
-
-              if (!blob) {
-                resolve(null);
-                return;
-              }
-
-              // Upload thumbnail to Dropbox
-              try {
-                const thumbFile = new File([blob], "thumbnail.jpg", {
-                  type: "image/jpeg",
-                });
-                const result = await uploadToDropboxDirect(
-                  thumbFile,
-                  "/vertical-videos/thumbnails",
-                  undefined
-                );
-                resolve(result.success ? result.url || null : null);
-              } catch {
-                resolve(null);
-              }
-            },
-            "image/jpeg",
-            0.85
-          );
+          canvas.remove();
+          return false; // Continue seeking
         } catch {
-          cleanup();
+          return false;
+        }
+      };
+
+      const finish = async () => {
+        cleanup();
+        if (!bestBlob) {
           resolve(null);
+          return;
+        }
+        // Upload thumbnail to Dropbox
+        try {
+          const thumbFile = new File([bestBlob], "thumbnail.jpg", {
+            type: "image/jpeg",
+          });
+          const result = await uploadToDropboxDirect(
+            thumbFile,
+            "/vertical-videos/thumbnails",
+            undefined
+          );
+          resolve(result.success ? result.url || null : null);
+        } catch {
+          resolve(null);
+        }
+      };
+
+      video.onloadedmetadata = () => {
+        const duration = video.duration;
+        // Add percentage-based positions
+        if (isFinite(duration) && duration > 0) {
+          seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
+        }
+        // Start seeking
+        video.currentTime = seekPositions[0] || 0.5;
+      };
+
+      video.onseeked = () => {
+        const found = tryCaptureFrame();
+        if (found) return; // Good frame captured, will call finish()
+
+        currentSeekIndex++;
+        if (currentSeekIndex < seekPositions.length) {
+          const nextTime = seekPositions[currentSeekIndex];
+          if (isFinite(nextTime) && nextTime < (video.duration || Infinity)) {
+            video.currentTime = nextTime;
+            return;
+          }
+        }
+
+        // All positions gave black frames — do NOT save a black thumbnail
+        console.warn("[Thumbnail] All seek positions produced black frames, skipping");
+        cleanup();
+        resolve(null);
+      };
+
+      // Also try to capture when data is loaded (first frame)
+      video.onloadeddata = () => {
+        if (video.readyState >= 2 && video.videoWidth > 0) {
+          // Try capturing the very first frame
+          video.currentTime = 0.1; // Seek slightly past 0 to avoid pre-roll black
         }
       };
 
@@ -524,12 +539,71 @@ export default function AdminVerticalVideosPage() {
         resolve(null);
       };
 
-      // Timeout – if the proxy or seek takes too long
+      // Timeout
       setTimeout(() => {
         cleanup();
         resolve(null);
-      }, 20000);
+      }, 30000);
     });
+  };
+
+  // Regenerate thumbnail for a single video (downloads full video then extracts frame)
+  const regenerateThumbnail = async (videoId: string) => {
+    setUpdatingId(videoId);
+    setMessage({ type: "success", text: "Descargando video para extraer miniatura..." });
+
+    try {
+      // Step 1: Get a direct download URL from the server
+      const urlRes = await fetch(`/api/admin/vertical-videos/video-download-url?videoId=${videoId}`);
+      const urlData = await urlRes.json();
+
+      if (!urlData.success || !urlData.downloadUrl) {
+        throw new Error(urlData.error || "No se pudo obtener URL de descarga");
+      }
+
+      setMessage({ type: "success", text: "Descargando video completo..." });
+
+      // Step 2: Fetch the full video as a blob
+      const videoRes = await fetch(urlData.downloadUrl);
+      if (!videoRes.ok) {
+        throw new Error(`Error descargando video: ${videoRes.status}`);
+      }
+
+      const videoBlob = await videoRes.blob();
+      console.log(`[Thumbnail] Downloaded video blob: ${(videoBlob.size / 1024 / 1024).toFixed(1)} MB`);
+
+      setMessage({ type: "success", text: "Extrayendo frame del video..." });
+
+      // Step 3: Extract thumbnail from the complete video blob
+      const thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+
+      if (!thumbnailUrl) {
+        throw new Error("No se pudo extraer un frame del video (posible video negro o corrupto)");
+      }
+
+      // Step 4: Save to database
+      const saveRes = await fetch("/api/admin/vertical-videos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: videoId, thumbnailUrl }),
+      });
+      const saveData = await saveRes.json();
+
+      if (saveData.success) {
+        setVideos((prev) =>
+          prev.map((v) => v.id === videoId ? { ...v, thumbnailUrl } : v)
+        );
+        setMessage({ type: "success", text: "Miniatura regenerada exitosamente" });
+      } else {
+        throw new Error(saveData.error || "Error guardando miniatura");
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Error desconocido";
+      setMessage({ type: "error", text: `Error regenerando miniatura: ${msg}` });
+    }
+
+    setUpdatingId(null);
+    setTimeout(() => setMessage(null), 5000);
   };
 
   // Generate missing thumbnails
@@ -579,7 +653,7 @@ export default function AdminVerticalVideosPage() {
       );
     }
 
-    // Step 2: Client-side extraction via video proxy + canvas
+    // Step 2: Client-side extraction via full video download + canvas
     const remaining = videos.filter((v) => !v.thumbnailUrl);
     if (remaining.length === 0) {
       setMessage({ type: "success", text: "Todas las miniaturas fueron generadas" });
@@ -597,7 +671,22 @@ export default function AdminVerticalVideosPage() {
       );
 
       try {
-        const thumbnailUrl = await extractThumbnailFromProxy(video.id);
+        // Get a direct download URL
+        const urlRes = await fetch(`/api/admin/vertical-videos/video-download-url?videoId=${video.id}`);
+        const urlData = await urlRes.json();
+
+        if (!urlData.success || !urlData.downloadUrl) {
+          console.warn(`[Thumbnails] No download URL for ${video.id}`);
+          continue;
+        }
+
+        // Fetch full video as blob
+        const videoRes = await fetch(urlData.downloadUrl);
+        if (!videoRes.ok) continue;
+        const videoBlob = await videoRes.blob();
+
+        // Extract thumbnail from the complete video
+        const thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
 
         if (thumbnailUrl) {
           // Save to database
@@ -879,6 +968,21 @@ export default function AdminVerticalVideosPage() {
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => regenerateThumbnail(video.id)}
+                        className={cn(
+                          "p-1 rounded transition-colors",
+                          "text-slc-muted hover:text-primary hover:bg-slc-card"
+                        )}
+                        title="Regenerar miniatura"
+                        disabled={updatingId === video.id}
+                      >
+                        {updatingId === video.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                       <button
                         onClick={() => setShareVideo(video)}
                         className="p-1 text-blue-400 hover:text-blue-300 hover:bg-slc-card rounded transition-colors"

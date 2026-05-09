@@ -401,7 +401,7 @@ async function cleanup(...paths: string[]) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { videoId, all } = body as { videoId?: string; all?: boolean };
+    const { videoId, all, force } = body as { videoId?: string; all?: boolean; force?: boolean };
 
     // Check if Dropbox is configured
     const dropboxReady = await dropboxClient.isConfiguredAsync();
@@ -424,7 +424,7 @@ export async function POST(request: NextRequest) {
         .select()
         .from(verticalVideos)
         .where(eq(verticalVideos.id, videoId));
-    } else if (all) {
+    } else if (all || force) {
       videos = await db
         .select()
         .from(verticalVideos);
