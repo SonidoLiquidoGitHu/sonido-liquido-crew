@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
   const scopes = [
     "playlist-read-private",
     "playlist-read-collaborative",
-    "playlist-read",
     "user-read-private",
     "user-read-email",
   ].join(" ");
@@ -49,8 +48,7 @@ export async function GET(request: NextRequest) {
     state: crypto.randomUUID(),
     // Force the consent screen so Spotify re-requests ALL scopes.
     // Without this, Spotify silently re-authorizes and may NOT include
-    // the new scopes we added (like playlist-read), which causes 403
-    // when trying to read playlist tracks.
+    // new/changed scopes, which causes 403 when trying to read playlist tracks.
     show_dialog: "true",
   });
 
