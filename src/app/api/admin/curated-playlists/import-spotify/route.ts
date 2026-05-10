@@ -540,6 +540,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (message.includes("401") || message.includes("403")) {
+      // Check if this is a Development Mode restriction on the /items endpoint
+      // (Spotify Dev Mode only allows access to tracks in playlists the user OWNS)
+      if (message.includes("/items")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "No se pudieron obtener los tracks de esta playlist. Spotify en modo Desarrollo solo permite acceder a los tracks de playlists que tú creaste. Si esta playlist no es tuya, cópiala primero a tu cuenta de Spotify y luego importa tu copia.",
+            errorType: "DEVMODE_PLAYLIST",
+          },
+          { status: 403 }
+        );
+      }
       return NextResponse.json(
         {
           success: false,
