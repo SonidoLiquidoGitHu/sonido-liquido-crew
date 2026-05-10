@@ -161,56 +161,84 @@ export async function GET() {
         });
       }
 
-      // Step 7b: Test the EXACT endpoint that fails: /playlists/{id}/tracks
-      // Using the playlist ID from the user's last import attempt
+      // Step 7b: Test the NEW /playlists/{id}/items endpoint (replaces deprecated /tracks)
+      // Get a real playlist ID from the user's own playlists
       try {
-        const TEST_PLAYLIST_ID = "5qHTKCZlwi3GM3mhPq45Ab"; // The playlist they're trying to import
-        const trackTestResponse = await fetch(
-          `https://api.spotify.com/v1/playlists/${TEST_PLAYLIST_ID}/tracks?limit=1&fields=items(track(id,name)),total`,
-          {
-            headers: { Authorization: `Bearer ${userToken}` },
-            signal: AbortSignal.timeout(10_000),
-          }
+        const userPlaylistsRes = await fetch(
+          "https://api.spotify.com/v1/me/playlists?limit=1",
+          { headers: { Authorization: `Bearer ${userToken}` }, signal: AbortSignal.timeout(10_000) }
         );
-        const trackTestBody = await trackTestResponse.text().catch(() => "");
-        diagnosis.steps.push({
-          step: "test_playlist_tracks_user_token",
-          status: trackTestResponse.ok ? "success" : `failed_${trackTestResponse.status}`,
-          detail: trackTestResponse.ok
-            ? `Can read playlist tracks (${JSON.parse(trackTestBody).total} tracks found)`
-            : `Status ${trackTestResponse.status}: ${trackTestBody.slice(0, 500)}`,
-        });
+        if (userPlaylistsRes.ok) {
+          const userPlaylistsData = await userPlaylistsRes.json();
+          const testPlaylistId = userPlaylistsData.items?.[0]?.id;
+          if (testPlaylistId) {
+            // Test the NEW /items endpoint
+            const itemsTestResponse = await fetch(
+              `https://api.spotify.com/v1/playlists/${testPlaylistId}/items?limit=1&fields=items(item(id,name)),total`,
+              { headers: { Authorization: `Bearer ${userToken}` }, signal: AbortSignal.timeout(10_000) }
+            );
+            const itemsTestBody = await itemsTestResponse.text().catch(() => "");
+            diagnosis.steps.push({
+              step: "test_playlist_items_user_token",
+              status: itemsTestResponse.ok ? "success" : `failed_${itemsTestResponse.status}`,
+              detail: itemsTestResponse.ok
+                ? `Can read playlist items (${JSON.parse(itemsTestBody).total} tracks found, playlist: ${testPlaylistId})`
+                : `Status ${itemsTestResponse.status}: ${itemsTestBody.slice(0, 500)}`,
+            });
+
+            // Also test the old /tracks endpoint to confirm it's deprecated
+            const oldTracksResponse = await fetch(
+              `https://api.spotify.com/v1/playlists/${testPlaylistId}/tracks?limit=1&fields=total`,
+              { headers: { Authorization: `Bearer ${userToken}` }, signal: AbortSignal.timeout(10_000) }
+            );
+            const oldTracksBody = await oldTracksResponse.text().catch(() => "");
+            diagnosis.steps.push({
+              step: "test_playlist_tracks_deprecated",
+              status: oldTracksResponse.ok ? "still_works" : `deprecated_${oldTracksResponse.status}`,
+              detail: oldTracksResponse.ok
+                ? `Old /tracks endpoint still works (unexpected)`
+                : `Old /tracks endpoint returns ${oldTracksResponse.status} (expected - deprecated)`,
+            });
+          }
+        }
       } catch (err) {
         diagnosis.steps.push({
-          step: "test_playlist_tracks_user_token",
+          step: "test_playlist_items_user_token",
           status: "error",
           detail: (err as Error).message,
         });
       }
     }
 
-    // Step 7c: Test playlist tracks with client credentials (should fail with 403)
+    // Step 7c: Test /items endpoint with client credentials
     if (ccToken) {
       try {
-        const TEST_PLAYLIST_ID = "5qHTKCZlwi3GM3mhPq45Ab";
-        const ccTrackResponse = await fetch(
-          `https://api.spotify.com/v1/playlists/${TEST_PLAYLIST_ID}/tracks?limit=1&fields=total`,
-          {
-            headers: { Authorization: `Bearer ${ccToken}` },
-            signal: AbortSignal.timeout(10_000),
-          }
+        // Get a public playlist ID first
+        const searchRes = await fetch(
+          "https://api.spotify.com/v1/search?q=top%20hits&type=playlist&limit=1",
+          { headers: { Authorization: `Bearer ${ccToken}` }, signal: AbortSignal.timeout(10_000) }
         );
-        const ccTrackBody = await ccTrackResponse.text().catch(() => "");
-        diagnosis.steps.push({
-          step: "test_playlist_tracks_client_credentials",
-          status: ccTrackResponse.ok ? "success" : `failed_${ccTrackResponse.status}`,
-          detail: ccTrackResponse.ok
-            ? `Client credentials CAN access playlist tracks`
-            : `Status ${ccTrackResponse.status} (expected for client credentials): ${ccTrackBody.slice(0, 300)}`,
-        });
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const publicPlaylistId = searchData.playlists?.items?.[0]?.id;
+          if (publicPlaylistId) {
+            const ccItemsResponse = await fetch(
+              `https://api.spotify.com/v1/playlists/${publicPlaylistId}/items?limit=1&fields=total`,
+              { headers: { Authorization: `Bearer ${ccToken}` }, signal: AbortSignal.timeout(10_000) }
+            );
+            const ccItemsBody = await ccItemsResponse.text().catch(() => "");
+            diagnosis.steps.push({
+              step: "test_playlist_items_client_credentials",
+              status: ccItemsResponse.ok ? "success" : `failed_${ccItemsResponse.status}`,
+              detail: ccItemsResponse.ok
+                ? `Client credentials CAN access /items endpoint`
+                : `Status ${ccItemsResponse.status}: ${ccItemsBody.slice(0, 300)}`,
+            });
+          }
+        }
       } catch (err) {
         diagnosis.steps.push({
-          step: "test_playlist_tracks_client_credentials",
+          step: "test_playlist_items_client_credentials",
           status: "error",
           detail: (err as Error).message,
         });

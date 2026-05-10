@@ -230,16 +230,20 @@ export async function POST(
     console.log(`[Spotify Sync] User auth token: ${userAccessToken ? 'available' : 'not available'}`);
 
     // Fetch playlist metadata using user access token
+    // Spotify API 2025+: Use "items.total" instead of "tracks.total" in fields parameter.
     const playlistMeta = await spotifyRequestWithAuth<{
       id: string;
       name: string;
       description: string;
       images: { url: string }[];
-      tracks: { total: number };
+      items?: { total: number };
+      tracks?: { total: number };
       external_urls: { spotify: string };
-    }>(`/playlists/${spotifyPlaylistId}?fields=id,name,description,images,tracks.total,external_urls`, userAccessToken, requestCtx);
+    }>(`/playlists/${spotifyPlaylistId}?fields=id,name,description,images,items.total,tracks.total,external_urls`, userAccessToken, requestCtx);
 
-    // Fetch all tracks with pagination
+    // Fetch all tracks with pagination using the NEW /playlists/{id}/items endpoint.
+    // IMPORTANT: Spotify deprecated /playlists/{id}/tracks (returns 403 since 2025).
+    // The new endpoint is /playlists/{id}/items with tracks under "item" key.
     const tracks: Array<{
       spotifyTrackId: string;
       trackName: string;
@@ -264,12 +268,31 @@ export async function POST(
         limit: String(limit),
         offset: String(offset),
         market: "MX",
-        fields: "items(track(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit)),total,next",
+        fields: "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
       });
 
       const response = await spotifyRequestWithAuth<{
         items: Array<{
-          track: {
+          is_local: boolean;
+          // Spotify API 2025+: track data is under "item" (singular) key
+          item: {
+            id: string;
+            name: string;
+            artists: Array<{ id: string; name: string }>;
+            album: {
+              id: string;
+              name: string;
+              images: Array<{ url: string }>;
+              release_date: string;
+            };
+            duration_ms: number;
+            preview_url: string | null;
+            popularity: number;
+            explicit: boolean;
+            is_local?: boolean;
+          } | null;
+          // Legacy: some API versions still return "track" key
+          track?: {
             id: string;
             name: string;
             artists: Array<{ id: string; name: string }>;
@@ -287,15 +310,16 @@ export async function POST(
         }>;
         total: number;
         next: string | null;
-      }>(`/playlists/${spotifyPlaylistId}/tracks?${trackParams.toString()}`, userAccessToken, requestCtx);
+      }>(`/playlists/${spotifyPlaylistId}/items?${trackParams.toString()}`, userAccessToken, requestCtx);
 
       if (!response.items?.length) {
         break;
       }
 
       for (const item of response.items) {
-        const track = item.track;
-        if (!track || !track.id) continue;
+        // Spotify API 2025+: track data is under "item" key (not "track")
+        const track = item.item || item.track;
+        if (!track || !track.id || item.is_local) continue;
 
         tracks.push({
           spotifyTrackId: track.id,

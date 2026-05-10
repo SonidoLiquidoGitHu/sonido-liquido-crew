@@ -531,6 +531,8 @@ class SpotifyClient {
 
   /**
    * Get playlist by ID (metadata only)
+   * NOTE: Spotify API 2025+ uses "items" instead of "tracks" for the tracks container.
+   * The fields parameter uses "items.total" to get the track count.
    */
   async getPlaylist(playlistId: string): Promise<{
     id: string;
@@ -538,14 +540,20 @@ class SpotifyClient {
     description: string;
     images: { url: string }[];
     tracks: { total: number };
+    items: { total: number };
     external_urls: { spotify: string };
   }> {
-    return this.request(`/playlists/${playlistId}?fields=id,name,description,images,tracks.total,external_urls`);
+    return this.request(`/playlists/${playlistId}?fields=id,name,description,images,items.total,tracks.total,external_urls`);
   }
 
   /**
    * Get all tracks from a Spotify playlist (handles pagination)
-   * Returns simplified track info suitable for importing into the local system
+   * Returns simplified track info suitable for importing into the local system.
+   *
+   * IMPORTANT: Spotify API 2025+ changes:
+   * - /playlists/{id}/tracks is now deprecated (returns 403)
+   * - Use /playlists/{id}/items for pagination instead
+   * - Track data is under "item" (singular) key, not "track"
    */
   async getPlaylistTracks(playlistId: string): Promise<{
     id: string;
@@ -586,7 +594,7 @@ class SpotifyClient {
       position: number;
     }> = [];
 
-    // Fetch tracks with pagination (100 per page)
+    // Fetch tracks with pagination (100 per page) using the NEW /items endpoint
     const limit = 100;
     let offset = 0;
     let hasMore = true;
@@ -597,12 +605,30 @@ class SpotifyClient {
         limit: String(limit),
         offset: String(offset),
         market: "MX",
-        fields: "items(track(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit)),total,next",
+        fields: "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
       });
 
       const response = await this.request<{
         items: Array<{
-          track: {
+          is_local: boolean;
+          item: {
+            id: string;
+            name: string;
+            artists: Array<{ id: string; name: string }>;
+            album: {
+              id: string;
+              name: string;
+              images: Array<{ url: string }>;
+              release_date: string;
+            };
+            duration_ms: number;
+            preview_url: string | null;
+            popularity: number;
+            explicit: boolean;
+            is_local?: boolean;
+          } | null;
+          // Legacy: some API versions still return "track" key
+          track?: {
             id: string;
             name: string;
             artists: Array<{ id: string; name: string }>;
@@ -620,16 +646,17 @@ class SpotifyClient {
         }>;
         total: number;
         next: string | null;
-      }>(`/playlists/${playlistId}/tracks?${params.toString()}`);
+      }>(`/playlists/${playlistId}/items?${params.toString()}`);
 
       if (!response.items?.length) {
         break;
       }
 
       for (const item of response.items) {
-        const track = item.track;
+        // Spotify API 2025+: track data is under "item" key (not "track")
+        const track = item.item || item.track;
         // Skip null tracks (removed/unavailable) and local tracks (no Spotify ID)
-        if (!track || !track.id) continue;
+        if (!track || !track.id || item.is_local) continue;
 
         tracks.push({
           spotifyTrackId: track.id,
