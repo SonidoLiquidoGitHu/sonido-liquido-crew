@@ -133,9 +133,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Redirect back to the playlists page with success indicator
-    return NextResponse.redirect(
-      new URL("/admin/curated-channels/playlists?spotify_connected=true", request.url)
-    );
+    // IMPORTANT: Include the access token and expiry in the redirect URL so the
+    // frontend has it immediately WITHOUT needing a DB read. This is critical because
+    // Turso DB replication lag can cause the /api/admin/spotify/token endpoint to
+    // return { connected: false } right after we just stored the tokens here.
+    // The access token is short-lived (1 hour) and the URL is cleaned up by the
+    // frontend immediately, so the security risk is minimal (same as OAuth implicit grant).
+    const redirectUrl = new URL("/admin/curated-channels/playlists", request.url);
+    redirectUrl.searchParams.set("spotify_connected", "true");
+    redirectUrl.searchParams.set("spotify_access_token", accessToken);
+    redirectUrl.searchParams.set("spotify_expires_in", String(expiresIn));
+
+    return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("[Spotify OAuth] Callback error:", error);
     return NextResponse.redirect(

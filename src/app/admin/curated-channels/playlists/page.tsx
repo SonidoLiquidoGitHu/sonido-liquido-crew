@@ -703,21 +703,37 @@ export default function PlaylistsPage() {
       //   3. The server already verified the tokens before redirecting here
       setSpotifyConnected(true);
       setSpotifyChecking(false);
+
+      // CRITICAL: Read the access token directly from the URL params.
+      // The callback route now includes the access token in the redirect URL
+      // so we have it immediately WITHOUT needing a DB read (which can fail
+      // due to Turso replication lag). This is the key fix for the
+      // "connect → sync → denied" loop.
+      const accessTokenFromUrl = params.get("spotify_access_token");
+      const expiresInFromUrl = params.get("spotify_expires_in");
+
+      if (accessTokenFromUrl) {
+        setSpotifyAccessToken(accessTokenFromUrl);
+        console.log("[Spotify] Access token received from callback URL — no DB read needed");
+      } else {
+        console.warn("[Spotify] No access token in callback URL — will need to fetch from DB");
+      }
+
       alert("Spotify conectado exitosamente. Ya puedes importar tracks.");
-      // Clean up URL
+      // Clean up URL (remove access token and other params for security)
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
 
-      // Fetch the access token in the background so sync has it, but DO NOT
-      // override spotifyConnected based on this check. If it fails, we still
-      // know the connection is valid (the server confirmed it via redirect).
-      // We'll retry a few times with increasing delay to handle replication lag.
+      // Fetch the access token in the background ONLY if we didn't get one from the URL.
+      // If we DID get one from the URL, we still do a delayed check to verify the DB
+      // has the tokens (for future page loads), but we don't need the result immediately.
       const tryGetAccessToken = async (attempt = 0) => {
         try {
           const res = await fetch("/api/admin/spotify/token");
           const data = await res.json();
           if (data.connected && data.accessToken) {
-            setSpotifyAccessToken(data.accessToken);
-            console.log("[Spotify] Access token fetched successfully after OAuth");
+            // Only update if we don't already have a token from the URL
+            setSpotifyAccessToken(prev => prev || data.accessToken);
+            console.log("[Spotify] DB token check confirmed — tokens are persisted");
           } else if (attempt < 4) {
             // DB may not have replicated yet — retry with exponential backoff
             const delay = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s, 16s
@@ -726,7 +742,7 @@ export default function PlaylistsPage() {
           } else {
             // Even after retries, we don't override spotifyConnected — the server confirmed it.
             // The sync endpoint will get its own token from the DB when needed.
-            console.warn("[Spotify] Could not fetch access token after OAuth, but connection is confirmed. Sync will fetch token directly from DB.");
+            console.warn("[Spotify] Could not fetch access token from DB after OAuth, but connection is confirmed via URL token. Sync will use the URL-provided token.");
           }
         } catch {
           if (attempt < 4) {
@@ -735,7 +751,14 @@ export default function PlaylistsPage() {
           }
         }
       };
-      setTimeout(() => tryGetAccessToken(0), 1000);
+
+      if (accessTokenFromUrl) {
+        // We have the token from URL — just verify DB has it for future page loads
+        setTimeout(() => tryGetAccessToken(0), 5000);
+      } else {
+        // No token from URL — need to get it from DB with retries
+        setTimeout(() => tryGetAccessToken(0), 1000);
+      }
     } else if (hasSpotifyError) {
       const error = params.get("spotify_error");
       const errorMessages: Record<string, string> = {
@@ -970,16 +993,26 @@ export default function PlaylistsPage() {
     try {
       // Try to get a fresh access token before syncing.
       // Even if this fails, the sync endpoint can get its own token from the DB.
+      // IMPORTANT: If we already have a token from the OAuth callback URL, prefer
+      // that one (it was just obtained from Spotify and is guaranteed valid).
       let tokenToUse = spotifyAccessToken;
-      try {
-        const tokenRes = await fetch("/api/admin/spotify/token");
-        const tokenData = await tokenRes.json();
-        if (tokenData.connected && tokenData.accessToken) {
-          tokenToUse = tokenData.accessToken;
-          setSpotifyAccessToken(tokenToUse);
+      if (!tokenToUse) {
+        try {
+          const tokenRes = await fetch("/api/admin/spotify/token");
+          const tokenData = await tokenRes.json();
+          if (tokenData.connected && tokenData.accessToken) {
+            tokenToUse = tokenData.accessToken;
+            setSpotifyAccessToken(tokenToUse);
+          }
+        } catch {
+          // Token check failed, use cached token if available
         }
-      } catch {
-        // Token check failed, use cached token if available
+      }
+
+      if (!tokenToUse) {
+        alert("No se pudo obtener el token de acceso de Spotify. Espera un momento e intenta de nuevo, o reconecta tu cuenta.");
+        setIsSyncingSpotify(false);
+        return;
       }
 
       const res = await fetch(
@@ -996,10 +1029,12 @@ export default function PlaylistsPage() {
         await fetchPlaylists();
         fetchPlaylistTracks(playlistId);
       } else if (data.needsAuth) {
-        setSpotifyConnected(false);
-        setSpotifyAccessToken(null);
-        // DON'T auto-redirect — let the user click "Conectar Spotify" manually
-        // This prevents the infinite OAuth loop
+        // Only mark as disconnected if we DON'T have a fresh token from URL.
+        // If we do, the issue is likely a scope problem, not an expired token.
+        if (!spotifyAccessToken) {
+          setSpotifyConnected(false);
+          setSpotifyAccessToken(null);
+        }
         alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Haz clic en 'Conectar Spotify' para reconectar.");
       } else {
         alert(data.error || "Error syncing from Spotify");
