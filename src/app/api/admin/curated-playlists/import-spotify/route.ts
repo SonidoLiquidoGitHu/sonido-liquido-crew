@@ -250,7 +250,9 @@ export async function POST(request: NextRequest) {
 
       console.log(`[Spotify Import] Fetching tracks page: offset=${offset}, limit=${limit}`);
 
-      const response = await spotifyRequestWithAuth<{
+      let response;
+      try {
+        response = await spotifyRequestWithAuth<{
         items: Array<{
           is_local: boolean;
           // Spotify API 2025+: track data is under "item" (singular)
@@ -290,6 +292,23 @@ export async function POST(request: NextRequest) {
         total: number;
         next: string | null;
       }>(`/playlists/${playlistId}/items?${params.toString()}`, userAccessToken, requestCtx);
+      } catch (itemsError) {
+        // If the /items endpoint returns 403, it's likely a Development Mode restriction
+        // (Spotify only allows access to tracks in playlists the user OWNS in Dev Mode)
+        const errMsg = (itemsError as Error).message || "";
+        if (errMsg.includes("403") || errMsg.includes("PRIVATE_PLAYLIST") || errMsg.includes("DEVMODE_PLAYLIST")) {
+          const playlistOwner = playlistMeta.owner?.display_name || playlistMeta.owner?.id || "otro usuario";
+          return NextResponse.json(
+            {
+              success: false,
+              error: `No se pudieron obtener los tracks de esta playlist. Spotify en modo Desarrollo solo permite acceder a los tracks de playlists que tú creaste. Esta playlist pertenece a "${playlistOwner}". Para importar playlists de otros, cópiala primero a tu cuenta de Spotify y luego importa tu copia.`,
+              errorType: "DEVMODE_PLAYLIST",
+            },
+            { status: 403 }
+          );
+        }
+        throw itemsError; // Re-throw non-403 errors
+      }
 
       if (!response.items?.length) {
         break;
