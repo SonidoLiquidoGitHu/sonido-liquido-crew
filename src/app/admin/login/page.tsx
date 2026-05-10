@@ -90,7 +90,7 @@ function AdminLoginForm() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  placeholder="Usuario o email"
+                  placeholder="Usuario"
                 />
               </div>
             </div>

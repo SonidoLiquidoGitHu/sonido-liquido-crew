@@ -9,9 +9,8 @@ import { createHash, randomBytes } from "crypto";
  * Validates username/password credentials against the users table in the DB,
  * creates a session, and sets an HTTP-only cookie with the session token.
  *
+ * Login is by USERNAME only (no email).
  * Password hashing uses SHA-256 with a salt (stored as part of the hash).
- * For production, consider upgrading to bcrypt/scrypt, but this matches
- * the existing schema which stores password_hash as TEXT.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,17 +24,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-seed: If no users exist in the DB, create a default admin user
+    // Auto-seed: If no users exist in the DB, create a default admin user.
     // This allows the first login without needing a separate seed script.
     // Credentials come from ADMIN_USERNAME/ADMIN_PASSWORD env vars,
-    // with sensible defaults.
+    // with defaults: SLC / lacremaynata
     try {
       const existingUsers = await db.select({ id: users.id }).from(users).limit(1);
       if (existingUsers.length === 0) {
         console.log("[Auth] No users found in DB — auto-seeding default admin user");
-        const adminUsername = process.env.ADMIN_USERNAME || "led serrano";
-        const adminEmail = process.env.ADMIN_EMAIL || "admin@sonidoliquido.com";
-        const adminPassword = process.env.ADMIN_PASSWORD || "SonidoLiquido2024!";
+        const adminUsername = process.env.ADMIN_USERNAME || "SLC";
+        const adminPassword = process.env.ADMIN_PASSWORD || "lacremaynata";
         const salt = randomBytes(16).toString("hex");
         const hashedPassword = salt + ":" + createHash("sha256")
           .update(salt + adminPassword)
@@ -43,36 +41,24 @@ export async function POST(request: NextRequest) {
 
         await db.insert(users).values({
           id: crypto.randomUUID(),
-          email: adminEmail,
+          email: `${adminUsername.toLowerCase()}@sonidoliquido.com`,
           passwordHash: hashedPassword,
           name: adminUsername,
           role: "admin",
           isActive: true,
         });
-        console.log(`[Auth] Default admin user created: "${adminUsername}" (${adminEmail})`);
+        console.log(`[Auth] Default admin user created: "${adminUsername}"`);
       }
     } catch (seedError) {
       console.warn("[Auth] Auto-seed failed (may be expected if users table doesn't exist yet):", seedError);
     }
 
-    // Look up user by email or name (support both login methods)
-    const [userByEmail] = await db
+    // Look up user by username (name field) only
+    const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, username.toLowerCase().trim()))
+      .where(eq(users.name, username.trim()))
       .limit(1);
-
-    let user = userByEmail;
-
-    // If not found by email, try by name
-    if (!user) {
-      const [userByName] = await db
-        .select()
-        .from(users)
-        .where(eq(users.name, username.trim()))
-        .limit(1);
-      user = userByName;
-    }
 
     if (!user) {
       console.log(`[Auth] Login failed: user "${username}" not found`);
@@ -84,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user is active
     if (!user.isActive) {
-      console.log(`[Auth] Login failed: user "${user.email}" is inactive`);
+      console.log(`[Auth] Login failed: user "${user.name}" is inactive`);
       return NextResponse.json(
         { success: false, error: "Account is disabled" },
         { status: 403 }
@@ -92,10 +78,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
-    // Support both plain text (for initial setup) and hashed passwords
     const passwordMatch = verifyPassword(password, user.passwordHash);
     if (!passwordMatch) {
-      console.log(`[Auth] Login failed: wrong password for user "${user.email}"`);
+      console.log(`[Auth] Login failed: wrong password for user "${user.name}"`);
       return NextResponse.json(
         { success: false, error: "Invalid credentials" },
         { status: 401 }
@@ -120,7 +105,7 @@ export async function POST(request: NextRequest) {
       .set({ lastLoginAt: new Date() })
       .where(eq(users.id, user.id));
 
-    console.log(`[Auth] User "${user.email}" logged in successfully`);
+    console.log(`[Auth] User "${user.name}" logged in successfully`);
 
     // Set HTTP-only cookie with session token
     const response = NextResponse.json({
@@ -128,7 +113,6 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email,
         role: user.role,
       },
     });
@@ -168,7 +152,5 @@ function verifyPassword(password: string, storedHash: string): boolean {
   }
 
   // Plain text comparison (for initial setup)
-  // This allows the first admin to log in with a plain-text password
-  // stored in the DB, after which they should change it
   return password === storedHash;
 }
