@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
   const scopes = [
     "playlist-read-private",
     "playlist-read-collaborative",
+    "playlist-read",
     "user-read-private",
+    "user-read-email",
   ].join(" ");
 
   const params = new URLSearchParams({
@@ -45,10 +47,11 @@ export async function GET(request: NextRequest) {
     scope: scopes,
     redirect_uri: redirectUri,
     state: crypto.randomUUID(),
-    // NOTE: Do NOT set show_dialog=true. When show_dialog is true, Spotify shows
-    // the consent screen every time and often does NOT return a refresh_token on
-    // re-authorization. Without it, Spotify silently re-authorizes and consistently
-    // returns a refresh_token, which is essential for long-lived connections.
+    // Force the consent screen so Spotify re-requests ALL scopes.
+    // Without this, Spotify silently re-authorizes and may NOT include
+    // the new scopes we added (like playlist-read), which causes 403
+    // when trying to read playlist tracks.
+    show_dialog: "true",
   });
 
   const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;

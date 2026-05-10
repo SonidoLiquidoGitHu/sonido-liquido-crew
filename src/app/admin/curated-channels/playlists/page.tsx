@@ -1624,7 +1624,7 @@ export default function PlaylistsPage() {
                   </Button>
                 )}
               </div>
-            )
+            )}
           </div>
 
           <DialogFooter className="border-t border-slc-border/30 pt-4">
