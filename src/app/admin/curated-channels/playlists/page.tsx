@@ -695,18 +695,47 @@ export default function PlaylistsPage() {
     const hasSpotifyError = params.has("spotify_error");
 
     if (isSpotifyCallback) {
-      // Trust the callback success — tokens were stored server-side before redirect
+      // Trust the callback success — tokens were stored server-side before redirect.
+      // This is the GROUND TRUTH — the server confirmed tokens are in the DB.
+      // Do NOT let a subsequent DB check override this, because:
+      //   1. Turso DB replication lag may cause the read to miss the just-written tokens
+      //   2. A cold-started serverless function may fail to connect to DB
+      //   3. The server already verified the tokens before redirecting here
       setSpotifyConnected(true);
       setSpotifyChecking(false);
       alert("Spotify conectado exitosamente. Ya puedes importar tracks.");
       // Clean up URL
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
 
-      // Do a delayed verification after 3 seconds (not immediately) to confirm tokens are in DB
-      // This also fetches the access token so we can pass it to the sync endpoint
-      setTimeout(() => {
-        checkSpotifyConnection();
-      }, 3000);
+      // Fetch the access token in the background so sync has it, but DO NOT
+      // override spotifyConnected based on this check. If it fails, we still
+      // know the connection is valid (the server confirmed it via redirect).
+      // We'll retry a few times with increasing delay to handle replication lag.
+      const tryGetAccessToken = async (attempt = 0) => {
+        try {
+          const res = await fetch("/api/admin/spotify/token");
+          const data = await res.json();
+          if (data.connected && data.accessToken) {
+            setSpotifyAccessToken(data.accessToken);
+            console.log("[Spotify] Access token fetched successfully after OAuth");
+          } else if (attempt < 4) {
+            // DB may not have replicated yet — retry with exponential backoff
+            const delay = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s, 16s
+            console.log(`[Spotify] Token not available yet (attempt ${attempt + 1}), retrying in ${delay}ms...`);
+            setTimeout(() => tryGetAccessToken(attempt + 1), delay);
+          } else {
+            // Even after retries, we don't override spotifyConnected — the server confirmed it.
+            // The sync endpoint will get its own token from the DB when needed.
+            console.warn("[Spotify] Could not fetch access token after OAuth, but connection is confirmed. Sync will fetch token directly from DB.");
+          }
+        } catch {
+          if (attempt < 4) {
+            const delay = 2000 * Math.pow(2, attempt);
+            setTimeout(() => tryGetAccessToken(attempt + 1), delay);
+          }
+        }
+      };
+      setTimeout(() => tryGetAccessToken(0), 1000);
     } else if (hasSpotifyError) {
       const error = params.get("spotify_error");
       const errorMessages: Record<string, string> = {
@@ -933,14 +962,14 @@ export default function PlaylistsPage() {
 
   const handleSyncFromSpotify = async (playlistId: string) => {
     if (!spotifyConnected) {
-      // DON'T auto-redirect — this was causing the infinite loop
-      // Just show a message and let the user click "Conectar Spotify" manually
+      // DON'T auto-redirect — just show a message and let the user click "Conectar Spotify" manually
       alert("Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso.");
       return;
     }
     setIsSyncingSpotify(true);
     try {
-      // Get a fresh access token before syncing (ensures it's valid)
+      // Try to get a fresh access token before syncing.
+      // Even if this fails, the sync endpoint can get its own token from the DB.
       let tokenToUse = spotifyAccessToken;
       try {
         const tokenRes = await fetch("/api/admin/spotify/token");

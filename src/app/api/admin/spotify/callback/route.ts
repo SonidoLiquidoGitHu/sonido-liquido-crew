@@ -74,17 +74,34 @@ export async function GET(request: NextRequest) {
     const expiresIn = tokenData.expires_in;
 
     if (!refreshToken) {
-      console.error("[Spotify OAuth] No refresh token in response");
-      return NextResponse.redirect(
-        new URL("/admin/curated-channels/playlists?spotify_error=no_refresh_token", request.url)
-      );
+      // Spotify sometimes doesn't return a refresh_token on re-authorization.
+      // This can happen if the user already authorized the app and show_dialog was not used.
+      // Check if we already have a refresh_token stored in the DB — if so, keep using it.
+      console.warn("[Spotify OAuth] No refresh token in response — checking DB for existing refresh token...");
+      const [existingRefresh] = await db
+        .select()
+        .from(siteSettings)
+        .where(eq(siteSettings.key, "spotify_refresh_token"))
+        .limit(1);
+
+      if (!existingRefresh?.value) {
+        console.error("[Spotify OAuth] No refresh token in response and none stored in DB — cannot maintain long-lived connection");
+        return NextResponse.redirect(
+          new URL("/admin/curated-channels/playlists?spotify_error=no_refresh_token", request.url)
+        );
+      }
+      // We have an existing refresh token — just update the access token
+      console.log("[Spotify OAuth] Using existing refresh token from DB, updating access token only");
     }
 
     console.log("[Spotify OAuth] Successfully obtained tokens. Expires in:", expiresIn, "seconds");
 
     // Store the tokens in site_settings — THROW on failure instead of silently catching
     try {
-      await upsertSetting("spotify_refresh_token", refreshToken, "string", "Spotify OAuth refresh token for playlist access");
+      // Only update refresh_token if we got a new one (Spotify may not return it on re-auth)
+      if (refreshToken) {
+        await upsertSetting("spotify_refresh_token", refreshToken, "string", "Spotify OAuth refresh token for playlist access");
+      }
       await upsertSetting("spotify_access_token", accessToken, "string", "Spotify OAuth access token (temporary)");
       await upsertSetting("spotify_access_token_expiry", String(Date.now() + (expiresIn - 60) * 1000), "number", "Spotify access token expiry timestamp");
     } catch (dbError) {

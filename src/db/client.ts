@@ -137,6 +137,36 @@ async function runAutoMigration(client: Client): Promise<void> {
     console.log("[DB] Running auto-migration to ensure critical tables...");
 
     const criticalTables = [
+      // Site Settings table (used by Spotify OAuth, Dropbox, and other integrations)
+      `CREATE TABLE IF NOT EXISTS site_settings (
+        id TEXT PRIMARY KEY NOT NULL,
+        key TEXT NOT NULL UNIQUE,
+        value TEXT,
+        type TEXT NOT NULL DEFAULT 'string',
+        description TEXT,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      // Users table (admin authentication)
+      `CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        name TEXT,
+        role TEXT NOT NULL DEFAULT 'viewer',
+        is_active INTEGER DEFAULT 1 NOT NULL,
+        last_login_at INTEGER,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      // Sessions table (admin authentication)
+      `CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL UNIQUE,
+        expires_at INTEGER NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
       // Social Auto-Posting tables
       `CREATE TABLE IF NOT EXISTS social_post_queue (
         id TEXT PRIMARY KEY NOT NULL,

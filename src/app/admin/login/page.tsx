@@ -1,16 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Music2, Lock, User, Loader2, AlertCircle } from "lucide-react";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Get the redirect URL from query params (set by middleware)
+  const redirectTo = searchParams.get("redirect") || "/admin";
+
+  // If user is already authenticated, redirect to admin
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/auth/check");
+        const data = await res.json();
+        if (data.authenticated) {
+          router.replace(redirectTo);
+        }
+      } catch {
+        // Not authenticated, show login form
+      }
+    };
+    checkAuth();
+  }, [router, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,13 +47,14 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        router.push("/admin");
-        router.refresh();
+        // Use window.location for a full page reload to ensure
+        // middleware picks up the new cookie
+        window.location.href = redirectTo;
       } else {
-        setError(data.error || "Invalid credentials");
+        setError(data.error || "Credenciales inválidas");
       }
     } catch (err) {
-      setError("Login failed. Please try again.");
+      setError("Error al iniciar sesión. Intenta de nuevo.");
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +78,7 @@ export default function AdminLoginPage() {
             {/* Username */}
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-2">
-                Username
+                Usuario
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -69,7 +90,7 @@ export default function AdminLoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  placeholder="Enter username"
+                  placeholder="Usuario o email"
                 />
               </div>
             </div>
@@ -77,7 +98,7 @@ export default function AdminLoginPage() {
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-2">
-                Password
+                Contraseña
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -89,7 +110,7 @@ export default function AdminLoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  placeholder="Enter password"
+                  placeholder="Contraseña"
                 />
               </div>
             </div>
@@ -111,12 +132,12 @@ export default function AdminLoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Signing in...
+                  Iniciando sesión...
                 </>
               ) : (
                 <>
                   <Lock className="h-5 w-5" />
-                  Sign In
+                  Iniciar Sesión
                 </>
               )}
             </button>
@@ -126,10 +147,22 @@ export default function AdminLoginPage() {
         {/* Back to site */}
         <p className="text-center mt-6">
           <Link href="/" className="text-zinc-400 hover:text-white text-sm transition-colors">
-            ← Back to site
+            ← Volver al sitio
           </Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+      </div>
+    }>
+      <AdminLoginForm />
+    </Suspense>
   );
 }

@@ -7,27 +7,53 @@ import { eq } from "drizzle-orm";
  * Get a valid Spotify user access token.
  * If the stored access token is expired, refreshes it using the stored refresh token.
  * Returns the access token and its expiry time.
+ *
+ * This endpoint also handles reading all three token values in a single batch
+ * to minimize DB round-trips, and includes retry logic for DB read failures
+ * (which can happen with Turso replication lag right after an OAuth callback).
  */
 export async function GET() {
   try {
-    // Get stored tokens from site_settings
-    const [accessTokenRow] = await db
-      .select()
-      .from(siteSettings)
-      .where(eq(siteSettings.key, "spotify_access_token"))
-      .limit(1);
+    // Batch-read all three token settings from DB
+    // If the first read returns nothing, retry once after a short delay
+    // to handle Turso replication lag after an OAuth callback write.
+    let refreshTokenRow: { value: string | null } | undefined;
+    let accessTokenRow: { value: string | null } | undefined;
+    let expiryRow: { value: string | null } | undefined;
 
-    const [expiryRow] = await db
-      .select()
-      .from(siteSettings)
-      .where(eq(siteSettings.key, "spotify_access_token_expiry"))
-      .limit(1);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const [rt] = await db
+        .select()
+        .from(siteSettings)
+        .where(eq(siteSettings.key, "spotify_refresh_token"))
+        .limit(1);
 
-    const [refreshTokenRow] = await db
-      .select()
-      .from(siteSettings)
-      .where(eq(siteSettings.key, "spotify_refresh_token"))
-      .limit(1);
+      const [at] = await db
+        .select()
+        .from(siteSettings)
+        .where(eq(siteSettings.key, "spotify_access_token"))
+        .limit(1);
+
+      const [ex] = await db
+        .select()
+        .from(siteSettings)
+        .where(eq(siteSettings.key, "spotify_access_token_expiry"))
+        .limit(1);
+
+      refreshTokenRow = rt;
+      accessTokenRow = at;
+      expiryRow = ex;
+
+      // If we found a refresh token, we're good — no need to retry
+      if (refreshTokenRow?.value) break;
+
+      // If this is the first attempt and we got nothing, wait a moment and retry
+      // (Turso replication lag after an OAuth callback)
+      if (attempt === 0) {
+        console.log("[Spotify Token] No refresh token found on first attempt — waiting 1s and retrying (possible replication lag)...");
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
     if (!refreshTokenRow?.value) {
       return NextResponse.json({
@@ -84,8 +110,8 @@ export async function GET() {
       }
 
       // For 403 or server errors, don't clear tokens — they might still be valid later
-      // Return the expired access token info so the client knows we had a connection
-      // but the refresh failed temporarily
+      // Return connected: false but with refreshFailed flag so the client knows
+      // the connection exists but refresh is temporarily failing
       return NextResponse.json({
         connected: false,
         error: "Failed to refresh Spotify access token. Please try again in a moment.",

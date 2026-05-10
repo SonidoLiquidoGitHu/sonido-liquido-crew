@@ -130,7 +130,7 @@ export default function AdminLayout({
           })}
         </nav>
         {/* Footer */}
-        <div className="p-4 border-t border-slc-border">
+        <div className="p-4 border-t border-slc-border space-y-1">
           <Link
             href="/"
             onClick={() => setIsMobileMenuOpen(false)}
@@ -139,6 +139,16 @@ export default function AdminLayout({
             <LogOut className="w-5 h-5" />
             <span>Volver al sitio</span>
           </Link>
+          <button
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/admin/login";
+            }}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Cerrar sesión</span>
+          </button>
         </div>
       </aside>
 
@@ -205,7 +215,7 @@ export default function AdminLayout({
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-slc-border">
+          <div className="p-4 border-t border-slc-border space-y-1">
             <Link
               href="/"
               className={cn(
@@ -217,6 +227,20 @@ export default function AdminLayout({
               <LogOut className="w-5 h-5 flex-shrink-0" />
               {isSidebarOpen && <span>Volver al sitio</span>}
             </Link>
+            <button
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.href = "/admin/login";
+              }}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full",
+                !isSidebarOpen && "justify-center px-2"
+              )}
+              title={!isSidebarOpen ? "Cerrar sesión" : undefined}
+            >
+              <LogOut className="w-5 h-5 flex-shrink-0" />
+              {isSidebarOpen && <span>Cerrar sesión</span>}
+            </button>
           </div>
         </aside>
 

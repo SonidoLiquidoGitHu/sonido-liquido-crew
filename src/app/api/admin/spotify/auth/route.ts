@@ -42,7 +42,10 @@ export async function GET(request: NextRequest) {
     scope: scopes,
     redirect_uri: redirectUri,
     state: crypto.randomUUID(),
-    show_dialog: "true",
+    // NOTE: Do NOT set show_dialog=true. When show_dialog is true, Spotify shows
+    // the consent screen every time and often does NOT return a refresh_token on
+    // re-authorization. Without it, Spotify silently re-authorizes and consistently
+    // returns a refresh_token, which is essential for long-lived connections.
   });
 
   const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
