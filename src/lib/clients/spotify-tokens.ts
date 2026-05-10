@@ -144,7 +144,7 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
       const expiryStr = await readSetting("spotify_access_token_expiry");
       const expiry = parseInt(expiryStr || "0", 10);
 
-      // Check if current access token is still valid (with 120s buffer to be safe)
+      // Check if current access token is still valid (with 60s buffer)
       if (accessToken && Date.now() < expiry - 60000) {
         const remainingSec = Math.floor((expiry - Date.now()) / 1000);
         console.log(`[Spotify Tokens] Using cached access token (expires in ${remainingSec}s)`);
@@ -176,13 +176,23 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
 
     if (!refreshResponse.ok) {
       const errorBody = await refreshResponse.text().catch(() => "");
-      console.error(`[Spotify Tokens] Token refresh failed: ${refreshResponse.status} ${errorBody.slice(0, 300)}`);
+      console.error(`[Spotify Tokens] Token refresh failed: ${refreshResponse.status} ${errorBody.slice(0, 500)}`);
 
       // Only clear tokens on definitive auth failures (400 = invalid refresh token, 401 = bad client)
       // Don't clear on 403 or 5xx — these could be temporary
       if (refreshResponse.status === 400 || refreshResponse.status === 401) {
         console.log("[Spotify Tokens] Definitive auth failure, clearing tokens");
         await clearSpotifyTokens();
+      }
+
+      // If this was a transient failure and we still have a cached access token,
+      // return it even if it's slightly expired — it might still work
+      if (refreshResponse.status !== 400 && refreshResponse.status !== 401) {
+        const cachedAccessToken = await readSetting("spotify_access_token");
+        if (cachedAccessToken) {
+          console.warn("[Spotify Tokens] Refresh failed with transient error, trying cached access token as last resort");
+          return cachedAccessToken;
+        }
       }
 
       return null;
@@ -192,6 +202,7 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
     const newAccessToken = tokenData.access_token;
     const newExpiresIn = tokenData.expires_in;
     const newRefreshToken = tokenData.refresh_token; // May or may not be returned
+    const grantedScopes = tokenData.scope; // Spotify returns granted scopes
 
     // Store the refreshed tokens
     await storeSpotifyTokens({
@@ -200,10 +211,24 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
       expiresIn: newExpiresIn,
     });
 
-    console.log(`[Spotify Tokens] User access token refreshed successfully, expires in ${newExpiresIn}s`);
+    console.log(`[Spotify Tokens] User access token refreshed successfully, expires in ${newExpiresIn}s, scopes: ${grantedScopes || 'not returned'}`);
     return newAccessToken;
   } catch (error) {
     console.error("[Spotify Tokens] Failed to get user access token:", error);
+
+    // Last resort: try returning cached token even if expired
+    if (!forceRefresh) {
+      try {
+        const cachedAccessToken = await readSetting("spotify_access_token");
+        if (cachedAccessToken) {
+          console.warn("[Spotify Tokens] Exception during refresh, trying cached access token as last resort");
+          return cachedAccessToken;
+        }
+      } catch {
+        // Give up completely
+      }
+    }
+
     return null;
   }
 }

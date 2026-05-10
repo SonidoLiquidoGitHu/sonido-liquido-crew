@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  upsertSetting,
   storeSpotifyTokens,
-  readSetting,
   validateAccessToken,
   getSpotifyAuthHeader,
 } from "@/lib/clients/spotify-tokens";
@@ -15,6 +13,15 @@ import {
  *
  * IMPORTANT: The redirect URI sent here MUST match exactly what was sent
  * in the /auth endpoint. We detect it from the request origin.
+ *
+ * CRITICAL FIX: Previous versions read tokens back from DB after writing to
+ * verify they were stored. This could FAIL due to Turso replication lag
+ * (write goes to primary, read goes to replica that hasn't caught up yet),
+ * causing the entire OAuth flow to fail even though the tokens WERE stored.
+ * We now skip the DB read-back verification and trust that the write succeeded
+ * (storeSpotifyTokens throws on failure). We still try to validate the token
+ * via Spotify's /me endpoint, but this is non-blocking — if it fails, we
+ * still redirect with success since the tokens are in the DB.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -70,31 +77,25 @@ export async function GET(request: NextRequest) {
     const accessToken = tokenData.access_token;
     const refreshToken = tokenData.refresh_token;
     const expiresIn = tokenData.expires_in;
+    const grantedScopes = tokenData.scope;
+
+    console.log("[Spotify OAuth] Successfully obtained tokens. Expires in:", expiresIn, "seconds, scopes:", grantedScopes || "not returned");
 
     if (!refreshToken) {
-      // Spotify sometimes doesn't return a refresh_token on re-authorization.
-      // Check if we already have one stored in the DB.
-      console.warn("[Spotify OAuth] No refresh token in response — checking DB for existing refresh token...");
-      const existingRefresh = await readSetting("spotify_refresh_token");
-
-      if (!existingRefresh) {
-        console.error("[Spotify OAuth] No refresh token in response and none stored in DB — cannot maintain long-lived connection");
-        return NextResponse.redirect(
-          new URL("/admin/curated-channels/playlists?spotify_error=no_refresh_token", request.url)
-        );
-      }
-      console.log("[Spotify OAuth] Using existing refresh token from DB, updating access token only");
+      console.warn("[Spotify OAuth] No refresh_token in OAuth response. This can happen on re-authorization. The existing refresh token in DB will be preserved.");
+      // Don't fail the flow — the existing refresh token in DB is still valid
+      // storeSpotifyTokens will skip updating the refresh token if none is provided
     }
 
-    console.log("[Spotify OAuth] Successfully obtained tokens. Expires in:", expiresIn, "seconds");
-
     // Store the tokens using the shared module
+    // If this throws, we know the write failed — that's a real error
     try {
       await storeSpotifyTokens({
         accessToken,
         refreshToken: refreshToken || undefined,
         expiresIn,
       });
+      console.log("[Spotify OAuth] Tokens stored successfully in DB");
     } catch (dbError) {
       console.error("[Spotify OAuth] CRITICAL: Failed to store tokens in database:", dbError);
       return NextResponse.redirect(
@@ -102,40 +103,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify tokens were stored and validate the access token works
+    // NON-BLOCKING: Try to validate the access token by calling /me
+    // This confirms the token works and the scopes are correct, but we
+    // DON'T fail the flow if it fails — the tokens are already stored,
+    // and the actual sync request will tell us if the token works.
+    // The previous version would fail here if Turso replication lag
+    // caused the DB read-back to miss the just-written tokens.
     try {
-      const storedRefresh = await readSetting("spotify_refresh_token");
-      if (!storedRefresh) {
-        console.error("[Spotify OAuth] CRITICAL: Refresh token not found in DB after write");
-        return NextResponse.redirect(
-          new URL("/admin/curated-channels/playlists?spotify_error=token_verify_failed", request.url)
-        );
-      }
-
-      // Validate the access token by calling /me — this confirms the token works
-      // and that the scopes are correct BEFORE we tell the user "connected successfully"
       const validation = await validateAccessToken(accessToken);
-      if (!validation.valid) {
-        console.error("[Spotify OAuth] Access token validation failed:", validation.error);
-        // Token was stored but doesn't work — this could be a scope issue
-        return NextResponse.redirect(
-          new URL("/admin/curated-channels/playlists?spotify_error=token_verify_failed", request.url)
-        );
-      }
+      if (validation.valid) {
+        console.log(`[Spotify OAuth] Token validated — user: ${validation.userId}, scopes: ${validation.scopes?.join(', ')}`);
 
-      console.log(`[Spotify OAuth] Token validated — user: ${validation.userId}, scopes: ${validation.scopes?.join(', ')}`);
-
-      // Verify the token has the required scopes
-      const requiredScopes = ["playlist-read-private", "playlist-read-collaborative"];
-      const missingScopes = requiredScopes.filter(s => !validation.scopes?.includes(s));
-      if (missingScopes.length > 0) {
-        console.warn("[Spotify OAuth] Token is missing required scopes:", missingScopes);
-        // Don't fail the flow — the user might still be able to read public playlists
-        // But log it prominently for debugging
+        // Log if required scopes are missing (but don't fail the flow)
+        const requiredScopes = ["playlist-read-private", "playlist-read-collaborative"];
+        const missingScopes = requiredScopes.filter(s => !validation.scopes?.includes(s));
+        if (missingScopes.length > 0) {
+          console.warn("[Spotify OAuth] WARNING: Token is missing required scopes:", missingScopes, "— playlist sync may fail for private playlists");
+        }
+      } else {
+        console.warn("[Spotify OAuth] Token validation failed (non-blocking):", validation.error);
+        console.warn("[Spotify OAuth] Tokens are stored in DB — the sync endpoint will try to use/refresh them");
       }
     } catch (verifyError) {
-      console.error("[Spotify OAuth] Token verification check failed:", verifyError);
-      // Don't fail the whole flow — the tokens might be stored, we just can't verify
+      console.warn("[Spotify OAuth] Token verification check failed (non-blocking):", verifyError);
     }
 
     // Redirect back to the playlists page with success indicator

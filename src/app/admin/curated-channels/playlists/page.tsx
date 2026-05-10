@@ -990,24 +990,28 @@ export default function PlaylistsPage() {
     }
     setIsSyncingSpotify(true);
     try {
-      // ALWAYS get a fresh access token from the server before syncing.
+      // Get a fresh access token from the server before syncing.
       // The server handles refreshing expired tokens and reading from DB.
       // We pass the token to the sync endpoint so it doesn't need to do its own DB read.
       // If the server can't provide a token, the sync endpoint will try independently.
-      let tokenToUse: string | null = null;
+      let tokenToUse: string | null = spotifyAccessToken; // Start with existing token
+
       try {
         const tokenRes = await fetch("/api/admin/spotify/token");
         const tokenData = await tokenRes.json();
         if (tokenData.connected && tokenData.accessToken) {
           tokenToUse = tokenData.accessToken;
           setSpotifyAccessToken(tokenData.accessToken);
+          if (!spotifyConnected) setSpotifyConnected(true);
         } else if (tokenData.refreshFailed) {
           // Refresh token exists but refresh is temporarily failing
-          console.warn("[Spotify] Token refresh temporarily failed, trying sync anyway without frontend token");
+          // Don't reset spotifyConnected — the sync endpoint might still work
+          console.warn("[Spotify] Token refresh temporarily failed, trying sync with existing token if available");
         } else {
-          // No connection at all
-          setSpotifyConnected(false);
-          setSpotifyAccessToken(null);
+          // Token endpoint says not connected — but DON'T immediately reset spotifyConnected.
+          // This could be a Turso replication lag issue. The sync endpoint will try
+          // its own token retrieval from DB. Only reset if the sync itself confirms auth is needed.
+          console.warn("[Spotify] Token endpoint returned not connected — sync endpoint will try independently");
         }
       } catch {
         // Token check failed — sync endpoint will try its own token retrieval
@@ -1028,7 +1032,9 @@ export default function PlaylistsPage() {
         await fetchPlaylists();
         fetchPlaylistTracks(playlistId);
       } else if (data.needsAuth) {
-        // Mark as disconnected — the sync endpoint confirmed auth is needed
+        // ONLY mark as disconnected when the SYNC ENDPOINT confirms auth is needed.
+        // This is the ground truth — not the token endpoint (which can fail due to
+        // Turso replication lag, cold starts, etc.)
         setSpotifyConnected(false);
         setSpotifyAccessToken(null);
         alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Haz clic en 'Conectar Spotify' para reconectar.");
