@@ -187,53 +187,61 @@ export async function POST(request: NextRequest) {
     }
     const requestCtx = { forcedRefreshAttempted: false };
 
-    // Fetch playlist metadata
-    const playlistMeta = await spotifyRequestWithAuth<{
+    // Fetch playlist with tracks included (Spotify API change: /playlists/{id}/tracks now returns 403,
+    // but /playlists/{id} includes tracks inline under the "items" field).
+    // We fetch the playlist metadata first, then paginate if there are more tracks.
+    const playlistFull = await spotifyRequestWithAuth<{
       id: string;
       name: string;
       description: string;
       images: { url: string }[];
-      tracks: { total: number };
       external_urls: { spotify: string };
       owner?: { id: string; display_name: string };
-    }>(
-      `/playlists/${playlistId}?fields=id,name,description,images,tracks.total,external_urls,owner`,
-      userAccessToken,
-      requestCtx
-    );
-
-    console.log(`[Spotify Import] Playlist: "${playlistMeta.name}" (${playlistMeta.tracks?.total || 0} tracks)`);
-
-    // Fetch all tracks with pagination
-    const tracks: Array<{
-      spotifyTrackId: string;
-      trackName: string;
-      artistName: string;
-      artistIds: string[];
-      albumName: string;
-      albumImageUrl: string | null;
-      durationMs: number | null;
-      previewUrl: string | null;
-      releaseDate: string | null;
-      popularity: number | null;
-      explicit: boolean;
-      position: number;
-    }> = [];
-
-    const limit = 100;
-    let offset = 0;
-    let hasMore = true;
-    let globalPosition = 1;
-
-    while (hasMore) {
-      const params = new URLSearchParams({
-        limit: String(limit),
-        offset: String(offset),
-        market: "MX",
-        fields: "items(track(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit)),total,next",
-      });
-
-      const response = await spotifyRequestWithAuth<{
+      // Spotify API 2025+: tracks are under "items" (a dict with items[], total, next, etc.)
+      // NOT under "tracks" anymore
+      items?: {
+        items: Array<{
+          added_at?: string;
+          track?: {
+            id: string;
+            name: string;
+            artists: Array<{ id: string; name: string }>;
+            album: {
+              id: string;
+              name: string;
+              images: Array<{ url: string }>;
+              release_date: string;
+            };
+            duration_ms: number;
+            preview_url: string | null;
+            popularity: number;
+            explicit: boolean;
+          } | null;
+          // Some responses use "item" instead of "track"
+          item?: {
+            id: string;
+            name: string;
+            artists: Array<{ id: string; name: string }>;
+            album: {
+              id: string;
+              name: string;
+              images: Array<{ url: string }>;
+              release_date: string;
+            };
+            duration_ms: number;
+            preview_url: string | null;
+            popularity: number;
+            explicit: boolean;
+          } | null;
+          is_local?: boolean;
+        }>;
+        total: number;
+        next: string | null;
+        limit: number;
+        offset: number;
+      };
+      // Legacy: some API versions still return "tracks"
+      tracks?: {
         items: Array<{
           track: {
             id: string;
@@ -253,42 +261,116 @@ export async function POST(request: NextRequest) {
         }>;
         total: number;
         next: string | null;
+        limit: number;
+        offset: number;
+      };
+    }>(
+      `/playlists/${playlistId}`,
+      userAccessToken,
+      requestCtx
+    );
+
+    // Determine where tracks are in the response
+    // Spotify API 2025+: tracks are under "items" (not "tracks")
+    const tracksContainer = playlistFull.items || playlistFull.tracks;
+    const playlistName = playlistFull.name;
+    const totalTracks = tracksContainer?.total || 0;
+
+    console.log(`[Spotify Import] Playlist: "${playlistName}" (${totalTracks} tracks)`);
+
+    // Extract tracks from the response
+    const tracks: Array<{
+      spotifyTrackId: string;
+      trackName: string;
+      artistName: string;
+      artistIds: string[];
+      albumName: string;
+      albumImageUrl: string | null;
+      durationMs: number | null;
+      previewUrl: string | null;
+      releaseDate: string | null;
+      popularity: number | null;
+      explicit: boolean;
+      position: number;
+    }> = [];
+
+    const extractTracks = (
+      itemsList: Array<Record<string, unknown>>
+    ) => {
+      for (const item of itemsList) {
+        // Try both "item" and "track" keys (Spotify API uses both in different versions)
+        const trackData = (item.item || item.track) as {
+          id: string;
+          name: string;
+          artists: Array<{ id: string; name: string }>;
+          album: {
+            id: string;
+            name: string;
+            images: Array<{ url: string }>;
+            release_date: string;
+          };
+          duration_ms: number;
+          preview_url: string | null;
+          popularity: number;
+          explicit: boolean;
+        } | null;
+
+        if (!trackData || !trackData.id) continue;
+
+        tracks.push({
+          spotifyTrackId: trackData.id,
+          trackName: trackData.name,
+          artistName: trackData.artists?.map((a) => a.name).join(", ") || "Unknown",
+          artistIds: trackData.artists?.map((a) => a.id) || [],
+          albumName: trackData.album?.name || "",
+          albumImageUrl: trackData.album?.images?.[0]?.url || null,
+          durationMs: trackData.duration_ms || null,
+          previewUrl: trackData.preview_url || null,
+          releaseDate: trackData.album?.release_date || null,
+          popularity: trackData.popularity || null,
+          explicit: trackData.explicit || false,
+          position: tracks.length + 1,
+        });
+      }
+    };
+
+    // Extract tracks from the first page
+    if (tracksContainer?.items) {
+      extractTracks(tracksContainer.items as Array<Record<string, unknown>>);
+    }
+
+    // Handle pagination if there are more tracks
+    let nextUrl = tracksContainer?.next;
+    while (nextUrl && tracks.length < totalTracks) {
+      console.log(`[Spotify Import] Fetching next page: offset=${tracks.length}, total=${totalTracks}`);
+
+      // The "next" URL is a full Spotify API URL, but we can't use it directly
+      // because it might point to /playlists/{id}/tracks which returns 403.
+      // Instead, use /playlists/{id} with offset/limit params.
+      const nextOffset = tracks.length;
+      const nextLimit = 100;
+
+      const nextPage = await spotifyRequestWithAuth<{
+        items?: {
+          items: Array<Record<string, unknown>>;
+          total: number;
+          next: string | null;
+        };
       }>(
-        `/playlists/${playlistId}/tracks?${params.toString()}`,
+        `/playlists/${playlistId}?offset=${nextOffset}&limit=${nextLimit}`,
         userAccessToken,
         requestCtx
       );
 
-      if (!response.items?.length) {
+      if (nextPage.items?.items) {
+        extractTracks(nextPage.items.items);
+        nextUrl = nextPage.items.next;
+      } else {
         break;
       }
 
-      for (const item of response.items) {
-        const track = item.track;
-        if (!track || !track.id) continue;
-
-        tracks.push({
-          spotifyTrackId: track.id,
-          trackName: track.name,
-          artistName: track.artists?.map((a) => a.name).join(", ") || "Unknown",
-          artistIds: track.artists?.map((a) => a.id) || [],
-          albumName: track.album?.name || "",
-          albumImageUrl: track.album?.images?.[0]?.url || null,
-          durationMs: track.duration_ms || null,
-          previewUrl: track.preview_url || null,
-          releaseDate: track.album?.release_date || null,
-          popularity: track.popularity || null,
-          explicit: track.explicit || false,
-          position: globalPosition++,
-        });
-      }
-
-      hasMore = response.next !== null && response.items.length === limit;
-      offset += limit;
-
-      if (hasMore) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      // Rate limit protection
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     console.log(`[Spotify Import] Fetched ${tracks.length} tracks from playlist ${playlistId}`);
@@ -304,8 +386,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const playlistName = customName?.trim() || playlistMeta.name;
-    const playlistSlug = slugify(playlistName);
+    const finalPlaylistName = customName?.trim() || playlistName;
+    const playlistSlug = slugify(finalPlaylistName);
 
     // Check for slug uniqueness
     const existing = await db
@@ -325,16 +407,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Use Spotify's playlist cover image if available
-    const coverImageUrl = playlistMeta.images?.[0]?.url || null;
-    const spotifyPlaylistUrl = playlistMeta.external_urls?.spotify || spotifyUrl.trim();
+    const coverImageUrl = playlistFull.images?.[0]?.url || null;
+    const spotifyPlaylistUrl = playlistFull.external_urls?.spotify || spotifyUrl.trim();
 
     // Create the curated playlist
     const newPlaylistId = generateUUID();
     const newPlaylist = {
       id: newPlaylistId,
-      name: playlistName,
+      name: finalPlaylistName,
       slug: playlistSlug,
-      description: playlistMeta.description || `Imported from Spotify: ${playlistMeta.name}`,
+      description: playlistFull.description || `Imported from Spotify: ${playlistName}`,
       coverImageUrl,
       coverColor: "#1DB954", // Spotify green as default
       spotifyPlaylistId: playlistId,
