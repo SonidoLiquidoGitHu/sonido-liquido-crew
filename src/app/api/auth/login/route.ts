@@ -24,16 +24,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-seed: If no users exist in the DB, create a default admin user.
-    // This allows the first login without needing a separate seed script.
+    // Auto-seed: Ensure the default admin user exists.
+    // We check SPECIFICALLY for the SLC admin user (not just "any user").
+    // This handles both fresh DBs and migration from old credentials.
     // Credentials come from ADMIN_USERNAME/ADMIN_PASSWORD env vars,
     // with defaults: SLC / lacremaynata
     try {
-      const existingUsers = await db.select({ id: users.id }).from(users).limit(1);
-      if (existingUsers.length === 0) {
-        console.log("[Auth] No users found in DB — auto-seeding default admin user");
-        const adminUsername = process.env.ADMIN_USERNAME || "SLC";
-        const adminPassword = process.env.ADMIN_PASSWORD || "lacremaynata";
+      const adminUsername = process.env.ADMIN_USERNAME || "SLC";
+      const adminPassword = process.env.ADMIN_PASSWORD || "lacremaynata";
+
+      // Check if the expected admin user exists by name
+      const [existingAdmin] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.name, adminUsername))
+        .limit(1);
+
+      if (!existingAdmin) {
+        console.log(`[Auth] Admin user "${adminUsername}" not found — creating default admin`);
         const salt = randomBytes(16).toString("hex");
         const hashedPassword = salt + ":" + createHash("sha256")
           .update(salt + adminPassword)
