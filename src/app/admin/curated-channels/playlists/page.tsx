@@ -684,6 +684,7 @@ export default function PlaylistsPage() {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [spotifyChecking, setSpotifyChecking] = useState(true);
   const [spotifyRedirecting, setSpotifyRedirecting] = useState(false);
+  const [spotifyAccessToken, setSpotifyAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPlaylists();
@@ -702,7 +703,7 @@ export default function PlaylistsPage() {
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
 
       // Do a delayed verification after 3 seconds (not immediately) to confirm tokens are in DB
-      // This avoids the race condition where the API check overrides our optimistic state
+      // This also fetches the access token so we can pass it to the sync endpoint
       setTimeout(() => {
         checkSpotifyConnection();
       }, 3000);
@@ -905,9 +906,18 @@ export default function PlaylistsPage() {
     try {
       const res = await fetch("/api/admin/spotify/token");
       const data = await res.json();
-      setSpotifyConnected(data.connected === true);
+      const isConnected = data.connected === true;
+      setSpotifyConnected(isConnected);
+      // Store the access token so we can pass it to the sync endpoint
+      // This avoids the sync endpoint having to read from DB independently
+      if (isConnected && data.accessToken) {
+        setSpotifyAccessToken(data.accessToken);
+      } else {
+        setSpotifyAccessToken(null);
+      }
     } catch {
       setSpotifyConnected(false);
+      setSpotifyAccessToken(null);
     } finally {
       setSpotifyChecking(false);
     }
@@ -923,18 +933,33 @@ export default function PlaylistsPage() {
 
   const handleSyncFromSpotify = async (playlistId: string) => {
     if (!spotifyConnected) {
-      // Show message and redirect, with loop guard
-      if (!spotifyRedirecting) {
-        alert("Necesitas conectar tu cuenta de Spotify. Te redirigiremos a Spotify para autorizar el acceso.");
-        handleConnectSpotify();
-      }
+      // DON'T auto-redirect — this was causing the infinite loop
+      // Just show a message and let the user click "Conectar Spotify" manually
+      alert("Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso.");
       return;
     }
     setIsSyncingSpotify(true);
     try {
+      // Get a fresh access token before syncing (ensures it's valid)
+      let tokenToUse = spotifyAccessToken;
+      try {
+        const tokenRes = await fetch("/api/admin/spotify/token");
+        const tokenData = await tokenRes.json();
+        if (tokenData.connected && tokenData.accessToken) {
+          tokenToUse = tokenData.accessToken;
+          setSpotifyAccessToken(tokenToUse);
+        }
+      } catch {
+        // Token check failed, use cached token if available
+      }
+
       const res = await fetch(
         `/api/admin/curated-playlists/${playlistId}/sync-spotify`,
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: tokenToUse }),
+        },
       );
       const data = await res.json();
       if (data.success) {
@@ -943,7 +968,8 @@ export default function PlaylistsPage() {
         fetchPlaylistTracks(playlistId);
       } else if (data.needsAuth) {
         setSpotifyConnected(false);
-        // Show error but DON'T auto-redirect — let the user click "Connect Spotify" manually
+        setSpotifyAccessToken(null);
+        // DON'T auto-redirect — let the user click "Conectar Spotify" manually
         // This prevents the infinite OAuth loop
         alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Haz clic en 'Conectar Spotify' para reconectar.");
       } else {

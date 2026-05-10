@@ -11,6 +11,9 @@ export const dynamic = "force-dynamic";
  * Get a valid Spotify user access token from site_settings.
  * If the stored token is expired, refreshes it using the stored refresh token.
  * Returns null if no user token is available.
+ *
+ * IMPORTANT: This is the SINGLE source of truth for token management in the sync flow.
+ * It mirrors the logic in /api/admin/spotify/token to avoid inconsistencies.
  */
 async function getSpotifyUserAccessToken(forceRefresh = false): Promise<string | null> {
   try {
@@ -20,7 +23,10 @@ async function getSpotifyUserAccessToken(forceRefresh = false): Promise<string |
       .where(eq(siteSettings.key, "spotify_refresh_token"))
       .limit(1);
 
-    if (!refreshTokenRow?.value) return null;
+    if (!refreshTokenRow?.value) {
+      console.log("[Spotify Sync] No refresh token found in DB");
+      return null;
+    }
 
     if (!forceRefresh) {
       const [accessTokenRow] = await db
@@ -40,8 +46,11 @@ async function getSpotifyUserAccessToken(forceRefresh = false): Promise<string |
 
       // Check if current access token is still valid (with 60s buffer)
       if (accessToken && Date.now() < expiry) {
+        console.log("[Spotify Sync] Using cached access token (expires in", Math.floor((expiry - Date.now()) / 1000), "seconds)");
         return accessToken;
       }
+
+      console.log("[Spotify Sync] Access token expired or missing. accessToken exists:", !!accessToken, "expiry:", expiry, "now:", Date.now());
     }
 
     // Access token expired or force refresh requested — refresh it
@@ -65,10 +74,12 @@ async function getSpotifyUserAccessToken(forceRefresh = false): Promise<string |
     });
 
     if (!refreshResponse.ok) {
-      console.error("[Spotify Sync] Token refresh failed:", refreshResponse.status);
+      const errorBody = await refreshResponse.text().catch(() => "");
+      console.error("[Spotify Sync] Token refresh failed:", refreshResponse.status, errorBody);
       // Only clear tokens on definitive auth failures (400 = invalid refresh token, 401 = bad client)
       // Don't clear on 403 or 5xx — these could be temporary
       if (refreshResponse.status === 400 || refreshResponse.status === 401) {
+        console.log("[Spotify Sync] Definitive auth failure, clearing tokens");
         await clearSpotifyTokens();
       }
       return null;
@@ -87,7 +98,7 @@ async function getSpotifyUserAccessToken(forceRefresh = false): Promise<string |
       await upsertSetting("spotify_refresh_token", newRefreshToken, "string");
     }
 
-    console.log("[Spotify Sync] User access token refreshed successfully");
+    console.log("[Spotify Sync] User access token refreshed successfully, expires in", newExpiresIn, "seconds");
     return newAccessToken;
   } catch (error) {
     console.error("[Spotify Sync] Failed to get user access token:", error);
@@ -118,7 +129,8 @@ async function getClientCredentialsToken(): Promise<string | null> {
     });
 
     if (!response.ok) {
-      console.error("[Spotify Sync] Client credentials token failed:", response.status);
+      const errorBody = await response.text().catch(() => "");
+      console.error("[Spotify Sync] Client credentials token failed:", response.status, errorBody);
       return null;
     }
 
@@ -131,14 +143,15 @@ async function getClientCredentialsToken(): Promise<string | null> {
 }
 
 /**
- * Make an authenticated request to the Spotify API using the user access token.
- * On 401, attempts one forced token refresh and retry.
- * Falls back to client credentials for public data if user auth fails entirely.
+ * Make an authenticated request to the Spotify API.
+ * Strategy:
+ * 1. Use the provided user access token (from frontend or DB)
+ * 2. On 401, attempt one forced token refresh and retry
+ * 3. Fall back to client credentials for public data
  *
- * Uses request-scoped state (ctx) instead of module-level variables to prevent
- * state leakage between serverless function invocations.
+ * Uses request-scoped state (ctx) to prevent state leakage between serverless invocations.
  */
-async function spotifyRequestWithUserAuth<T>(
+async function spotifyRequestWithAuth<T>(
   endpoint: string,
   userAccessToken: string | null,
   ctx: { forcedRefreshAttempted: boolean }
@@ -159,7 +172,7 @@ async function spotifyRequestWithUserAuth<T>(
     }
 
     const errorBody = await response.text().catch(() => "");
-    console.error(`[Spotify API] Error ${response.status}: ${errorBody}`);
+    console.error(`[Spotify API] User token request failed ${response.status}: ${errorBody.slice(0, 200)}`);
 
     // On 401, try forced token refresh once (403 is usually a scope issue, not a token issue)
     if (response.status === 401 && !ctx.forcedRefreshAttempted) {
@@ -181,13 +194,22 @@ async function spotifyRequestWithUserAuth<T>(
         }
 
         const retryErrorBody = await retryResponse.text().catch(() => "");
-        console.error(`[Spotify API] Retry failed ${retryResponse.status}: ${retryErrorBody}`);
+        console.error(`[Spotify API] Retry with refreshed token failed ${retryResponse.status}: ${retryErrorBody.slice(0, 200)}`);
       }
+    }
+
+    // For 403 with user token, this is likely a scope issue — don't fall back to client credentials
+    // because client credentials will also fail for private playlists.
+    // Instead, throw a clear error.
+    if (response.status === 403) {
+      throw new Error(
+        `Spotify API returned 403 (Forbidden). This usually means your Spotify connection doesn't have the required permissions, or the playlist is private. Try reconnecting your Spotify account.`
+      );
     }
   }
 
-  // Fallback: Try client credentials (works for public playlists)
-  console.log("[Spotify Sync] User auth failed, trying client credentials fallback...");
+  // Fallback: Try client credentials (works for public playlists only)
+  console.log("[Spotify Sync] User auth not available, trying client credentials fallback...");
   const ccToken = await getClientCredentialsToken();
   if (ccToken) {
     const ccResponse = await fetch(url, {
@@ -203,12 +225,25 @@ async function spotifyRequestWithUserAuth<T>(
     }
 
     const ccErrorBody = await ccResponse.text().catch(() => "");
-    console.error(`[Spotify API] Client credentials fallback failed ${ccResponse.status}: ${ccErrorBody}`);
+    console.error(`[Spotify API] Client credentials fallback failed ${ccResponse.status}: ${ccErrorBody.slice(0, 200)}`);
+
+    // If client credentials returns 403, the playlist is private
+    if (ccResponse.status === 403) {
+      throw new Error(
+        "PRIVATE_PLAYLIST: This playlist is private and requires a connected Spotify account with playlist-read-private scope. Please connect your Spotify account first."
+      );
+    }
   }
 
   // All methods failed
+  if (!userAccessToken) {
+    throw new Error(
+      "NO_SPOTIFY_TOKEN: No Spotify user access token available. Please connect your Spotify account first."
+    );
+  }
+
   throw new Error(
-    "No Spotify user access token available. Please connect your Spotify account first."
+    `Spotify API request failed for ${endpoint}. All authentication methods exhausted.`
   );
 }
 
@@ -268,15 +303,23 @@ export async function POST(
     // Request-scoped context to prevent state leakage between serverless invocations
     const requestCtx = { forcedRefreshAttempted: false };
 
-    // Get Spotify user access token (OAuth — preferred for playlist track access)
-    // Note: We no longer block on missing token — client credentials fallback will be tried
-    const userAccessToken = await getSpotifyUserAccessToken();
+    // Get Spotify user access token — try frontend-provided token first, then fall back to DB
+    // The frontend passes the token from /api/admin/spotify/token to avoid DB read issues
+    let userAccessToken: string | null = body.accessToken || null;
+
+    if (!userAccessToken) {
+      // No token from frontend — get one from DB (refreshes if needed)
+      console.log("[Spotify Sync] No access token from frontend, reading from DB...");
+      userAccessToken = await getSpotifyUserAccessToken();
+    } else {
+      console.log("[Spotify Sync] Using access token provided by frontend");
+    }
 
     console.log(`[Spotify Sync] Fetching tracks for playlist "${playlist.name}" from Spotify ID: ${spotifyPlaylistId}`);
     console.log(`[Spotify Sync] User auth token: ${userAccessToken ? 'available' : 'not available'}, will use client credentials as fallback if needed`);
 
     // Fetch playlist metadata using user access token
-    const playlistMeta = await spotifyRequestWithUserAuth<{
+    const playlistMeta = await spotifyRequestWithAuth<{
       id: string;
       name: string;
       description: string;
@@ -313,7 +356,7 @@ export async function POST(
         fields: "items(track(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit)),total,next",
       });
 
-      const response = await spotifyRequestWithUserAuth<{
+      const response = await spotifyRequestWithAuth<{
         items: Array<{
           track: {
             id: string;
@@ -461,14 +504,17 @@ export async function POST(
     let errorMessage = error.message || "Error syncing playlist from Spotify";
     let needsAuth = false;
 
-    if (errorMessage.includes("403")) {
-      needsAuth = true;
-      errorMessage = "Spotify API returned 403. Tu cuenta de Spotify necesita reconectarse. Intenta hacer clic en 'Conectar Spotify' de nuevo.";
-    } else if (errorMessage.includes("No Spotify user access token")) {
+    if (errorMessage.includes("NO_SPOTIFY_TOKEN")) {
       needsAuth = true;
       errorMessage = "Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso a tus playlists.";
+    } else if (errorMessage.includes("PRIVATE_PLAYLIST")) {
+      needsAuth = true;
+      errorMessage = "Esta playlist es privada. Necesitas conectar tu cuenta de Spotify con permisos de lectura para playlists privadas. Haz clic en 'Conectar Spotify'.";
+    } else if (errorMessage.includes("403")) {
+      needsAuth = true;
+      errorMessage = "Spotify denegó el acceso. Tu conexión de Spotify puede haber expirado. Haz clic en 'Conectar Spotify' para reconectar.";
     } else if (errorMessage.includes("404")) {
-      errorMessage = "Spotify playlist not found. Check the playlist URL/ID.";
+      errorMessage = "Playlist de Spotify no encontrada. Verifica la URL/ID de la playlist.";
     } else if (errorMessage.includes("429")) {
       errorMessage = "Spotify API rate limit reached. Please try again in a few moments.";
     }
