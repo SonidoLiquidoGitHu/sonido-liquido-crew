@@ -18,6 +18,7 @@ import {
   Disc3,
   ExternalLink,
   ImagePlus,
+  Import,
   ListMusic,
   Loader2,
   Music,
@@ -686,6 +687,16 @@ export default function PlaylistsPage() {
   const [spotifyRedirecting, setSpotifyRedirecting] = useState(false);
   const [spotifyAccessToken, setSpotifyAccessToken] = useState<string | null>(null);
 
+  // Spotify Import dialog states
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [spotifyUrl, setSpotifyUrl] = useState("");
+  const [importCustomName, setImportCustomName] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
   useEffect(() => {
     fetchPlaylists();
 
@@ -1065,6 +1076,56 @@ export default function PlaylistsPage() {
     return null;
   };
 
+  const handleImportSpotify = async () => {
+    if (!spotifyUrl.trim()) {
+      alert("Pega la URL de una playlist de Spotify");
+      return;
+    }
+
+    // Validate it looks like a Spotify URL
+    const extractedId = extractSpotifyPlaylistId(spotifyUrl.trim());
+    if (!extractedId) {
+      alert("URL de Spotify no válida. Usa el formato: https://open.spotify.com/playlist/...");
+      return;
+    }
+
+    setIsImporting(true);
+    setImportResult(null);
+
+    try {
+      const res = await fetch("/api/admin/curated-playlists/import-spotify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spotifyUrl: spotifyUrl.trim(),
+          customName: importCustomName.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setImportResult({ success: true, message: data.message });
+        // Refresh the playlists list
+        await fetchPlaylists();
+        // Auto-select the newly imported playlist
+        if (data.data?.playlist?.id) {
+          setSelectedPlaylist(data.data.playlist.id);
+        }
+      } else {
+        setImportResult({ success: false, message: data.error || "Error al importar playlist" });
+      }
+    } catch (error) {
+      console.error("Error importing from Spotify:", error);
+      setImportResult({
+        success: false,
+        message: "Error de conexión al importar playlist",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const currentPlaylist = playlists.find((p) => p.id === selectedPlaylist);
 
   return (
@@ -1091,6 +1152,18 @@ export default function PlaylistsPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => {
+                setSpotifyUrl("");
+                setImportCustomName("");
+                setImportResult(null);
+                setShowImportDialog(true);
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Import className="w-4 h-4 mr-2" />
+              Importar de Spotify
+            </Button>
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Crear Playlist
@@ -1115,12 +1188,26 @@ export default function PlaylistsPage() {
               No hay playlists
             </h3>
             <p className="text-slc-muted mb-6">
-              Crea tu primera playlist para empezar a organizar tracks
+              Importa una playlist desde Spotify para empezar
             </p>
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Crear Primera Playlist
-            </Button>
+            <div className="flex items-center gap-3 justify-center">
+              <Button
+                onClick={() => {
+                  setSpotifyUrl("");
+                  setImportCustomName("");
+                  setImportResult(null);
+                  setShowImportDialog(true);
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Import className="w-4 h-4 mr-2" />
+                Importar de Spotify
+              </Button>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Crear Playlist
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -1422,6 +1509,119 @@ export default function PlaylistsPage() {
           </div>
         )}
       </div>
+
+      {/* Spotify Import Dialog */}
+      <Dialog
+        open={showImportDialog}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setShowImportDialog(false);
+            setImportResult(null);
+          }
+        }}
+      >
+        <DialogContent className="bg-slc-dark border-slc-border text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-oswald uppercase flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              </svg>
+              Importar de Spotify
+            </DialogTitle>
+            <DialogDescription className="text-slc-muted">
+              Pega la URL de una playlist pública de Spotify para importarla automáticamente.
+              La playlist debe ser pública para que el servidor pueda acceder a ella.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Spotify URL Input */}
+            <div>
+              <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+                URL de Spotify Playlist *
+              </label>
+              <Input
+                value={spotifyUrl}
+                onChange={(e) => setSpotifyUrl(e.target.value)}
+                placeholder="https://open.spotify.com/playlist/..."
+                className="bg-slc-card border-slc-border"
+                disabled={isImporting}
+              />
+              <p className="text-xs text-slc-muted mt-1">
+                Pega la URL completa de la playlist en Spotify
+              </p>
+              {spotifyUrl && extractSpotifyPlaylistId(spotifyUrl) && (
+                <p className="text-xs text-green-500 mt-1">
+                  Playlist ID detectado: {extractSpotifyPlaylistId(spotifyUrl)}
+                </p>
+              )}
+            </div>
+
+            {/* Custom Name (optional) */}
+            <div>
+              <label className="text-sm font-medium text-slc-muted mb-1.5 block">
+                Nombre personalizado (opcional)
+              </label>
+              <Input
+                value={importCustomName}
+                onChange={(e) => setImportCustomName(e.target.value)}
+                placeholder="Se usará el nombre de Spotify si lo dejas vacío"
+                className="bg-slc-card border-slc-border"
+                disabled={isImporting}
+              />
+            </div>
+
+            {/* Import Result */}
+            {importResult && (
+              <div
+                className={cn(
+                  "p-4 rounded-lg border",
+                  importResult.success
+                    ? "bg-green-500/10 border-green-500/30 text-green-400"
+                    : "bg-red-500/10 border-red-500/30 text-red-400"
+                )}
+              >
+                <p className="text-sm font-medium">
+                  {importResult.success ? "Importación exitosa" : "Error"}
+                </p>
+                <p className="text-xs mt-1">{importResult.message}</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-slc-border/30 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowImportDialog(false);
+                setImportResult(null);
+              }}
+              disabled={isImporting}
+            >
+              {importResult?.success ? "Cerrar" : "Cancelar"}
+            </Button>
+            {!importResult?.success && (
+              <Button
+                onClick={handleImportSpotify}
+                disabled={isImporting || !spotifyUrl.trim()}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <Import className="w-4 h-4 mr-2" />
+                    Importar Playlist
+                  </>
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Playlist Dialog */}
       <PlaylistFormDialog

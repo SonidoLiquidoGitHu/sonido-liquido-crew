@@ -590,6 +590,7 @@ class SpotifyClient {
     const limit = 100;
     let offset = 0;
     let hasMore = true;
+    let globalPosition = 1; // Global position counter across all pages
 
     while (hasMore) {
       const params = new URLSearchParams({
@@ -642,7 +643,7 @@ class SpotifyClient {
           releaseDate: track.album?.release_date || null,
           popularity: track.popularity || null,
           explicit: track.explicit || false,
-          position: offset + tracks.length + 1,
+          position: globalPosition++,
         });
       }
 
