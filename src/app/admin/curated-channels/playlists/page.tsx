@@ -695,6 +695,7 @@ export default function PlaylistsPage() {
   const [importResult, setImportResult] = useState<{
     success: boolean;
     message: string;
+    errorType?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -1113,7 +1114,7 @@ export default function PlaylistsPage() {
           setSelectedPlaylist(data.data.playlist.id);
         }
       } else {
-        setImportResult({ success: false, message: data.error || "Error al importar playlist" });
+        setImportResult({ success: false, message: data.error || "Error al importar playlist", errorType: data.errorType });
       }
     } catch (error) {
       console.error("Error importing from Spotify:", error);
@@ -1529,8 +1530,12 @@ export default function PlaylistsPage() {
               Importar de Spotify
             </DialogTitle>
             <DialogDescription className="text-slc-muted">
-              Pega la URL de una playlist pública de Spotify para importarla automáticamente.
-              La playlist debe ser pública para que el servidor pueda acceder a ella.
+              Pega la URL de una playlist de Spotify para importarla automáticamente.
+              {!spotifyConnected && (
+                <span className="block mt-2 text-yellow-400 text-xs">
+                  ⚠️ Necesitas conectar tu cuenta de Spotify primero para importar playlists.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -1585,8 +1590,18 @@ export default function PlaylistsPage() {
                   {importResult.success ? "Importación exitosa" : "Error"}
                 </p>
                 <p className="text-xs mt-1">{importResult.message}</p>
+                {!importResult.success && importResult.errorType === "NO_SPOTIFY_TOKEN" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 border-green-600 text-green-500 hover:bg-green-600/20"
+                    onClick={() => setShowImportDialog(false)}
+                  >
+                    Conectar Spotify primero
+                  </Button>
+                )}
               </div>
-            )}
+            )
           </div>
 
           <DialogFooter className="border-t border-slc-border/30 pt-4">

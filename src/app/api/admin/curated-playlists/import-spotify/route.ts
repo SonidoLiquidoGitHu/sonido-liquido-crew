@@ -1,7 +1,8 @@
 // ===========================================
 // ADMIN API: IMPORT SPOTIFY PLAYLIST
 // POST — Import a playlist from Spotify (creates curated_playlist + playlist_tracks)
-// Uses server-side Spotify Client Credentials (no user OAuth needed for read-only)
+// Uses user OAuth token first (required for playlist tracks since Spotify API changes),
+// falls back to Client Credentials for public playlists.
 // ===========================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -9,10 +10,131 @@ import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedPlaylists, playlistTracks, curatedTracks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
-import { spotifyClient, SpotifyClient } from "@/lib/clients/spotify";
+import { SpotifyClient } from "@/lib/clients/spotify";
+import {
+  getSpotifyUserAccessToken,
+  getClientCredentialsToken,
+} from "@/lib/clients/spotify-tokens";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+/**
+ * Make an authenticated request to the Spotify API with smart auth fallback.
+ * Strategy: user OAuth token → refresh on 401/403 → client credentials fallback.
+ * Same pattern as sync-spotify/route.ts.
+ */
+async function spotifyRequestWithAuth<T>(
+  endpoint: string,
+  userAccessToken: string | null,
+  ctx: { forcedRefreshAttempted: boolean; lastError?: string }
+): Promise<T> {
+  const url = `https://api.spotify.com/v1${endpoint}`;
+
+  // Attempt 1: Use user access token if available
+  if (userAccessToken) {
+    console.log(`[Spotify Import API] Requesting ${endpoint} with user token...`);
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${userAccessToken}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (response.ok) {
+      console.log(`[Spotify Import API] Request succeeded with user token`);
+      return response.json();
+    }
+
+    const errorBody = await response.text().catch(() => "");
+    ctx.lastError = `User token: ${response.status} — ${errorBody.slice(0, 300)}`;
+    console.error(`[Spotify Import API] User token request failed ${response.status}: ${errorBody.slice(0, 500)}`);
+
+    // On 401 OR 403, try forced token refresh once
+    if ((response.status === 401 || response.status === 403) && !ctx.forcedRefreshAttempted) {
+      console.log(`[Spotify Import] Got ${response.status}, attempting forced token refresh...`);
+      ctx.forcedRefreshAttempted = true;
+
+      const refreshedToken = await getSpotifyUserAccessToken(true);
+      if (refreshedToken) {
+        console.log("[Spotify Import] Retrying with refreshed token...");
+        const retryResponse = await fetch(url, {
+          headers: { Authorization: `Bearer ${refreshedToken}` },
+          signal: AbortSignal.timeout(10_000),
+        });
+
+        if (retryResponse.ok) {
+          console.log("[Spotify Import] Retry with refreshed token succeeded!");
+          return retryResponse.json();
+        }
+
+        const retryErrorBody = await retryResponse.text().catch(() => "");
+        ctx.lastError = `Refreshed token: ${retryResponse.status} — ${retryErrorBody.slice(0, 300)}`;
+        console.error(`[Spotify Import API] Retry with refreshed token failed ${retryResponse.status}: ${retryErrorBody.slice(0, 500)}`);
+
+        // Second refresh attempt on 401
+        if (retryResponse.status === 401) {
+          const secondRefreshToken = await getSpotifyUserAccessToken(true);
+          if (secondRefreshToken && secondRefreshToken !== refreshedToken) {
+            const secondRetry = await fetch(url, {
+              headers: { Authorization: `Bearer ${secondRefreshToken}` },
+              signal: AbortSignal.timeout(10_000),
+            });
+            if (secondRetry.ok) {
+              return secondRetry.json();
+            }
+          }
+        }
+      }
+    }
+
+    // Non-retriable errors
+    if (response.status === 404) {
+      throw new Error("Spotify playlist not found (404). Verifica que la URL sea correcta.");
+    }
+    if (response.status === 429) {
+      throw new Error("Spotify API rate limit reached (429). Intenta de nuevo en unos momentos.");
+    }
+  }
+
+  // Fallback: Try client credentials (works for public playlist METADATA, but tracks may 403)
+  console.log("[Spotify Import] Trying client credentials fallback...");
+  const ccToken = await getClientCredentialsToken();
+  if (ccToken) {
+    const ccResponse = await fetch(url, {
+      headers: { Authorization: `Bearer ${ccToken}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (ccResponse.ok) {
+      console.log("[Spotify Import] Client credentials fallback succeeded");
+      return ccResponse.json();
+    }
+
+    const ccErrorBody = await ccResponse.text().catch(() => "");
+    console.error(`[Spotify Import API] Client credentials fallback failed ${ccResponse.status}: ${ccErrorBody.slice(0, 500)}`);
+
+    if (ccResponse.status === 403) {
+      if (!userAccessToken) {
+        throw new Error(
+          "NO_SPOTIFY_TOKEN: Esta playlist requiere una cuenta de Spotify conectada. Las credenciales del servidor no pueden acceder a ella. Conecta tu cuenta de Spotify primero (botón 'Conectar Spotify' en la página de playlists)."
+        );
+      }
+      throw new Error(
+        `PRIVATE_PLAYLIST: No se pudo acceder a esta playlist. Tu token de Spotify no tiene permisos suficientes o está expirado. Intenta reconectar tu cuenta de Spotify (botón 'Conectar Spotify'). Detalle: ${ccErrorBody.slice(0, 200)}`
+      );
+    }
+  }
+
+  // All methods failed
+  if (!userAccessToken) {
+    throw new Error(
+      "NO_SPOTIFY_TOKEN: No hay token de Spotify disponible. Conecta tu cuenta de Spotify primero (botón 'Conectar Spotify' en la página de playlists)."
+    );
+  }
+
+  throw new Error(
+    `Spotify API request failed for ${endpoint}. Last error: ${ctx.lastError || "unknown"}. Intenta reconectar tu cuenta de Spotify.`
+  );
+}
 
 // POST — Import a Spotify playlist
 export async function POST(request: NextRequest) {
@@ -41,7 +163,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error:
-            "Could not extract playlist ID from URL. Please use a valid Spotify playlist URL (e.g. https://open.spotify.com/playlist/...)",
+            "No se pudo extraer el ID de la playlist de la URL. Usa una URL válida de Spotify (ej. https://open.spotify.com/playlist/...)",
         },
         { status: 400 }
       );
@@ -49,22 +171,134 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Spotify Import] Importing playlist ${playlistId}...`);
 
-    // Fetch playlist metadata + all tracks using Client Credentials flow
-    // (no user OAuth needed — public playlists are readable with client credentials)
-    const playlistData = await spotifyClient.getPlaylistTracks(playlistId);
+    // Get user OAuth token for playlist access
+    const userAccessToken = await getSpotifyUserAccessToken();
+    const requestCtx = { forcedRefreshAttempted: false };
 
-    if (!playlistData.tracks || playlistData.tracks.length === 0) {
+    if (userAccessToken) {
+      console.log("[Spotify Import] Using Spotify user OAuth token for playlist access");
+    } else {
+      console.log("[Spotify Import] No user OAuth token available, will try client credentials");
+    }
+
+    // Fetch playlist metadata
+    const playlistMeta = await spotifyRequestWithAuth<{
+      id: string;
+      name: string;
+      description: string;
+      images: { url: string }[];
+      tracks: { total: number };
+      external_urls: { spotify: string };
+      owner?: { id: string; display_name: string };
+    }>(
+      `/playlists/${playlistId}?fields=id,name,description,images,tracks.total,external_urls,owner`,
+      userAccessToken,
+      requestCtx
+    );
+
+    console.log(`[Spotify Import] Playlist: "${playlistMeta.name}" (${playlistMeta.tracks?.total || 0} tracks)`);
+
+    // Fetch all tracks with pagination
+    const tracks: Array<{
+      spotifyTrackId: string;
+      trackName: string;
+      artistName: string;
+      artistIds: string[];
+      albumName: string;
+      albumImageUrl: string | null;
+      durationMs: number | null;
+      previewUrl: string | null;
+      releaseDate: string | null;
+      popularity: number | null;
+      explicit: boolean;
+      position: number;
+    }> = [];
+
+    const limit = 100;
+    let offset = 0;
+    let hasMore = true;
+    let globalPosition = 1;
+
+    while (hasMore) {
+      const params = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+        market: "MX",
+        fields: "items(track(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit)),total,next",
+      });
+
+      const response = await spotifyRequestWithAuth<{
+        items: Array<{
+          track: {
+            id: string;
+            name: string;
+            artists: Array<{ id: string; name: string }>;
+            album: {
+              id: string;
+              name: string;
+              images: Array<{ url: string }>;
+              release_date: string;
+            };
+            duration_ms: number;
+            preview_url: string | null;
+            popularity: number;
+            explicit: boolean;
+          } | null;
+        }>;
+        total: number;
+        next: string | null;
+      }>(
+        `/playlists/${playlistId}/tracks?${params.toString()}`,
+        userAccessToken,
+        requestCtx
+      );
+
+      if (!response.items?.length) {
+        break;
+      }
+
+      for (const item of response.items) {
+        const track = item.track;
+        if (!track || !track.id) continue;
+
+        tracks.push({
+          spotifyTrackId: track.id,
+          trackName: track.name,
+          artistName: track.artists?.map((a) => a.name).join(", ") || "Unknown",
+          artistIds: track.artists?.map((a) => a.id) || [],
+          albumName: track.album?.name || "",
+          albumImageUrl: track.album?.images?.[0]?.url || null,
+          durationMs: track.duration_ms || null,
+          previewUrl: track.preview_url || null,
+          releaseDate: track.album?.release_date || null,
+          popularity: track.popularity || null,
+          explicit: track.explicit || false,
+          position: globalPosition++,
+        });
+      }
+
+      hasMore = response.next !== null && response.items.length === limit;
+      offset += limit;
+
+      if (hasMore) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    console.log(`[Spotify Import] Fetched ${tracks.length} tracks from playlist ${playlistId}`);
+
+    if (tracks.length === 0) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "This playlist has no tracks, or it is private and cannot be accessed with the server's Spotify credentials. Make the playlist public on Spotify first, then try again.",
+            "Esta playlist no tiene tracks accesibles. Puede ser privada o estar vacía. Asegúrate de que la playlist sea pública en Spotify o conecta tu cuenta de Spotify.",
         },
         { status: 400 }
       );
     }
 
-    const playlistName = customName?.trim() || playlistData.name;
+    const playlistName = customName?.trim() || playlistMeta.name;
     const playlistSlug = slugify(playlistName);
 
     // Check for slug uniqueness
@@ -78,17 +312,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `A playlist with the slug "${playlistSlug}" already exists. Try a different custom name.`,
+          error: `Ya existe una playlist con el slug "${playlistSlug}". Intenta con un nombre personalizado diferente.`,
         },
         { status: 409 }
       );
     }
 
     // Use Spotify's playlist cover image if available
-    const coverImageUrl =
-      playlistData.images?.[0]?.url || null;
-    const spotifyPlaylistUrl =
-      playlistData.external_urls?.spotify || spotifyUrl.trim();
+    const coverImageUrl = playlistMeta.images?.[0]?.url || null;
+    const spotifyPlaylistUrl = playlistMeta.external_urls?.spotify || spotifyUrl.trim();
 
     // Create the curated playlist
     const newPlaylistId = generateUUID();
@@ -96,7 +328,7 @@ export async function POST(request: NextRequest) {
       id: newPlaylistId,
       name: playlistName,
       slug: playlistSlug,
-      description: playlistData.description || `Imported from Spotify: ${playlistData.name}`,
+      description: playlistMeta.description || `Imported from Spotify: ${playlistMeta.name}`,
       coverImageUrl,
       coverColor: "#1DB954", // Spotify green as default
       spotifyPlaylistId: playlistId,
@@ -104,13 +336,13 @@ export async function POST(request: NextRequest) {
       isPublic: true,
       isActive: true,
       priority: 0,
-      trackCount: playlistData.tracks.length,
+      trackCount: tracks.length,
     };
 
     await db.insert(curatedPlaylists).values(newPlaylist);
 
     console.log(
-      `[Spotify Import] Created playlist "${playlistName}" (${newPlaylistId}) with ${playlistData.tracks.length} tracks`
+      `[Spotify Import] Created playlist "${playlistName}" (${newPlaylistId}) with ${tracks.length} tracks`
     );
 
     // Insert playlist_tracks entries
@@ -118,8 +350,7 @@ export async function POST(request: NextRequest) {
     let tracksSkipped = 0;
     const trackInsertBatch = [];
 
-    for (const track of playlistData.tracks) {
-      // Skip tracks without essential data
+    for (const track of tracks) {
       if (!track.spotifyTrackId || !track.trackName) {
         tracksSkipped++;
         continue;
@@ -131,7 +362,7 @@ export async function POST(request: NextRequest) {
         playlistId: newPlaylistId,
         playlistName: playlistName,
         spotifyTrackId: track.spotifyTrackId,
-        curatedTrackId: null, // Will be linked below if a matching curated_track exists
+        curatedTrackId: null,
         trackName: track.trackName,
         artistName: track.artistName,
         albumImageUrl: track.albumImageUrl,
@@ -143,7 +374,7 @@ export async function POST(request: NextRequest) {
       tracksAdded++;
     }
 
-    // Insert in batches of 50 to avoid SQL too long errors
+    // Insert in batches of 50
     const batchSize = 50;
     for (let i = 0; i < trackInsertBatch.length; i += batchSize) {
       const batch = trackInsertBatch.slice(i, i + batchSize);
@@ -153,10 +384,9 @@ export async function POST(request: NextRequest) {
     // Try to link playlist_tracks to existing curated_tracks (best-effort, non-blocking)
     try {
       let linkedCount = 0;
-      for (const track of playlistData.tracks) {
+      for (const track of tracks) {
         if (!track.spotifyTrackId) continue;
 
-        // Check if a curated_track with this spotifyTrackId already exists
         const existingTrack = await db
           .select({ id: curatedTracks.id })
           .from(curatedTracks)
@@ -164,7 +394,6 @@ export async function POST(request: NextRequest) {
           .limit(1);
 
         if (existingTrack.length > 0) {
-          // Update the playlist_track to reference the curated_track
           await db
             .update(playlistTracks)
             .set({ curatedTrackId: existingTrack[0].id })
@@ -178,7 +407,6 @@ export async function POST(request: NextRequest) {
         );
       }
     } catch (linkErr) {
-      // Non-fatal: linking is best-effort
       console.warn(
         "[Spotify Import] Could not link playlist tracks to curated tracks:",
         linkErr
@@ -201,13 +429,38 @@ export async function POST(request: NextRequest) {
     const message =
       error instanceof Error ? error.message : "Error importing Spotify playlist";
 
-    // Provide helpful error messages for common Spotify API errors
+    // Check for our custom error types
+    if (message.includes("NO_SPOTIFY_TOKEN")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Se requiere conectar tu cuenta de Spotify para importar playlists. Haz clic en 'Conectar Spotify' en la página de playlists y vuelve a intentarlo.",
+          errorType: "NO_SPOTIFY_TOKEN",
+        },
+        { status: 401 }
+      );
+    }
+
+    if (message.includes("PRIVATE_PLAYLIST")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "No se pudo acceder a esta playlist de Spotify. Puede ser privada o tu conexión de Spotify expiró. Intenta reconectar tu cuenta con el botón 'Conectar Spotify'.",
+          errorType: "PRIVATE_PLAYLIST",
+        },
+        { status: 403 }
+      );
+    }
+
     if (message.includes("401") || message.includes("403")) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "No se pudo acceder a esta playlist de Spotify. Puede ser privada o el servidor no tiene credenciales válidas. Asegúrate de que la playlist sea pública en Spotify.",
+            "No se pudo acceder a esta playlist de Spotify. Puede ser privada o tu conexión de Spotify expiró. Intenta reconectar tu cuenta con el botón 'Conectar Spotify'.",
+          errorType: "AUTH_FAILED",
         },
         { status: 403 }
       );
@@ -219,6 +472,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error:
             "Playlist no encontrada en Spotify. Verifica que la URL sea correcta.",
+          errorType: "NOT_FOUND",
         },
         { status: 404 }
       );
