@@ -118,6 +118,13 @@ async function spotifyRequestWithAuth<T>(
           "NO_SPOTIFY_TOKEN: Esta playlist requiere una cuenta de Spotify conectada. Las credenciales del servidor no pueden acceder a ella. Conecta tu cuenta de Spotify primero (botón 'Conectar Spotify' en la página de playlists)."
         );
       }
+      // Check if this is a Development Mode restriction (can't access playlists you don't own)
+      const isItemsEndpoint = endpoint.includes("/items");
+      if (isItemsEndpoint) {
+        throw new Error(
+          `DEVMODE_PLAYLIST: Spotify en modo Desarrollo no permite acceder a los tracks de playlists que no son tuyas. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, cópiala a tu cuenta de Spotify primero. Detalle: ${ccErrorBody.slice(0, 200)}`
+        );
+      }
       throw new Error(
         `PRIVATE_PLAYLIST: No se pudo acceder a esta playlist. Tu token de Spotify no tiene permisos suficientes o está expirado. Intenta reconectar tu cuenta de Spotify (botón 'Conectar Spotify'). Detalle: ${ccErrorBody.slice(0, 200)}`
       );
@@ -323,11 +330,23 @@ export async function POST(request: NextRequest) {
     console.log(`[Spotify Import] Fetched ${tracks.length} tracks from playlist ${playlistId}`);
 
     if (tracks.length === 0) {
+      // Provide a specific error message based on the situation
+      const playlistOwner = playlistMeta.owner?.id;
+      const isOwnPlaylist = !playlistOwner; // Can't determine, assume might be own
+      let errorMsg = "Esta playlist no tiene tracks accesibles.";
+
+      // If we got metadata but no tracks, it's likely a Development Mode restriction
+      if (playlistName) {
+        errorMsg = "No se pudieron obtener los tracks de esta playlist. Si no es tu propia playlist (es decir, solo la sigues), Spotify en modo Desarrollo no permite acceder a sus tracks. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, copia la playlist a tu cuenta primero.";
+      } else {
+        errorMsg += " Puede ser privada o estar vacía. Asegúrate de que la playlist exista y sea accesible.";
+      }
+
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Esta playlist no tiene tracks accesibles. Puede ser privada o estar vacía. Asegúrate de que la playlist sea pública en Spotify o conecta tu cuenta de Spotify.",
+          error: errorMsg,
+          errorType: playlistName ? "DEVMODE_RESTRICTION" : "EMPTY_PLAYLIST",
         },
         { status: 400 }
       );
@@ -484,6 +503,18 @@ export async function POST(request: NextRequest) {
           error:
             "No se pudo acceder a esta playlist de Spotify. Puede ser privada o tu conexión de Spotify expiró. Intenta reconectar tu cuenta con el botón 'Conectar Spotify'.",
           errorType: "PRIVATE_PLAYLIST",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (message.includes("DEVMODE_PLAYLIST")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "No se pudieron obtener los tracks de esta playlist. Si no es una playlist que tú creaste (solo la sigues), Spotify no permite acceder a sus tracks en modo Desarrollo. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, cópiala a tu cuenta de Spotify primero.",
+          errorType: "DEVMODE_PLAYLIST",
         },
         { status: 403 }
       );
