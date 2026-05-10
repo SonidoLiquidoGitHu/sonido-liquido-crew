@@ -985,34 +985,33 @@ export default function PlaylistsPage() {
 
   const handleSyncFromSpotify = async (playlistId: string) => {
     if (!spotifyConnected) {
-      // DON'T auto-redirect — just show a message and let the user click "Conectar Spotify" manually
       alert("Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso.");
       return;
     }
     setIsSyncingSpotify(true);
     try {
-      // Try to get a fresh access token before syncing.
-      // Even if this fails, the sync endpoint can get its own token from the DB.
-      // IMPORTANT: If we already have a token from the OAuth callback URL, prefer
-      // that one (it was just obtained from Spotify and is guaranteed valid).
-      let tokenToUse = spotifyAccessToken;
-      if (!tokenToUse) {
-        try {
-          const tokenRes = await fetch("/api/admin/spotify/token");
-          const tokenData = await tokenRes.json();
-          if (tokenData.connected && tokenData.accessToken) {
-            tokenToUse = tokenData.accessToken;
-            setSpotifyAccessToken(tokenToUse);
-          }
-        } catch {
-          // Token check failed, use cached token if available
+      // ALWAYS get a fresh access token from the server before syncing.
+      // The server handles refreshing expired tokens and reading from DB.
+      // We pass the token to the sync endpoint so it doesn't need to do its own DB read.
+      // If the server can't provide a token, the sync endpoint will try independently.
+      let tokenToUse: string | null = null;
+      try {
+        const tokenRes = await fetch("/api/admin/spotify/token");
+        const tokenData = await tokenRes.json();
+        if (tokenData.connected && tokenData.accessToken) {
+          tokenToUse = tokenData.accessToken;
+          setSpotifyAccessToken(tokenData.accessToken);
+        } else if (tokenData.refreshFailed) {
+          // Refresh token exists but refresh is temporarily failing
+          console.warn("[Spotify] Token refresh temporarily failed, trying sync anyway without frontend token");
+        } else {
+          // No connection at all
+          setSpotifyConnected(false);
+          setSpotifyAccessToken(null);
         }
-      }
-
-      if (!tokenToUse) {
-        alert("No se pudo obtener el token de acceso de Spotify. Espera un momento e intenta de nuevo, o reconecta tu cuenta.");
-        setIsSyncingSpotify(false);
-        return;
+      } catch {
+        // Token check failed — sync endpoint will try its own token retrieval
+        console.warn("[Spotify] Token fetch failed, sync endpoint will try independently");
       }
 
       const res = await fetch(
@@ -1020,7 +1019,7 @@ export default function PlaylistsPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken: tokenToUse }),
+          body: JSON.stringify(tokenToUse ? { accessToken: tokenToUse } : {}),
         },
       );
       const data = await res.json();
@@ -1029,12 +1028,9 @@ export default function PlaylistsPage() {
         await fetchPlaylists();
         fetchPlaylistTracks(playlistId);
       } else if (data.needsAuth) {
-        // Only mark as disconnected if we DON'T have a fresh token from URL.
-        // If we do, the issue is likely a scope problem, not an expired token.
-        if (!spotifyAccessToken) {
-          setSpotifyConnected(false);
-          setSpotifyAccessToken(null);
-        }
+        // Mark as disconnected — the sync endpoint confirmed auth is needed
+        setSpotifyConnected(false);
+        setSpotifyAccessToken(null);
         alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Haz clic en 'Conectar Spotify' para reconectar.");
       } else {
         alert(data.error || "Error syncing from Spotify");

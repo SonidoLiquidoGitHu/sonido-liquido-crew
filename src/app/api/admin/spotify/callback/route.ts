@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db/client";
-import { siteSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  upsertSetting,
+  storeSpotifyTokens,
+  readSetting,
+  validateAccessToken,
+  getSpotifyAuthHeader,
+} from "@/lib/clients/spotify-tokens";
 
 /**
  * Spotify OAuth callback endpoint.
@@ -32,11 +36,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientId = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
-
   // Determine the redirect URI — must match what was used in the /auth endpoint
-  // Use the same logic as the auth route to ensure consistency
   const PRODUCTION_BASE_URL = "https://sonidoliquido.com";
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
     || PRODUCTION_BASE_URL
@@ -45,12 +45,10 @@ export async function GET(request: NextRequest) {
 
   try {
     // Exchange the authorization code for tokens
-    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-
     const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
       headers: {
-        Authorization: `Basic ${credentials}`,
+        Authorization: getSpotifyAuthHeader(),
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
@@ -75,35 +73,28 @@ export async function GET(request: NextRequest) {
 
     if (!refreshToken) {
       // Spotify sometimes doesn't return a refresh_token on re-authorization.
-      // This can happen if the user already authorized the app and show_dialog was not used.
-      // Check if we already have a refresh_token stored in the DB — if so, keep using it.
+      // Check if we already have one stored in the DB.
       console.warn("[Spotify OAuth] No refresh token in response — checking DB for existing refresh token...");
-      const [existingRefresh] = await db
-        .select()
-        .from(siteSettings)
-        .where(eq(siteSettings.key, "spotify_refresh_token"))
-        .limit(1);
+      const existingRefresh = await readSetting("spotify_refresh_token");
 
-      if (!existingRefresh?.value) {
+      if (!existingRefresh) {
         console.error("[Spotify OAuth] No refresh token in response and none stored in DB — cannot maintain long-lived connection");
         return NextResponse.redirect(
           new URL("/admin/curated-channels/playlists?spotify_error=no_refresh_token", request.url)
         );
       }
-      // We have an existing refresh token — just update the access token
       console.log("[Spotify OAuth] Using existing refresh token from DB, updating access token only");
     }
 
     console.log("[Spotify OAuth] Successfully obtained tokens. Expires in:", expiresIn, "seconds");
 
-    // Store the tokens in site_settings — THROW on failure instead of silently catching
+    // Store the tokens using the shared module
     try {
-      // Only update refresh_token if we got a new one (Spotify may not return it on re-auth)
-      if (refreshToken) {
-        await upsertSetting("spotify_refresh_token", refreshToken, "string", "Spotify OAuth refresh token for playlist access");
-      }
-      await upsertSetting("spotify_access_token", accessToken, "string", "Spotify OAuth access token (temporary)");
-      await upsertSetting("spotify_access_token_expiry", String(Date.now() + (expiresIn - 60) * 1000), "number", "Spotify access token expiry timestamp");
+      await storeSpotifyTokens({
+        accessToken,
+        refreshToken: refreshToken || undefined,
+        expiresIn,
+      });
     } catch (dbError) {
       console.error("[Spotify OAuth] CRITICAL: Failed to store tokens in database:", dbError);
       return NextResponse.redirect(
@@ -111,34 +102,45 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify tokens were actually stored by reading them back
+    // Verify tokens were stored and validate the access token works
     try {
-      const [verifyRefresh] = await db
-        .select()
-        .from(siteSettings)
-        .where(eq(siteSettings.key, "spotify_refresh_token"))
-        .limit(1);
-
-      if (!verifyRefresh?.value) {
-        console.error("[Spotify OAuth] CRITICAL: Token verification failed — refresh_token not found in DB after write");
+      const storedRefresh = await readSetting("spotify_refresh_token");
+      if (!storedRefresh) {
+        console.error("[Spotify OAuth] CRITICAL: Refresh token not found in DB after write");
         return NextResponse.redirect(
           new URL("/admin/curated-channels/playlists?spotify_error=token_verify_failed", request.url)
         );
       }
 
-      console.log("[Spotify OAuth] Token storage verified successfully");
+      // Validate the access token by calling /me — this confirms the token works
+      // and that the scopes are correct BEFORE we tell the user "connected successfully"
+      const validation = await validateAccessToken(accessToken);
+      if (!validation.valid) {
+        console.error("[Spotify OAuth] Access token validation failed:", validation.error);
+        // Token was stored but doesn't work — this could be a scope issue
+        return NextResponse.redirect(
+          new URL("/admin/curated-channels/playlists?spotify_error=token_verify_failed", request.url)
+        );
+      }
+
+      console.log(`[Spotify OAuth] Token validated — user: ${validation.userId}, scopes: ${validation.scopes?.join(', ')}`);
+
+      // Verify the token has the required scopes
+      const requiredScopes = ["playlist-read-private", "playlist-read-collaborative"];
+      const missingScopes = requiredScopes.filter(s => !validation.scopes?.includes(s));
+      if (missingScopes.length > 0) {
+        console.warn("[Spotify OAuth] Token is missing required scopes:", missingScopes);
+        // Don't fail the flow — the user might still be able to read public playlists
+        // But log it prominently for debugging
+      }
     } catch (verifyError) {
       console.error("[Spotify OAuth] Token verification check failed:", verifyError);
       // Don't fail the whole flow — the tokens might be stored, we just can't verify
     }
 
     // Redirect back to the playlists page with success indicator
-    // IMPORTANT: Include the access token and expiry in the redirect URL so the
-    // frontend has it immediately WITHOUT needing a DB read. This is critical because
-    // Turso DB replication lag can cause the /api/admin/spotify/token endpoint to
-    // return { connected: false } right after we just stored the tokens here.
-    // The access token is short-lived (1 hour) and the URL is cleaned up by the
-    // frontend immediately, so the security risk is minimal (same as OAuth implicit grant).
+    // Include the access token in the redirect URL so the frontend has it immediately
+    // WITHOUT needing a DB read (critical for Turso replication lag).
     const redirectUrl = new URL("/admin/curated-channels/playlists", request.url);
     redirectUrl.searchParams.set("spotify_connected", "true");
     redirectUrl.searchParams.set("spotify_access_token", accessToken);
@@ -150,32 +152,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL("/admin/curated-channels/playlists?spotify_error=callback_error", request.url)
     );
-  }
-}
-
-/**
- * Insert or update a site setting
- * THROWS on error instead of catching silently — caller must handle errors
- */
-async function upsertSetting(key: string, value: string, type: string, description: string) {
-  const [existing] = await db
-    .select()
-    .from(siteSettings)
-    .where(eq(siteSettings.key, key))
-    .limit(1);
-
-  if (existing) {
-    await db
-      .update(siteSettings)
-      .set({ value, updatedAt: new Date() })
-      .where(eq(siteSettings.key, key));
-  } else {
-    await db.insert(siteSettings).values({
-      id: crypto.randomUUID(),
-      key,
-      value,
-      type: type as "string" | "number" | "boolean" | "json",
-      description,
-    });
   }
 }

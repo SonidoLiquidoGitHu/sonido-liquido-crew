@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
+import { getSpotifyCredentials } from "@/lib/clients/spotify-tokens";
 
 /**
  * Initiate Spotify OAuth Authorization Code flow.
@@ -10,13 +11,14 @@ import { NextRequest } from "next/server";
  * Required scopes:
  * - playlist-read-private: Read user's private playlists
  * - playlist-read-collaborative: Read collaborative playlists
+ * - user-read-private: Read user profile (needed for token validation)
  *
  * IMPORTANT: The redirect URI must be registered in the Spotify Developer Dashboard.
  * Go to https://developer.spotify.com/dashboard → App Settings → Redirect URIs
  * Add: https://sonidoliquido.com/api/admin/spotify/callback
  */
 export async function GET(request: NextRequest) {
-  const clientId = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
+  const { clientId } = getSpotifyCredentials();
 
   // Determine the callback URL:
   // 1. NEXT_PUBLIC_BASE_URL env var (most reliable, set in Netlify)
@@ -34,6 +36,7 @@ export async function GET(request: NextRequest) {
   const scopes = [
     "playlist-read-private",
     "playlist-read-collaborative",
+    "user-read-private",
   ].join(" ");
 
   const params = new URLSearchParams({
