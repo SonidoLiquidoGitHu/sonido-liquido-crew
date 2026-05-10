@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { spotifyUrl, customName } = body;
+    const { spotifyUrl, customName, accessToken: frontendAccessToken } = body;
 
     if (!spotifyUrl || !spotifyUrl.trim()) {
       return NextResponse.json(
@@ -172,14 +172,20 @@ export async function POST(request: NextRequest) {
     console.log(`[Spotify Import] Importing playlist ${playlistId}...`);
 
     // Get user OAuth token for playlist access
-    const userAccessToken = await getSpotifyUserAccessToken();
-    const requestCtx = { forcedRefreshAttempted: false };
+    // Priority: 1) Frontend-provided token (avoids Turso lag), 2) Server DB token, 3) null
+    let userAccessToken: string | null = frontendAccessToken || null;
 
     if (userAccessToken) {
-      console.log("[Spotify Import] Using Spotify user OAuth token for playlist access");
+      console.log("[Spotify Import] Using Spotify access token from frontend (avoids DB read lag)");
     } else {
-      console.log("[Spotify Import] No user OAuth token available, will try client credentials");
+      userAccessToken = await getSpotifyUserAccessToken();
+      if (userAccessToken) {
+        console.log("[Spotify Import] Using Spotify user OAuth token from DB");
+      } else {
+        console.log("[Spotify Import] No user OAuth token available, will try client credentials");
+      }
     }
+    const requestCtx = { forcedRefreshAttempted: false };
 
     // Fetch playlist metadata
     const playlistMeta = await spotifyRequestWithAuth<{

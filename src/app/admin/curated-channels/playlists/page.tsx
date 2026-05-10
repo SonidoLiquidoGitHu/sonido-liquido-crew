@@ -781,6 +781,7 @@ export default function PlaylistsPage() {
         callback_error: "Error en el callback de Spotify.",
         db_write_failed: "Error al guardar los tokens de Spotify en la base de datos. Intenta de nuevo.",
         token_verify_failed: "No se pudieron verificar los tokens guardados. Intenta de nuevo.",
+        scope_missing: params.get("spotify_detail") || "Faltan permisos de Spotify. Necesitas autorizar con permisos de lectura de playlists. Intenta reconectar.",
       };
       alert(errorMessages[error || ""] || "Error al conectar Spotify.");
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
@@ -1094,12 +1095,28 @@ export default function PlaylistsPage() {
     setImportResult(null);
 
     try {
+      // Try to get a fresh access token before importing (same pattern as sync)
+      let tokenToUse = spotifyAccessToken;
+      try {
+        const tokenRes = await fetch("/api/admin/spotify/token");
+        const tokenData = await tokenRes.json();
+        if (tokenData.connected && tokenData.accessToken) {
+          tokenToUse = tokenData.accessToken;
+          setSpotifyAccessToken(tokenData.accessToken);
+          if (!spotifyConnected) setSpotifyConnected(true);
+        }
+      } catch {
+        // Token check failed — import endpoint will try its own token retrieval
+        console.warn("[Spotify Import] Token fetch failed, import endpoint will try independently");
+      }
+
       const res = await fetch("/api/admin/curated-playlists/import-spotify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           spotifyUrl: spotifyUrl.trim(),
           customName: importCustomName.trim() || undefined,
+          accessToken: tokenToUse || undefined,
         }),
       });
 

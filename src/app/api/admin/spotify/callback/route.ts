@@ -103,29 +103,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // NON-BLOCKING: Try to validate the access token by calling /me
-    // This confirms the token works and the scopes are correct, but we
-    // DON'T fail the flow if it fails — the tokens are already stored,
-    // and the actual sync request will tell us if the token works.
-    // The previous version would fail here if Turso replication lag
-    // caused the DB read-back to miss the just-written tokens.
+    // Validate the access token AND check scopes BEFORE redirecting success
+    // This is critical: if scopes are missing, the user needs to know immediately
+    // instead of seeing "connected" and then getting 403 on import.
+    let scopesValid = false;
+    let scopeWarning = "";
     try {
       const validation = await validateAccessToken(accessToken);
       if (validation.valid) {
         console.log(`[Spotify OAuth] Token validated — user: ${validation.userId}, scopes: ${validation.scopes?.join(', ')}`);
 
-        // Log if required scopes are missing (but don't fail the flow)
+        // Check if required scopes are present
         const requiredScopes = ["playlist-read-private", "playlist-read-collaborative"];
         const missingScopes = requiredScopes.filter(s => !validation.scopes?.includes(s));
         if (missingScopes.length > 0) {
-          console.warn("[Spotify OAuth] WARNING: Token is missing required scopes:", missingScopes, "— playlist sync may fail for private playlists");
+          console.warn("[Spotify OAuth] WARNING: Token is missing required scopes:", missingScopes);
+          scopesValid = false;
+          scopeWarning = `Faltan permisos de Spotify: ${missingScopes.join(', ')}. Intenta reconectar.`;
+        } else {
+          scopesValid = true;
         }
       } else {
-        console.warn("[Spotify OAuth] Token validation failed (non-blocking):", validation.error);
-        console.warn("[Spotify OAuth] Tokens are stored in DB — the sync endpoint will try to use/refresh them");
+        console.warn("[Spotify OAuth] Token validation failed:", validation.error);
+        // Can't verify scopes — assume they're OK and let import fail if needed
+        scopesValid = true;
       }
     } catch (verifyError) {
-      console.warn("[Spotify OAuth] Token verification check failed (non-blocking):", verifyError);
+      console.warn("[Spotify OAuth] Token verification check failed:", verifyError);
+      scopesValid = true; // Assume OK
+    }
+
+    // If scopes are definitely wrong, redirect with a clear error
+    if (!scopesValid) {
+      console.error("[Spotify OAuth] Scopes are missing — redirecting with scope_error");
+      return NextResponse.redirect(
+        new URL(`/admin/curated-channels/playlists?spotify_error=scope_missing&spotify_detail=${encodeURIComponent(scopeWarning)}`, request.url)
+      );
     }
 
     // Redirect back to the playlists page with success indicator
