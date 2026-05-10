@@ -103,42 +103,47 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate the access token AND check scopes BEFORE redirecting success
-    // This is critical: if scopes are missing, the user needs to know immediately
-    // instead of seeing "connected" and then getting 403 on import.
-    let scopesValid = false;
-    let scopeWarning = "";
+    // Validate scopes from the token exchange response (NOT from /v1/me which doesn't return scopes).
+    // The tokenData.scope field is the authoritative source for what Spotify granted.
+    const requiredScopes = ["playlist-read-private", "playlist-read-collaborative"];
+    const grantedScopeList = grantedScopes ? grantedScopes.split(" ") : [];
+    const missingScopes = requiredScopes.filter(s => !grantedScopeList.includes(s));
+
+    console.log(`[Spotify OAuth] Scopes granted by Spotify: ${grantedScopeList.join(', ') || 'none'}`);
+    console.log(`[Spotify OAuth] Required scopes: ${requiredScopes.join(', ')}`);
+
+    if (missingScopes.length > 0) {
+      console.error("[Spotify OAuth] MISSING required scopes:", missingScopes);
+      // Don't fail the flow — tokens are stored and may still work for public playlists.
+      // Log a warning but redirect with success + a hint about missing scopes.
+      // We include the warning in the URL so the frontend can show it.
+      const redirectUrl = new URL("/admin/curated-channels/playlists", request.url);
+      redirectUrl.searchParams.set("spotify_connected", "true");
+      redirectUrl.searchParams.set("spotify_access_token", accessToken);
+      redirectUrl.searchParams.set("spotify_expires_in", String(expiresIn));
+      redirectUrl.searchParams.set("spotify_scope_warning", missingScopes.join(","));
+
+      // Also validate that the token actually works by calling /v1/me (non-blocking)
+      try {
+        const validation = await validateAccessToken(accessToken);
+        if (validation.valid) {
+          console.log(`[Spotify OAuth] Token works — user: ${validation.userId}`);
+        }
+      } catch {}
+
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // All required scopes granted — validate the token works (non-blocking)
     try {
       const validation = await validateAccessToken(accessToken);
       if (validation.valid) {
-        console.log(`[Spotify OAuth] Token validated — user: ${validation.userId}, scopes: ${validation.scopes?.join(', ')}`);
-
-        // Check if required scopes are present
-        const requiredScopes = ["playlist-read-private", "playlist-read-collaborative"];
-        const missingScopes = requiredScopes.filter(s => !validation.scopes?.includes(s));
-        if (missingScopes.length > 0) {
-          console.warn("[Spotify OAuth] WARNING: Token is missing required scopes:", missingScopes);
-          scopesValid = false;
-          scopeWarning = `Faltan permisos de Spotify: ${missingScopes.join(', ')}. Intenta reconectar.`;
-        } else {
-          scopesValid = true;
-        }
+        console.log(`[Spotify OAuth] Token validated — user: ${validation.userId}`);
       } else {
-        console.warn("[Spotify OAuth] Token validation failed:", validation.error);
-        // Can't verify scopes — assume they're OK and let import fail if needed
-        scopesValid = true;
+        console.warn("[Spotify OAuth] Token validation failed (non-blocking):", validation.error);
       }
     } catch (verifyError) {
-      console.warn("[Spotify OAuth] Token verification check failed:", verifyError);
-      scopesValid = true; // Assume OK
-    }
-
-    // If scopes are definitely wrong, redirect with a clear error
-    if (!scopesValid) {
-      console.error("[Spotify OAuth] Scopes are missing — redirecting with scope_error");
-      return NextResponse.redirect(
-        new URL(`/admin/curated-channels/playlists?spotify_error=scope_missing&spotify_detail=${encodeURIComponent(scopeWarning)}`, request.url)
-      );
+      console.warn("[Spotify OAuth] Token verification check failed (non-blocking):", verifyError);
     }
 
     // Redirect back to the playlists page with success indicator

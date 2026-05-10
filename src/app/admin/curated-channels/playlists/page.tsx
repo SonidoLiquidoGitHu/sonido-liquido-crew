@@ -731,7 +731,12 @@ export default function PlaylistsPage() {
         console.warn("[Spotify] No access token in callback URL — will need to fetch from DB");
       }
 
-      alert("Spotify conectado exitosamente. Ya puedes importar tracks.");
+      const scopeWarning = params.get("spotify_scope_warning");
+      if (scopeWarning) {
+        alert(`Spotify conectado, pero algunos permisos podrían no estar disponibles: ${scopeWarning}. Si la importación falla, intenta reconectar.`);
+      } else {
+        alert("Spotify conectado exitosamente. Ya puedes importar tracks.");
+      }
       // Clean up URL (remove access token and other params for security)
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
 
