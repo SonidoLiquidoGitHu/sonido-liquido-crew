@@ -13,6 +13,8 @@ import {
   Upload,
   Info,
   Link as LinkIcon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface DownloadGateAction {
@@ -463,17 +465,33 @@ export default function BeatEditModal({ beatId, isOpen, onClose, onSave }: Props
                     )}
                   </div>
 
-                  {/* Checkboxes */}
-                  <div className="flex items-center gap-6 pt-4 border-t border-zinc-700">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.isAvailable}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, isAvailable: e.target.checked }))}
-                        className="w-5 h-5 rounded accent-emerald-500"
-                      />
-                      <span className="text-sm">Disponible</span>
-                    </label>
+                  {/* Visibility & Status */}
+                  <div className="space-y-3 pt-4 border-t border-zinc-700">
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, isAvailable: !prev.isAvailable }))}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                        formData.isAvailable
+                          ? "bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
+                          : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
+                      }`}
+                    >
+                      {formData.isAvailable ? (
+                        <Eye className="w-5 h-5 flex-shrink-0" />
+                      ) : (
+                        <EyeOff className="w-5 h-5 flex-shrink-0" />
+                      )}
+                      <div className="text-left">
+                        <span className="text-sm font-medium block">
+                          {formData.isAvailable ? "Visible en el sitio" : "Oculto del sitio"}
+                        </span>
+                        <span className="text-xs opacity-70">
+                          {formData.isAvailable
+                            ? "Este beat aparece en la página pública"
+                            : "Este beat no aparece en la página pública pero no se elimina"}
+                        </span>
+                      </div>
+                    </button>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"

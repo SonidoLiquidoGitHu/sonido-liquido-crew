@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Plus,
   Search,
@@ -14,6 +15,7 @@ import {
   Play,
   Download,
   Eye,
+  EyeOff,
   Star,
   Lock,
   Unlock,
@@ -47,6 +49,7 @@ export default function AdminBeatsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [genreFilter, setGenreFilter] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBeats();
@@ -90,6 +93,45 @@ export default function AdminBeatsPage() {
     }
   };
 
+  const toggleBeatVisibility = async (beatId: string, newIsActive: boolean) => {
+    // Optimistic update
+    setBeats((prev) =>
+      prev.map((b) => (b.id === beatId ? { ...b, isActive: newIsActive } : b))
+    );
+    setTogglingId(beatId);
+
+    try {
+      const res = await fetch("/api/admin/beats", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: beatId, isActive: newIsActive }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Update with server response to ensure consistency
+        setBeats((prev) =>
+          prev.map((b) => (b.id === beatId ? { ...b, ...data.data } : b))
+        );
+      } else {
+        // Revert on error
+        setBeats((prev) =>
+          prev.map((b) => (b.id === beatId ? { ...b, isActive: !newIsActive } : b))
+        );
+        alert("Error al cambiar visibilidad: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      // Revert on error
+      setBeats((prev) =>
+        prev.map((b) => (b.id === beatId ? { ...b, isActive: !newIsActive } : b))
+      );
+      console.error("Error toggling beat visibility:", error);
+      alert("Error al cambiar visibilidad del beat");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const genres = [...new Set(beats.map((b) => b.genre).filter(Boolean))];
 
   const filteredBeats = beats.filter((beat) => {
@@ -97,6 +139,9 @@ export default function AdminBeatsPage() {
     const matchesGenre = !genreFilter || beat.genre === genreFilter;
     return matchesSearch && matchesGenre;
   });
+
+  const visibleCount = beats.filter((b) => b.isActive).length;
+  const hiddenCount = beats.filter((b) => !b.isActive).length;
 
   return (
     <div className="p-6 lg:p-8">
@@ -155,16 +200,22 @@ export default function AdminBeatsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="font-oswald text-2xl text-primary">{beats.length}</div>
           <div className="text-xs text-slc-muted uppercase">Total</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="font-oswald text-2xl text-green-500">
-            {beats.filter((b) => b.isFree).length}
+            {visibleCount}
           </div>
-          <div className="text-xs text-slc-muted uppercase">Gratis</div>
+          <div className="text-xs text-slc-muted uppercase">Visibles</div>
+        </div>
+        <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
+          <div className="font-oswald text-2xl text-slc-muted">
+            {hiddenCount}
+          </div>
+          <div className="text-xs text-slc-muted uppercase">Ocultos</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="font-oswald text-2xl text-blue-500">
@@ -200,8 +251,21 @@ export default function AdminBeatsPage() {
             {filteredBeats.map((beat) => (
               <div
                 key={beat.id}
-                className="bg-slc-card border border-slc-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
+                className={cn(
+                  "bg-slc-card border rounded-lg overflow-hidden transition-colors relative",
+                  beat.isActive
+                    ? "border-slc-border hover:border-primary/50"
+                    : "border-slc-border/50 opacity-70 hover:opacity-100 hover:border-slc-border"
+                )}
               >
+                {/* Hidden overlay badge */}
+                {!beat.isActive && (
+                  <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-slc-dark/90 border border-slc-border rounded-full">
+                    <EyeOff className="w-3.5 h-3.5 text-slc-muted" />
+                    <span className="text-xs text-slc-muted font-medium uppercase">Oculto</span>
+                  </div>
+                )}
+
                 {/* Cover */}
                 <div className="aspect-square relative bg-slc-border">
                   {beat.coverImageUrl ? (
@@ -209,7 +273,10 @@ export default function AdminBeatsPage() {
                       src={beat.coverImageUrl}
                       alt={beat.title}
                       fill
-                      className="object-cover"
+                      className={cn(
+                        "object-cover transition-all",
+                        !beat.isActive && "grayscale-[50%]"
+                      )}
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -234,6 +301,29 @@ export default function AdminBeatsPage() {
                       <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                     </div>
                   )}
+
+                  {/* Visibility toggle overlay on cover */}
+                  <div className="absolute bottom-2 right-2">
+                    <button
+                      onClick={() => toggleBeatVisibility(beat.id, !beat.isActive)}
+                      disabled={togglingId === beat.id}
+                      className={cn(
+                        "p-2 rounded-lg transition-all backdrop-blur-sm border",
+                        beat.isActive
+                          ? "bg-green-500/90 border-green-400/50 text-white hover:bg-green-600/90"
+                          : "bg-slc-dark/90 border-slc-border text-slc-muted hover:bg-slc-card/90 hover:text-white"
+                      )}
+                      title={beat.isActive ? "Ocultar del sitio" : "Mostrar en el sitio"}
+                    >
+                      {togglingId === beat.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : beat.isActive ? (
+                        <Eye className="w-4 h-4" />
+                      ) : (
+                        <EyeOff className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Info */}

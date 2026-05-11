@@ -27,6 +27,7 @@ import {
   Trash2,
   ExternalLink,
   Eye,
+  EyeOff,
   BarChart3,
 } from "lucide-react";
 
@@ -815,18 +816,37 @@ export default function EditBeatPage({ params }: { params: Promise<{ id: string 
 
             {/* Actions */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-lg uppercase mb-4">Opciones</h2>
+              <h2 className="font-oswald text-lg uppercase mb-4">Visibilidad</h2>
 
               <div className="space-y-3 mb-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                    className="w-4 h-4 rounded border-slc-border"
-                  />
-                  <span>Beat Activo</span>
-                </label>
+                {/* Visibility toggle */}
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                    formData.isActive
+                      ? "bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
+                      : "bg-slc-card border-slc-border text-slc-muted hover:bg-slc-card/80"
+                  }`}
+                >
+                  {formData.isActive ? (
+                    <Eye className="w-5 h-5 flex-shrink-0" />
+                  ) : (
+                    <EyeOff className="w-5 h-5 flex-shrink-0" />
+                  )}
+                  <div className="text-left">
+                    <span className="font-medium block">
+                      {formData.isActive ? "Visible en el sitio" : "Oculto del sitio"}
+                    </span>
+                    <span className="text-xs opacity-70">
+                      {formData.isActive
+                        ? "Este beat aparece en la página pública de beats"
+                        : "Este beat no aparece en la página pública pero no se elimina"}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Featured toggle */}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"

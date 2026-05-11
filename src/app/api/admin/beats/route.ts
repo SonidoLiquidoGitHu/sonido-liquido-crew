@@ -294,6 +294,66 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// PATCH - Partial update (e.g., toggle isActive, isFeatured)
+export async function PATCH(request: NextRequest) {
+  try {
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 503 }
+      );
+    }
+
+    const body = await request.json();
+
+    if (!body.id) {
+      return NextResponse.json(
+        { success: false, error: "Beat ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Build updates object with only the fields provided
+    const updates: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (body.isActive !== undefined) updates.isActive = body.isActive;
+    if (body.isFeatured !== undefined) updates.isFeatured = body.isFeatured;
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.slug !== undefined) updates.slug = body.slug;
+    if (body.genre !== undefined) updates.genre = body.genre;
+    if (body.isFree !== undefined) updates.isFree = body.isFree;
+    if (body.gateEnabled !== undefined) updates.gateEnabled = body.gateEnabled;
+
+    const [beat] = await db
+      .update(beats)
+      .set(updates)
+      .where(eq(beats.id, body.id))
+      .returning();
+
+    if (!beat) {
+      return NextResponse.json(
+        { success: false, error: "Beat not found" },
+        { status: 404 }
+      );
+    }
+
+    console.log(`[API] Patched beat: ${beat.title} (isActive: ${beat.isActive})`);
+
+    return NextResponse.json({
+      success: true,
+      data: beat,
+    });
+  } catch (error) {
+    console.error("[API] Error patching beat:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to update beat" },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Delete a beat
 export async function DELETE(request: NextRequest) {
   try {
