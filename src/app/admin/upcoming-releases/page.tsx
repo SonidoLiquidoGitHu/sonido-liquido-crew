@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -549,7 +549,7 @@ export default function AdminUpcomingReleasesPage() {
                           style={{ backgroundColor: release.backgroundColor || "#1a1a1a" }}
                         >
                           {release.coverImageUrl ? (
-                            <Image
+                            <SafeImage
                               src={release.coverImageUrl}
                               alt={release.title}
                               width={48}
