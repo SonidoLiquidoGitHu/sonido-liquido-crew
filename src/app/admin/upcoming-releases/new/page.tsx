@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { DropboxUploadButton } from "@/components/admin/DropboxUploadButton";
+import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
 import { ImageAnalyzer } from "@/components/admin/ImageAnalyzer";
 import { YouTubePreview } from "@/components/admin/YouTubePreview";
 import { VideoUploader } from "@/components/admin/VideoUploader";
@@ -239,27 +239,18 @@ export default function NewUpcomingReleasePage() {
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium mb-2">
-                URL de la Portada
+                Portada
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  name="coverImageUrl"
-                  value={formData.coverImageUrl}
-                  onChange={handleChange}
-                  placeholder="https://..."
-                  className="flex-1 px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
-                />
-                <DropboxUploadButton
-                  onUploadComplete={(url) =>
-                    setFormData((prev) => ({ ...prev, coverImageUrl: url }))
-                  }
-                  accept="image/*"
-                  maxSize={10}
-                  folder="/upcoming-releases/covers"
-                  buttonText="Subir"
-                />
-              </div>
+              <DirectDropboxUploader
+                onUploadComplete={(url) =>
+                  setFormData((prev) => ({ ...prev, coverImageUrl: url }))
+                }
+                accept="image/*"
+                maxSize={10}
+                folder="/upcoming-releases/covers"
+                label="Subir portada"
+                currentUrl={formData.coverImageUrl || undefined}
+              />
               {formData.coverImageUrl && (
                 <div className="mt-3">
                   <Image
@@ -291,27 +282,18 @@ export default function NewUpcomingReleasePage() {
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                URL del Banner
+                Banner
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  name="bannerImageUrl"
-                  value={formData.bannerImageUrl}
-                  onChange={handleChange}
-                  placeholder="https://..."
-                  className="flex-1 px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
-                />
-                <DropboxUploadButton
-                  onUploadComplete={(url) =>
-                    setFormData((prev) => ({ ...prev, bannerImageUrl: url }))
-                  }
-                  accept="image/*"
-                  maxSize={10}
-                  folder="/upcoming-releases/banners"
-                  buttonText="Subir"
-                />
-              </div>
+              <DirectDropboxUploader
+                onUploadComplete={(url) =>
+                  setFormData((prev) => ({ ...prev, bannerImageUrl: url }))
+                }
+                accept="image/*"
+                maxSize={10}
+                folder="/upcoming-releases/banners"
+                label="Subir banner"
+                currentUrl={formData.bannerImageUrl || undefined}
+              />
               {formData.bannerImageUrl && (
                 <div className="mt-3">
                   <Image
