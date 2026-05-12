@@ -26,6 +26,7 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Send,
 } from "lucide-react";
 
 // TikTok icon
@@ -230,19 +231,20 @@ interface SocialPublisherProps {
   verticalVideoUrl?: string;
   audioPreviewUrl?: string;
   hashtags?: string[];
+  releaseId?: string;
   className?: string;
 }
 
 // Caption templates
 const CAPTION_TEMPLATES = {
   presave: {
-    short: "🔥 PRE-SAVE NOW ⬇️\n\n{title} by {artist}\nOut {date}\n\n🎧 {link}",
-    medium: "🚨 NEW MUSIC ALERT 🚨\n\n{title} by {artist}\n📅 {date}\n\n¡No te lo pierdas! Pre-save ahora y sé de los primeros en escucharlo 🎧\n\n🔗 Link en bio o ⬇️\n{link}\n\n{hashtags}",
+    short: "🔥 PRE-GUARDA AHORA ⬇️\n\n{title} por {artist}\nSale {date}\n\n🎧 {link}",
+    medium: "🚨 ¡NUEVA MÚSICA! 🚨\n\n{title} por {artist}\n📅 {date}\n\n¡No te lo pierdas! Pre-guarda ahora y sé de los primeros en escucharlo 🎧\n\n🔗 Link en bio o ⬇️\n{link}\n\n{hashtags}",
     long: "🎵 ¡NUEVO LANZAMIENTO! 🎵\n\n{artist} presenta: \"{title}\"\n\n📅 Fecha de lanzamiento: {date}\n\n¡Pre-guarda ahora para no perderte el estreno! Al hacer pre-save, la música se guardará automáticamente en tu biblioteca el día del lanzamiento 💿\n\n🔗 Pre-save: {link}\n\n¡Comparte con alguien que necesita escuchar esto! 🔊\n\n{hashtags}",
   },
   release: {
-    short: "🎵 OUT NOW 🎵\n\n{title} - {artist}\n\n🎧 {link}",
-    medium: "🚀 ¡YA DISPONIBLE! 🚀\n\n{title} by {artist}\n\nEscúchalo ahora en todas las plataformas 🎧\n\n🔗 {link}\n\n{hashtags}",
+    short: "🎵 YA DISPONIBLE 🎵\n\n{title} - {artist}\n\n🎧 {link}",
+    medium: "🚀 ¡YA DISPONIBLE! 🚀\n\n{title} por {artist}\n\nEscúchalo ahora en todas las plataformas 🎧\n\n🔗 {link}\n\n{hashtags}",
   },
 };
 
@@ -256,6 +258,7 @@ export function SocialPublisher({
   verticalVideoUrl,
   audioPreviewUrl,
   hashtags = ["nuevamusica", "presave", "musica"],
+  releaseId,
   className = "",
 }: SocialPublisherProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<string>("instagram-reels");
@@ -264,6 +267,15 @@ export function SocialPublisher({
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [customHashtags, setCustomHashtags] = useState(hashtags.join(" #"));
+
+  // Auto-post state
+  const [isAutoPosting, setIsAutoPosting] = useState(false);
+  const [autoPostResult, setAutoPostResult] = useState<{
+    success: boolean;
+    message: string;
+    fbPostUrl?: string;
+    igPostUrl?: string;
+  } | null>(null);
 
   const platform = PLATFORMS.find((p) => p.id === selectedPlatform)!;
 
@@ -306,6 +318,52 @@ export function SocialPublisher({
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   }, [presaveUrl]);
+
+  // Auto-post to Facebook and Instagram
+  const handleAutoPost = useCallback(async () => {
+    if (!coverImageUrl) return;
+    setIsAutoPosting(true);
+    setAutoPostResult(null);
+
+    try {
+      const caption = generateCaption();
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "post-upcoming-release",
+          imageUrl: coverImageUrl,
+          caption,
+          linkUrl: presaveUrl || undefined,
+          releaseId: releaseId || undefined,
+          platforms: ["facebook", "instagram"],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAutoPostResult({
+          success: true,
+          message: data.message || "¡Publicación exitosa!",
+          fbPostUrl: data.results?.facebook?.postUrl,
+          igPostUrl: data.results?.instagram?.permalink,
+        });
+      } else {
+        setAutoPostResult({
+          success: false,
+          message: data.message || data.error || "Error al publicar",
+        });
+      }
+    } catch (err) {
+      setAutoPostResult({
+        success: false,
+        message: err instanceof Error ? err.message : "Error de conexión",
+      });
+    } finally {
+      setIsAutoPosting(false);
+    }
+  }, [coverImageUrl, presaveUrl, releaseId, generateCaption]);
 
   // Get recommended video for platform
   const getRecommendedVideo = useCallback(() => {
@@ -642,6 +700,84 @@ export function SocialPublisher({
             </Button>
           )}
         </div>
+      </div>
+
+      {/* Auto-post to Facebook & Instagram */}
+      <div className="p-4 bg-slc-card rounded-xl border border-primary/30 space-y-4">
+        <div className="flex items-center gap-2">
+          <Send className="w-5 h-5 text-primary" />
+          <h4 className="font-oswald text-sm uppercase">Publicación automática</h4>
+        </div>
+        <p className="text-xs text-slc-muted">
+          Publica la portada con el caption directamente en Facebook e Instagram con un clic.
+          Se usará la portada como imagen y el caption generado arriba.
+        </p>
+
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleAutoPost}
+            disabled={isAutoPosting || !coverImageUrl}
+            className="flex-1"
+          >
+            {isAutoPosting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Publicando...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Publicar en Facebook e Instagram
+              </>
+            )}
+          </Button>
+        </div>
+
+        {!coverImageUrl && (
+          <p className="text-xs text-yellow-500 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            Se requiere una portada para publicar automáticamente
+          </p>
+        )}
+
+        {autoPostResult && (
+          <div
+            className={`p-3 rounded-lg text-sm ${
+              autoPostResult.success
+                ? "bg-green-500/10 border border-green-500/20 text-green-400"
+                : "bg-red-500/10 border border-red-500/20 text-red-400"
+            }`}
+          >
+            <p className="font-medium mb-1">
+              {autoPostResult.success ? "✓ Publicación exitosa" : "✗ Error al publicar"}
+            </p>
+            <p className="text-xs opacity-80">{autoPostResult.message}</p>
+            {autoPostResult.success && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {autoPostResult.fbPostUrl && (
+                  <a
+                    href={autoPostResult.fbPostUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                  >
+                    <Facebook className="w-3 h-3" /> Ver en Facebook
+                  </a>
+                )}
+                {autoPostResult.igPostUrl && (
+                  <a
+                    href={autoPostResult.igPostUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-pink-400 hover:underline flex items-center gap-1"
+                  >
+                    <Instagram className="w-3 h-3" /> Ver en Instagram
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Publishing checklist */}

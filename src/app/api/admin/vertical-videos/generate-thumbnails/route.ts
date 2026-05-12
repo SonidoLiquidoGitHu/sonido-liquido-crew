@@ -4,8 +4,9 @@ import { promisify } from "util";
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import sharp from "sharp";
 import { db } from "@/db/client";
-import { verticalVideos } from "@/db/schema";
+import { verticalVideos, artists } from "@/db/schema";
 import { eq, isNull } from "drizzle-orm";
 import { dropboxClient } from "@/lib/clients/dropbox";
 
@@ -401,6 +402,108 @@ async function cleanup(...paths: string[]) {
 }
 
 // ===========================================
+// THUMBNAIL TEXT OVERLAY — Add title + artist name to vertical video thumbnails
+// ===========================================
+
+/**
+ * Add a text overlay (title + artist name) to a thumbnail image buffer.
+ * Uses Sharp to composite an SVG overlay with semi-transparent background
+ * at the bottom of the image, matching the Sonido Liquido brand style.
+ *
+ * Design:
+ * - Semi-transparent black gradient overlay at the bottom 35% of the image
+ * - Title in bold Oswald-style font, white, larger size
+ * - Artist name in regular weight, white with slight opacity, smaller size
+ * - Small SLC branding line at the very bottom
+ */
+async function addTextOverlayToThumbnail(
+  thumbnailBuffer: Buffer,
+  title: string | null,
+  artistName: string | null
+): Promise<Buffer> {
+  try {
+    const image = sharp(thumbnailBuffer);
+    const metadata = await image.metadata();
+    const width = metadata.width || 720;
+    const height = metadata.height || 1280;
+
+    // Truncate long text to prevent overflow
+    const maxTitleLen = 40;
+    const maxArtistLen = 30;
+    const displayTitle = title && title.length > maxTitleLen
+      ? title.substring(0, maxTitleLen - 3) + "..."
+      : title;
+    const displayArtist = artistName && artistName.length > maxArtistLen
+      ? artistName.substring(0, maxArtistLen - 3) + "..."
+      : artistName;
+
+    // Font size scales with image width
+    const titleFontSize = Math.max(Math.round(width * 0.065), 24);
+    const artistFontSize = Math.max(Math.round(width * 0.045), 18);
+    const brandFontSize = Math.max(Math.round(width * 0.03), 12);
+
+    // Overlay height: ~35% of image
+    const overlayHeight = Math.round(height * 0.35);
+    const overlayY = height - overlayHeight;
+
+    // Build text lines with proper vertical positioning
+    const titleY = overlayY + overlayHeight * 0.35;
+    const artistY = overlayY + overlayHeight * 0.55;
+    const brandY = overlayY + overlayHeight * 0.85;
+
+    // Escape special XML characters in text
+    const escapeXml = (str: string) =>
+      str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+    const titleLine = displayTitle
+      ? `<text x="${width / 2}" y="${titleY}" text-anchor="middle" fill="white" font-size="${titleFontSize}" font-weight="bold" font-family="Oswald, Arial, sans-serif" letter-spacing="1">${escapeXml(displayTitle)}</text>`
+      : "";
+
+    const artistLine = displayArtist
+      ? `<text x="${width / 2}" y="${artistY}" text-anchor="middle" fill="white" fill-opacity="0.85" font-size="${artistFontSize}" font-weight="normal" font-family="Oswald, Arial, sans-serif">${escapeXml(displayArtist)}</text>`
+      : "";
+
+    // Only add overlay if there's text to show
+    if (!titleLine && !artistLine) {
+      return thumbnailBuffer;
+    }
+
+    // Create SVG overlay with gradient background
+    const svgOverlay = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="overlay-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="black" stop-opacity="0"/>
+          <stop offset="30%" stop-color="black" stop-opacity="0.4"/>
+          <stop offset="60%" stop-color="black" stop-opacity="0.7"/>
+          <stop offset="100%" stop-color="black" stop-opacity="0.85"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="${overlayY}" width="${width}" height="${overlayHeight}" fill="url(#overlay-grad)"/>
+      ${titleLine}
+      ${artistLine}
+      <text x="${width / 2}" y="${brandY}" text-anchor="middle" fill="white" fill-opacity="0.5" font-size="${brandFontSize}" font-weight="normal" font-family="Oswald, Arial, sans-serif" letter-spacing="3">SONIDO LÍQUIDO</text>
+    </svg>`;
+
+    const overlayBuffer = Buffer.from(svgOverlay);
+
+    const resultBuffer = await image
+      .composite([{
+        input: overlayBuffer,
+        top: 0,
+        left: 0,
+      }])
+      .jpeg({ quality: 85 })
+      .toBuffer();
+
+    console.log(`[Thumbnail Gen] Added text overlay: "${displayTitle}" by "${displayArtist}"`);
+    return resultBuffer;
+  } catch (error) {
+    console.warn("[Thumbnail Gen] Text overlay failed, using original thumbnail:", error);
+    return thumbnailBuffer;
+  }
+}
+
+// ===========================================
 // POST - Generate thumbnails for vertical videos
 // ===========================================
 export async function POST(request: NextRequest) {
@@ -519,6 +622,13 @@ export async function POST(request: NextRequest) {
 
     let generated = 0;
 
+    // Fetch all artists once for name lookup (used in text overlay)
+    const allArtists = await db.select({
+      id: artists.id,
+      name: artists.name,
+    }).from(artists);
+    const artistMap = new Map(allArtists.map((a) => [a.id, a.name]));
+
     for (const video of videos) {
       if (!video.videoUrl) {
         results.push({
@@ -635,6 +745,10 @@ export async function POST(request: NextRequest) {
           });
           continue;
         }
+
+        // Add title + artist name text overlay
+        const artistName = video.artistId ? artistMap.get(video.artistId) || null : null;
+        thumbnailBuffer = await addTextOverlayToThumbnail(thumbnailBuffer, video.title, artistName);
 
         // Upload thumbnail to Dropbox
         const thumbnailUrl = await uploadThumbnailToDropbox(thumbnailBuffer, video.id);

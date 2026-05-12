@@ -1005,6 +1005,7 @@ export default function EditUpcomingReleasePage({ params }: { params: Promise<{ 
               verticalVideoUrl={formData.verticalVideoUrl || undefined}
               audioPreviewUrl={formData.audioPreviewUrl || undefined}
               hashtags={["presave", "nuevamusica", "musica", "hiphop", "rap"]}
+              releaseId={resolvedParams.id}
             />
           </section>
 

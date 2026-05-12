@@ -25,6 +25,8 @@ import {
   getNextPendingItem,
   ensurePublicImageUrl,
   generateCaption,
+  postToFacebook,
+  postToInstagram,
   type PostQueueItemResult,
 } from "@/lib/clients/meta";
 import { isTikTokConfigured, validateTikTokToken } from "@/lib/clients/tiktok";
@@ -199,6 +201,8 @@ export async function POST(request: NextRequest) {
         return await handleProcessNext();
       case "populate":
         return await handlePopulate(body.options || {});
+      case "post-upcoming-release":
+        return await handlePostUpcomingRelease(body);
       case "reset-cycle":
         return await handleResetCycle();
       case "skip-item":
@@ -261,6 +265,130 @@ async function handleProcessNext() {
     success: result.facebook.success || result.instagram.success || result.tiktok.success,
     message: `Posted to FB: ${fbStatus}, IG: ${igStatus}, TikTok: ${tkStatus}`,
     result,
+  });
+}
+
+// ===========================================
+// POST UPCOMING RELEASE — Direct post from upcoming releases editor
+// ===========================================
+
+async function handlePostUpcomingRelease(body: {
+  imageUrl?: string;
+  caption?: string;
+  linkUrl?: string;
+  releaseId?: string;
+  platforms?: string[];
+}) {
+  const { imageUrl, caption, linkUrl, releaseId, platforms = ["facebook", "instagram"] } = body;
+
+  if (!imageUrl) {
+    return NextResponse.json({
+      success: false,
+      message: "Se requiere una imagen (portada) para publicar",
+    });
+  }
+
+  if (!caption) {
+    return NextResponse.json({
+      success: false,
+      message: "Se requiere un caption para publicar",
+    });
+  }
+
+  if (!(await isMetaConfiguredAsync())) {
+    return NextResponse.json({
+      success: false,
+      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales o como variables de entorno.",
+    });
+  }
+
+  // Ensure image URL is publicly accessible for Meta API
+  const publicImageUrl = ensurePublicImageUrl(imageUrl);
+
+  console.log(`[Social API] Direct post for upcoming release: ${releaseId || "unknown"}`);
+
+  const results: {
+    facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
+    instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+  } = {};
+
+  // Post to Facebook
+  if (platforms.includes("facebook")) {
+    const fbResult = await postToFacebook(publicImageUrl, caption, linkUrl);
+    results.facebook = {
+      success: fbResult.success,
+      postId: fbResult.postId || undefined,
+      postUrl: fbResult.postUrl || undefined,
+      error: fbResult.error || undefined,
+    };
+
+    // Log the result
+    try {
+      await db.insert(socialPostsLog).values({
+        id: crypto.randomUUID(),
+        queueId: `direct-${releaseId || crypto.randomUUID()}`,
+        platform: "facebook",
+        contentType: "spotify_track",
+        sourceId: releaseId || "upcoming-release-direct",
+        imageUrl: publicImageUrl,
+        caption,
+        linkUrl: linkUrl || null,
+        platformPostId: fbResult.postId,
+        platformPostUrl: fbResult.postUrl,
+        metaApiResponse: null,
+        status: fbResult.success ? "success" : "failed",
+        errorMessage: fbResult.error || null,
+        postedAt: new Date(),
+      });
+    } catch (logError) {
+      console.error("[Social API] Failed to log FB result:", logError);
+    }
+  }
+
+  // Post to Instagram
+  if (platforms.includes("instagram")) {
+    const igResult = await postToInstagram(publicImageUrl, caption);
+    results.instagram = {
+      success: igResult.success,
+      mediaId: igResult.mediaId || undefined,
+      permalink: igResult.permalink || undefined,
+      error: igResult.error || undefined,
+    };
+
+    // Log the result
+    try {
+      await db.insert(socialPostsLog).values({
+        id: crypto.randomUUID(),
+        queueId: `direct-${releaseId || crypto.randomUUID()}`,
+        platform: "instagram",
+        contentType: "spotify_track",
+        sourceId: releaseId || "upcoming-release-direct",
+        imageUrl: publicImageUrl,
+        caption,
+        linkUrl: linkUrl || null,
+        platformPostId: igResult.mediaId,
+        platformPostUrl: igResult.permalink,
+        metaApiResponse: null,
+        status: igResult.success ? "success" : "failed",
+        errorMessage: igResult.error || null,
+        postedAt: new Date(),
+      });
+    } catch (logError) {
+      console.error("[Social API] Failed to log IG result:", logError);
+    }
+  }
+
+  const anySuccess = results.facebook?.success || results.instagram?.success;
+  const errorMessages: string[] = [];
+  if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
+  if (results.instagram && !results.instagram.success) errorMessages.push(`IG: ${results.instagram.error}`);
+
+  return NextResponse.json({
+    success: anySuccess,
+    message: anySuccess
+      ? `Publicado exitosamente en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram?.success ? " e " : ""}${results.instagram?.success ? "Instagram" : ""}`
+      : `Error al publicar: ${errorMessages.join(", ")}`,
+    results,
   });
 }
 
