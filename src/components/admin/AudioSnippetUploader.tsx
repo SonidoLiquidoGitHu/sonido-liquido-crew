@@ -203,10 +203,18 @@ export function AudioSnippetUploader({
   }, [value]);
 
   // Handle file upload
+  // Known audio file extensions for mobile browsers that may not set MIME type
+  const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "opus", "weba"];
+
   const handleFileUpload = async (file: File) => {
-    // Validate file type
-    if (!file.type.startsWith("audio/")) {
-      setError("Solo se permiten archivos de audio");
+    // Validate file type - check both MIME type and extension
+    // Some mobile browsers don't set MIME type correctly for audio files
+    const isAudioMime = file.type.startsWith("audio/");
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const isAudioExt = AUDIO_EXTENSIONS.includes(ext);
+
+    if (!isAudioMime && !isAudioExt) {
+      setError("Solo se permiten archivos de audio (MP3, WAV, M4A, AAC, OGG, FLAC)");
       return;
     }
 
@@ -216,9 +224,10 @@ export function AudioSnippetUploader({
       return;
     }
 
-    // Check duration
+    // Check duration (skip check if we can't determine it — allows upload on mobile
+    // browsers that may not support Audio duration detection for all formats)
     const audioDuration = await getAudioDuration(file);
-    if (audioDuration > maxDuration) {
+    if (audioDuration > 0 && audioDuration > maxDuration) {
       setError(`El audio debe ser máximo ${maxDuration} segundos. Este archivo dura ${Math.round(audioDuration)}s.`);
       return;
     }
@@ -265,17 +274,47 @@ export function AudioSnippetUploader({
     }
   };
 
-  // Get audio duration from file
+  // Get audio duration from file with timeout
+  // Some mobile browsers may not fire loadedmetadata or return Infinity
   const getAudioDuration = (file: File): Promise<number> => {
     return new Promise((resolve) => {
       const audio = new Audio();
+      let resolved = false;
+      const objectUrl = URL.createObjectURL(file);
+
+      const cleanup = () => {
+        if (resolved) return;
+        resolved = true;
+        audio.removeAttribute("src");
+        audio.load();
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      // Timeout after 10 seconds (mobile can be slow)
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve(0);
+      }, 10000);
+
       audio.addEventListener("loadedmetadata", () => {
-        resolve(audio.duration);
+        clearTimeout(timeout);
+        const dur = audio.duration;
+        cleanup();
+        // Some browsers return Infinity for streaming formats
+        if (!isFinite(dur)) {
+          resolve(0);
+        } else {
+          resolve(dur);
+        }
       });
+
       audio.addEventListener("error", () => {
+        clearTimeout(timeout);
+        cleanup();
         resolve(0);
       });
-      audio.src = URL.createObjectURL(file);
+
+      audio.src = objectUrl;
     });
   };
 

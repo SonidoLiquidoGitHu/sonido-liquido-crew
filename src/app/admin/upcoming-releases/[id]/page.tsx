@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import { Button } from "@/components/ui/button";
 import { DropboxUploadButton } from "@/components/admin/DropboxUploadButton";
 import { ImageAnalyzer } from "@/components/admin/ImageAnalyzer";
@@ -469,13 +469,12 @@ export default function EditUpcomingReleasePage({ params }: { params: Promise<{ 
               </div>
               {formData.coverImageUrl && (
                 <div className="mt-3">
-                  <Image
+                  <SafeImage
                     src={formData.coverImageUrl}
                     alt="Preview"
                     width={100}
                     height={100}
                     className="rounded-lg object-cover"
-                    unoptimized
                   />
                 </div>
               )}
@@ -521,13 +520,12 @@ export default function EditUpcomingReleasePage({ params }: { params: Promise<{ 
               </div>
               {formData.bannerImageUrl && (
                 <div className="mt-3">
-                  <Image
+                  <SafeImage
                     src={formData.bannerImageUrl}
                     alt="Banner Preview"
                     width={200}
                     height={100}
                     className="rounded-lg object-cover"
-                    unoptimized
                   />
                 </div>
               )}
