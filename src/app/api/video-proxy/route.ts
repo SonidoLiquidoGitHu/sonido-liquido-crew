@@ -26,10 +26,33 @@ const TIMEOUT_MS = 30000; // 30s timeout for upstream video fetch
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const videoUrl = searchParams.get("url");
+  let videoUrl = searchParams.get("url");
 
   if (!videoUrl) {
     return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
+  }
+
+  // Normalize dl.dropboxusercontent.com URLs — they're broken for new-format links.
+  // Convert to www.dropbox.com?raw=1 which works with ALL formats.
+  if (videoUrl.includes("dl.dropboxusercontent.com")) {
+    const fixed = videoUrl
+      .replace("dl.dropboxusercontent.com", "www.dropbox.com");
+    if (!fixed.includes("raw=1")) {
+      videoUrl = fixed + (fixed.includes("?") ? "&" : "?") + "raw=1";
+    } else {
+      videoUrl = fixed;
+    }
+    console.log(`[video-proxy] Normalized dl.dropboxusercontent.com → ${videoUrl.substring(0, 100)}`);
+  }
+
+  // Also normalize Dropbox URLs missing raw=1 parameter
+  if (videoUrl.includes("dropbox.com") && !videoUrl.includes("raw=1") && !videoUrl.includes("dl.dropboxusercontent.com")) {
+    if (videoUrl.includes("dl=0")) {
+      videoUrl = videoUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+    } else {
+      videoUrl = videoUrl + (videoUrl.includes("?") ? "&" : "?") + "raw=1";
+    }
+    console.log(`[video-proxy] Added raw=1 to Dropbox URL → ${videoUrl.substring(0, 100)}`);
   }
 
   // Validate the URL is from an allowed host

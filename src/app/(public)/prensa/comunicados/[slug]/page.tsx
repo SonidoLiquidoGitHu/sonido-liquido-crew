@@ -649,25 +649,88 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                   <Package className="w-4 h-4 text-primary" />
                   Press Kits de Artistas
                 </h3>
-                <div className="space-y-2">
-                  {release.attachedPressKits.map((kit) => (
-                    <a
-                      key={kit.id}
-                      href={kit.downloadUrl}
-                      download
-                      className="flex items-center gap-2 p-2 rounded-lg text-sm bg-slc-dark hover:bg-slc-dark/80 transition-colors"
-                    >
-                      <Package className="w-4 h-4 text-slc-muted" />
-                      <div className="flex-1">
-                        <span>{kit.artistName ? `${kit.artistName} - ` : ""}{kit.title}</span>
-                        {kit.fileSize && (
-                          <span className="text-slc-muted ml-2">({(kit.fileSize / 1024 / 1024).toFixed(1)} MB)</span>
-                        )}
-                      </div>
-                      <Download className="w-3 h-3 text-slc-muted" />
-                    </a>
-                  ))}
-                </div>
+                <p className="text-xs text-slc-muted mb-3">
+                  {release.attachedPressKits.length} press kit{release.attachedPressKits.length !== 1 ? "s" : ""} disponible{release.attachedPressKits.length !== 1 ? "s" : ""} para descarga
+                </p>
+                {(() => {
+                  // Group by artist
+                  const grouped: Record<string, { artistName: string; kits: AttachedPressKit[] }> = {};
+                  const ungrouped: AttachedPressKit[] = [];
+                  for (const kit of release.attachedPressKits!) {
+                    if (kit.artistName) {
+                      if (!grouped[kit.artistName]) {
+                        grouped[kit.artistName] = { artistName: kit.artistName, kits: [] };
+                      }
+                      grouped[kit.artistName].kits.push(kit);
+                    } else {
+                      ungrouped.push(kit);
+                    }
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {Object.entries(grouped).map(([artistKey, group]) => (
+                        <div key={artistKey}>
+                          <div className="flex items-center gap-2 text-xs text-slc-muted uppercase tracking-wider mb-1.5">
+                            <Users className="w-3 h-3" />
+                            <span className="font-medium">{group.artistName}</span>
+                          </div>
+                          <div className="space-y-1.5 ml-5">
+                            {group.kits.map((kit) => (
+                              <a
+                                key={kit.id}
+                                href={kit.downloadUrl}
+                                download
+                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors group"
+                              >
+                                <FileDown className="w-4 h-4 text-primary flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <span className="truncate block group-hover:text-primary transition-colors">{kit.title}</span>
+                                </div>
+                                {kit.fileSize && (
+                                  <span className="text-xs text-slc-muted flex-shrink-0">
+                                    {(kit.fileSize / 1024 / 1024).toFixed(1)} MB
+                                  </span>
+                                )}
+                                <Download className="w-3.5 h-3.5 text-slc-muted group-hover:text-primary flex-shrink-0 transition-colors" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      {ungrouped.length > 0 && (
+                        <div>
+                          {Object.keys(grouped).length > 0 && (
+                            <div className="flex items-center gap-2 text-xs text-slc-muted uppercase tracking-wider mb-1.5">
+                              <Package className="w-3 h-3" />
+                              <span className="font-medium">General</span>
+                            </div>
+                          )}
+                          <div className={Object.keys(grouped).length > 0 ? "space-y-1.5 ml-5" : "space-y-1.5"}>
+                            {ungrouped.map((kit) => (
+                              <a
+                                key={kit.id}
+                                href={kit.downloadUrl}
+                                download
+                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors group"
+                              >
+                                <FileDown className="w-4 h-4 text-primary flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <span className="truncate block group-hover:text-primary transition-colors">{kit.title}</span>
+                                </div>
+                                {kit.fileSize && (
+                                  <span className="text-xs text-slc-muted flex-shrink-0">
+                                    {(kit.fileSize / 1024 / 1024).toFixed(1)} MB
+                                  </span>
+                                )}
+                                <Download className="w-3.5 h-3.5 text-slc-muted group-hover:text-primary flex-shrink-0 transition-colors" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

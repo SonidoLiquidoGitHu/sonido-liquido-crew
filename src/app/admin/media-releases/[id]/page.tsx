@@ -12,7 +12,7 @@ import { ImageAnalyzer } from "@/components/admin/ImageAnalyzer";
 import { YouTubePreview } from "@/components/admin/YouTubePreview";
 import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
 import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
-import { PressKitMultiSelector } from "@/components/admin/PressKitMultiSelector";
+import { PressKitDropdownSelector } from "@/components/admin/PressKitDropdownSelector";
 import { type StyleSettings } from "@/lib/style-config";
 import { getDirectDropboxUrl } from "@/lib/video-utils";
 import {
@@ -1387,9 +1387,10 @@ export default function EditMediaReleasePage() {
                     Selecciona uno o más press kits existentes de los artistas del roster para adjuntar a este comunicado.
                   </p>
 
-                  <PressKitMultiSelector
+                  <PressKitDropdownSelector
                     value={formData.attachedPressKitIds}
                     onChange={(ids) => setFormData(prev => ({ ...prev, attachedPressKitIds: ids }))}
+                    maxSelections={3}
                   />
                 </div>
 

@@ -23,6 +23,8 @@ import {
   getVideoPlaceholderSvg,
   isDirectVideo,
   getVideoSrc,
+  getProxiedVideoSrc,
+  getProxiedThumbnailUrl,
 } from "@/lib/video-utils";
 
 interface ReelVideo {
@@ -118,13 +120,13 @@ export function ReelDetail({ video }: ReelDetailProps) {
           <YouTubeEmbed videoId={ytId} autoplay />
         ) : isDirectVideo(video) ? (
           <video
-            src={getVideoSrc(video)}
+            src={getProxiedVideoSrc(video)}
             className="w-full h-full object-contain"
             controls
             autoPlay
             playsInline
             loop
-            poster={getVideoThumbnail(video) || undefined}
+            poster={getProxiedThumbnailUrl(video) || undefined}
           />
         ) : (
           <div className="w-full h-full relative flex items-center justify-center">

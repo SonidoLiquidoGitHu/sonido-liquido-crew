@@ -956,7 +956,7 @@ export default function EditUpcomingReleasePage({ params }: { params: Promise<{ 
                 setFormData(prev => ({ ...prev, audioPreviewUrl: url || "" }));
               }}
               maxDuration={30}
-              maxSize={50}
+              maxSize={150}
               folder="/upcoming-releases/audio"
               label="Audio Preview para Pre-save"
               description="Sube un snippet de 15-30 segundos para la página de pre-save y generación de videos."

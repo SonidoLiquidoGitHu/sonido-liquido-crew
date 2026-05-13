@@ -433,17 +433,17 @@ function VideoCard({
             </div>
           )}
 
-          {/* Info */}
+          {/* Title + Artist overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-2.5 z-10">
-            {video.artistName && (
-              <p className="text-[10px] text-primary truncate">
-                {video.artistName}
-              </p>
-            )}
             {video.title && (
-              <h3 className="font-oswald text-xs text-white uppercase line-clamp-1 mt-0.5">
+              <h3 className="font-oswald text-sm text-white font-bold uppercase truncate">
                 {video.title}
               </h3>
+            )}
+            {video.artistName && (
+              <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                {video.artistName}
+              </p>
             )}
             <div className="flex items-center gap-2 mt-1 text-[10px] text-white/60">
               <span className="flex items-center gap-0.5">

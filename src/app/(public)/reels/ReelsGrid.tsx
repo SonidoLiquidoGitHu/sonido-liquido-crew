@@ -34,6 +34,8 @@ import {
   getVideoPlaceholderSvg,
   isDirectVideo as isDirectVideoUtil,
   getVideoSrc,
+  getProxiedVideoSrc,
+  getProxiedThumbnailUrl,
   type VideoLike,
 } from "@/lib/video-utils";
 
@@ -535,21 +537,21 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                 <Share2 className="w-4 h-4" />
               </button>
 
-              {/* Info overlay */}
+              {/* Title + Artist overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-3">
+                {video.title && (
+                  <h3 className="font-oswald text-sm text-white font-bold uppercase line-clamp-1">
+                    {video.title}
+                  </h3>
+                )}
                 {video.artistName && (
                   <Link
                     href={`/artistas/${video.artistSlug}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-primary hover:underline"
+                    className="text-xs text-gray-400 hover:text-primary hover:underline mt-0.5 block truncate"
                   >
                     {video.artistName}
                   </Link>
-                )}
-                {video.title && (
-                  <h3 className="font-oswald text-sm text-white uppercase line-clamp-2 mt-0.5">
-                    {video.title}
-                  </h3>
                 )}
                 <div className="flex items-center gap-3 mt-1 text-xs text-white/60">
                   <span className="flex items-center gap-0.5">
@@ -643,13 +645,15 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                 );
               }
               if (direct) {
-                // Handle Dropbox URLs via shared utility
-                const videoSrc = getVideoSrc(video as unknown as VideoLike);
+                // Handle Dropbox URLs via shared utility — use proxy for mobile compatibility
+                const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
+                const posterUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
                 return (
                   <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
                     <video
                       ref={fullscreenVideoRef}
                       src={videoSrc}
+                      poster={posterUrl || undefined}
                       className="w-full h-full object-contain"
                       controls
                       autoPlay

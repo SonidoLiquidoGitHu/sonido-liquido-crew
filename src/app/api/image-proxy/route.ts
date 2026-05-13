@@ -47,10 +47,34 @@ function getMimeType(url: string, contentType?: string): string {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const imageUrl = searchParams.get("url");
+  let imageUrl = searchParams.get("url");
 
   if (!imageUrl) {
     return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
+  }
+
+  // Normalize Dropbox URLs: dl.dropboxusercontent.com is broken for new-format
+  // shared links (/scl/fi/...?rlkey=...). Convert to www.dropbox.com?raw=1 which
+  // works with ALL formats. This must happen before validation/fetching.
+  if (imageUrl.includes("dl.dropboxusercontent.com")) {
+    const fixed = imageUrl
+      .replace("dl.dropboxusercontent.com", "www.dropbox.com");
+    if (!fixed.includes("raw=1")) {
+      imageUrl = fixed + (fixed.includes("?") ? "&" : "?") + "raw=1";
+    } else {
+      imageUrl = fixed;
+    }
+    console.log(`[image-proxy] Normalized dl.dropboxusercontent.com → ${imageUrl.substring(0, 100)}`);
+  }
+
+  // Also normalize Dropbox URLs missing raw=1 parameter
+  if (imageUrl.includes("dropbox.com") && !imageUrl.includes("raw=1") && !imageUrl.includes("dl.dropboxusercontent.com")) {
+    if (imageUrl.includes("dl=0")) {
+      imageUrl = imageUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+    } else {
+      imageUrl = imageUrl + (imageUrl.includes("?") ? "&" : "?") + "raw=1";
+    }
+    console.log(`[image-proxy] Added raw=1 to Dropbox URL → ${imageUrl.substring(0, 100)}`);
   }
 
   // Validate the URL is from an allowed host

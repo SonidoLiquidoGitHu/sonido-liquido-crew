@@ -9,7 +9,7 @@ import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader"
 import { BulkAudioUploader } from "@/components/admin/BulkAudioUploader";
 import { BulkImageUploader } from "@/components/admin/BulkImageUploader";
 import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
-import { PressKitMultiSelector } from "@/components/admin/PressKitMultiSelector";
+import { PressKitDropdownSelector } from "@/components/admin/PressKitDropdownSelector";
 import {
   ArrowLeft,
   Save,
@@ -1023,9 +1023,10 @@ export default function NewMediaReleaseForm({ artists }: NewMediaReleaseFormProp
                     Selecciona uno o más press kits existentes de los artistas del roster para adjuntar a este comunicado.
                   </p>
 
-                  <PressKitMultiSelector
+                  <PressKitDropdownSelector
                     value={formData.attachedPressKitIds}
                     onChange={(ids) => setFormData(prev => ({ ...prev, attachedPressKitIds: ids }))}
+                    maxSelections={3}
                   />
                 </div>
 

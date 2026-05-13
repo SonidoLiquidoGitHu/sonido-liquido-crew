@@ -37,6 +37,8 @@ import {
   getVideoPlaceholderSvg,
   isDirectVideo as isDirectVideoUtil,
   getVideoSrc,
+  getProxiedVideoSrc,
+  getProxiedThumbnailUrl,
   type VideoLike,
 } from "@/lib/video-utils";
 
@@ -465,17 +467,18 @@ function VideoPlayer({
     }
   }, [isPlaying, isVisible]);
 
-  // Handle Dropbox URLs — convert to direct-access URL for playback
-  const videoSrc = getVideoSrc(video as unknown as VideoLike);
+  // Handle Dropbox URLs — use proxy for mobile compatibility
+  const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
+  const posterUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
 
   return (
     <div className="relative w-full h-full">
       {/* Feature #6: Blurred thumbnail background while loading */}
-      {isLoading && getVideoThumbnail(video) && (
+      {isLoading && posterUrl && (
         <div
           className="absolute inset-0 z-[5] scale-105"
           style={{
-            backgroundImage: `url(${getVideoThumbnail(video)})`,
+            backgroundImage: `url(${posterUrl})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             filter: "blur(20px)",
@@ -498,7 +501,7 @@ function VideoPlayer({
         playsInline
         muted={isMuted}
         preload="auto"
-        poster={getVideoThumbnail(video) || undefined}
+        poster={posterUrl || undefined}
       />
 
       {/* Feature #4: Circular progress ring + play/pause indicator (center) */}
@@ -571,12 +574,15 @@ function YouTubePlayer({
   isVisible: boolean;
   isMuted: boolean;
 }) {
+  // Use proxied thumbnail for backgroundImage to fix mobile loading issues
+  const thumbnailUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
+
   return (
     <div className="relative w-full h-full">
-      {getVideoThumbnail(video) && !isVisible && (
+      {thumbnailUrl && !isVisible && (
         <div
           className="absolute inset-0 bg-cover bg-center z-10"
-          style={{ backgroundImage: `url(${getVideoThumbnail(video)})` }}
+          style={{ backgroundImage: `url(${thumbnailUrl})` }}
         >
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="w-10 h-10 text-white animate-spin" />

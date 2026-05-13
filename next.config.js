@@ -162,6 +162,12 @@ const nextConfig = {
       "@radix-ui/react-icons",
       "sonner",
     ],
+    // Body size limit for large file uploads (audio, video) via API routes
+    // Default is too small for MP3 uploads. 150MB matches the
+    // Dropbox upload route's MAX_UPLOAD_SIZE.
+    serverActions: {
+      bodySizeLimit: "150mb",
+    },
   },
   // Headers for caching
   async headers() {

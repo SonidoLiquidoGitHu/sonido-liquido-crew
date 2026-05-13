@@ -97,8 +97,10 @@ const YT_THUMB_TIERS = [
  * via its `fallbackSrc` prop.
  */
 export function getVideoThumbnail(video: VideoLike): string | null {
-  // 1. Explicit thumbnail from DB
-  if (video.thumbnailUrl) return video.thumbnailUrl;
+  // 1. Explicit thumbnail from DB — apply Dropbox URL fix
+  if (video.thumbnailUrl) {
+    return getDirectDropboxUrl(video.thumbnailUrl);
+  }
 
   // 2. Auto-generate YouTube thumbnail (try highest quality first)
   const ytId = getYouTubeId(video);
@@ -235,6 +237,13 @@ export function isDirectVideo(video: VideoLike): boolean {
 }
 
 /**
+ * Check if a URL is from Dropbox (needs proxy for content-type / CORS fix on mobile)
+ */
+export function isDropboxUrl(url: string): boolean {
+  return url.includes("dropbox.com") || url.includes("dropboxusercontent.com");
+}
+
+/**
  * Get a video source URL suitable for HTML <video> element playback.
  *
  * Handles Dropbox URL conversion automatically via getDirectDropboxUrl().
@@ -243,4 +252,35 @@ export function isDirectVideo(video: VideoLike): boolean {
 export function getVideoSrc(video: VideoLike): string {
   const url = video.videoUrl || "";
   return getDirectDropboxUrl(url);
+}
+
+/**
+ * Get a video source URL that routes through /api/video-proxy for reliable
+ * mobile playback. Mobile browsers (especially iOS Safari) often fail to play
+ * Dropbox URLs directly due to CORS and content-type mismatches.
+ *
+ * For non-Dropbox URLs, returns the URL as-is.
+ */
+export function getProxiedVideoSrc(video: VideoLike): string {
+  const directUrl = getVideoSrc(video);
+  if (isDropboxUrl(directUrl)) {
+    return `/api/video-proxy?url=${encodeURIComponent(directUrl)}`;
+  }
+  return directUrl;
+}
+
+/**
+ * Get a thumbnail URL suitable for use in <video poster> or CSS backgroundImage.
+ * These contexts cannot use Next.js Image or SafeImage, so Dropbox URLs must
+ * be proxied to fix content-type issues on mobile browsers.
+ *
+ * For non-Dropbox URLs, returns the URL as-is.
+ */
+export function getProxiedThumbnailUrl(video: VideoLike): string | null {
+  const thumb = getVideoThumbnail(video);
+  if (!thumb) return null;
+  if (isDropboxUrl(thumb)) {
+    return `/api/image-proxy?url=${encodeURIComponent(thumb)}`;
+  }
+  return thumb;
 }

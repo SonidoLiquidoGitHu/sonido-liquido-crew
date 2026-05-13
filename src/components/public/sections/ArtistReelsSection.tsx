@@ -26,6 +26,7 @@ import {
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
+  getDirectDropboxUrl,
   type VideoLike,
 } from "@/lib/video-utils";
 
@@ -414,7 +415,7 @@ function VideoCard({
         {canPreview && (
           <video
             ref={videoRef}
-            src={video.videoUrl}
+            src={getDirectDropboxUrl(video.videoUrl)}
             muted
             playsInline
             loop

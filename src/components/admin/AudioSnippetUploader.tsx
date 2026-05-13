@@ -159,7 +159,7 @@ export function AudioSnippetUploader({
   value,
   onChange,
   maxDuration = 30,
-  maxSize = 50,
+  maxSize = 150,
   folder = "/audio-snippets",
   label = "Audio Preview",
   description,
@@ -214,7 +214,7 @@ export function AudioSnippetUploader({
     const isAudioExt = AUDIO_EXTENSIONS.includes(ext);
 
     if (!isAudioMime && !isAudioExt) {
-      setError("Solo se permiten archivos de audio (MP3, WAV, M4A, AAC, OGG, FLAC)");
+      setError("Solo se permiten archivos de audio (MP3, WAV, FLAC, M4A, AAC, OGG, WMA, AIFF)");
       return;
     }
 
@@ -384,7 +384,7 @@ export function AudioSnippetUploader({
         </label>
         {description && <p className="text-xs text-slc-muted">{description}</p>}
         <p className="text-xs text-slc-muted mt-1">
-          Máximo {maxDuration} segundos, {maxSize}MB. MP3, WAV, M4A, AAC.
+          Máximo {maxDuration} segundos, {maxSize}MB. MP3, WAV, FLAC, M4A, AAC, OGG, WMA, AIFF.
         </p>
       </div>
 
@@ -501,7 +501,7 @@ export function AudioSnippetUploader({
           <input
             ref={fileInputRef}
             type="file"
-            accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac"
+            accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.wma,.aiff,.opus,.weba"
             onChange={handleFileChange}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             disabled={isUploading}

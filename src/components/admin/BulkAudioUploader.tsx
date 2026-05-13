@@ -134,7 +134,7 @@ export function BulkAudioUploader({
   const processFiles = useCallback(async (selectedFiles: FileList | File[]) => {
     const audioFiles = Array.from(selectedFiles).filter(
       (f) => f.type.startsWith("audio/") ||
-             /\.(mp3|wav|flac|m4a|aac|ogg|wma|aiff)$/i.test(f.name)
+             /\.(mp3|wav|flac|m4a|aac|ogg|wma|aiff|opus|weba)$/i.test(f.name)
     );
 
     if (audioFiles.length === 0) {
@@ -530,7 +530,7 @@ export function BulkAudioUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.wma,.aiff"
+          accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.wma,.aiff,.opus,.weba"
           onChange={handleFileSelect}
           multiple
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
