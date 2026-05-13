@@ -53,10 +53,16 @@ interface ImageAnalyzerProps {
 // Convert Dropbox URL to direct download URL
 function getDirectUrl(imageUrl: string): string {
   if (imageUrl.includes("dropbox")) {
-    return imageUrl
-      .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-      .replace("?dl=0", "")
-      .replace("&dl=0", "");
+    // Use ?raw=1 instead of dl.dropboxusercontent.com because Dropbox has
+    // migrated to a new shared link format (/scl/fi/...?rlkey=...) that is
+    // NOT compatible with dl.dropboxusercontent.com.
+    const result = imageUrl
+      .replace("?dl=0", "?raw=1")
+      .replace("&dl=0", "&raw=1");
+    if (!result.includes("raw=1")) {
+      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+    }
+    return result;
   }
   return imageUrl;
 }

@@ -11,9 +11,9 @@ import { dropboxClient } from "@/lib/clients/dropbox";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 seconds timeout for uploads
 
-// Maximum file size for server-side upload (50MB)
-// For larger files (videos), use the browser-direct upload via dropbox-browser.ts
-const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
+// Maximum file size for server-side upload (150MB)
+// Increased to match BulkAudioUploader's maxSize and support large audio files
+const MAX_UPLOAD_SIZE = 150 * 1024 * 1024;
 
 /**
  * POST - Upload a file to Dropbox and return a shared link URL

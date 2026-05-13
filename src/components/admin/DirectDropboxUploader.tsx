@@ -372,10 +372,17 @@ export function DirectDropboxUploader({
   };
 
   const convertToDirectLink = (url: string): string => {
-    return url
-      .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-      .replace("?dl=0", "")
-      .replace("&dl=0", "");
+    // Use ?raw=1 instead of dl.dropboxusercontent.com because Dropbox has
+    // migrated to a new shared link format (/scl/fi/...?rlkey=...) that is
+    // NOT compatible with dl.dropboxusercontent.com. The ?raw=1 parameter
+    // works with BOTH old (/s/...) and new (/scl/fi/...) URL formats.
+    const result = url
+      .replace("?dl=0", "?raw=1")
+      .replace("&dl=0", "&raw=1");
+    if (!result.includes("raw=1")) {
+      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+    }
+    return result;
   };
 
   const handleFileSelect = (file: File) => {
@@ -660,7 +667,8 @@ export function DirectDropboxUploadButton({
       let url: string;
       if (linkResponse.ok) {
         const linkData = await linkResponse.json();
-        url = linkData.url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace("?dl=0", "");
+        url = linkData.url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+        if (!url.includes("raw=1")) url = url + (url.includes("?") ? "&" : "?") + "raw=1";
       } else {
         // Try to get existing link
         const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
@@ -673,7 +681,8 @@ export function DirectDropboxUploadButton({
         });
         const listData = await listResponse.json();
         if (listData.links?.[0]) {
-          url = listData.links[0].url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace("?dl=0", "");
+          url = listData.links[0].url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+          if (!url.includes("raw=1")) url = url + (url.includes("?") ? "&" : "?") + "raw=1";
         } else {
           throw new Error("Could not create shared link");
         }

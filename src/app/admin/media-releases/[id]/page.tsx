@@ -14,6 +14,7 @@ import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
 import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
 import { PressKitMultiSelector } from "@/components/admin/PressKitMultiSelector";
 import { type StyleSettings } from "@/lib/style-config";
+import { getDirectDropboxUrl } from "@/lib/video-utils";
 import {
   ArrowLeft,
   Save,
@@ -217,7 +218,7 @@ export default function EditMediaReleasePage() {
 
         try {
           if (mr.galleryImages) {
-            galleryImages = JSON.parse(mr.galleryImages);
+            galleryImages = JSON.parse(mr.galleryImages).map((url: string) => getDirectDropboxUrl(url));
           }
         } catch (e) {
           console.error("Error parsing galleryImages:", e);
@@ -281,11 +282,11 @@ export default function EditMediaReleasePage() {
           pullQuote: mr.pullQuote || "",
           pullQuoteAttribution: mr.pullQuoteAttribution || "",
           tags: tagsString,
-          coverImageUrl: mr.coverImageUrl || "",
-          bannerImageUrl: mr.bannerImageUrl || "",
+          coverImageUrl: getDirectDropboxUrl(mr.coverImageUrl || ""),
+          bannerImageUrl: getDirectDropboxUrl(mr.bannerImageUrl || ""),
           galleryImages,
-          logoUrl: mr.logoUrl || "",
-          audioPreviewUrl: mr.audioPreviewUrl || "",
+          logoUrl: getDirectDropboxUrl(mr.logoUrl || ""),
+          audioPreviewUrl: getDirectDropboxUrl(mr.audioPreviewUrl || ""),
           audioPreviewTitle: mr.audioPreviewTitle || "",
           audioTracks,
           spotifyEmbedUrl: mr.spotifyEmbedUrl || "",

@@ -150,10 +150,15 @@ const ORIENTATIONS: { id: VideoOrientation; name: string; icon: React.ReactNode;
 
 function getDirectUrl(url: string): string {
   if (url.includes("dropbox")) {
-    return url
-      .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-      .replace("?dl=0", "")
-      .replace("&dl=0", "");
+    // Use ?raw=1 instead of dl.dropboxusercontent.com because Dropbox has
+    // migrated to a new shared link format that is NOT compatible with dl.dropboxusercontent.com
+    const result = url
+      .replace("?dl=0", "?raw=1")
+      .replace("&dl=0", "&raw=1");
+    if (!result.includes("raw=1")) {
+      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+    }
+    return result;
   }
   return url;
 }

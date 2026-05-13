@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { getDirectDropboxUrl } from "@/lib/video-utils";
 import {
   Dialog,
   DialogContent,
@@ -587,7 +588,7 @@ export default function AdminMediaReleasesPage() {
                         <div className="w-16 h-10 rounded overflow-hidden bg-slc-card flex-shrink-0">
                           {release.coverImageUrl ? (
                             <Image
-                              src={release.coverImageUrl}
+                              src={getDirectDropboxUrl(release.coverImageUrl)}
                               alt={release.title}
                               width={64}
                               height={40}

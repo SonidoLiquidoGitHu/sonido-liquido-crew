@@ -234,9 +234,9 @@ export function BulkImageUploader({
           if (linkResponse.ok) {
             const data = await linkResponse.json();
             sharedUrl = data.url
-              .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-              .replace("?dl=0", "")
-              .replace("&dl=0", "");
+              .replace("?dl=0", "?raw=1")
+              .replace("&dl=0", "&raw=1");
+            if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
           } else {
             // Try to get existing link
             const errorData = await linkResponse.json().catch(() => ({}));
@@ -254,9 +254,9 @@ export function BulkImageUploader({
                 const listData = await listResponse.json();
                 if (listData.links && listData.links.length > 0) {
                   sharedUrl = listData.links[0].url
-                    .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-                    .replace("?dl=0", "")
-                    .replace("&dl=0", "");
+                    .replace("?dl=0", "?raw=1")
+                    .replace("&dl=0", "&raw=1");
+                  if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
                 } else {
                   throw new Error("Could not get shared link");
                 }
