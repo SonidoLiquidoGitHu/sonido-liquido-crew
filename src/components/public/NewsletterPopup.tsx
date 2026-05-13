@@ -62,9 +62,9 @@ interface PopupSettings {
 }
 
 const defaultSettings: PopupSettings = {
-  delaySeconds: 8,
+  delaySeconds: 12,
   showOnScroll: true,
-  scrollPercentage: 50,
+  scrollPercentage: 75,
   exitIntentEnabled: true,
   exitIntentDelay: 2000,
 
