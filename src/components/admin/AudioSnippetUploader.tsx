@@ -16,6 +16,7 @@ import {
   Activity,
   Check,
   AlertTriangle,
+  Zap,
 } from "lucide-react";
 
 interface AudioSnippetUploaderProps {
@@ -155,6 +156,11 @@ function WaveformVisualizer({
   );
 }
 
+// Generate unique ID
+function generateUniqueId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function AudioSnippetUploader({
   value,
   onChange,
@@ -168,6 +174,7 @@ export function AudioSnippetUploader({
 }: AudioSnippetUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -176,8 +183,40 @@ export function AudioSnippetUploader({
   const [isMuted, setIsMuted] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // Dropbox direct upload state
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Initialize Dropbox direct upload on mount
+  useEffect(() => {
+    const initDropbox = async () => {
+      try {
+        const statusRes = await fetch("/api/admin/dropbox");
+        const statusData = await statusRes.json();
+        if (!statusData?.data?.connected) {
+          console.log("[AudioSnippet] Dropbox not connected");
+          setDropboxConfigured(false);
+          return;
+        }
+        const tokenRes = await fetch("/api/admin/dropbox/token");
+        const tokenData = await tokenRes.json();
+        if (tokenData.success && tokenData.data?.token) {
+          setAccessToken(tokenData.data.token);
+          setDropboxConfigured(true);
+          console.log("[AudioSnippet] Ready for direct Dropbox uploads");
+        } else {
+          setDropboxConfigured(false);
+        }
+      } catch (error) {
+        console.error("[AudioSnippet] Dropbox init error:", error);
+        setDropboxConfigured(false);
+      }
+    };
+    initDropbox();
+  }, []);
 
   // Audio event handlers
   useEffect(() => {
@@ -205,6 +244,189 @@ export function AudioSnippetUploader({
   // Handle file upload
   // Known audio file extensions for mobile browsers that may not set MIME type
   const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "opus", "weba"];
+
+  // Convert Dropbox shared link to direct link with ?raw=1
+  const convertToDirectLink = (url: string): string => {
+    const result = url
+      .replace("?dl=0", "?raw=1")
+      .replace("&dl=0", "&raw=1");
+    if (!result.includes("raw=1")) {
+      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+    }
+    return result;
+  };
+
+  // Create a shared link for a file on Dropbox (direct browser call)
+  const createSharedLink = async (path: string): Promise<string> => {
+    if (!accessToken) throw new Error("No hay token de Dropbox");
+
+    try {
+      const response = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path,
+          settings: { access: "viewer", audience: "public", requested_visibility: "public" },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return convertToDirectLink(data.url);
+      }
+
+      // Link might already exist
+      const errorData = await response.json().catch(() => ({}));
+      if (errorData.error_summary?.includes("shared_link_already_exists") || response.status === 409) {
+        const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ path, direct_only: true }),
+        });
+        if (listResponse.ok) {
+          const listData = await listResponse.json();
+          if (listData.links && listData.links.length > 0) {
+            return convertToDirectLink(listData.links[0].url);
+          }
+        }
+      }
+      throw new Error(errorData.error_summary || "Failed to create shared link");
+    } catch (error) {
+      console.error("[AudioSnippet] Create link error:", error);
+      throw error;
+    }
+  };
+
+  // Upload a file directly to Dropbox from the browser (bypasses server size limits on Netlify)
+  const uploadDirectToDropbox = async (file: File): Promise<string> => {
+    if (!accessToken) {
+      throw new Error("No hay token de Dropbox disponible. Reconecta en Sincronización.");
+    }
+
+    const ext = file.name.split(".").pop() || "";
+    const baseName = file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const uniqueId = generateUniqueId();
+    const filename = `${baseName}_${uniqueId}.${ext}`;
+    const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
+    const dropboxPath = `${normalizedFolder}/${filename}`;
+
+    const fileSizeMB = file.size / (1024 * 1024);
+    const isLargeFile = fileSizeMB > 150;
+
+    if (isLargeFile) {
+      // Chunked upload for files > 150MB
+      const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB chunks
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+      // Start session
+      setUploadMessage("Iniciando sesión de subida...");
+      const startResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/start", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({ close: false }),
+        },
+        body: new ArrayBuffer(0),
+      });
+      if (!startResponse.ok) {
+        const errData = await startResponse.json().catch(() => ({}));
+        throw new Error(errData.error_summary || "Failed to start upload session");
+      }
+      const { session_id } = await startResponse.json();
+
+      let offset = 0;
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = file.slice(offset, offset + CHUNK_SIZE);
+        const chunkBuffer = await chunk.arrayBuffer();
+        const isLastChunk = i === totalChunks - 1;
+
+        const progress = Math.round(30 + ((i + 1) / totalChunks) * 50);
+        setUploadProgress(progress);
+        setUploadMessage(`Subiendo parte ${i + 1} de ${totalChunks}...`);
+
+        if (isLastChunk) {
+          const finishResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/finish", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/octet-stream",
+              "Dropbox-API-Arg": JSON.stringify({
+                cursor: { session_id, offset },
+                commit: { path: dropboxPath, mode: "overwrite", autorename: false, mute: false },
+              }),
+            },
+            body: chunkBuffer,
+          });
+          if (!finishResponse.ok) {
+            const errorData = await finishResponse.json().catch(() => ({}));
+            throw new Error(errorData.error_summary || "Failed to finish upload");
+          }
+        } else {
+          const appendResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/append_v2", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/octet-stream",
+              "Dropbox-API-Arg": JSON.stringify({
+                cursor: { session_id, offset },
+                close: false,
+              }),
+            },
+            body: chunkBuffer,
+          });
+          if (!appendResponse.ok) {
+            const errData = await appendResponse.json().catch(() => ({}));
+            throw new Error(errData.error_summary || "Failed to append chunk");
+          }
+        }
+        offset += chunkBuffer.byteLength;
+      }
+    } else {
+      // Single-request upload for files <= 150MB
+      setUploadMessage("Subiendo a Dropbox...");
+      setUploadProgress(40);
+
+      const arrayBuffer = await file.arrayBuffer();
+
+      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({
+            path: dropboxPath,
+            mode: "overwrite",
+            autorename: false,
+            mute: false,
+          }),
+        },
+        body: arrayBuffer,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({}));
+        if (uploadResponse.status === 401) {
+          throw new Error("Token de Dropbox expirado. Reconecta en Sincronización → Dropbox.");
+        }
+        throw new Error(errorData.error_summary || `Error HTTP ${uploadResponse.status}`);
+      }
+    }
+
+    setUploadProgress(85);
+    setUploadMessage("Creando enlace...");
+
+    // Create shared link
+    const sharedUrl = await createSharedLink(dropboxPath);
+
+    return sharedUrl;
+  };
 
   const handleFileUpload = async (file: File) => {
     // Validate file type - check both MIME type and extension
@@ -234,43 +456,82 @@ export function AudioSnippetUploader({
 
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadMessage(null);
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", folder);
+      // Use direct browser-to-Dropbox upload (bypasses server body size limits on Netlify)
+      if (accessToken && dropboxConfigured) {
+        setUploadProgress(10);
+        const sharedUrl = await uploadDirectToDropbox(file);
 
-      setUploadProgress(30);
+        setUploadProgress(100);
+        onChange(sharedUrl, audioDuration);
+        setDuration(audioDuration);
+      } else {
+        // Fallback: Server-side upload (for when Dropbox is not configured for direct upload)
+        // NOTE: This path has body size limits (~4.5MB on Netlify) and should rarely be used
+        console.warn("[AudioSnippet] No direct Dropbox token, falling back to server upload (may fail for large files)");
 
-      const response = await fetch("/api/admin/dropbox/upload", {
-        method: "POST",
-        body: formData,
-      });
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", folder);
 
-      setUploadProgress(80);
+        setUploadProgress(30);
+        setUploadMessage("Subiendo por servidor (puede fallar con archivos grandes)...");
 
-      // Check if response is JSON before parsing
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        console.error("Server returned non-JSON response");
-        throw new Error("Error de conexión con Dropbox. Reconecta tu cuenta en Sincronización.");
+        const response = await fetch("/api/admin/dropbox/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        setUploadProgress(80);
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          console.error("Server returned non-JSON response");
+          throw new Error("Error de conexión con Dropbox. Reconecta tu cuenta en Sincronización.");
+        }
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "Error al subir audio");
+        }
+
+        setUploadProgress(100);
+        onChange(data.data.url, audioDuration);
+        setDuration(audioDuration);
       }
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Error al subir audio");
-      }
-
-      setUploadProgress(100);
-      onChange(data.data.url, audioDuration);
-      setDuration(audioDuration);
     } catch (err) {
-      setError((err as Error).message);
+      const errMsg = (err as Error).message;
+
+      // Retry on token expiry (after refreshing)
+      if ((errMsg.includes("401") || errMsg.includes("expired") || errMsg.includes("expirado"))) {
+        console.log("[AudioSnippet] Token expired, refreshing and retrying");
+        try {
+          const tokenRes = await fetch("/api/admin/dropbox/token");
+          const tokenData = await tokenRes.json();
+          if (tokenData.success && tokenData.data?.token) {
+            setAccessToken(tokenData.data.token);
+            // Retry upload with new token
+            setIsUploading(false);
+            setUploadProgress(0);
+            // Don't auto-retry to avoid infinite loops - show clear error instead
+            setError("Token expirado. Intenta subir de nuevo.");
+            return;
+          }
+        } catch {
+          // Refresh failed
+        }
+      }
+
+      setError(errMsg);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setUploadMessage(null);
     }
   };
 
@@ -386,6 +647,18 @@ export function AudioSnippetUploader({
         <p className="text-xs text-slc-muted mt-1">
           Máximo {maxDuration} segundos, {maxSize}MB. MP3, WAV, FLAC, M4A, AAC, OGG, WMA, AIFF.
         </p>
+        {dropboxConfigured && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <Zap className="w-3 h-3 text-emerald-500" />
+            <span className="text-xs text-emerald-500">Upload directo a Dropbox desde tu navegador</span>
+          </div>
+        )}
+        {dropboxConfigured === false && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <AlertTriangle className="w-3 h-3 text-yellow-500" />
+            <span className="text-xs text-yellow-500">Dropbox no configurado. <a href="/admin/sync" className="underline">Conectar</a></span>
+          </div>
+        )}
       </div>
 
       {/* Audio preview */}
@@ -504,13 +777,15 @@ export function AudioSnippetUploader({
             accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.wma,.aiff,.opus,.weba"
             onChange={handleFileChange}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            disabled={isUploading}
+            disabled={isUploading || dropboxConfigured === false}
           />
 
           {isUploading ? (
             <>
               <Loader2 className="w-12 h-12 mx-auto mb-4 text-spotify animate-spin" />
-              <p className="text-sm font-medium mb-2">Subiendo audio...</p>
+              <p className="text-sm font-medium mb-2">
+                {uploadMessage || "Subiendo audio..."}
+              </p>
               <div className="w-full max-w-xs mx-auto bg-slc-border rounded-full h-2">
                 <div
                   className="bg-spotify h-2 rounded-full transition-all duration-300"
@@ -528,6 +803,11 @@ export function AudioSnippetUploader({
               <p className="text-xs text-slc-muted">
                 Snippet de hasta {maxDuration}s para mostrar en la página de pre-save
               </p>
+              {dropboxConfigured && (
+                <p className="text-xs text-emerald-500/80 mt-2">
+                  Los archivos se suben directo a Dropbox desde tu navegador
+                </p>
+              )}
             </>
           )}
         </div>
@@ -535,9 +815,16 @@ export function AudioSnippetUploader({
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {error}
+        <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div>
+            <p>{error}</p>
+            {(error.toLowerCase().includes("token") || error.toLowerCase().includes("expirado")) && (
+              <a href="/admin/sync" className="text-xs text-primary hover:underline mt-1 inline-block">
+                Ir a Sincronización - Dropbox
+              </a>
+            )}
+          </div>
         </div>
       )}
 
