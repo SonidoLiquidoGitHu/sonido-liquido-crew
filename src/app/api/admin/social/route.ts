@@ -27,7 +27,10 @@ import {
   generateCaption,
   postToFacebook,
   postToInstagram,
+  postInstagramReel,
+  postFacebookReel,
   type PostQueueItemResult,
+  type FacebookReelResult,
 } from "@/lib/clients/meta";
 import { isTikTokConfigured, validateTikTokToken } from "@/lib/clients/tiktok";
 import { socialCredentials } from "@/db/schema";
@@ -203,6 +206,8 @@ export async function POST(request: NextRequest) {
         return await handlePopulate(body.options || {});
       case "post-upcoming-release":
         return await handlePostUpcomingRelease(body);
+      case "post-reel":
+        return await handlePostReel(body);
       case "reset-cycle":
         return await handleResetCycle();
       case "skip-item":
@@ -388,6 +393,131 @@ async function handlePostUpcomingRelease(body: {
     message: anySuccess
       ? `Publicado exitosamente en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram?.success ? " e " : ""}${results.instagram?.success ? "Instagram" : ""}`
       : `Error al publicar: ${errorMessages.join(", ")}`,
+    results,
+  });
+}
+
+// ===========================================
+// POST REEL — Post a video as Reel on IG and/or FB
+// ===========================================
+
+async function handlePostReel(body: {
+  videoUrl: string;
+  caption: string;
+  platforms?: string[];
+  releaseId?: string;
+  releaseTitle?: string;
+}) {
+  const { videoUrl, caption, platforms = ["instagram", "facebook"], releaseId, releaseTitle } = body;
+
+  if (!videoUrl) {
+    return NextResponse.json({
+      success: false,
+      message: "Se requiere un video (URL) para publicar como Reel",
+    });
+  }
+
+  if (!caption) {
+    return NextResponse.json({
+      success: false,
+      message: "Se requiere un caption para publicar como Reel",
+    });
+  }
+
+  if (!(await isMetaConfiguredAsync())) {
+    return NextResponse.json({
+      success: false,
+      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales.",
+    });
+  }
+
+  console.log(`[Social API] Posting Reel for upcoming release: ${releaseTitle || releaseId || "unknown"}`);
+
+  const results: {
+    instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+    facebook?: { success: boolean; reelId?: string; postUrl?: string; error?: string };
+  } = {};
+
+  // Post to Instagram as Reel
+  if (platforms.includes("instagram")) {
+    const igResult = await postInstagramReel(videoUrl, caption, true);
+    results.instagram = {
+      success: igResult.success,
+      mediaId: igResult.mediaId || undefined,
+      permalink: igResult.permalink || undefined,
+      error: igResult.error || undefined,
+    };
+
+    // Log the result
+    try {
+      await db.insert(socialPostsLog).values({
+        id: crypto.randomUUID(),
+        queueId: `reel-${releaseId || crypto.randomUUID()}`,
+        platform: "instagram_reel",
+        contentType: "vertical_video",
+        sourceId: releaseId || "upcoming-release-reel",
+        imageUrl: videoUrl,
+        caption,
+        linkUrl: null,
+        platformPostId: igResult.mediaId,
+        platformPostUrl: igResult.permalink,
+        metaApiResponse: null,
+        status: igResult.success ? "success" : "failed",
+        errorMessage: igResult.error || null,
+        postedAt: new Date(),
+      });
+    } catch (logError) {
+      console.error("[Social API] Failed to log IG Reel result:", logError);
+    }
+  }
+
+  // Post to Facebook as Reel
+  if (platforms.includes("facebook")) {
+    const fbResult = await postFacebookReel(videoUrl, caption);
+    results.facebook = {
+      success: fbResult.success,
+      reelId: fbResult.reelId || undefined,
+      postUrl: fbResult.postUrl || undefined,
+      error: fbResult.error || undefined,
+    };
+
+    // Log the result
+    try {
+      await db.insert(socialPostsLog).values({
+        id: crypto.randomUUID(),
+        queueId: `reel-${releaseId || crypto.randomUUID()}`,
+        platform: "facebook_reel",
+        contentType: "vertical_video",
+        sourceId: releaseId || "upcoming-release-reel",
+        imageUrl: videoUrl,
+        caption,
+        linkUrl: null,
+        platformPostId: fbResult.reelId,
+        platformPostUrl: fbResult.postUrl,
+        metaApiResponse: null,
+        status: fbResult.success ? "success" : "failed",
+        errorMessage: fbResult.error || null,
+        postedAt: new Date(),
+      });
+    } catch (logError) {
+      console.error("[Social API] Failed to log FB Reel result:", logError);
+    }
+  }
+
+  const anySuccess = results.instagram?.success || results.facebook?.success;
+  const errorMessages: string[] = [];
+  if (results.instagram && !results.instagram.success) errorMessages.push(`IG Reel: ${results.instagram.error}`);
+  if (results.facebook && !results.facebook.success) errorMessages.push(`FB Reel: ${results.facebook.error}`);
+
+  const successPlatforms: string[] = [];
+  if (results.instagram?.success) successPlatforms.push("Instagram Reels");
+  if (results.facebook?.success) successPlatforms.push("Facebook Reels");
+
+  return NextResponse.json({
+    success: anySuccess,
+    message: anySuccess
+      ? `Reel publicado exitosamente en ${successPlatforms.join(" y ")}`
+      : `Error al publicar Reel: ${errorMessages.join(", ")}`,
     results,
   });
 }

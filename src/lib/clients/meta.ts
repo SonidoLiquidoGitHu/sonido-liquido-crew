@@ -571,6 +571,455 @@ export async function postToInstagram(
 }
 
 // ===========================================
+// INSTAGRAM REELS POSTING
+// ===========================================
+
+/**
+ * Post a Reel (short video) to Instagram.
+ *
+ * Follows the same container + poll + publish pattern as postToInstagram,
+ * but with these key differences:
+ * - Uses media_type: "REELS" in the container creation
+ * - Uses video_url instead of image_url
+ * - Adds share_to_feed: true (default) so the Reel also appears in the feed
+ *
+ * Requirements:
+ * - Max Reel duration: 90 seconds
+ * - Video must be MP4 format, vertical (9:16) recommended
+ * - The videoUrl must be publicly accessible (Meta servers download it)
+ */
+export async function postInstagramReel(
+  videoUrl: string,
+  caption: string,
+  shareToFeed: boolean = true
+): Promise<InstagramPostResult> {
+  if (!(await isMetaConfiguredAsync())) {
+    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured" };
+  }
+
+  const igAccountId = await getInstagramBusinessAccountId();
+  if (!igAccountId) {
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error: "Instagram Business Account not found",
+    };
+  }
+
+  // Resolve Dropbox URLs to temporary direct links
+  const resolvedVideoUrl = await resolveDropboxVideoUrl(videoUrl);
+
+  // Use system user token for IG operations
+  const token = await getSystemUserToken();
+
+  try {
+    // Step 1: Create Reels container
+    console.log("[Meta] Creating IG Reels container with video:", resolvedVideoUrl.substring(0, 80));
+
+    const containerResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        media_type: "REELS",
+        video_url: resolvedVideoUrl,
+        caption: caption,
+        share_to_feed: shareToFeed,
+        access_token: token,
+      }),
+    });
+
+    const containerData = await containerResponse.json();
+
+    if (containerData.error) {
+      console.error("[Meta] IG Reels container creation error:", containerData.error);
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `${containerData.error.code}: ${containerData.error.message}`,
+      };
+    }
+
+    const containerId = containerData.id;
+    console.log("[Meta] IG Reels container created:", containerId);
+
+    // Step 2: Poll container status until FINISHED or ERROR
+    // Video processing takes longer than images — use same 2s interval, max 10 attempts (20s)
+    let statusCode = "IN_PROGRESS";
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (statusCode === "IN_PROGRESS" && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s between polls
+      attempts++;
+
+      const statusResponse = await fetch(
+        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`
+      );
+      const statusData = await statusResponse.json();
+      statusCode = statusData.status_code || "IN_PROGRESS";
+
+      console.log(`[Meta] IG Reels container status: ${statusCode} (attempt ${attempts}/${maxAttempts})`);
+
+      if (statusCode === "FINISHED") {
+        break;
+      }
+
+      if (statusCode === "ERROR") {
+        console.error("[Meta] IG Reels container processing error:", statusData);
+        return {
+          success: false,
+          mediaId: null,
+          permalink: null,
+          error: `Reels container processing failed after ${attempts} polls`,
+        };
+      }
+    }
+
+    if (statusCode !== "FINISHED") {
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `Reels container still processing after ${maxAttempts * 2}s timeout`,
+      };
+    }
+
+    // Step 3: Publish the container
+    const publishResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        creation_id: containerId,
+        access_token: token,
+      }),
+    });
+
+    const publishData = await publishResponse.json();
+
+    if (publishData.error) {
+      console.error("[Meta] IG Reels publish error:", publishData.error);
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `${publishData.error.code}: ${publishData.error.message}`,
+      };
+    }
+
+    const mediaId = publishData.id;
+
+    // Step 4: Get permalink
+    let permalink: string | null = null;
+    try {
+      const permalinkResponse = await fetch(
+        `${META_GRAPH_API}/${mediaId}?fields=permalink&access_token=${token}`
+      );
+      const permalinkData = await permalinkResponse.json();
+      permalink = permalinkData.permalink || null;
+    } catch {
+      // Non-critical
+    }
+
+    console.log("[Meta] Instagram Reel published successfully:", mediaId, permalink);
+    return { success: true, mediaId, permalink };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Meta] Instagram Reel post exception:", errMsg);
+    return { success: false, mediaId: null, permalink: null, error: errMsg };
+  }
+}
+
+// ===========================================
+// FACEBOOK REELS POSTING
+// ===========================================
+
+export interface FacebookReelResult {
+  success: boolean;
+  reelId: string | null;
+  postUrl: string | null;
+  error?: string;
+}
+
+/**
+ * Post a Reel (short video) to a Facebook Page.
+ *
+ * Facebook Reels use a different endpoint than regular feed posts:
+ * 1. Start upload: POST /{page-id}/video_reels with upload_phase: "start"
+ * 2. Finish upload: POST /{page-id}/video_reels with upload_phase: "finish", video_url, description
+ * 3. Poll for processing status
+ *
+ * Requirements:
+ * - Video must be MP4 format, vertical (9:16) recommended
+ * - Max duration: 90 seconds
+ * - The videoUrl must be publicly accessible
+ */
+export async function postFacebookReel(
+  videoUrl: string,
+  caption: string
+): Promise<FacebookReelResult> {
+  if (!(await isMetaConfiguredAsync())) {
+    return { success: false, reelId: null, postUrl: null, error: "Meta API not configured" };
+  }
+
+  const pageToken = await getPageAccessToken();
+  const pageId = await getFacebookPageId();
+
+  // Resolve Dropbox URLs to temporary direct links
+  const resolvedVideoUrl = await resolveDropboxVideoUrl(videoUrl);
+
+  try {
+    // Step 1: Start upload phase
+    console.log("[Meta] Starting FB Reel upload for page:", pageId);
+
+    const startResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        upload_phase: "start",
+        access_token: pageToken,
+      }),
+    });
+
+    const startData = await startResponse.json();
+
+    if (startData.error) {
+      console.error("[Meta] FB Reel start upload error:", startData.error);
+      return {
+        success: false,
+        reelId: null,
+        postUrl: null,
+        error: `${startData.error.code}: ${startData.error.message}`,
+      };
+    }
+
+    const videoId = startData.id;
+    console.log("[Meta] FB Reel upload started, video_id:", videoId);
+
+    // Step 2: Finish upload with video_url and description
+    console.log("[Meta] Finishing FB Reel upload with video URL:", resolvedVideoUrl.substring(0, 80));
+
+    const finishResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        upload_phase: "finish",
+        video_url: resolvedVideoUrl,
+        access_token: pageToken,
+        description: caption,
+        video_id: videoId,
+      }),
+    });
+
+    const finishData = await finishResponse.json();
+
+    if (finishData.error) {
+      console.error("[Meta] FB Reel finish upload error:", finishData.error);
+      return {
+        success: false,
+        reelId: null,
+        postUrl: null,
+        error: `${finishData.error.code}: ${finishData.error.message}`,
+      };
+    }
+
+    const reelId = finishData.id || videoId;
+    console.log("[Meta] FB Reel upload finished, reel_id:", reelId);
+
+    // Step 3: Poll for processing status
+    // Facebook video processing can take a while — poll with 3s interval, max 10 attempts (30s)
+    let processingStatus = "processing";
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (processingStatus === "processing" && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // 3s between polls
+      attempts++;
+
+      try {
+        const statusResponse = await fetch(
+          `${META_GRAPH_API}/${reelId}?fields=status,processing_progress&access_token=${pageToken}`
+        );
+        const statusData = await statusResponse.json();
+
+        // Facebook video status can be: processing, ready, error
+        const status = statusData.status;
+        const progress = statusData.processing_progress;
+
+        console.log(
+          `[Meta] FB Reel processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`
+        );
+
+        if (status === "ready" || status === "published" || status === "complete") {
+          processingStatus = "ready";
+          break;
+        }
+
+        if (status === "error" || status === "failed") {
+          console.error("[Meta] FB Reel processing error:", statusData);
+          return {
+            success: false,
+            reelId,
+            postUrl: null,
+            error: `FB Reel processing failed: ${JSON.stringify(statusData)}`,
+          };
+        }
+
+        // If status field is missing, assume still processing
+        if (!status) {
+          // Check for error in the response
+          if (statusData.error) {
+            console.error("[Meta] FB Reel status check error:", statusData.error);
+            return {
+              success: false,
+              reelId,
+              postUrl: null,
+              error: `${statusData.error.code}: ${statusData.error.message}`,
+            };
+          }
+        }
+      } catch (statusErr) {
+        console.warn("[Meta] FB Reel status poll failed:", statusErr);
+        // Continue polling — might be a transient error
+      }
+    }
+
+    // Even if processing isn't complete, the reel was submitted successfully
+    const postUrl = reelId ? `https://facebook.com/reel/${reelId}` : null;
+
+    if (processingStatus !== "ready") {
+      console.warn(`[Meta] FB Reel still processing after ${maxAttempts * 3}s, but upload was successful`);
+      return {
+        success: true,
+        reelId,
+        postUrl,
+        error: "Reel uploaded but still processing — check Facebook for final status",
+      };
+    }
+
+    console.log("[Meta] Facebook Reel published successfully:", reelId);
+    return { success: true, reelId, postUrl };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Meta] Facebook Reel post exception:", errMsg);
+    return { success: false, reelId: null, postUrl: null, error: errMsg };
+  }
+}
+
+// ===========================================
+// VIDEO URL HELPERS
+// ===========================================
+
+/**
+ * Ensure a video URL is publicly accessible.
+ * For Dropbox URLs, we cannot use the image proxy (Netlify has ~6MB response limit),
+ * so these need to be resolved server-side via resolveDropboxVideoUrl() before
+ * calling the Meta API.
+ *
+ * For other hosts (direct CDN URLs, etc.), the URL is returned as-is.
+ */
+export function ensurePublicVideoUrl(videoUrl: string): string {
+  // For Dropbox URLs, we need server-side resolution to a temporary link
+  // This will be handled by the API route that calls this function
+  // For now, just return the URL as-is if it's not a Dropbox URL
+  const needsProxyHosts = [
+    "dl.dropboxusercontent.com",
+    "dropboxusercontent.com",
+    "www.dropbox.com",
+    "dropbox.com",
+  ];
+
+  const needsResolution = needsProxyHosts.some(host => videoUrl.includes(host));
+
+  if (needsResolution) {
+    // Return as-is — the API route will resolve this to a temporary link
+    // before calling this function
+    return videoUrl;
+  }
+
+  return videoUrl;
+}
+
+/**
+ * Resolve a Dropbox shared link to a temporary direct download URL.
+ * Temporary links are valid for 4 hours and include proper CORS headers.
+ * Meta API servers can download directly from these URLs.
+ */
+export async function resolveDropboxVideoUrl(videoUrl: string): Promise<string> {
+  if (!videoUrl.includes("dropbox")) return videoUrl;
+
+  try {
+    const { dropboxClient } = await import("@/lib/clients/dropbox");
+    const token = await dropboxClient.getAccessToken();
+
+    // Convert to shared link format for metadata lookup
+    let sharedLink = videoUrl;
+    if (sharedLink.includes("raw=1")) {
+      sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+    }
+    if (!sharedLink.includes("?")) {
+      sharedLink += "?dl=0";
+    }
+
+    // Get shared link metadata to find the file path
+    const metaResponse = await fetch(
+      "https://api.dropboxapi.com/2/sharing/get_shared_link_metadata",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: sharedLink }),
+      }
+    );
+
+    if (!metaResponse.ok) {
+      console.warn("[Meta] Could not get Dropbox metadata for video URL");
+      return videoUrl; // Return original as fallback
+    }
+
+    const metaData = await metaResponse.json();
+    const filePath = metaData.path_lower || metaData.path_display;
+
+    if (!filePath) {
+      console.warn("[Meta] Could not determine Dropbox file path");
+      return videoUrl;
+    }
+
+    // Get a temporary direct link (valid 4 hours, has CORS headers)
+    const tempLinkResponse = await fetch(
+      "https://api.dropboxapi.com/2/files/get_temporary_link",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ path: filePath }),
+      }
+    );
+
+    if (!tempLinkResponse.ok) {
+      console.warn("[Meta] Could not get Dropbox temporary link");
+      return videoUrl;
+    }
+
+    const tempLinkData = await tempLinkResponse.json();
+    if (tempLinkData.link) {
+      console.log("[Meta] Resolved Dropbox video to temporary link:", filePath);
+      return tempLinkData.link;
+    }
+
+    return videoUrl;
+  } catch (err) {
+    console.warn("[Meta] Dropbox video URL resolution failed:", err);
+    return videoUrl;
+  }
+}
+
+// ===========================================
 // DELETE POSTS (for cleanup)
 // ===========================================
 

@@ -43,13 +43,15 @@ type VideoTemplate =
   | "waveform"
   | "text-reveal"
   | "glitch"
-  | "minimal";
+  | "minimal"
+  | "video-clip";
 
 type VideoOrientation = "horizontal" | "vertical" | "square";
 
 interface VideoGeneratorProps {
   coverImageUrl: string;
   audioUrl?: string;
+  videoUrl?: string;  // Uploaded video to use instead of static images
   artistName: string;
   title: string;
   releaseDate?: Date;
@@ -134,6 +136,14 @@ const TEMPLATES: TemplateConfig[] = [
     description: "Diseño minimalista y elegante",
     icon: <Square className="w-5 h-5" />,
     duration: 10,
+    requiresAudio: false,
+  },
+  {
+    id: "video-clip",
+    name: "Video Clip",
+    description: "Usa un video subido con overlay de texto",
+    icon: <Video className="w-5 h-5" />,
+    duration: 15,
     requiresAudio: false,
   },
 ];
@@ -250,6 +260,7 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): vo
 export function VideoGenerator({
   coverImageUrl,
   audioUrl,
+  videoUrl,
   artistName,
   title,
   releaseDate,
@@ -258,7 +269,7 @@ export function VideoGenerator({
   className = "",
 }: VideoGeneratorProps) {
   // State
-  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate>("artwork-pulse");
+  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate>(videoUrl ? "video-clip" : "artwork-pulse");
   const [selectedOrientation, setSelectedOrientation] = useState<VideoOrientation>("vertical");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
@@ -281,6 +292,7 @@ export function VideoGenerator({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const videoSourceRef = useRef<HTMLVideoElement | null>(null);
 
   const currentTemplate = TEMPLATES.find((t) => t.id === selectedTemplate)!;
   const currentOrientation = ORIENTATIONS.find((o) => o.id === selectedOrientation)!;
@@ -296,6 +308,30 @@ export function VideoGenerator({
       }
     };
   }, [generatedVideoUrl]);
+
+  // Load video source for video-clip template
+  useEffect(() => {
+    if (videoUrl && selectedTemplate === "video-clip") {
+      const vid = document.createElement("video");
+      vid.crossOrigin = "anonymous";
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.loop = true;
+      vid.preload = "auto";
+      vid.src = getDirectUrl(videoUrl);
+      vid.load();
+      videoSourceRef.current = vid;
+
+      return () => {
+        vid.pause();
+        vid.removeAttribute("src");
+        vid.load();
+        videoSourceRef.current = null;
+      };
+    } else {
+      videoSourceRef.current = null;
+    }
+  }, [videoUrl, selectedTemplate]);
 
   // Load cover image
   const loadImage = useCallback(async (): Promise<HTMLImageElement> => {
@@ -574,12 +610,78 @@ export function VideoGenerator({
             ctx.fillRect((width - lineWidth) / 2, lineY, lineWidth, 2);
           }
           break;
+
+        case "video-clip":
+          // Use uploaded video with overlay text
+          {
+            // Draw video frame or cover fallback
+            if (videoSourceRef.current) {
+              const vid = videoSourceRef.current;
+              // Scale video to fill canvas while maintaining aspect ratio
+              const videoAspect = vid.videoWidth / vid.videoHeight;
+              const canvasAspect = width / height;
+              let drawWidth, drawHeight, drawX, drawY;
+              if (videoAspect > canvasAspect) {
+                drawHeight = height;
+                drawWidth = height * videoAspect;
+                drawX = (width - drawWidth) / 2;
+                drawY = 0;
+              } else {
+                drawWidth = width;
+                drawHeight = width / videoAspect;
+                drawX = 0;
+                drawY = (height - drawHeight) / 2;
+              }
+              ctx.drawImage(vid, drawX, drawY, drawWidth, drawHeight);
+            } else {
+              // Fallback: draw cover image
+              ctx.drawImage(img, 0, 0, width, height);
+            }
+
+            // Semi-transparent overlay at bottom for text
+            const overlayHeight = height * 0.25;
+            const overlayY = height - overlayHeight;
+            const gradient = ctx.createLinearGradient(0, overlayY, 0, height);
+            gradient.addColorStop(0, "rgba(0,0,0,0)");
+            gradient.addColorStop(0.3, "rgba(0,0,0,0.7)");
+            gradient.addColorStop(1, "rgba(0,0,0,0.9)");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, overlayY, width, overlayHeight);
+
+            // Fade-in effect for text
+            const textOpacity = Math.min(1, progress * 3);
+            ctx.globalAlpha = textOpacity;
+            ctx.textAlign = "center";
+
+            if (showArtistName) {
+              ctx.fillStyle = textColor;
+              ctx.font = `bold ${width * 0.06}px "Oswald", sans-serif`;
+              ctx.fillText(artistName.toUpperCase(), width / 2, height - overlayHeight + 50);
+            }
+
+            if (showTitle) {
+              ctx.fillStyle = "rgba(255,255,255,0.9)";
+              ctx.font = `${width * 0.04}px sans-serif`;
+              ctx.fillText(title, width / 2, height - overlayHeight + 85);
+            }
+
+            // Pre-save CTA at very bottom
+            if (releaseDate) {
+              const ctaY = height - 30;
+              ctx.font = `bold ${width * 0.03}px "Oswald", sans-serif`;
+              ctx.fillStyle = "rgba(255,255,255,0.8)";
+              ctx.fillText("PRE-SAVE NOW", width / 2, ctaY);
+            }
+
+            ctx.globalAlpha = 1;
+          }
+          break;
       }
 
       ctx.restore();
 
-      // Draw text overlay (for most templates)
-      if (selectedTemplate !== "text-reveal") {
+      // Draw text overlay (for most templates — skip for video-clip which has its own text)
+      if (selectedTemplate !== "text-reveal" && selectedTemplate !== "video-clip") {
         const textY = selectedOrientation === "vertical"
           ? coverY + coverSize + (releaseDate && showCountdown ? 200 : 80)
           : coverY + coverSize + 60;
@@ -736,6 +838,18 @@ export function VideoGenerator({
 
       mediaRecorder.start();
 
+      // For video-clip template, play the source video during recording
+      if (selectedTemplate === "video-clip" && videoSourceRef.current) {
+        const vid = videoSourceRef.current;
+        vid.currentTime = 0;
+        await new Promise<void>((resolve) => {
+          vid.oncanplay = () => resolve();
+          vid.onerror = () => resolve();
+          setTimeout(() => resolve(), 3000); // Timeout fallback
+        });
+        await vid.play();
+      }
+
       // Render frames
       for (let frame = 0; frame < totalFrames; frame++) {
         drawFrame(ctx, img, frame, totalFrames, canvas.width, canvas.height, particles);
@@ -745,6 +859,11 @@ export function VideoGenerator({
 
         // Wait for next frame timing
         await new Promise((resolve) => setTimeout(resolve, 1000 / fps));
+      }
+
+      // Stop source video if playing
+      if (videoSourceRef.current) {
+        videoSourceRef.current.pause();
       }
 
       mediaRecorder.stop();
@@ -905,16 +1024,16 @@ export function VideoGenerator({
       <div>
         <label className="block text-sm text-slc-muted mb-2">Template</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {TEMPLATES.map((template) => (
+          {TEMPLATES.filter((template) => template.id !== "video-clip" || videoUrl).map((template) => (
             <button
               key={template.id}
               type="button"
               onClick={() => setSelectedTemplate(template.id)}
-              disabled={template.requiresAudio && !audioUrl}
+              disabled={template.requiresAudio && !audioUrl && template.id !== "video-clip"}
               className={`p-3 rounded-xl border text-left transition-all ${
                 selectedTemplate === template.id
                   ? "bg-primary/10 border-primary"
-                  : template.requiresAudio && !audioUrl
+                  : template.requiresAudio && !audioUrl && template.id !== "video-clip"
                   ? "bg-slc-card/50 border-slc-border opacity-50 cursor-not-allowed"
                   : "bg-slc-card border-slc-border hover:border-primary/50"
               }`}
@@ -924,10 +1043,16 @@ export function VideoGenerator({
                 <span className="font-medium text-sm">{template.name}</span>
               </div>
               <p className="text-xs text-slc-muted line-clamp-2">{template.description}</p>
-              {template.requiresAudio && !audioUrl && (
+              {template.requiresAudio && !audioUrl && template.id !== "video-clip" && (
                 <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
                   <Music className="w-3 h-3" />
                   Requiere audio
+                </p>
+              )}
+              {template.id === "video-clip" && videoUrl && (
+                <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                  <Video className="w-3 h-3" />
+                  Video subido disponible
                 </p>
               )}
             </button>

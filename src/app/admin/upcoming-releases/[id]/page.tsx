@@ -970,6 +970,7 @@ export default function EditUpcomingReleasePage({ params }: { params: Promise<{ 
               <VideoGenerator
                 coverImageUrl={formData.coverImageUrl}
                 audioUrl={formData.audioPreviewUrl || undefined}
+                videoUrl={formData.verticalVideoUrl || formData.teaserVideoUrl || undefined}
                 artistName={formData.artistName}
                 title={formData.title}
                 releaseDate={formData.releaseDate ? new Date(formData.releaseDate) : undefined}

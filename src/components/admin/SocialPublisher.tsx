@@ -277,6 +277,15 @@ export function SocialPublisher({
     igPostUrl?: string;
   } | null>(null);
 
+  // Reel post state
+  const [isPostingReel, setIsPostingReel] = useState(false);
+  const [reelPostResult, setReelPostResult] = useState<{
+    success: boolean;
+    message: string;
+    igReelUrl?: string;
+    fbReelUrl?: string;
+  } | null>(null);
+
   const platform = PLATFORMS.find((p) => p.id === selectedPlatform)!;
 
   // Generate caption
@@ -364,6 +373,68 @@ export function SocialPublisher({
       setIsAutoPosting(false);
     }
   }, [coverImageUrl, presaveUrl, releaseId, generateCaption]);
+
+  // Post as Reel to IG and/or FB
+  const handlePostReel = useCallback(async () => {
+    if (!verticalVideoUrl) return;
+    setIsPostingReel(true);
+    setReelPostResult(null);
+
+    try {
+      // Get selected platforms
+      const igCheckbox = document.getElementById("reel-platform-ig") as HTMLInputElement;
+      const fbCheckbox = document.getElementById("reel-platform-fb") as HTMLInputElement;
+      const platforms: string[] = [];
+      if (igCheckbox?.checked) platforms.push("instagram");
+      if (fbCheckbox?.checked) platforms.push("facebook");
+
+      if (platforms.length === 0) {
+        setReelPostResult({
+          success: false,
+          message: "Selecciona al menos una plataforma",
+        });
+        setIsPostingReel(false);
+        return;
+      }
+
+      const caption = generateCaption();
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "post-reel",
+          videoUrl: verticalVideoUrl,
+          caption,
+          platforms,
+          releaseId: releaseId || undefined,
+          releaseTitle: releaseTitle || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setReelPostResult({
+          success: true,
+          message: data.message || "¡Reel publicado exitosamente!",
+          igReelUrl: data.results?.instagram?.permalink,
+          fbReelUrl: data.results?.facebook?.postUrl,
+        });
+      } else {
+        setReelPostResult({
+          success: false,
+          message: data.message || data.error || "Error al publicar Reel",
+        });
+      }
+    } catch (err) {
+      setReelPostResult({
+        success: false,
+        message: err instanceof Error ? err.message : "Error de conexión",
+      });
+    } finally {
+      setIsPostingReel(false);
+    }
+  }, [verticalVideoUrl, releaseId, releaseTitle, generateCaption]);
 
   // Get recommended video for platform
   const getRecommendedVideo = useCallback(() => {
@@ -776,6 +847,129 @@ export function SocialPublisher({
                 )}
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Post as Reel — Video auto-post to IG Reels + FB Reels */}
+      <div className="p-4 bg-slc-card rounded-xl border border-pink-500/30 space-y-4">
+        <div className="flex items-center gap-2">
+          <Smartphone className="w-5 h-5 text-pink-500" />
+          <h4 className="font-oswald text-sm uppercase">Publicar como Reel</h4>
+        </div>
+        <p className="text-xs text-slc-muted">
+          Publica el video vertical directamente como Reel en Instagram y Facebook.
+          El video debe estar en formato MP4, vertical (9:16), máximo 90 segundos.
+          Se usará el caption generado arriba.
+        </p>
+
+        {verticalVideoUrl ? (
+          <div className="space-y-3">
+            {/* Video indicator */}
+            <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <Video className="w-5 h-5 text-green-500" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-400">Video vertical disponible</p>
+                <p className="text-xs text-slc-muted truncate max-w-[300px]">
+                  {verticalVideoUrl}
+                </p>
+              </div>
+              <Smartphone className="w-4 h-4 text-green-500" />
+            </div>
+
+            {/* Platform selection for Reels */}
+            <div className="flex gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  id="reel-platform-ig"
+                  className="w-4 h-4 rounded border-slc-border bg-slc-dark text-pink-500 focus:ring-pink-500"
+                />
+                <span className="text-sm flex items-center gap-1">
+                  <Instagram className="w-4 h-4 text-pink-500" />
+                  Instagram Reels
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  id="reel-platform-fb"
+                  className="w-4 h-4 rounded border-slc-border bg-slc-dark text-blue-500 focus:ring-blue-500"
+                />
+                <span className="text-sm flex items-center gap-1">
+                  <Facebook className="w-4 h-4 text-blue-500" />
+                  Facebook Reels
+                </span>
+              </label>
+            </div>
+
+            {/* Post button */}
+            <Button
+              onClick={handlePostReel}
+              disabled={isPostingReel}
+              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white"
+            >
+              {isPostingReel ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Publicando Reel... (puede tardar hasta 30s)
+                </>
+              ) : (
+                <>
+                  <Smartphone className="w-4 h-4 mr-2" />
+                  Publicar como Reel
+                </>
+              )}
+            </Button>
+
+            {/* Reel post result */}
+            {reelPostResult && (
+              <div
+                className={`p-3 rounded-lg text-sm ${
+                  reelPostResult.success
+                    ? "bg-green-500/10 border border-green-500/20 text-green-400"
+                    : "bg-red-500/10 border border-red-500/20 text-red-400"
+                }`}
+              >
+                <p className="font-medium mb-1">
+                  {reelPostResult.success ? "✓ Reel publicado" : "✗ Error al publicar Reel"}
+                </p>
+                <p className="text-xs opacity-80">{reelPostResult.message}</p>
+                {reelPostResult.success && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {reelPostResult.igReelUrl && (
+                      <a
+                        href={reelPostResult.igReelUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-pink-400 hover:underline flex items-center gap-1"
+                      >
+                        <Instagram className="w-3 h-3" /> Ver Reel en Instagram
+                      </a>
+                    )}
+                    {reelPostResult.fbReelUrl && (
+                      <a
+                        href={reelPostResult.fbReelUrl}
+                        target="blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                      >
+                        <Facebook className="w-3 h-3" /> Ver Reel en Facebook
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <p className="text-xs text-yellow-400 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              No hay video vertical disponible. Sube un video vertical (MP4, 9:16) en la pestaña "Videos" para poder publicar como Reel.
+            </p>
           </div>
         )}
       </div>
