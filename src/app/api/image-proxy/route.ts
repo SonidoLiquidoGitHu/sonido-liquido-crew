@@ -145,6 +145,94 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // For Dropbox URLs that already have ?raw=1 but still return non-image content,
+      // try resolving via the Dropbox API to get a temporary direct link.
+      // This handles new-format /scl/fi/ URLs where ?raw=1 doesn't always work.
+      if (imageUrl.includes("dropbox.com")) {
+        console.log(`[image-proxy] ?raw=1 already present but got ${upstreamContentType}, trying Dropbox API resolution`);
+        try {
+          const { dropboxClient } = await import("@/lib/clients/dropbox");
+
+          // Convert the URL back to a format the metadata API can resolve
+          let sharedLink = imageUrl;
+          if (sharedLink.includes("raw=1")) {
+            sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+          }
+
+          const token = await dropboxClient.getAccessToken();
+          const metaResponse = await fetch(
+            "https://api.dropboxapi.com/2/sharing/get_shared_link_metadata",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ url: sharedLink }),
+            }
+          );
+
+          if (metaResponse.ok) {
+            const metaData = await metaResponse.json();
+            const filePath = metaData.path_lower || metaData.path_display;
+
+            if (filePath) {
+              const tempLinkResponse = await fetch(
+                "https://api.dropboxapi.com/2/files/get_temporary_link",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ path: filePath }),
+                }
+              );
+
+              if (tempLinkResponse.ok) {
+                const tempLinkData = await tempLinkResponse.json();
+                const tempLink = tempLinkData.link;
+
+                if (tempLink) {
+                  // Fetch from the temporary link (has proper CORS + content-type)
+                  const tempController = new AbortController();
+                  const tempTimeout = setTimeout(() => tempController.abort(), TIMEOUT_MS);
+
+                  const tempResponse = await fetch(tempLink, {
+                    signal: tempController.signal,
+                    headers: { "User-Agent": "SonidoLiquido-ImageProxy/1.0" },
+                  });
+                  clearTimeout(tempTimeout);
+
+                  if (tempResponse.ok) {
+                    const tempContentType = tempResponse.headers.get("content-type") || "";
+                    const tempBody = await tempResponse.arrayBuffer();
+
+                    if (tempBody.byteLength <= MAX_SIZE && (tempContentType.startsWith("image/") || tempContentType.startsWith("video/"))) {
+                      const mimeType = tempContentType.startsWith("image/")
+                        ? getMimeType(tempLink, tempContentType)
+                        : "image/jpeg"; // For video thumbnails, serve as JPEG
+                      return new NextResponse(tempBody, {
+                        status: 200,
+                        headers: {
+                          "Content-Type": mimeType,
+                          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+                          "X-Content-Type-Options": "nosniff",
+                          "Content-Length": tempBody.byteLength.toString(),
+                          Vary: "Accept-Encoding",
+                        },
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (apiErr) {
+          console.warn("[image-proxy] Dropbox API resolution failed:", apiErr);
+        }
+      }
+
       console.warn(`[image-proxy] Upstream returned non-image content-type: ${upstreamContentType} for URL: ${imageUrl.substring(0, 100)}`);
       return NextResponse.json(
         { error: `Upstream returned non-image content type: ${upstreamContentType}` },

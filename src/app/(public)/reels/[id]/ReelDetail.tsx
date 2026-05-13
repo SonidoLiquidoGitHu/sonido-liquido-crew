@@ -21,6 +21,8 @@ import {
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
+  isDirectVideo,
+  getVideoSrc,
 } from "@/lib/video-utils";
 
 interface ReelVideo {
@@ -114,24 +116,15 @@ export function ReelDetail({ video }: ReelDetailProps) {
       <div className="relative w-full max-w-sm aspect-[9/16] rounded-xl overflow-hidden bg-black">
         {ytId ? (
           <YouTubeEmbed videoId={ytId} autoplay />
-        ) : video.videoUrl && (video.videoUrl.includes(".mp4") || video.videoUrl.includes(".webm") || video.videoUrl.includes("dropbox")) ? (
+        ) : isDirectVideo(video) ? (
           <video
-            src={(() => {
-              let videoSrc = video.videoUrl;
-              // Convert Dropbox shared links to direct download
-              if (videoSrc.includes("dropbox.com") && videoSrc.includes("dl=0")) {
-                videoSrc = videoSrc.replace("dl=0", "dl=1");
-              }
-              if (videoSrc.includes("dropbox.com") && !videoSrc.includes("dl=")) {
-                videoSrc += "?dl=1";
-              }
-              return videoSrc;
-            })()}
+            src={getVideoSrc(video)}
             className="w-full h-full object-contain"
             controls
             autoPlay
             playsInline
             loop
+            poster={getVideoThumbnail(video) || undefined}
           />
         ) : (
           <div className="w-full h-full relative flex items-center justify-center">

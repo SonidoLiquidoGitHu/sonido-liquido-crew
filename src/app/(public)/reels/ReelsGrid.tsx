@@ -32,6 +32,9 @@ import {
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
+  isDirectVideo as isDirectVideoUtil,
+  getVideoSrc,
+  type VideoLike,
 } from "@/lib/video-utils";
 
 // ===========================================
@@ -69,15 +72,7 @@ interface ReelsGridProps {
 // getYouTubeId, getVideoThumbnail are now shared utilities
 
 const isDirectVideo = (video: ReelVideo) => {
-  const ytId = getYouTubeId(video);
-  if (ytId) return false;
-  const url = video.videoUrl?.toLowerCase() || "";
-  return (
-    url.includes(".mp4") ||
-    url.includes(".webm") ||
-    url.includes("dropbox") ||
-    url.includes("dropboxusercontent")
-  );
+  return isDirectVideoUtil(video as unknown as VideoLike);
 };
 
 // ===========================================
@@ -648,14 +643,8 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                 );
               }
               if (direct) {
-                // Handle Dropbox URLs
-                let videoSrc = video.videoUrl;
-                if (videoSrc.includes("dropbox.com") && videoSrc.includes("dl=0")) {
-                  videoSrc = videoSrc.replace("dl=0", "dl=1");
-                }
-                if (videoSrc.includes("dropbox.com") && !videoSrc.includes("dl=")) {
-                  videoSrc += "?dl=1";
-                }
+                // Handle Dropbox URLs via shared utility
+                const videoSrc = getVideoSrc(video as unknown as VideoLike);
                 return (
                   <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
                     <video

@@ -35,6 +35,9 @@ import {
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
+  isDirectVideo as isDirectVideoUtil,
+  getVideoSrc,
+  type VideoLike,
 } from "@/lib/video-utils";
 
 // ===========================================
@@ -72,14 +75,7 @@ interface TikTokFeedProps {
 // getYouTubeId, getVideoThumbnail are now shared utilities
 
 const isDirectVideo = (video: ReelVideo) => {
-  if (getYouTubeId(video)) return false;
-  const url = video.videoUrl?.toLowerCase() || "";
-  return (
-    url.includes(".mp4") ||
-    url.includes(".webm") ||
-    url.includes("dropbox") ||
-    url.includes("dropboxusercontent")
-  );
+  return isDirectVideoUtil(video as unknown as VideoLike);
 };
 
 function formatViewCount(count: number): string {
@@ -469,17 +465,8 @@ function VideoPlayer({
     }
   }, [isPlaying, isVisible]);
 
-  // Handle Dropbox URLs — convert dl=0 to dl=1 for direct playback
-  const videoSrc = (() => {
-    let url = video.videoUrl;
-    if (url.includes("dropbox.com") && url.includes("dl=0")) {
-      url = url.replace("dl=0", "dl=1");
-    }
-    if (url.includes("dropbox.com") && !url.includes("dl=")) {
-      url += "?dl=1";
-    }
-    return url;
-  })();
+  // Handle Dropbox URLs — convert to direct-access URL for playback
+  const videoSrc = getVideoSrc(video as unknown as VideoLike);
 
   return (
     <div className="relative w-full h-full">
@@ -1122,7 +1109,7 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
       if (isDirectVideo(video)) {
         const videoEl = document.createElement("video");
         videoEl.preload = "auto";
-        videoEl.src = video.videoUrl;
+        videoEl.src = getVideoSrc(video as unknown as VideoLike);
         // Don't need to append to DOM — just creating starts preloading in most browsers
         preloadedRef.current.add(video.id);
       }

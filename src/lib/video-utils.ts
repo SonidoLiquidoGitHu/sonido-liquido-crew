@@ -160,3 +160,80 @@ export function getVideoPlaceholderSvg(aspectRatio: "9/16" | "16/9" = "9/16"): s
     </svg>`
   )}`;
 }
+
+// ===========================================
+// DROPBOX URL CONVERSION
+// ===========================================
+
+/**
+ * Convert a Dropbox URL to a direct-access URL suitable for video/image playback.
+ *
+ * Handles ALL Dropbox URL formats:
+ *
+ * 1. **Old shared links** (`/s/...?dl=0`):
+ *    Convert `dl=0` → `raw=1` for direct file access.
+ *    (Using `raw=1` instead of `dl=1` because it works with both old and new formats.)
+ *
+ * 2. **New shared links** (`/scl/fi/...?rlkey=...&raw=1`):
+ *    Already have `raw=1` — use as-is.
+ *
+ * 3. **Direct CDN links** (`dl.dropboxusercontent.com/...`):
+ *    Already direct-access — use as-is.
+ *
+ * 4. **Dropbox shared links without any download parameter**:
+ *    Append `&raw=1` (or `?raw=1` if no query string exists).
+ *
+ * CRITICAL: Never appends `?dl=1` — this parameter doesn't work with the new
+ * `/scl/fi/` URL format and creates broken double-`?` URLs when query params
+ * already exist. Always use `raw=1` instead.
+ */
+export function getDirectDropboxUrl(url: string): string {
+  if (!url || !url.includes("dropbox")) return url;
+
+  // 1. dl.dropboxusercontent.com — already a direct CDN link, use as-is
+  if (url.includes("dl.dropboxusercontent.com")) {
+    return url;
+  }
+
+  // 2. New-format shared links with ?raw=1 already present — use as-is
+  if (url.includes("raw=1")) {
+    return url;
+  }
+
+  // 3. Old-format shared links with ?dl=0 — replace with raw=1
+  if (url.includes("dl=0")) {
+    return url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+  }
+
+  // 4. Dropbox shared links without any download parameter — add raw=1
+  if (url.includes("?")) {
+    return url + "&raw=1";
+  }
+  return url + "?raw=1";
+}
+
+/**
+ * Check if a video URL points to a directly-playable video file
+ * (not YouTube, not Instagram/TikTok links).
+ */
+export function isDirectVideo(video: VideoLike): boolean {
+  if (getYouTubeId(video)) return false;
+  const url = video.videoUrl?.toLowerCase() || "";
+  return (
+    url.includes(".mp4") ||
+    url.includes(".webm") ||
+    url.includes("dropbox") ||
+    url.includes("dropboxusercontent")
+  );
+}
+
+/**
+ * Get a video source URL suitable for HTML <video> element playback.
+ *
+ * Handles Dropbox URL conversion automatically via getDirectDropboxUrl().
+ * For non-Dropbox URLs, returns as-is.
+ */
+export function getVideoSrc(video: VideoLike): string {
+  const url = video.videoUrl || "";
+  return getDirectDropboxUrl(url);
+}
