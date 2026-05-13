@@ -25,6 +25,8 @@ import {
   Wand2,
   User,
   Check,
+  Cloud,
+  Zap,
 } from "lucide-react";
 
 interface AudioFileInfo {
@@ -37,6 +39,7 @@ interface AudioFileInfo {
   progress: number;
   url?: string;
   error?: string;
+  message?: string;
   trackNumber?: number;
 }
 
@@ -130,6 +133,38 @@ export function BulkAudioUploader({
   const [exportCopied, setExportCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
+
+  // Dropbox direct upload state
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  // Initialize Dropbox direct upload on mount
+  useEffect(() => {
+    const initDropbox = async () => {
+      try {
+        const statusRes = await fetch("/api/admin/dropbox");
+        const statusData = await statusRes.json();
+        if (!statusData?.data?.connected) {
+          console.log("[BulkAudio] Dropbox not connected");
+          setDropboxConfigured(false);
+          return;
+        }
+        const tokenRes = await fetch("/api/admin/dropbox/token");
+        const tokenData = await tokenRes.json();
+        if (tokenData.success && tokenData.data?.token) {
+          setAccessToken(tokenData.data.token);
+          setDropboxConfigured(true);
+          console.log("[BulkAudio] Ready for direct Dropbox uploads");
+        } else {
+          setDropboxConfigured(false);
+        }
+      } catch (error) {
+        console.error("[BulkAudio] Dropbox init error:", error);
+        setDropboxConfigured(false);
+      }
+    };
+    initDropbox();
+  }, []);
 
   const processFiles = useCallback(async (selectedFiles: FileList | File[]) => {
     const audioFiles = Array.from(selectedFiles).filter(
@@ -270,6 +305,17 @@ export function BulkAudioUploader({
     }
   };
 
+  // Get status message for a file
+  const getStatusMessage = (fileInfo: AudioFileInfo): string | undefined => {
+    if (fileInfo.status === "uploading") {
+      if (fileInfo.progress < 30) return "Preparando archivo...";
+      if (fileInfo.progress < 85) return "Subiendo a Dropbox...";
+      if (fileInfo.progress < 95) return "Creando enlace...";
+      return "Finalizando...";
+    }
+    return undefined;
+  };
+
   // Pattern renaming
   const applyRenamePattern = () => {
     setFiles((prev) =>
@@ -313,30 +359,219 @@ export function BulkAudioUploader({
   // Helper to add delay between uploads
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+  // Convert Dropbox shared link to direct link with ?raw=1
+  const convertToDirectLink = (url: string): string => {
+    const result = url
+      .replace("?dl=0", "?raw=1")
+      .replace("&dl=0", "&raw=1");
+    if (!result.includes("raw=1")) {
+      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+    }
+    return result;
+  };
+
+  // Create a shared link for a file on Dropbox (direct browser call)
+  const createSharedLink = async (path: string): Promise<string> => {
+    if (!accessToken) throw new Error("No hay token de Dropbox");
+
+    try {
+      const response = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path,
+          settings: { access: "viewer", audience: "public", requested_visibility: "public" },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return convertToDirectLink(data.url);
+      }
+
+      // Link might already exist
+      const errorData = await response.json().catch(() => ({}));
+      if (errorData.error_summary?.includes("shared_link_already_exists") || response.status === 409) {
+        const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ path, direct_only: true }),
+        });
+        if (listResponse.ok) {
+          const listData = await listResponse.json();
+          if (listData.links && listData.links.length > 0) {
+            return convertToDirectLink(listData.links[0].url);
+          }
+        }
+      }
+      throw new Error(errorData.error_summary || "Failed to create shared link");
+    } catch (error) {
+      console.error("[BulkAudio] Create link error:", error);
+      throw error;
+    }
+  };
+
+  // Upload a file directly to Dropbox from the browser (bypasses server size limits)
+  const uploadDirectToDropbox = async (fileInfo: AudioFileInfo): Promise<{ url: string; filename: string } | null> => {
+    if (!accessToken) {
+      throw new Error("No hay token de Dropbox disponible. Reconecta en Sincronización.");
+    }
+
+    const ext = fileInfo.file.name.split(".").pop() || "";
+    const baseName = fileInfo.file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const uniqueId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const filename = `${baseName}_${uniqueId}.${ext}`;
+    const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
+    const dropboxPath = `${normalizedFolder}/${filename}`;
+
+    const fileSizeMB = fileInfo.file.size / (1024 * 1024);
+    const isLargeFile = fileSizeMB > 150;
+
+    if (isLargeFile) {
+      // Chunked upload for files > 150MB
+      const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB chunks
+      const totalChunks = Math.ceil(fileInfo.file.size / CHUNK_SIZE);
+
+      // Start session
+      const startResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/start", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({ close: false }),
+        },
+        body: new ArrayBuffer(0),
+      });
+      if (!startResponse.ok) throw new Error("Failed to start upload session");
+      const { session_id } = await startResponse.json();
+
+      let offset = 0;
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = fileInfo.file.slice(offset, offset + CHUNK_SIZE);
+        const chunkBuffer = await chunk.arrayBuffer();
+        const isLastChunk = i === totalChunks - 1;
+
+        const progress = Math.round(30 + ((i + 1) / totalChunks) * 50);
+        updateFile(fileInfo.id, { progress, message: `Subiendo parte ${i + 1} de ${totalChunks}...` });
+
+        if (isLastChunk) {
+          const finishResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/finish", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/octet-stream",
+              "Dropbox-API-Arg": JSON.stringify({
+                cursor: { session_id, offset },
+                commit: { path: dropboxPath, mode: "overwrite", autorename: false, mute: false },
+              }),
+            },
+            body: chunkBuffer,
+          });
+          if (!finishResponse.ok) {
+            const errorData = await finishResponse.json().catch(() => ({}));
+            throw new Error(errorData.error_summary || "Failed to finish upload");
+          }
+        } else {
+          const appendResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/append_v2", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/octet-stream",
+              "Dropbox-API-Arg": JSON.stringify({
+                cursor: { session_id, offset },
+                close: false,
+              }),
+            },
+            body: chunkBuffer,
+          });
+          if (!appendResponse.ok) throw new Error("Failed to append chunk");
+        }
+        offset += chunkBuffer.byteLength;
+      }
+    } else {
+      // Single-request upload for files <= 150MB
+      const arrayBuffer = await fileInfo.file.arrayBuffer();
+
+      updateFile(fileInfo.id, { progress: 40, message: "Subiendo a Dropbox..." });
+
+      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({
+            path: dropboxPath,
+            mode: "overwrite",
+            autorename: false,
+            mute: false,
+          }),
+        },
+        body: arrayBuffer,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({}));
+        if (uploadResponse.status === 401) {
+          throw new Error("Token de Dropbox expirado. Reconecta en Sincronización → Dropbox.");
+        }
+        throw new Error(errorData.error_summary || `Error HTTP ${uploadResponse.status}`);
+      }
+    }
+
+    updateFile(fileInfo.id, { progress: 85, message: "Creando enlace..." });
+
+    // Create shared link
+    const sharedUrl = await createSharedLink(dropboxPath);
+
+    return { url: sharedUrl, filename };
+  };
+
   const uploadFile = async (fileInfo: AudioFileInfo, retryCount = 0): Promise<{ title: string; artist?: string; url: string; duration: string; trackNumber?: number } | null> => {
     if (fileInfo.file.size > maxSize * 1024 * 1024) {
       updateFile(fileInfo.id, { status: "error", error: `Archivo excede ${maxSize}MB` });
       return null;
     }
 
-    // Warn about large WAV files that may timeout
-    const isLargeWav = fileInfo.file.name.toLowerCase().endsWith('.wav') && fileInfo.file.size > 15 * 1024 * 1024;
-    if (isLargeWav && retryCount === 0) {
-      console.warn(`[BulkUpload] Large WAV file detected (${(fileInfo.file.size / 1024 / 1024).toFixed(1)}MB): ${fileInfo.file.name}. Consider converting to MP3.`);
-    }
-
     updateFile(fileInfo.id, { status: "uploading", progress: 10 });
 
     try {
+      // Use direct browser-to-Dropbox upload (bypasses server body size limits)
+      if (accessToken && dropboxConfigured) {
+        updateFile(fileInfo.id, { progress: 20 });
+        const result = await uploadDirectToDropbox(fileInfo);
+
+        if (!result) {
+          throw new Error("No se pudo subir el archivo a Dropbox");
+        }
+
+        updateFile(fileInfo.id, { status: "success", progress: 100, url: result.url });
+
+        return {
+          title: fileInfo.title,
+          artist: fileInfo.artist || undefined,
+          url: result.url,
+          duration: fileInfo.duration,
+          trackNumber: fileInfo.trackNumber,
+        };
+      }
+
+      // Fallback: Server-side upload (for when Dropbox is not configured for direct upload)
+      // NOTE: This path has body size limits (~10MB on Netlify) and should rarely be used
+      console.warn("[BulkAudio] No direct Dropbox token, falling back to server upload (may fail for large files)");
       const formData = new FormData();
       formData.append("file", fileInfo.file);
       formData.append("folder", folder);
 
       updateFile(fileInfo.id, { progress: 30 });
 
-      // Add timeout to the fetch request
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
 
       let response: Response;
       try {
@@ -351,23 +586,18 @@ export function BulkAudioUploader({
 
       updateFile(fileInfo.id, { progress: 80 });
 
-      // Check if response is ok first
       if (!response.ok) {
-        // Try to get error message from response
         let errorMsg = `Error HTTP ${response.status}`;
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
         } catch {
-          // If we can't parse JSON, use the status text
           errorMsg = response.statusText || errorMsg;
         }
 
-        // Check if we should retry (rate limiting or server error)
-        if ((response.status === 429 || response.status >= 500) && retryCount < 4) {
-          // Exponential backoff: 4s, 8s, 16s, 32s for rate limiting/server errors
+        // Retry on server errors
+        if ((response.status === 429 || response.status >= 500) && retryCount < 3) {
           const delayMs = Math.pow(2, retryCount) * 4000;
-          console.log(`[BulkUpload] Error ${response.status}, retrying ${fileInfo.file.name} in ${delayMs}ms (attempt ${retryCount + 1}/4)`);
           updateFile(fileInfo.id, { status: "uploading", progress: 5, error: undefined });
           await delay(delayMs);
           return uploadFile(fileInfo, retryCount + 1);
@@ -376,21 +606,7 @@ export function BulkAudioUploader({
         throw new Error(errorMsg);
       }
 
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        // Server might have timed out or returned HTML error
-        if (retryCount < 3) {
-          const delayMs = Math.pow(2, retryCount) * 3000;
-          console.log(`[BulkUpload] Non-JSON response, retrying ${fileInfo.file.name} in ${delayMs}ms`);
-          updateFile(fileInfo.id, { status: "pending", progress: 0, error: `Servidor ocupado, reintentando en ${delayMs/1000}s...` });
-          await delay(delayMs);
-          return uploadFile(fileInfo, retryCount + 1);
-        }
-        throw new Error("El servidor no respondió correctamente. Intenta con menos archivos a la vez.");
-      }
-
       const data = await response.json();
-
       if (!data.success) {
         throw new Error(data.error || "Error al subir archivo");
       }
@@ -407,39 +623,31 @@ export function BulkAudioUploader({
     } catch (error) {
       const errMsg = (error as Error).message;
 
-      // Handle abort error (timeout)
-      if (errMsg === "The operation was aborted." || errMsg.includes("abort")) {
-        if (retryCount < 2) {
-          const delayMs = 3000;
-          console.log(`[BulkUpload] Upload timed out, retrying ${fileInfo.file.name}`);
-          updateFile(fileInfo.id, { status: "pending", progress: 0, error: "Tiempo agotado, reintentando..." });
-          await delay(delayMs);
-          return uploadFile(fileInfo, retryCount + 1);
+      // Retry on token expiry (after refreshing)
+      if ((errMsg.includes("401") || errMsg.includes("expired") || errMsg.includes("expirado")) && retryCount < 1) {
+        console.log("[BulkAudio] Token expired, refreshing and retrying");
+        try {
+          const tokenRes = await fetch("/api/admin/dropbox/token");
+          const tokenData = await tokenRes.json();
+          if (tokenData.success && tokenData.data?.token) {
+            setAccessToken(tokenData.data.token);
+            updateFile(fileInfo.id, { status: "pending", progress: 0, error: undefined });
+            return uploadFile(fileInfo, retryCount + 1);
+          }
+        } catch {
+          // Refresh failed
         }
-        const isWav = fileInfo.file.name.toLowerCase().endsWith('.wav');
-        const errorMsg = isWav
-          ? "Timeout. Convierte a MP3 para evitar este error."
-          : "Tiempo agotado. El archivo puede ser muy grande.";
-        updateFile(fileInfo.id, { status: "error", error: errorMsg });
+        updateFile(fileInfo.id, { status: "error", error: "Token de Dropbox expirado. Reconecta en Sincronización → Dropbox." });
         return null;
       }
 
-      // Add helpful message for HTTP 500 errors with large files
-      if (errMsg.includes("500")) {
-        const fileSizeMB = fileInfo.file.size / (1024 * 1024);
-        const isWav = fileInfo.file.name.toLowerCase().endsWith('.wav');
-
-        if (fileSizeMB > 5) {
-          const suggestion = isWav
-            ? "Archivo grande. Convierte a MP3 o intenta de nuevo."
-            : "Archivo grande (~" + fileSizeMB.toFixed(1) + "MB). Intenta de nuevo con 'Reintentar'.";
-          updateFile(fileInfo.id, { status: "error", error: suggestion });
-          return null;
-        }
-
-        // For smaller files, suggest retry
-        updateFile(fileInfo.id, { status: "error", error: "Error temporal. Haz clic en 'Reintentar'." });
-        return null;
+      // Retry on rate limiting or server errors
+      if ((errMsg.includes("429") || errMsg.includes("rate") || errMsg.includes("500")) && retryCount < 3) {
+        const delayMs = Math.pow(2, retryCount) * 3000;
+        console.log(`[BulkAudio] Error, retrying ${fileInfo.file.name} in ${delayMs}ms (attempt ${retryCount + 1}/3)`);
+        updateFile(fileInfo.id, { status: "pending", progress: 0, error: `Reintentando en ${delayMs/1000}s...` });
+        await delay(delayMs);
+        return uploadFile(fileInfo, retryCount + 1);
       }
 
       updateFile(fileInfo.id, { status: "error", error: errMsg });
@@ -547,12 +755,21 @@ export function BulkAudioUploader({
         <p className="text-xs text-slc-muted">
           MP3, WAV, FLAC, M4A, AAC • Máximo {maxSize}MB • Hasta {maxFiles} archivos
         </p>
-        <p className="text-xs text-yellow-500 mt-2">
-          Recomendado: Usa MP3 en lugar de WAV para evitar timeouts
-        </p>
         <p className="text-xs text-primary mt-2">
           Los metadatos ID3 (título, artista) se detectan automáticamente
         </p>
+        {dropboxConfigured && (
+          <div className="flex items-center gap-1.5 justify-center mt-2">
+            <Zap className="w-3 h-3 text-emerald-500" />
+            <span className="text-xs text-emerald-500">Upload directo a Dropbox desde tu navegador</span>
+          </div>
+        )}
+        {dropboxConfigured === false && (
+          <div className="flex items-center gap-1.5 justify-center mt-2">
+            <AlertTriangle className="w-3 h-3 text-yellow-500" />
+            <span className="text-xs text-yellow-500">Dropbox no configurado. <a href="/admin/sync" className="underline">Conectar</a></span>
+          </div>
+        )}
       </div>
 
       {/* File list */}
@@ -744,11 +961,16 @@ export function BulkAudioUploader({
 
                     {/* Upload progress */}
                     {fileInfo.status === "uploading" && (
-                      <div className="w-full bg-slc-border rounded-full h-1.5">
-                        <div
-                          className="bg-spotify h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${fileInfo.progress}%` }}
-                        />
+                      <div className="space-y-1">
+                        <div className="w-full bg-slc-border rounded-full h-1.5">
+                          <div
+                            className="bg-spotify h-1.5 rounded-full transition-all duration-300"
+                            style={{ width: `${fileInfo.progress}%` }}
+                          />
+                        </div>
+                        {fileInfo.message && (
+                          <p className="text-xs text-slc-muted">{fileInfo.message}</p>
+                        )}
                       </div>
                     )}
                   </div>
