@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles, artistGalleryAssets, artistRelations } from "@/db/schema";
+import { artists, artistExternalProfiles, artistGalleryAssets, artistRelations, artistEpk } from "@/db/schema";
 import { eq, or } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 
@@ -194,6 +194,65 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     console.log(`[API] Updated artist: ${updatedArtist.name}`);
+
+    // ===== Sync overlapping fields to EPK =====
+    // Only update EPK fields that are currently empty (EPK data takes priority)
+    try {
+      const [existingEpk] = await db
+        .select()
+        .from(artistEpk)
+        .where(eq(artistEpk.artistId, id))
+        .limit(1);
+
+      if (existingEpk) {
+        const epkUpdates: Record<string, unknown> = { updatedAt: new Date() };
+
+        // bioShort: sync from Artist.shortBio if EPK.bioShort is empty
+        if (!existingEpk.bioShort && body.shortBio) {
+          epkUpdates.bioShort = body.shortBio;
+        }
+        // bioLong: sync from Artist.bio if EPK.bioLong is empty
+        if (!existingEpk.bioLong && body.bio) {
+          epkUpdates.bioLong = body.bio;
+        }
+        // bookingEmail: sync if EPK is empty
+        if (!existingEpk.bookingEmail && body.bookingEmail) {
+          epkUpdates.bookingEmail = body.bookingEmail;
+        }
+        // managementEmail: sync if EPK is empty
+        if (!existingEpk.managementEmail && body.managementEmail) {
+          epkUpdates.managementEmail = body.managementEmail;
+        }
+        // genreSpecific: sync from Artist.genres if EPK is empty
+        if (!existingEpk.genreSpecific && body.genres) {
+          epkUpdates.genreSpecific = Array.isArray(body.genres) ? body.genres.join(", ") : body.genres;
+        }
+        // labelName: sync from Artist.labels if EPK is empty
+        if (!existingEpk.labelName && body.labels) {
+          epkUpdates.labelName = Array.isArray(body.labels) ? body.labels.join(" / ") : body.labels;
+        }
+        // pressQuotes: sync from Artist if EPK is empty
+        if (!existingEpk.pressQuotes && body.pressQuotes) {
+          epkUpdates.pressQuotes = JSON.stringify(body.pressQuotes);
+        }
+        // featuredVideos → officialMusicVideos: sync if EPK is empty
+        if (!existingEpk.officialMusicVideos && body.featuredVideos) {
+          epkUpdates.officialMusicVideos = JSON.stringify(body.featuredVideos);
+        }
+
+        if (Object.keys(epkUpdates).length > 1) { // >1 because updatedAt is always there
+          await db
+            .update(artistEpk)
+            .set(epkUpdates)
+            .where(eq(artistEpk.artistId, id));
+          console.log(`[API] Synced artist fields to EPK for: ${updatedArtist.name}`);
+        }
+      }
+    } catch (syncError) {
+      console.error("[API] Error syncing artist to EPK (non-critical):", syncError);
+      // Don't fail the request if sync fails
+    }
+    // ===== End sync to EPK =====
 
     return NextResponse.json({
       success: true,

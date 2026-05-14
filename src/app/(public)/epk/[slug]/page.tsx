@@ -5,6 +5,7 @@ import { db, isDatabaseConfigured } from "@/db/client";
 import { artists, artistEpk, artistExternalProfiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
+import { mergeArtistEpk } from "@/lib/epk-merge";
 import {
   ArrowLeft,
   User,
@@ -103,10 +104,11 @@ export async function generateMetadata({ params }: PageProps) {
   }
 
   const { artist, epk } = data;
+  const merged = mergeArtistEpk(artist, epk);
 
   return {
     title: `${artist.name} - EPK | Sonido Líquido Crew`,
-    description: epk?.bioShort || epk?.tagline || artist.shortBio || `Electronic Press Kit de ${artist.name}`,
+    description: merged.bioShort || merged.tagline || `Electronic Press Kit de ${artist.name}`,
     openGraph: {
       images: artist.profileImageUrl ? [artist.profileImageUrl] : [],
     },
@@ -185,21 +187,24 @@ export default async function PublicEpkPage({ params }: PageProps) {
     notFound();
   }
 
-  // Parse JSON fields
-  const brandColors = parseJson<string[]>(epk?.brandColors, []);
-  const subgenres = parseJson<string[]>(epk?.subgenres, []);
-  const streamingHighlights = parseJson<string[]>(epk?.streamingHighlights, []);
-  const pressFeatures = parseJson<{ outlet: string; title: string; url: string; date?: string }[]>(epk?.pressFeatures, []);
-  const pressQuotes = parseJson<{ quote: string; source: string; sourceUrl?: string }[]>(epk?.pressQuotes, []);
-  const editorialPlaylists = parseJson<{ name: string; platform: string; followers: number; url: string }[]>(epk?.editorialPlaylists, []);
-  const pastShows = parseJson<{ venue: string; city: string; date: string; type: string }[]>(epk?.pastShows, []);
-  const festivalAppearances = parseJson<string[]>(epk?.festivalAppearances, []);
-  const notableVenues = parseJson<string[]>(epk?.notableVenues, []);
-  const collaborations = parseJson<{ artistName: string; trackName: string; year: number; type: string }[]>(epk?.collaborations, []);
-  const topTracks = parseJson<{ title: string; url: string; platform: string }[]>(epk?.topTracks, []);
-  const officialMusicVideos = parseJson<{ title: string; url: string; views: number }[]>(epk?.officialMusicVideos, []);
-  const featuredVideo = parseJson<{ title: string; url: string; platform: string } | null>(epk?.featuredVideo, null);
-  const setLengthOptions = parseJson<number[]>(epk?.setLengthOptions, []);
+  // Merge Artist + EPK data (EPK priority, Artist as fallback)
+  const merged = mergeArtistEpk(artist, epk);
+
+  // Typed arrays from merged data
+  const brandColors = merged.brandColors;
+  const subgenres = merged.subgenres;
+  const streamingHighlights = merged.streamingHighlights as string[];
+  const pressFeatures = merged.pressFeatures as { outlet: string; title: string; url: string; date?: string }[];
+  const pressQuotes = merged.pressQuotes as { quote: string; source: string; sourceUrl?: string }[];
+  const editorialPlaylists = merged.editorialPlaylists as { name: string; platform: string; followers: number; url: string }[];
+  const pastShows = merged.pastShows as { venue: string; city: string; date: string; type: string }[];
+  const festivalAppearances = merged.festivalAppearances as string[];
+  const notableVenues = merged.notableVenues as string[];
+  const collaborations = merged.collaborations as { artistName: string; trackName: string; year: number; type: string }[];
+  const topTracks = merged.topTracks as { title: string; url: string; platform: string }[];
+  const officialMusicVideos = merged.officialMusicVideos as { title: string; url: string; views: number }[];
+  const featuredVideo = merged.featuredVideo as { title: string; url: string; platform: string } | null;
+  const setLengthOptions = merged.setLengthOptions;
 
   return (
     <div className="min-h-screen bg-slc-black">
@@ -278,18 +283,18 @@ export default async function PublicEpkPage({ params }: PageProps) {
               </span>
 
               {/* Tagline */}
-              {epk?.tagline && (
+              {merged.tagline && (
                 <p className="text-xl text-primary font-medium mb-4 max-w-2xl">
-                  {epk.tagline}
+                  {merged.tagline}
                 </p>
               )}
 
               {/* Genre */}
-              {(epk?.genreSpecific || subgenres.length > 0) && (
+              {(merged.genreSpecific || subgenres.length > 0) && (
                 <div className="flex flex-wrap justify-center lg:justify-start gap-2 mb-6">
-                  {epk?.genreSpecific && (
+                  {merged.genreSpecific && (
                     <span className="px-3 py-1 bg-slc-card border border-slc-border rounded-full text-sm">
-                      {epk.genreSpecific}
+                      {merged.genreSpecific}
                     </span>
                   )}
                   {subgenres.map((genre, idx) => (
@@ -302,34 +307,34 @@ export default async function PublicEpkPage({ params }: PageProps) {
 
               {/* Quick Stats */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-6 mb-8">
-                {epk?.spotifyMonthlyListeners && epk.spotifyMonthlyListeners > 0 && (
+                {merged.spotifyMonthlyListeners && merged.spotifyMonthlyListeners > 0 && (
                   <div className="text-center">
                     <div className="font-oswald text-3xl text-[#1DB954]">
-                      {formatNumber(epk.spotifyMonthlyListeners)}
+                      {formatNumber(merged.spotifyMonthlyListeners)}
                     </div>
                     <div className="text-xs text-slc-muted uppercase tracking-wider">Oyentes/Mes</div>
                   </div>
                 )}
-                {epk?.youtubeSubscribers && epk.youtubeSubscribers > 0 && (
+                {merged.youtubeSubscribers && merged.youtubeSubscribers > 0 && (
                   <div className="text-center">
                     <div className="font-oswald text-3xl text-red-500">
-                      {formatNumber(epk.youtubeSubscribers)}
+                      {formatNumber(merged.youtubeSubscribers)}
                     </div>
                     <div className="text-xs text-slc-muted uppercase tracking-wider">Suscriptores</div>
                   </div>
                 )}
-                {epk?.instagramFollowers && epk.instagramFollowers > 0 && (
+                {merged.instagramFollowers && merged.instagramFollowers > 0 && (
                   <div className="text-center">
                     <div className="font-oswald text-3xl text-pink-500">
-                      {formatNumber(epk.instagramFollowers)}
+                      {formatNumber(merged.instagramFollowers)}
                     </div>
                     <div className="text-xs text-slc-muted uppercase tracking-wider">Seguidores</div>
                   </div>
                 )}
-                {epk?.totalStreams && epk.totalStreams > 0 && (
+                {merged.totalStreams && merged.totalStreams > 0 && (
                   <div className="text-center">
                     <div className="font-oswald text-3xl text-primary">
-                      {formatNumber(epk.totalStreams)}
+                      {formatNumber(merged.totalStreams)}
                     </div>
                     <div className="text-xs text-slc-muted uppercase tracking-wider">Streams Totales</div>
                   </div>
@@ -357,7 +362,7 @@ export default async function PublicEpkPage({ params }: PageProps) {
       </section>
 
       {/* Bio Section */}
-      {(epk?.bioShort || epk?.bioLong || artist.bio) && (
+      {(merged.bioLong || merged.bioShort) && (
         <section className="py-12 bg-slc-dark/50">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
@@ -366,7 +371,7 @@ export default async function PublicEpkPage({ params }: PageProps) {
                 Biografía
               </h2>
               <div className="prose prose-invert prose-lg max-w-none">
-                {(epk?.bioLong || epk?.bioShort || artist.bio || "").split("\n\n").map((p, i) => (
+                {(merged.bioPress || merged.bioLong || merged.bioShort || "").split("\n\n").map((p, i) => (
                   <p key={i} className="text-slc-muted mb-4 leading-relaxed">{p}</p>
                 ))}
               </div>
@@ -748,7 +753,7 @@ export default async function PublicEpkPage({ params }: PageProps) {
       )}
 
       {/* Technical Rider Summary */}
-      {(epk?.performanceFormat || setLengthOptions.length > 0) && (
+      {(merged.performanceFormat || setLengthOptions.length > 0) && (
         <section className="py-12 bg-slc-dark/50">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
@@ -757,10 +762,10 @@ export default async function PublicEpkPage({ params }: PageProps) {
                 Información Técnica
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
-                {epk?.performanceFormat && (
+                {merged.performanceFormat && (
                   <div className="p-4 bg-slc-card border border-slc-border rounded-lg">
                     <h4 className="text-sm text-slc-muted uppercase mb-2">Formato</h4>
-                    <p className="font-medium capitalize">{epk.performanceFormat.replace("_", " ")}</p>
+                    <p className="font-medium capitalize">{merged.performanceFormat.replace("_", " ")}</p>
                   </div>
                 )}
                 {setLengthOptions.length > 0 && (
@@ -770,10 +775,10 @@ export default async function PublicEpkPage({ params }: PageProps) {
                   </div>
                 )}
               </div>
-              {epk?.technicalRiderPdfUrl && (
+              {merged.technicalRiderPdfUrl && (
                 <div className="mt-4">
                   <Button asChild variant="outline">
-                    <a href={epk.technicalRiderPdfUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={merged.technicalRiderPdfUrl} target="_blank" rel="noopener noreferrer">
                       <Download className="w-4 h-4 mr-2" />
                       Descargar Rider Técnico (PDF)
                     </a>
@@ -795,47 +800,47 @@ export default async function PublicEpkPage({ params }: PageProps) {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {epk?.bookingEmail && (
+              {merged.bookingEmail && (
                 <a
-                  href={`mailto:${epk.bookingEmail}`}
+                  href={`mailto:${merged.bookingEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
                   <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Booking</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline text-sm">{epk.bookingEmail}</span>
+                    <span className="text-primary group-hover:underline text-sm">{merged.bookingEmail}</span>
                     <Mail className="w-4 h-4 text-slc-muted" />
                   </div>
                 </a>
               )}
 
-              {epk?.managementEmail && (
+              {merged.managementEmail && (
                 <a
-                  href={`mailto:${epk.managementEmail}`}
+                  href={`mailto:${merged.managementEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
                   <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Management</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline text-sm">{epk.managementEmail}</span>
+                    <span className="text-primary group-hover:underline text-sm">{merged.managementEmail}</span>
                     <Building className="w-4 h-4 text-slc-muted" />
                   </div>
-                  {epk.managementName && (
-                    <p className="text-xs text-slc-muted mt-1">{epk.managementName}</p>
+                  {merged.managementName && (
+                    <p className="text-xs text-slc-muted mt-1">{merged.managementName}</p>
                   )}
                 </a>
               )}
 
-              {epk?.publicistEmail && (
+              {merged.publicistEmail && (
                 <a
-                  href={`mailto:${epk.publicistEmail}`}
+                  href={`mailto:${merged.publicistEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
                   <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Prensa / PR</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline text-sm">{epk.publicistEmail}</span>
+                    <span className="text-primary group-hover:underline text-sm">{merged.publicistEmail}</span>
                     <FileText className="w-4 h-4 text-slc-muted" />
                   </div>
-                  {epk.publicistName && (
-                    <p className="text-xs text-slc-muted mt-1">{epk.publicistName}</p>
+                  {merged.publicistName && (
+                    <p className="text-xs text-slc-muted mt-1">{merged.publicistName}</p>
                   )}
                 </a>
               )}
@@ -872,25 +877,25 @@ export default async function PublicEpkPage({ params }: PageProps) {
                   EPK en PDF
                 </a>
               </Button>
-              {epk?.pressKitPdfUrl && (
+              {merged.pressKitPdfUrl && (
                 <Button asChild variant="outline" size="lg">
-                  <a href={epk.pressKitPdfUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={merged.pressKitPdfUrl} target="_blank" rel="noopener noreferrer">
                     <FileText className="w-5 h-5 mr-2" />
                     Press Kit PDF
                   </a>
                 </Button>
               )}
-              {epk?.hiResPhotosZipUrl && (
+              {merged.hiResPhotosZipUrl && (
                 <Button asChild variant="outline" size="lg">
-                  <a href={epk.hiResPhotosZipUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={merged.hiResPhotosZipUrl} target="_blank" rel="noopener noreferrer">
                     <Download className="w-5 h-5 mr-2" />
                     Fotos Hi-Res
                   </a>
                 </Button>
               )}
-              {epk?.logoPackZipUrl && (
+              {merged.logoPackZipUrl && (
                 <Button asChild variant="outline" size="lg">
-                  <a href={epk.logoPackZipUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={merged.logoPackZipUrl} target="_blank" rel="noopener noreferrer">
                     <Palette className="w-5 h-5 mr-2" />
                     Logos
                   </a>

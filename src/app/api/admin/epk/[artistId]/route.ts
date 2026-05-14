@@ -270,6 +270,60 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       .where(eq(artistEpk.artistId, artistId))
       .limit(1);
 
+    // ===== Sync EPK fields back to Artist =====
+    // EPK is the source of truth — always overwrite Artist with EPK values
+    try {
+      const artistUpdates: Record<string, unknown> = { updatedAt: new Date() };
+
+      // bioShort → shortBio
+      if (body.bioShort) {
+        artistUpdates.shortBio = body.bioShort;
+      }
+      // bioLong → bio
+      if (body.bioLong) {
+        artistUpdates.bio = body.bioLong;
+      }
+      // bookingEmail
+      if (body.bookingEmail) {
+        artistUpdates.bookingEmail = body.bookingEmail;
+      }
+      // managementEmail
+      if (body.managementEmail) {
+        artistUpdates.managementEmail = body.managementEmail;
+      }
+      // publicistEmail → pressEmail
+      if (body.publicistEmail) {
+        artistUpdates.pressEmail = body.publicistEmail;
+      }
+      // genreSpecific → genres
+      if (body.genreSpecific) {
+        artistUpdates.genres = JSON.stringify(body.genreSpecific.split(",").map((g: string) => g.trim()).filter(Boolean));
+      }
+      // labelName → labels
+      if (body.labelName) {
+        artistUpdates.labels = JSON.stringify(body.labelName.split("/").map((l: string) => l.trim()).filter(Boolean));
+      }
+      // pressQuotes
+      if (body.pressQuotes) {
+        artistUpdates.pressQuotes = JSON.stringify(body.pressQuotes);
+      }
+      // officialMusicVideos → featuredVideos
+      if (body.officialMusicVideos) {
+        artistUpdates.featuredVideos = JSON.stringify(body.officialMusicVideos);
+      }
+
+      if (Object.keys(artistUpdates).length > 1) {
+        await db
+          .update(artists)
+          .set(artistUpdates)
+          .where(eq(artists.id, artistId));
+        console.log(`[EPK PUT] Synced EPK fields back to Artist: ${artistId}`);
+      }
+    } catch (syncError) {
+      console.error("[EPK PUT] Error syncing EPK to Artist (non-critical):", syncError);
+    }
+    // ===== End sync to Artist =====
+
     return NextResponse.json({
       success: true,
       data: updatedEpk,
