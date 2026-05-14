@@ -10,6 +10,7 @@ import { ImageAnalyzer } from "@/components/admin/ImageAnalyzer";
 import { YouTubePreview } from "@/components/admin/YouTubePreview";
 import { VideoUploader } from "@/components/admin/VideoUploader";
 import { VideoGenerator } from "@/components/admin/VideoGenerator";
+import { RunwayVideoStudio } from "@/components/admin/RunwayVideoStudio";
 import { SocialPublisher } from "@/components/admin/SocialPublisher";
 import { AudioSnippetUploader } from "@/components/admin/AudioSnippetUploader";
 import { SocialCalendar } from "@/components/admin/SocialCalendar";
@@ -962,6 +963,37 @@ export default function EditUpcomingReleasePage({ params }: { params: Promise<{ 
               description="Sube un snippet de 15-30 segundos para la página de pre-save y generación de videos."
               showWaveform={true}
             />
+          </section>
+
+          {/* AI Video Studio (Runway) */}
+          <section className="bg-slc-card border border-slc-border rounded-xl p-6">
+            {formData.coverImageUrl ? (
+              <RunwayVideoStudio
+                coverImageUrl={formData.coverImageUrl}
+                artistName={formData.artistName}
+                title={formData.title}
+                releaseDate={formData.releaseDate}
+                upcomingReleaseId={resolvedParams.id}
+                onVideoGenerated={(videoUrl) => {
+                  // Auto-fill the vertical video URL with the Runway output
+                  if (videoUrl && !formData.verticalVideoUrl) {
+                    setFormData(prev => ({ ...prev, verticalVideoUrl: videoUrl }));
+                  }
+                }}
+              />
+            ) : (
+              <div className="text-center py-12">
+                <Sparkles className="w-12 h-12 mx-auto mb-4 text-slc-muted opacity-50" />
+                <h3 className="font-oswald text-lg uppercase mb-2">AI Video Studio</h3>
+                <p className="text-sm text-slc-muted mb-4">
+                  Primero sube una portada en la pestaña "Diseño" para generar videos con IA.
+                </p>
+                <Button variant="outline" onClick={() => setActiveTab("media")}>
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Ir a Diseño
+                </Button>
+              </div>
+            )}
           </section>
 
           {/* Video Generator */}
