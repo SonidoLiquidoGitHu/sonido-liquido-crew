@@ -43,13 +43,15 @@ type VideoTemplate =
   | "waveform"
   | "text-reveal"
   | "glitch"
-  | "minimal";
+  | "minimal"
+  | "video-clip";
 
 type VideoOrientation = "horizontal" | "vertical" | "square";
 
 interface VideoGeneratorProps {
   coverImageUrl: string;
   audioUrl?: string;
+  videoUrl?: string;  // Uploaded video to use instead of static images
   artistName: string;
   title: string;
   releaseDate?: Date;
@@ -136,6 +138,14 @@ const TEMPLATES: TemplateConfig[] = [
     duration: 10,
     requiresAudio: false,
   },
+  {
+    id: "video-clip",
+    name: "Video Clip",
+    description: "Usa un video subido con overlay de texto",
+    icon: <Video className="w-5 h-5" />,
+    duration: 15,
+    requiresAudio: false,
+  },
 ];
 
 const ORIENTATIONS: { id: VideoOrientation; name: string; icon: React.ReactNode; dimensions: { width: number; height: number } }[] = [
@@ -150,10 +160,15 @@ const ORIENTATIONS: { id: VideoOrientation; name: string; icon: React.ReactNode;
 
 function getDirectUrl(url: string): string {
   if (url.includes("dropbox")) {
-    return url
-      .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-      .replace("?dl=0", "")
-      .replace("&dl=0", "");
+    // Use ?raw=1 instead of dl.dropboxusercontent.com because Dropbox has
+    // migrated to a new shared link format that is NOT compatible with dl.dropboxusercontent.com
+    const result = url
+      .replace("?dl=0", "?raw=1")
+      .replace("&dl=0", "&raw=1");
+    if (!result.includes("raw=1")) {
+      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+    }
+    return result;
   }
   return url;
 }
@@ -245,6 +260,7 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): vo
 export function VideoGenerator({
   coverImageUrl,
   audioUrl,
+  videoUrl,
   artistName,
   title,
   releaseDate,
@@ -253,7 +269,7 @@ export function VideoGenerator({
   className = "",
 }: VideoGeneratorProps) {
   // State
-  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate>("artwork-pulse");
+  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate>(videoUrl ? "video-clip" : "artwork-pulse");
   const [selectedOrientation, setSelectedOrientation] = useState<VideoOrientation>("vertical");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
@@ -276,6 +292,7 @@ export function VideoGenerator({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const videoSourceRef = useRef<HTMLVideoElement | null>(null);
 
   const currentTemplate = TEMPLATES.find((t) => t.id === selectedTemplate)!;
   const currentOrientation = ORIENTATIONS.find((o) => o.id === selectedOrientation)!;
@@ -291,6 +308,39 @@ export function VideoGenerator({
       }
     };
   }, [generatedVideoUrl]);
+
+  // Load video source for video-clip and countdown templates
+  useEffect(() => {
+    if (videoUrl && (selectedTemplate === "video-clip" || selectedTemplate === "countdown")) {
+      const vid = document.createElement("video");
+      vid.crossOrigin = "anonymous";
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.loop = true;
+      vid.preload = "auto";
+      vid.src = getDirectUrl(videoUrl);
+
+      vid.onloadeddata = () => {
+        console.log("Video source loaded successfully:", vid.videoWidth, "x", vid.videoHeight);
+      };
+
+      vid.onerror = () => {
+        console.warn("Video source failed to load. URL might have CORS restrictions.");
+      };
+
+      vid.load();
+      videoSourceRef.current = vid;
+
+      return () => {
+        vid.pause();
+        vid.removeAttribute("src");
+        vid.load();
+        videoSourceRef.current = null;
+      };
+    } else {
+      videoSourceRef.current = null;
+    }
+  }, [videoUrl, selectedTemplate]);
 
   // Load cover image
   const loadImage = useCallback(async (): Promise<HTMLImageElement> => {
@@ -332,15 +382,43 @@ export function VideoGenerator({
 
       switch (selectedTemplate) {
         case "countdown":
-          // Draw cover with subtle zoom
+          // Draw video background or cover with subtle zoom
           {
-            const zoom = 1 + Math.sin(time * 2) * 0.02;
-            const zoomOffset = (coverSize * (zoom - 1)) / 2;
-            ctx.drawImage(img, coverX - zoomOffset, coverY - zoomOffset, coverSize * zoom, coverSize * zoom);
+            if (videoSourceRef.current && videoSourceRef.current.readyState >= 2) {
+              // Use uploaded video as background
+              const vid = videoSourceRef.current;
+              const videoAspect = vid.videoWidth / vid.videoHeight;
+              const canvasAspect = width / height;
+              let drawWidth, drawHeight, drawX, drawY;
+              if (videoAspect > canvasAspect) {
+                drawHeight = height;
+                drawWidth = height * videoAspect;
+                drawX = (width - drawWidth) / 2;
+                drawY = 0;
+              } else {
+                drawWidth = width;
+                drawHeight = width / videoAspect;
+                drawX = 0;
+                drawY = (height - drawHeight) / 2;
+              }
+              ctx.drawImage(vid, drawX, drawY, drawWidth, drawHeight);
+
+              // Semi-transparent dark overlay for countdown visibility
+              ctx.fillStyle = "rgba(0,0,0,0.4)";
+              ctx.fillRect(0, 0, width, height);
+            } else {
+              // Fallback: cover image with subtle zoom
+              const zoom = 1 + Math.sin(time * 2) * 0.02;
+              const zoomOffset = (coverSize * (zoom - 1)) / 2;
+              ctx.drawImage(img, coverX - zoomOffset, coverY - zoomOffset, coverSize * zoom, coverSize * zoom);
+            }
 
             // Draw countdown
             if (releaseDate && showCountdown) {
-              const countdownY = coverY + coverSize + 60;
+              const isVideoBg = videoSourceRef.current && videoSourceRef.current.readyState >= 2;
+              const countdownY = isVideoBg
+                ? height * 0.45  // Center countdown vertically when video is background
+                : coverY + coverSize + 60;
               const countdown = formatCountdown(releaseDate, new Date(Date.now() + (totalFrames - frame) * 33));
 
               ctx.textAlign = "center";
@@ -359,8 +437,25 @@ export function VideoGenerator({
                 const x = startX + i * (boxWidth + boxSpacing) + boxWidth / 2;
 
                 // Box background
-                ctx.fillStyle = `rgba(255,255,255,0.1)`;
-                ctx.fillRect(startX + i * (boxWidth + boxSpacing), countdownY, boxWidth, boxWidth * 0.8);
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                // Rounded rect effect
+                const bx = startX + i * (boxWidth + boxSpacing);
+                const by = countdownY;
+                const bw = boxWidth;
+                const bh = boxWidth * 0.8;
+                const br = 8;
+                ctx.beginPath();
+                ctx.moveTo(bx + br, by);
+                ctx.lineTo(bx + bw - br, by);
+                ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
+                ctx.lineTo(bx + bw, by + bh - br);
+                ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - br, by + bh);
+                ctx.lineTo(bx + br, by + bh);
+                ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - br);
+                ctx.lineTo(bx, by + br);
+                ctx.quadraticCurveTo(bx, by, bx + br, by);
+                ctx.closePath();
+                ctx.fill();
 
                 // Value
                 ctx.fillStyle = textColor;
@@ -369,9 +464,39 @@ export function VideoGenerator({
 
                 // Label
                 ctx.font = `${boxWidth * 0.15}px "Oswald", sans-serif`;
-                ctx.fillStyle = `rgba(255,255,255,0.6)`;
+                ctx.fillStyle = "rgba(255,255,255,0.7)";
                 ctx.fillText(labels[i], x, countdownY + boxWidth * 0.75);
               });
+
+              // When video background: show artist name, title, and release date text
+              if (isVideoBg) {
+                // Artist name above countdown
+                if (showArtistName) {
+                  ctx.textAlign = "center";
+                  ctx.fillStyle = textColor;
+                  ctx.font = `bold ${width * 0.05}px "Oswald", sans-serif`;
+                  ctx.fillText(artistName.toUpperCase(), width / 2, countdownY - 30);
+                }
+
+                // Title above countdown, below artist name
+                if (showTitle) {
+                  ctx.textAlign = "center";
+                  ctx.fillStyle = "rgba(255,255,255,0.85)";
+                  ctx.font = `${width * 0.035}px sans-serif`;
+                  ctx.fillText(title, width / 2, countdownY - 8);
+                }
+
+                // Release date below countdown
+                const releaseDateText = new Date(releaseDate).toLocaleDateString("es-MX", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                }).toUpperCase();
+                ctx.textAlign = "center";
+                ctx.font = `${width * 0.03}px "Oswald", sans-serif`;
+                ctx.fillStyle = "rgba(255,255,255,0.6)";
+                ctx.fillText(releaseDateText, width / 2, countdownY + boxWidth * 0.8 + 30);
+              }
             }
           }
           break;
@@ -569,12 +694,139 @@ export function VideoGenerator({
             ctx.fillRect((width - lineWidth) / 2, lineY, lineWidth, 2);
           }
           break;
+
+        case "video-clip":
+          // Use uploaded video with overlay text and optional countdown
+          {
+            // Draw video frame or cover fallback
+            if (videoSourceRef.current) {
+              const vid = videoSourceRef.current;
+              // Scale video to fill canvas while maintaining aspect ratio
+              const videoAspect = vid.videoWidth / vid.videoHeight;
+              const canvasAspect = width / height;
+              let drawWidth, drawHeight, drawX, drawY;
+              if (videoAspect > canvasAspect) {
+                drawHeight = height;
+                drawWidth = height * videoAspect;
+                drawX = (width - drawWidth) / 2;
+                drawY = 0;
+              } else {
+                drawWidth = width;
+                drawHeight = width / videoAspect;
+                drawX = 0;
+                drawY = (height - drawHeight) / 2;
+              }
+              ctx.drawImage(vid, drawX, drawY, drawWidth, drawHeight);
+            } else {
+              // Fallback: draw cover image
+              ctx.drawImage(img, 0, 0, width, height);
+            }
+
+            // Semi-transparent overlay at bottom for text
+            const overlayHeight = height * 0.35; // Made taller to accommodate countdown
+            const overlayY = height - overlayHeight;
+            const gradient = ctx.createLinearGradient(0, overlayY, 0, height);
+            gradient.addColorStop(0, "rgba(0,0,0,0)");
+            gradient.addColorStop(0.2, "rgba(0,0,0,0.6)");
+            gradient.addColorStop(1, "rgba(0,0,0,0.9)");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, overlayY, width, overlayHeight);
+
+            // Draw countdown overlay if enabled and release date exists
+            if (releaseDate && showCountdown) {
+              const countdownY = overlayY + 20;
+              const countdown = formatCountdown(releaseDate, new Date(Date.now() + (totalFrames - frame) * 33));
+
+              ctx.textAlign = "center";
+
+              const boxWidth = width * 0.18;
+              const boxSpacing = width * 0.05;
+              const totalWidth = boxWidth * 4 + boxSpacing * 3;
+              const startX = (width - totalWidth) / 2;
+
+              const labels = ["DÍAS", "HRS", "MIN", "SEG"];
+              const values = [countdown.days, countdown.hours, countdown.mins, countdown.secs];
+
+              // Fade-in effect for countdown
+              const countdownOpacity = Math.min(1, progress * 3);
+              ctx.globalAlpha = countdownOpacity;
+
+              values.forEach((value, i) => {
+                const x = startX + i * (boxWidth + boxSpacing) + boxWidth / 2;
+
+                // Box background
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                const bx = startX + i * (boxWidth + boxSpacing);
+                const by = countdownY;
+                const bw = boxWidth;
+                const bh = boxWidth * 0.8;
+                const br = 8;
+                ctx.beginPath();
+                ctx.moveTo(bx + br, by);
+                ctx.lineTo(bx + bw - br, by);
+                ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
+                ctx.lineTo(bx + bw, by + bh - br);
+                ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - br, by + bh);
+                ctx.lineTo(bx + br, by + bh);
+                ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - br);
+                ctx.lineTo(bx, by + br);
+                ctx.quadraticCurveTo(bx, by, bx + br, by);
+                ctx.closePath();
+                ctx.fill();
+
+                // Value
+                ctx.fillStyle = textColor;
+                ctx.font = `bold ${boxWidth * 0.5}px "Oswald", sans-serif`;
+                ctx.fillText(value, x, countdownY + boxWidth * 0.55);
+
+                // Label
+                ctx.font = `${boxWidth * 0.15}px "Oswald", sans-serif`;
+                ctx.fillStyle = "rgba(255,255,255,0.7)";
+                ctx.fillText(labels[i], x, countdownY + boxWidth * 0.75);
+              });
+            }
+
+            // Fade-in effect for text
+            const textOpacity = Math.min(1, progress * 3);
+            ctx.globalAlpha = textOpacity;
+            ctx.textAlign = "center";
+
+            if (showArtistName) {
+              ctx.fillStyle = textColor;
+              ctx.font = `bold ${width * 0.06}px "Oswald", sans-serif`;
+              const artistTextY = releaseDate && showCountdown
+                ? height - overlayHeight + (width * 0.18 * 0.8) + 70
+                : height - overlayHeight + 50;
+              ctx.fillText(artistName.toUpperCase(), width / 2, artistTextY);
+            }
+
+            if (showTitle) {
+              ctx.fillStyle = "rgba(255,255,255,0.9)";
+              ctx.font = `${width * 0.04}px sans-serif`;
+              const titleTextY = releaseDate && showCountdown
+                ? height - overlayHeight + (width * 0.18 * 0.8) + 105
+                : height - overlayHeight + 85;
+              ctx.fillText(title, width / 2, titleTextY);
+            }
+
+            // Pre-save CTA at very bottom
+            if (releaseDate) {
+              const ctaY = height - 30;
+              ctx.font = `bold ${width * 0.03}px "Oswald", sans-serif`;
+              ctx.fillStyle = "rgba(255,255,255,0.8)";
+              ctx.fillText("PRE-SAVE NOW", width / 2, ctaY);
+            }
+
+            ctx.globalAlpha = 1;
+          }
+          break;
       }
 
       ctx.restore();
 
-      // Draw text overlay (for most templates)
-      if (selectedTemplate !== "text-reveal") {
+      // Draw text overlay (for most templates — skip for video-clip and countdown-with-video which have their own text)
+      const isCountdownWithVideo = selectedTemplate === "countdown" && videoSourceRef.current && videoSourceRef.current.readyState >= 2;
+      if (selectedTemplate !== "text-reveal" && selectedTemplate !== "video-clip" && !isCountdownWithVideo) {
         const textY = selectedOrientation === "vertical"
           ? coverY + coverSize + (releaseDate && showCountdown ? 200 : 80)
           : coverY + coverSize + 60;
@@ -645,6 +897,19 @@ export function VideoGenerator({
 
       setIsPreviewPlaying(true);
 
+      // Start video source playback for preview if needed
+      if ((selectedTemplate === "video-clip" || selectedTemplate === "countdown") && videoSourceRef.current) {
+        const vid = videoSourceRef.current;
+        vid.currentTime = 0;
+        if (vid.readyState < 2) {
+          await new Promise<void>((resolve) => {
+            vid.onloadeddata = () => resolve();
+            setTimeout(() => resolve(), 3000);
+          });
+        }
+        await vid.play().catch(() => {});
+      }
+
       const animate = () => {
         if (frame >= totalFrames) {
           frame = 0;
@@ -668,6 +933,10 @@ export function VideoGenerator({
   const stopPreview = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
+    }
+    // Pause video source if playing
+    if (videoSourceRef.current) {
+      videoSourceRef.current.pause();
     }
     setIsPreviewPlaying(false);
   }, []);
@@ -711,8 +980,17 @@ export function VideoGenerator({
         }
       }
 
+      // Try vp9 first, fall back to vp8, then default
+      let mimeType = "video/webm;codecs=vp9";
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "video/webm;codecs=vp8";
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = "video/webm";
+        }
+      }
+
       mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp9",
+        mimeType,
         videoBitsPerSecond: 8000000, // 8 Mbps for high quality
       });
 
@@ -731,6 +1009,35 @@ export function VideoGenerator({
 
       mediaRecorder.start();
 
+      // For video-clip or countdown template with video, play the source video during recording
+      if ((selectedTemplate === "video-clip" || selectedTemplate === "countdown") && videoSourceRef.current) {
+        const vid = videoSourceRef.current;
+        vid.currentTime = 0;
+
+        // Wait for video to be ready to play
+        let videoReady = false;
+        await new Promise<void>((resolve) => {
+          vid.oncanplay = () => { videoReady = true; resolve(); };
+          vid.onerror = () => {
+            console.warn("Video source failed to load - will use cover image fallback");
+            resolve();
+          };
+          setTimeout(() => {
+            if (!videoReady) console.warn("Video loading timed out - will use cover image fallback");
+            resolve();
+          }, 5000);
+        });
+
+        // Only play if video loaded successfully
+        if (vid.readyState >= 2) {
+          try {
+            await vid.play();
+          } catch (playErr) {
+            console.warn("Video play() failed:", playErr);
+          }
+        }
+      }
+
       // Render frames
       for (let frame = 0; frame < totalFrames; frame++) {
         drawFrame(ctx, img, frame, totalFrames, canvas.width, canvas.height, particles);
@@ -740,6 +1047,11 @@ export function VideoGenerator({
 
         // Wait for next frame timing
         await new Promise((resolve) => setTimeout(resolve, 1000 / fps));
+      }
+
+      // Stop source video if playing
+      if (videoSourceRef.current) {
+        videoSourceRef.current.pause();
       }
 
       mediaRecorder.stop();
@@ -900,16 +1212,16 @@ export function VideoGenerator({
       <div>
         <label className="block text-sm text-slc-muted mb-2">Template</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {TEMPLATES.map((template) => (
+          {TEMPLATES.filter((template) => template.id !== "video-clip" || videoUrl).map((template) => (
             <button
               key={template.id}
               type="button"
               onClick={() => setSelectedTemplate(template.id)}
-              disabled={template.requiresAudio && !audioUrl}
+              disabled={template.requiresAudio && !audioUrl && template.id !== "video-clip"}
               className={`p-3 rounded-xl border text-left transition-all ${
                 selectedTemplate === template.id
                   ? "bg-primary/10 border-primary"
-                  : template.requiresAudio && !audioUrl
+                  : template.requiresAudio && !audioUrl && template.id !== "video-clip"
                   ? "bg-slc-card/50 border-slc-border opacity-50 cursor-not-allowed"
                   : "bg-slc-card border-slc-border hover:border-primary/50"
               }`}
@@ -919,10 +1231,22 @@ export function VideoGenerator({
                 <span className="font-medium text-sm">{template.name}</span>
               </div>
               <p className="text-xs text-slc-muted line-clamp-2">{template.description}</p>
-              {template.requiresAudio && !audioUrl && (
+              {template.requiresAudio && !audioUrl && template.id !== "video-clip" && (
                 <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
                   <Music className="w-3 h-3" />
                   Requiere audio
+                </p>
+              )}
+              {template.id === "video-clip" && videoUrl && (
+                <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                  <Video className="w-3 h-3" />
+                  Video subido disponible
+                </p>
+              )}
+              {template.id === "countdown" && videoUrl && (
+                <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                  <Video className="w-3 h-3" />
+                  Video + Countdown
                 </p>
               )}
             </button>
