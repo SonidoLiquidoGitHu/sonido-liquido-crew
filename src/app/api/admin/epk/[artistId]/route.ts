@@ -140,113 +140,113 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       .where(eq(artistEpk.artistId, artistId))
       .limit(1);
 
-    const epkData = {
-      // Identity
-      tagline: body.tagline,
-      genreSpecific: body.genreSpecific,
-      subgenres: body.subgenres ? JSON.stringify(body.subgenres) : null,
-      artistType: body.artistType,
+    // Build EPK update object with only explicitly provided fields
+    // This prevents accidental data loss from partial updates
+    const epkData: Record<string, unknown> = { updatedAt: new Date() };
 
-      // Bios
-      bioShort: body.bioShort,
-      bioLong: body.bioLong,
-      bioPress: body.bioPress,
-      storyHighlights: body.storyHighlights ? JSON.stringify(body.storyHighlights) : null,
+    // Identity
+    if ('tagline' in body) epkData.tagline = body.tagline;
+    if ('genreSpecific' in body) epkData.genreSpecific = body.genreSpecific;
+    if ('subgenres' in body) epkData.subgenres = body.subgenres ? JSON.stringify(body.subgenres) : null;
+    if ('artistType' in body) epkData.artistType = body.artistType;
 
-      // Visual Identity
-      logoUrl: body.logoUrl,
-      logoTransparentUrl: body.logoTransparentUrl,
-      logoWhiteUrl: body.logoWhiteUrl,
-      logoBlackUrl: body.logoBlackUrl,
-      brandColors: body.brandColors ? JSON.stringify(body.brandColors) : null,
-      brandFont: body.brandFont,
+    // Bios
+    if ('bioShort' in body) epkData.bioShort = body.bioShort;
+    if ('bioLong' in body) epkData.bioLong = body.bioLong;
+    if ('bioPress' in body) epkData.bioPress = body.bioPress;
+    if ('storyHighlights' in body) epkData.storyHighlights = body.storyHighlights ? JSON.stringify(body.storyHighlights) : null;
 
-      // Streaming Stats
-      spotifyMonthlyListeners: body.spotifyMonthlyListeners,
-      spotifyFollowers: body.spotifyFollowers,
-      spotifyTopTrack: body.spotifyTopTrack ? JSON.stringify(body.spotifyTopTrack) : null,
-      appleMusicUrl: body.appleMusicUrl,
-      youtubeSubscribers: body.youtubeSubscribers,
-      youtubeTotalViews: body.youtubeTotalViews,
-      instagramFollowers: body.instagramFollowers,
-      tiktokFollowers: body.tiktokFollowers,
-      totalStreams: body.totalStreams,
-      streamingHighlights: body.streamingHighlights ? JSON.stringify(body.streamingHighlights) : null,
+    // Visual Identity
+    if ('logoUrl' in body) epkData.logoUrl = body.logoUrl;
+    if ('logoTransparentUrl' in body) epkData.logoTransparentUrl = body.logoTransparentUrl;
+    if ('logoWhiteUrl' in body) epkData.logoWhiteUrl = body.logoWhiteUrl;
+    if ('logoBlackUrl' in body) epkData.logoBlackUrl = body.logoBlackUrl;
+    if ('brandColors' in body) epkData.brandColors = body.brandColors ? JSON.stringify(body.brandColors) : null;
+    if ('brandFont' in body) epkData.brandFont = body.brandFont;
 
-      // Press
-      pressFeatures: body.pressFeatures ? JSON.stringify(body.pressFeatures) : null,
-      blogMentions: body.blogMentions ? JSON.stringify(body.blogMentions) : null,
-      interviewUrls: body.interviewUrls ? JSON.stringify(body.interviewUrls) : null,
+    // Streaming Stats
+    if ('spotifyMonthlyListeners' in body) epkData.spotifyMonthlyListeners = body.spotifyMonthlyListeners;
+    if ('spotifyFollowers' in body) epkData.spotifyFollowers = body.spotifyFollowers;
+    if ('spotifyTopTrack' in body) epkData.spotifyTopTrack = body.spotifyTopTrack ? JSON.stringify(body.spotifyTopTrack) : null;
+    if ('appleMusicUrl' in body) epkData.appleMusicUrl = body.appleMusicUrl;
+    if ('youtubeSubscribers' in body) epkData.youtubeSubscribers = body.youtubeSubscribers;
+    if ('youtubeTotalViews' in body) epkData.youtubeTotalViews = body.youtubeTotalViews;
+    if ('instagramFollowers' in body) epkData.instagramFollowers = body.instagramFollowers;
+    if ('tiktokFollowers' in body) epkData.tiktokFollowers = body.tiktokFollowers;
+    if ('totalStreams' in body) epkData.totalStreams = body.totalStreams;
+    if ('streamingHighlights' in body) epkData.streamingHighlights = body.streamingHighlights ? JSON.stringify(body.streamingHighlights) : null;
 
-      // Playlists
-      editorialPlaylists: body.editorialPlaylists ? JSON.stringify(body.editorialPlaylists) : null,
-      curatedPlaylists: body.curatedPlaylists ? JSON.stringify(body.curatedPlaylists) : null,
+    // Press
+    if ('pressFeatures' in body) epkData.pressFeatures = body.pressFeatures ? JSON.stringify(body.pressFeatures) : null;
+    if ('blogMentions' in body) epkData.blogMentions = body.blogMentions ? JSON.stringify(body.blogMentions) : null;
+    if ('interviewUrls' in body) epkData.interviewUrls = body.interviewUrls ? JSON.stringify(body.interviewUrls) : null;
 
-      // Shows
-      pastShows: body.pastShows ? JSON.stringify(body.pastShows) : null,
-      festivalAppearances: body.festivalAppearances ? JSON.stringify(body.festivalAppearances) : null,
-      notableVenues: body.notableVenues ? JSON.stringify(body.notableVenues) : null,
-      tourHistory: body.tourHistory ? JSON.stringify(body.tourHistory) : null,
+    // Playlists
+    if ('editorialPlaylists' in body) epkData.editorialPlaylists = body.editorialPlaylists ? JSON.stringify(body.editorialPlaylists) : null;
+    if ('curatedPlaylists' in body) epkData.curatedPlaylists = body.curatedPlaylists ? JSON.stringify(body.curatedPlaylists) : null;
 
-      // Collaborations
-      collaborations: body.collaborations ? JSON.stringify(body.collaborations) : null,
-      producerCredits: body.producerCredits ? JSON.stringify(body.producerCredits) : null,
-      remixCredits: body.remixCredits ? JSON.stringify(body.remixCredits) : null,
+    // Shows
+    if ('pastShows' in body) epkData.pastShows = body.pastShows ? JSON.stringify(body.pastShows) : null;
+    if ('festivalAppearances' in body) epkData.festivalAppearances = body.festivalAppearances ? JSON.stringify(body.festivalAppearances) : null;
+    if ('notableVenues' in body) epkData.notableVenues = body.notableVenues ? JSON.stringify(body.notableVenues) : null;
+    if ('tourHistory' in body) epkData.tourHistory = body.tourHistory ? JSON.stringify(body.tourHistory) : null;
 
-      // Music
-      topTracks: body.topTracks ? JSON.stringify(body.topTracks) : null,
-      latestRelease: body.latestRelease ? JSON.stringify(body.latestRelease) : null,
-      upcomingRelease: body.upcomingRelease ? JSON.stringify(body.upcomingRelease) : null,
+    // Collaborations
+    if ('collaborations' in body) epkData.collaborations = body.collaborations ? JSON.stringify(body.collaborations) : null;
+    if ('producerCredits' in body) epkData.producerCredits = body.producerCredits ? JSON.stringify(body.producerCredits) : null;
+    if ('remixCredits' in body) epkData.remixCredits = body.remixCredits ? JSON.stringify(body.remixCredits) : null;
 
-      // Videos
-      officialMusicVideos: body.officialMusicVideos ? JSON.stringify(body.officialMusicVideos) : null,
-      livePerformanceVideos: body.livePerformanceVideos ? JSON.stringify(body.livePerformanceVideos) : null,
-      featuredVideo: body.featuredVideo ? JSON.stringify(body.featuredVideo) : null,
-      visualizerVideos: body.visualizerVideos ? JSON.stringify(body.visualizerVideos) : null,
-      behindTheScenes: body.behindTheScenes ? JSON.stringify(body.behindTheScenes) : null,
+    // Music
+    if ('topTracks' in body) epkData.topTracks = body.topTracks ? JSON.stringify(body.topTracks) : null;
+    if ('latestRelease' in body) epkData.latestRelease = body.latestRelease ? JSON.stringify(body.latestRelease) : null;
+    if ('upcomingRelease' in body) epkData.upcomingRelease = body.upcomingRelease ? JSON.stringify(body.upcomingRelease) : null;
 
-      // Quotes
-      pressQuotes: body.pressQuotes ? JSON.stringify(body.pressQuotes) : null,
-      artistEndorsements: body.artistEndorsements ? JSON.stringify(body.artistEndorsements) : null,
-      industryTestimonials: body.industryTestimonials ? JSON.stringify(body.industryTestimonials) : null,
+    // Videos
+    if ('officialMusicVideos' in body) epkData.officialMusicVideos = body.officialMusicVideos ? JSON.stringify(body.officialMusicVideos) : null;
+    if ('livePerformanceVideos' in body) epkData.livePerformanceVideos = body.livePerformanceVideos ? JSON.stringify(body.livePerformanceVideos) : null;
+    if ('featuredVideo' in body) epkData.featuredVideo = body.featuredVideo ? JSON.stringify(body.featuredVideo) : null;
+    if ('visualizerVideos' in body) epkData.visualizerVideos = body.visualizerVideos ? JSON.stringify(body.visualizerVideos) : null;
+    if ('behindTheScenes' in body) epkData.behindTheScenes = body.behindTheScenes ? JSON.stringify(body.behindTheScenes) : null;
 
-      // Contact
-      bookingEmail: body.bookingEmail,
-      bookingPhone: body.bookingPhone,
-      managementName: body.managementName,
-      managementEmail: body.managementEmail,
-      managementPhone: body.managementPhone,
-      publicistName: body.publicistName,
-      publicistEmail: body.publicistEmail,
-      labelName: body.labelName,
-      labelContact: body.labelContact,
+    // Quotes
+    if ('pressQuotes' in body) epkData.pressQuotes = body.pressQuotes ? JSON.stringify(body.pressQuotes) : null;
+    if ('artistEndorsements' in body) epkData.artistEndorsements = body.artistEndorsements ? JSON.stringify(body.artistEndorsements) : null;
+    if ('industryTestimonials' in body) epkData.industryTestimonials = body.industryTestimonials ? JSON.stringify(body.industryTestimonials) : null;
 
-      // Technical Rider
-      performanceFormat: body.performanceFormat,
-      setLengthOptions: body.setLengthOptions ? JSON.stringify(body.setLengthOptions) : null,
-      technicalRequirements: body.technicalRequirements ? JSON.stringify(body.technicalRequirements) : null,
-      backlineNeeds: body.backlineNeeds ? JSON.stringify(body.backlineNeeds) : null,
-      stageRequirements: body.stageRequirements,
-      hospitalityRider: body.hospitalityRider,
-      travelRequirements: body.travelRequirements,
+    // Contact
+    if ('bookingEmail' in body) epkData.bookingEmail = body.bookingEmail;
+    if ('bookingPhone' in body) epkData.bookingPhone = body.bookingPhone;
+    if ('managementName' in body) epkData.managementName = body.managementName;
+    if ('managementEmail' in body) epkData.managementEmail = body.managementEmail;
+    if ('managementPhone' in body) epkData.managementPhone = body.managementPhone;
+    if ('publicistName' in body) epkData.publicistName = body.publicistName;
+    if ('publicistEmail' in body) epkData.publicistEmail = body.publicistEmail;
+    if ('labelName' in body) epkData.labelName = body.labelName;
+    if ('labelContact' in body) epkData.labelContact = body.labelContact;
 
-      // Downloads
-      pressKitPdfUrl: body.pressKitPdfUrl,
-      hiResPhotosZipUrl: body.hiResPhotosZipUrl,
-      logoPackZipUrl: body.logoPackZipUrl,
-      technicalRiderPdfUrl: body.technicalRiderPdfUrl,
-      stageplotUrl: body.stageplotUrl,
+    // Technical Rider
+    if ('performanceFormat' in body) epkData.performanceFormat = body.performanceFormat;
+    if ('setLengthOptions' in body) epkData.setLengthOptions = body.setLengthOptions ? JSON.stringify(body.setLengthOptions) : null;
+    if ('technicalRequirements' in body) epkData.technicalRequirements = body.technicalRequirements ? JSON.stringify(body.technicalRequirements) : null;
+    if ('backlineNeeds' in body) epkData.backlineNeeds = body.backlineNeeds ? JSON.stringify(body.backlineNeeds) : null;
+    if ('stageRequirements' in body) epkData.stageRequirements = body.stageRequirements;
+    if ('hospitalityRider' in body) epkData.hospitalityRider = body.hospitalityRider;
+    if ('travelRequirements' in body) epkData.travelRequirements = body.travelRequirements;
 
-      // Settings
-      isPublic: body.isPublic ?? true,
-      customSlug: body.customSlug,
-      theme: body.theme || "dark",
-      customCss: body.customCss,
-      showContactForm: body.showContactForm ?? true,
-      password: body.password,
+    // Downloads
+    if ('pressKitPdfUrl' in body) epkData.pressKitPdfUrl = body.pressKitPdfUrl;
+    if ('hiResPhotosZipUrl' in body) epkData.hiResPhotosZipUrl = body.hiResPhotosZipUrl;
+    if ('logoPackZipUrl' in body) epkData.logoPackZipUrl = body.logoPackZipUrl;
+    if ('technicalRiderPdfUrl' in body) epkData.technicalRiderPdfUrl = body.technicalRiderPdfUrl;
+    if ('stageplotUrl' in body) epkData.stageplotUrl = body.stageplotUrl;
 
-      updatedAt: new Date(),
-    };
+    // Settings
+    if ('isPublic' in body) epkData.isPublic = body.isPublic ?? true;
+    if ('customSlug' in body) epkData.customSlug = body.customSlug;
+    if ('theme' in body) epkData.theme = body.theme || "dark";
+    if ('customCss' in body) epkData.customCss = body.customCss;
+    if ('showContactForm' in body) epkData.showContactForm = body.showContactForm ?? true;
+    if ('password' in body) epkData.password = body.password;
 
     if (existingEpk) {
       // Update existing

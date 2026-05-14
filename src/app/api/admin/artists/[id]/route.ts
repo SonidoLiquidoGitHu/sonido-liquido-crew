@@ -87,39 +87,43 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Update artist main fields
+    // Build update object with only the fields that are explicitly provided
+    // This prevents accidental data loss from partial updates
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+
+    // Only include fields that are present in the request body (even if value is null/empty)
+    // Use "key in body" to detect explicit presence, not truthiness
+    if ('name' in body) updateData.name = body.name;
+    if ('slug' in body) updateData.slug = body.slug || slugify(body.name);
+    if ('realName' in body) updateData.realName = body.realName || null;
+    if ('bio' in body) updateData.bio = body.bio || null;
+    if ('shortBio' in body) updateData.shortBio = body.shortBio || null;
+    if ('role' in body) updateData.role = body.role || "mc";
+    if ('profileImageUrl' in body) updateData.profileImageUrl = body.profileImageUrl || null;
+    if ('featuredImageUrl' in body) updateData.featuredImageUrl = body.featuredImageUrl || null;
+    if ('bannerImageUrl' in body) updateData.bannerImageUrl = body.bannerImageUrl || null;
+    if ('tintColor' in body) updateData.tintColor = body.tintColor || null;
+    if ('location' in body) updateData.location = body.location || null;
+    if ('country' in body) updateData.country = body.country || null;
+    if ('bookingEmail' in body) updateData.bookingEmail = body.bookingEmail || null;
+    if ('managementEmail' in body) updateData.managementEmail = body.managementEmail || null;
+    if ('pressEmail' in body) updateData.pressEmail = body.pressEmail || null;
+    if ('websiteUrl' in body) updateData.websiteUrl = body.websiteUrl || null;
+    if ('yearStarted' in body) updateData.yearStarted = body.yearStarted ? parseInt(body.yearStarted) : null;
+    if ('genres' in body) updateData.genres = body.genres ? JSON.stringify(body.genres) : null;
+    if ('labels' in body) updateData.labels = body.labels ? JSON.stringify(body.labels) : null;
+    if ('pressQuotes' in body) updateData.pressQuotes = body.pressQuotes ? JSON.stringify(body.pressQuotes) : null;
+    if ('featuredVideos' in body) updateData.featuredVideos = body.featuredVideos ? JSON.stringify(body.featuredVideos) : null;
+    if ('isActive' in body) updateData.isActive = body.isActive ?? true;
+    if ('isFeatured' in body) updateData.isFeatured = body.isFeatured ?? false;
+    if ('sortOrder' in body) updateData.sortOrder = body.sortOrder || 0;
+    if ('verificationStatus' in body) updateData.verificationStatus = body.verificationStatus || "pending";
+    if ('identityConflictFlag' in body) updateData.identityConflictFlag = body.identityConflictFlag ?? false;
+    if ('adminNotes' in body) updateData.adminNotes = body.adminNotes || null;
+
     const [updatedArtist] = await db
       .update(artists)
-      .set({
-        name: body.name,
-        slug: body.slug || slugify(body.name),
-        realName: body.realName || null,
-        bio: body.bio || null,
-        shortBio: body.shortBio || null,
-        role: body.role || "mc",
-        profileImageUrl: body.profileImageUrl || null,
-        featuredImageUrl: body.featuredImageUrl || null,
-        bannerImageUrl: body.bannerImageUrl || null,
-        tintColor: body.tintColor || null,
-        location: body.location || null,
-        country: body.country || null,
-        bookingEmail: body.bookingEmail || null,
-        managementEmail: body.managementEmail || null,
-        pressEmail: body.pressEmail || null,
-        websiteUrl: body.websiteUrl || null,
-        yearStarted: body.yearStarted ? parseInt(body.yearStarted) : null,
-        genres: body.genres ? JSON.stringify(body.genres) : null,
-        labels: body.labels ? JSON.stringify(body.labels) : null,
-        pressQuotes: body.pressQuotes ? JSON.stringify(body.pressQuotes) : null,
-        featuredVideos: body.featuredVideos ? JSON.stringify(body.featuredVideos) : null,
-        isActive: body.isActive ?? true,
-        isFeatured: body.isFeatured ?? false,
-        sortOrder: body.sortOrder || 0,
-        verificationStatus: body.verificationStatus || "pending",
-        identityConflictFlag: body.identityConflictFlag ?? false,
-        adminNotes: body.adminNotes || null,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(artists.id, id))
       .returning();
 
