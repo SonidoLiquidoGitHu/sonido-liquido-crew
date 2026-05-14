@@ -645,13 +645,20 @@ export async function postInstagramReel(
     console.log("[Meta] IG Reels container created:", containerId);
 
     // Step 2: Poll container status until FINISHED or ERROR
-    // Video processing takes longer than images — use same 2s interval, max 10 attempts (20s)
+    // Video processing can take significantly longer than images.
+    // Use exponential backoff: 3s, 3s, 5s, 5s, 8s, 8s, 10s... up to 90s total
     let statusCode = "IN_PROGRESS";
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 15;
+    const backoffDelay = (attempt: number) => {
+      // Exponential backoff: start at 3s, cap at 10s
+      const delays = [3, 3, 5, 5, 8, 8, 10, 10, 10, 10, 10, 10, 10, 10, 10];
+      return (delays[attempt] || 10) * 1000;
+    };
 
     while (statusCode === "IN_PROGRESS" && attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s between polls
+      const delay = backoffDelay(attempts);
+      await new Promise((resolve) => setTimeout(resolve, delay));
       attempts++;
 
       const statusResponse = await fetch(
@@ -660,7 +667,7 @@ export async function postInstagramReel(
       const statusData = await statusResponse.json();
       statusCode = statusData.status_code || "IN_PROGRESS";
 
-      console.log(`[Meta] IG Reels container status: ${statusCode} (attempt ${attempts}/${maxAttempts})`);
+      console.log(`[Meta] IG Reels container status: ${statusCode} (attempt ${attempts}/${maxAttempts}, waited ${delay/1000}s)`);
 
       if (statusCode === "FINISHED") {
         break;
@@ -672,17 +679,21 @@ export async function postInstagramReel(
           success: false,
           mediaId: null,
           permalink: null,
-          error: `Reels container processing failed after ${attempts} polls`,
+          error: `Reels container processing failed: ${statusData.status_message || 'after ' + attempts + ' polls'}`,
         };
       }
     }
 
     if (statusCode !== "FINISHED") {
+      // Container is still processing but we need to return.
+      // Don't treat this as a hard failure — the container exists and may finish later.
+      // Return the containerId so the caller can check status later.
+      console.warn(`[Meta] IG Reels container still processing after ~90s. Container ID: ${containerId}`);
       return {
         success: false,
         mediaId: null,
         permalink: null,
-        error: `Reels container still processing after ${maxAttempts * 2}s timeout`,
+        error: `Reels container still processing (ID: ${containerId}). It may finish shortly — check Instagram in a few minutes.`,
       };
     }
 
@@ -770,6 +781,7 @@ export async function postFacebookReel(
   const resolvedVideoUrl = await resolveDropboxVideoUrl(videoUrl);
 
   try {
+    // ===== Strategy A: Use /{page-id}/video_reels with start/finish flow =====
     // Step 1: Start upload phase
     console.log("[Meta] Starting FB Reel upload for page:", pageId);
 
@@ -783,128 +795,222 @@ export async function postFacebookReel(
     });
 
     const startData = await startResponse.json();
+    console.log("[Meta] FB Reel start response:", JSON.stringify(startData).substring(0, 200));
 
     if (startData.error) {
       console.error("[Meta] FB Reel start upload error:", startData.error);
-      return {
-        success: false,
-        reelId: null,
-        postUrl: null,
-        error: `${startData.error.code}: ${startData.error.message}`,
-      };
+      // If start phase fails, fall through to Strategy B
     }
 
     const videoId = startData.id;
-    console.log("[Meta] FB Reel upload started, video_id:", videoId);
 
-    // Step 2: Finish upload with video_url and description
-    console.log("[Meta] Finishing FB Reel upload with video URL:", resolvedVideoUrl.substring(0, 80));
+    if (videoId) {
+      // Step 2: Finish upload with video_url and description
+      console.log("[Meta] Finishing FB Reel upload with video URL:", resolvedVideoUrl.substring(0, 80));
 
-    const finishResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        upload_phase: "finish",
-        video_url: resolvedVideoUrl,
-        access_token: pageToken,
-        description: caption,
-        video_id: videoId,
-      }),
-    });
+      const finishResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          upload_phase: "finish",
+          video_url: resolvedVideoUrl,
+          access_token: pageToken,
+          description: caption,
+          video_id: videoId,
+        }),
+      });
 
-    const finishData = await finishResponse.json();
+      const finishData = await finishResponse.json();
+      console.log("[Meta] FB Reel finish response:", JSON.stringify(finishData).substring(0, 200));
 
-    if (finishData.error) {
-      console.error("[Meta] FB Reel finish upload error:", finishData.error);
-      return {
-        success: false,
-        reelId: null,
-        postUrl: null,
-        error: `${finishData.error.code}: ${finishData.error.message}`,
-      };
-    }
+      if (finishData.error) {
+        console.error("[Meta] FB Reel finish upload error:", finishData.error);
+        // If finish fails, fall through to Strategy B
+      } else {
+        const reelId = finishData.id || videoId;
+        console.log("[Meta] FB Reel upload finished, reel_id:", reelId);
 
-    const reelId = finishData.id || videoId;
-    console.log("[Meta] FB Reel upload finished, reel_id:", reelId);
+        // Poll for processing status
+        const pollResult = await pollFacebookReelStatus(reelId, pageToken);
+        const postUrl = reelId ? `https://facebook.com/reel/${reelId}` : null;
 
-    // Step 3: Poll for processing status
-    // Facebook video processing can take a while — poll with 3s interval, max 10 attempts (30s)
-    let processingStatus = "processing";
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    while (processingStatus === "processing" && attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 3000)); // 3s between polls
-      attempts++;
-
-      try {
-        const statusResponse = await fetch(
-          `${META_GRAPH_API}/${reelId}?fields=status,processing_progress&access_token=${pageToken}`
-        );
-        const statusData = await statusResponse.json();
-
-        // Facebook video status can be: processing, ready, error
-        const status = statusData.status;
-        const progress = statusData.processing_progress;
-
-        console.log(
-          `[Meta] FB Reel processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`
-        );
-
-        if (status === "ready" || status === "published" || status === "complete") {
-          processingStatus = "ready";
-          break;
-        }
-
-        if (status === "error" || status === "failed") {
-          console.error("[Meta] FB Reel processing error:", statusData);
+        if (pollResult === "ready") {
+          console.log("[Meta] Facebook Reel published successfully:", reelId);
+          return { success: true, reelId, postUrl };
+        } else if (pollResult === "processing") {
+          console.warn(`[Meta] FB Reel still processing, but upload was successful`);
+          return {
+            success: true,
+            reelId,
+            postUrl,
+            error: "Reel uploaded but still processing — check Facebook for final status",
+          };
+        } else {
           return {
             success: false,
             reelId,
             postUrl: null,
-            error: `FB Reel processing failed: ${JSON.stringify(statusData)}`,
+            error: pollResult || "FB Reel processing failed",
           };
         }
-
-        // If status field is missing, assume still processing
-        if (!status) {
-          // Check for error in the response
-          if (statusData.error) {
-            console.error("[Meta] FB Reel status check error:", statusData.error);
-            return {
-              success: false,
-              reelId,
-              postUrl: null,
-              error: `${statusData.error.code}: ${statusData.error.message}`,
-            };
-          }
-        }
-      } catch (statusErr) {
-        console.warn("[Meta] FB Reel status poll failed:", statusErr);
-        // Continue polling — might be a transient error
       }
     }
 
-    // Even if processing isn't complete, the reel was submitted successfully
-    const postUrl = reelId ? `https://facebook.com/reel/${reelId}` : null;
+    // ===== Strategy B: Fallback — Post video as a regular page video =====
+    // If the /video_reels endpoint fails (missing permissions, API issues, etc.),
+    // fall back to posting as a regular video which still shows on the page.
+    console.log("[Meta] FB Reels endpoint failed, falling back to /videos endpoint");
 
-    if (processingStatus !== "ready") {
-      console.warn(`[Meta] FB Reel still processing after ${maxAttempts * 3}s, but upload was successful`);
+    const videoResponse = await fetch(`${META_GRAPH_API}/${pageId}/videos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        file_url: resolvedVideoUrl,
+        description: caption,
+        access_token: pageToken,
+      }),
+    });
+
+    const videoData = await videoResponse.json();
+    console.log("[Meta] FB video fallback response:", JSON.stringify(videoData).substring(0, 200));
+
+    if (videoData.error) {
+      console.error("[Meta] FB video fallback error:", videoData.error);
       return {
-        success: true,
-        reelId,
-        postUrl,
-        error: "Reel uploaded but still processing — check Facebook for final status",
+        success: false,
+        reelId: null,
+        postUrl: null,
+        error: `FB Reel failed (video_id missing) and video fallback also failed: ${videoData.error.code}: ${videoData.error.message}`,
       };
     }
 
-    console.log("[Meta] Facebook Reel published successfully:", reelId);
-    return { success: true, reelId, postUrl };
+    const fallbackVideoId = videoData.id;
+    const postUrl = fallbackVideoId ? `https://facebook.com/${fallbackVideoId}` : null;
+    console.log("[Meta] FB video posted as regular video:", fallbackVideoId);
+
+    // Poll for processing
+    const pollResult = await pollFacebookVideoStatus(fallbackVideoId, pageToken);
+
+    if (pollResult === "ready" || pollResult === "processing") {
+      return {
+        success: true,
+        reelId: fallbackVideoId,
+        postUrl,
+        error: pollResult === "processing"
+          ? "Video uploaded but still processing — check Facebook"
+          : undefined,
+      };
+    } else {
+      return {
+        success: false,
+        reelId: fallbackVideoId,
+        postUrl: null,
+        error: pollResult || "FB video upload failed",
+      };
+    }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
     console.error("[Meta] Facebook Reel post exception:", errMsg);
     return { success: false, reelId: null, postUrl: null, error: errMsg };
   }
+}
+
+// ===========================================
+// FACEBOOK REEL/VIDEO STATUS POLLING HELPERS
+// ===========================================
+
+/**
+ * Poll a Facebook Reel's processing status.
+ * Returns "ready" if published, "processing" if still in progress, or an error string.
+ */
+async function pollFacebookReelStatus(
+  reelId: string,
+  pageToken: string,
+  maxAttempts: number = 10
+): Promise<"ready" | "processing" | string> {
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    attempts++;
+
+    try {
+      const statusResponse = await fetch(
+        `${META_GRAPH_API}/${reelId}?fields=status,processing_progress&access_token=${pageToken}`
+      );
+      const statusData = await statusResponse.json();
+
+      const status = statusData.status;
+      const progress = statusData.processing_progress;
+
+      console.log(
+        `[Meta] FB Reel processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`
+      );
+
+      if (status === "ready" || status === "published" || status === "complete") {
+        return "ready";
+      }
+
+      if (status === "error" || status === "failed") {
+        return `FB Reel processing failed: ${JSON.stringify(statusData)}`;
+      }
+
+      if (statusData.error) {
+        return `${statusData.error.code}: ${statusData.error.message}`;
+      }
+    } catch (statusErr) {
+      console.warn("[Meta] FB Reel status poll failed:", statusErr);
+    }
+  }
+
+  return "processing";
+}
+
+/**
+ * Poll a regular Facebook video's processing status.
+ * Returns "ready" if published, "processing" if still in progress, or an error string.
+ */
+async function pollFacebookVideoStatus(
+  videoId: string,
+  pageToken: string,
+  maxAttempts: number = 10
+): Promise<"ready" | "processing" | string> {
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    attempts++;
+
+    try {
+      const statusResponse = await fetch(
+        `${META_GRAPH_API}/${videoId}?fields=status,processing_progress&access_token=${pageToken}`
+      );
+      const statusData = await statusResponse.json();
+
+      const status = statusData.status;
+      const progress = statusData.processing_progress;
+
+      console.log(
+        `[Meta] FB video processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`
+      );
+
+      if (status === "ready" || status === "published" || status === "complete" || status === "video_ready") {
+        return "ready";
+      }
+
+      if (status === "error" || status === "failed") {
+        return `FB video processing failed: ${JSON.stringify(statusData)}`;
+      }
+
+      if (statusData.error) {
+        return `${statusData.error.code}: ${statusData.error.message}`;
+      }
+    } catch (statusErr) {
+      console.warn("[Meta] FB video status poll failed:", statusErr);
+    }
+  }
+
+  return "processing";
 }
 
 // ===========================================
