@@ -18,7 +18,7 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
 import {
   getYouTubeId,
-  getVideoThumbnail,
+  getProxiedThumbnailUrl,
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
@@ -384,15 +384,15 @@ function VideoCard({
         className="group relative block cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
       >
         <div className="relative aspect-[9/16]">
-          {getVideoThumbnail(video) ? (
+          {getProxiedThumbnailUrl(video) ? (
             <SafeImage
-              src={getVideoThumbnail(video)!}
+              src={getProxiedThumbnailUrl(video)!}
               alt={video.title || "Video"}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 176px, (max-width: 1024px) 25vw, 20vw"
               fallbackSrc={(() => {
-                const thumb = getVideoThumbnail(video)!;
+                const thumb = getProxiedThumbnailUrl(video)!;
                 const ytId = getYouTubeId(video);
                 // If this is a YouTube thumbnail, try lower tiers before the placeholder
                 if (ytId && isYouTubeThumbnailUrl(thumb)) {

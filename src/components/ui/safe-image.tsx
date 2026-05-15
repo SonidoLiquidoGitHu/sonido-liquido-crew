@@ -1,6 +1,7 @@
 "use client";
 import Image, { ImageProps } from "next/image";
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+// NOTE: useMemo intentionally removed — see processedSrc comment below.
 
 interface SafeImageProps extends Omit<ImageProps, "onError" | "src"> {
   src: ImageProps["src"] | null | undefined;
@@ -38,8 +39,14 @@ function isDropboxUrl(url: string): boolean {
  * causes mobile browsers (especially Safari) to refuse rendering them.
  * Our /api/image-proxy route fetches the image server-side and re-serves it
  * with the correct MIME type.
+ *
+ * IMPORTANT: Check for already-proxied URLs FIRST, before isDropboxUrl(),
+ * because a proxied URL like /api/image-proxy?url=https%3A%2F%2Fwww.dropbox.com%2F...
+ * still contains "dropbox.com" in the encoded query parameter.
  */
 function proxyUrl(url: string): string {
+  // Already proxied — skip to prevent double-proxying
+  if (url.startsWith("/api/image-proxy")) return url;
   if (isDropboxUrl(url)) {
     return `/api/image-proxy?url=${encodeURIComponent(url)}`;
   }
@@ -71,15 +78,19 @@ export function SafeImage({
   ...props
 }: SafeImageProps) {
   const [error, setError] = useState(false);
-  const [imageSrc, setImageSrc] = useState(src);
   const retryAttemptRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pre-process the source URL: proxy Dropbox URLs
-  const processedSrc = useMemo(() => {
-    if (!src || typeof src !== "string") return src;
-    return proxyUrl(src);
-  }, [src]);
+  // CRITICAL: Compute the proxied URL directly (not via useMemo) so it's
+  // used from the very first render (SSR + initial paint). In React 19 /
+  // Next.js 16, useMemo may not execute during SSR, causing raw Dropbox
+  // URLs to be rendered in the HTML. Since proxyUrl() is a trivial string
+  // operation (no expensive computation), there's no benefit from memoizing.
+  const processedSrc = !src || typeof src !== "string" ? src : proxyUrl(src);
+
+  // Initialize imageSrc with the already-proxied URL (not raw src!)
+  const [imageSrc, setImageSrc] = useState(processedSrc);
 
   // Reset state when src changes
   useEffect(() => {

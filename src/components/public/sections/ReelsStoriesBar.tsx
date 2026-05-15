@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
 import {
-  getVideoThumbnail as getThumb,
+  getProxiedThumbnailUrl as getProxiedThumb,
   getYouTubeId,
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
@@ -190,9 +190,9 @@ function StoryCircle({
               "w-[72px] h-[72px] sm:w-[86px] sm:h-[86px]"
             )}
           >
-            {getThumb(video) ? (
+            {getProxiedThumb(video) ? (
               <SafeImage
-                src={getThumb(video)!}
+                src={getProxiedThumb(video)!}
                 alt={video.title || video.artistName || "Reel"}
                 fill
                 className={cn(
@@ -201,7 +201,7 @@ function StoryCircle({
                 )}
                 sizes="86px"
                 fallbackSrc={(() => {
-                  const thumb = getThumb(video)!;
+                  const thumb = getProxiedThumb(video)!;
                   const ytId = getYouTubeId(video);
                   if (ytId && isYouTubeThumbnailUrl(thumb)) {
                     return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");

@@ -203,6 +203,7 @@ const nextConfig = {
         ],
       },
       {
+<<<<<<< HEAD
         // Image proxy - aggressive caching (images are immutable, proxied from Dropbox/CDN)
         source: "/api/image-proxy",
         headers: [
@@ -226,6 +227,8 @@ const nextConfig = {
         ],
       },
       {
+=======
+>>>>>>> dd7ff4c (fix: vertical video thumbnails not loading — SSR proxy URL + caching fix)
         // API routes - no CDN caching to prevent stale data
         // NOTE: Specific proxy routes above must be listed BEFORE this catch-all
         source: "/api/:path*",
@@ -233,6 +236,20 @@ const nextConfig = {
           {
             key: "Cache-Control",
             value: "no-store, no-cache, must-revalidate",
+          },
+        ],
+      },
+      {
+        // Image proxy - aggressive caching (images are immutable, proxied from Dropbox/CDN)
+        // IMPORTANT: This MUST come after the general /api/:path* rule so it takes
+        // precedence. In Next.js, when multiple header rules match, duplicate keys
+        // are resolved by the LAST matching rule. Without this ordering, the
+        // no-store Cache-Control from /api/:path* would override our cache.
+        source: "/api/image-proxy",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
           },
         ],
       },

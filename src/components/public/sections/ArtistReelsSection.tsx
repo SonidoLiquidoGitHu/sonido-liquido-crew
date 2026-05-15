@@ -22,7 +22,7 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
 import {
   getYouTubeId as extractYouTubeId,
-  getVideoThumbnail,
+  getProxiedThumbnailUrl,
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
@@ -384,9 +384,9 @@ function VideoCard({
     >
       <Link href={`/reels/${video.id}`} className="block relative aspect-[9/16]">
         {/* Thumbnail */}
-        {getVideoThumbnail(video) && (
+        {getProxiedThumbnailUrl(video) && (
           <SafeImage
-            src={getVideoThumbnail(video)!}
+            src={getProxiedThumbnailUrl(video)!}
             alt={video.title || "Video"}
             fill
             className={cn(
@@ -395,7 +395,7 @@ function VideoCard({
             )}
             sizes={isSpotlight ? "352px" : "176px"}
             fallbackSrc={(() => {
-              const thumb = getVideoThumbnail(video)!;
+              const thumb = getProxiedThumbnailUrl(video)!;
               const ytId = extractYouTubeId(video);
               if (ytId && isYouTubeThumbnailUrl(thumb)) {
                 return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
@@ -406,7 +406,7 @@ function VideoCard({
         )}
 
         {/* Fallback placeholder when no thumbnail */}
-        {!getVideoThumbnail(video) && (
+        {!getProxiedThumbnailUrl(video) && (
           <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
             <Play className="w-10 h-10 text-slc-border" />
           </div>

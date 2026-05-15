@@ -28,14 +28,13 @@ import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import {
   getYouTubeId,
-  getVideoThumbnail,
+  getProxiedThumbnailUrl,
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
   isDirectVideo as isDirectVideoUtil,
   getVideoSrc,
   getProxiedVideoSrc,
-  getProxiedThumbnailUrl,
   type VideoLike,
 } from "@/lib/video-utils";
 
@@ -476,15 +475,15 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
             className="group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
           >
             <div className="relative aspect-[9/16]">
-              {getVideoThumbnail(video) ? (
+              {getProxiedThumbnailUrl(video) ? (
                 <SafeImage
-                  src={getVideoThumbnail(video)!}
+                  src={getProxiedThumbnailUrl(video)!}
                   alt={video.title || "Video"}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                   fallbackSrc={(() => {
-                    const thumb = getVideoThumbnail(video)!;
+                    const thumb = getProxiedThumbnailUrl(video)!;
                     const ytId = getYouTubeId(video);
                     if (ytId && isYouTubeThumbnailUrl(thumb)) {
                       return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
@@ -674,8 +673,8 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
               // Fallback: show thumbnail with play link
               return (
                 <div className="w-full h-full relative rounded-xl overflow-hidden bg-black flex items-center justify-center">
-                  {getVideoThumbnail(video) && (
-                    <SafeImage src={getVideoThumbnail(video)!} alt={video.title || "Video"} fill className="object-cover" fallbackSrc={getVideoPlaceholderSvg("9/16")} />
+                  {getProxiedThumbnailUrl(video) && (
+                    <SafeImage src={getProxiedThumbnailUrl(video)!} alt={video.title || "Video"} fill className="object-cover" fallbackSrc={getVideoPlaceholderSvg("9/16")} />
                   )}
                   <a
                     href={video.platformUrl || video.videoUrl}

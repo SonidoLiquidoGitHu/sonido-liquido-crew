@@ -17,14 +17,13 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import {
   getYouTubeId,
-  getVideoThumbnail,
+  getProxiedThumbnailUrl,
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
   isDirectVideo,
   getVideoSrc,
   getProxiedVideoSrc,
-  getProxiedThumbnailUrl,
 } from "@/lib/video-utils";
 
 interface ReelVideo {
@@ -131,14 +130,14 @@ export function ReelDetail({ video }: ReelDetailProps) {
           />
         ) : (
           <div className="w-full h-full relative flex items-center justify-center">
-            {getVideoThumbnail(video) && (
+            {getProxiedThumbnailUrl(video) && (
               <SafeImage
-                src={getVideoThumbnail(video)!}
+                src={getProxiedThumbnailUrl(video)!}
                 alt={video.title || "Video"}
                 fill
                 className="object-cover"
                 fallbackSrc={(() => {
-                  const thumb = getVideoThumbnail(video)!;
+                  const thumb = getProxiedThumbnailUrl(video)!;
                   if (ytId && isYouTubeThumbnailUrl(thumb)) {
                     return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
                   }

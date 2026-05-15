@@ -20,6 +20,7 @@
     "https://yt3.ggpht.com/.*",
     "https://yt3.googleusercontent.com/.*",
     "https://dl.dropboxusercontent.com/.*",
+    "https://www.dropbox.com/.*",
     "https://placehold.co/.*"
   ]
 

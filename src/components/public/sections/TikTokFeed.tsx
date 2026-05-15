@@ -32,14 +32,13 @@ import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import {
   getYouTubeId,
-  getVideoThumbnail,
+  getProxiedThumbnailUrl,
   isYouTubeThumbnailUrl,
   getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
   isDirectVideo as isDirectVideoUtil,
   getVideoSrc,
   getProxiedVideoSrc,
-  getProxiedThumbnailUrl,
   type VideoLike,
 } from "@/lib/video-utils";
 
@@ -711,9 +710,9 @@ function NextVideoPreview({
       >
         {/* Mini thumbnail */}
         <div className="relative w-12 h-[4.5rem] rounded-lg overflow-hidden flex-shrink-0 border border-white/20">
-          {getVideoThumbnail(nextVideo) ? (
+          {getProxiedThumbnailUrl(nextVideo) ? (
             <SafeImage
-              src={getVideoThumbnail(nextVideo)!}
+              src={getProxiedThumbnailUrl(nextVideo)!}
               alt={nextVideo.title || "Next video"}
               fill
               className="object-cover"
@@ -1009,9 +1008,9 @@ function ReelItem({
         ) : (
           /* Fallback: show thumbnail with external link */
           <div className="w-full h-full relative flex items-center justify-center">
-            {getVideoThumbnail(video) && (
+            {getProxiedThumbnailUrl(video) && (
               <SafeImage
-                src={getVideoThumbnail(video)!}
+                src={getProxiedThumbnailUrl(video)!}
                 alt={video.title || "Video"}
                 fill
                 className="absolute inset-0 object-cover"
@@ -1193,8 +1192,8 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
       const video = videos[index];
       if (preloadedRef.current.has(video.id)) return;
 
-      // Preload thumbnail via Image
-      const thumb = getVideoThumbnail(video);
+      // Preload thumbnail via Image (use proxied URL for Dropbox)
+      const thumb = getProxiedThumbnailUrl(video as unknown as VideoLike);
       if (thumb) {
         const img = new Image();
         img.src = thumb;
@@ -1214,7 +1213,7 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
       // For YouTube, we can preload the thumbnail at least
       if (getYouTubeId(video)) {
         const ytId = getYouTubeId(video);
-        const thumb = getVideoThumbnail(video);
+        const thumb = getProxiedThumbnailUrl(video as unknown as VideoLike);
         if (ytId && thumb) {
           const img = new Image();
           img.src = thumb;
