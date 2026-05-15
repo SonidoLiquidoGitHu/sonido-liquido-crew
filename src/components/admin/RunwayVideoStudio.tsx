@@ -852,6 +852,18 @@ export function RunwayVideoStudio({
               <strong>Cost:</strong> Gen-4 Turbo = $0.05/sec ($0.25 for 5s). Gen-4.5 = $0.12/sec ($0.60 for 5s).
               Credits billed to your Runway account.
             </p>
+            <p>
+              <strong>API & Credits:</strong>{" "}
+              <a
+                href="https://dev.runwayml.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline inline-flex items-center gap-1"
+              >
+                Runway Developers <ExternalLink className="w-3 h-3" />
+              </a>
+              {" "}&mdash; manage API keys, credits, and view documentation.
+            </p>
           </div>
         </div>
       </div>

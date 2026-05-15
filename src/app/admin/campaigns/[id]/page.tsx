@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
 import { AudioPreviewPlayer } from "@/components/admin/AudioPreviewPlayer";
 import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
+import { RunwayVideoStudio } from "@/components/admin/RunwayVideoStudio";
 import { type StyleSettings } from "@/lib/style-config";
 import {
   ArrowLeft,
@@ -29,6 +30,7 @@ import {
   BarChart3,
   Video,
   Film,
+  Sparkles,
 } from "lucide-react";
 
 interface Campaign {
@@ -783,6 +785,33 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
               value={formData.styleSettings}
               onChange={(styleSettings) => setFormData(prev => ({ ...prev, styleSettings }))}
             />
+
+            {/* AI Video Studio (Runway) */}
+            {formData.coverImageUrl && (
+              <section className="bg-slc-card border border-slc-border rounded-xl p-6">
+                <RunwayVideoStudio
+                  coverImageUrl={formData.coverImageUrl}
+                  artistName={formData.title || "Campaña"}
+                  title={formData.title || "Video"}
+                  releaseDate={formData.releaseDate || undefined}
+                  onVideoGenerated={(videoUrl) => {
+                    // Auto-fill the preview video URL with the Runway output
+                    if (videoUrl && !formData.previewVideoUrl) {
+                      setFormData(prev => ({ ...prev, previewVideoUrl: videoUrl }));
+                    }
+                  }}
+                />
+              </section>
+            )}
+            {!formData.coverImageUrl && (
+              <div className="bg-slc-dark border border-slc-border rounded-xl p-8 text-center">
+                <Sparkles className="w-12 h-12 mx-auto mb-4 text-slc-muted opacity-50" />
+                <h3 className="font-oswald text-lg uppercase mb-2">AI Video Studio</h3>
+                <p className="text-sm text-slc-muted mb-4">
+                  Sube una portada para activar la generación de videos con IA.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
