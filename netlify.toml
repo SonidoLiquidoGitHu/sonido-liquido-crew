@@ -73,3 +73,4 @@
 # - META_APP_SECRET (required for social auto-posting)
 # - META_SYSTEM_USER_TOKEN (required for social auto-posting)
 # - FACEBOOK_PAGE_ID (required for social auto-posting)
+# - RUNWAYML_API_SECRET (optional, for Runway AI video generation)
