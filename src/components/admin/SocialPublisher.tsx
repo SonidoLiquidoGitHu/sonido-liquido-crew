@@ -286,6 +286,15 @@ export function SocialPublisher({
     fbReelUrl?: string;
   } | null>(null);
 
+  // Token validation state
+  const [tokenStatus, setTokenStatus] = useState<{
+    checked: boolean;
+    valid: boolean;
+    message: string;
+    guidance?: string;
+    checking: boolean;
+  }>({ checked: false, valid: false, message: "", checking: false });
+
   const platform = PLATFORMS.find((p) => p.id === selectedPlatform)!;
 
   // Generate caption
@@ -328,6 +337,33 @@ export function SocialPublisher({
     setTimeout(() => setCopiedLink(false), 2000);
   }, [presaveUrl]);
 
+  // Helper: Safely parse JSON from API response, handling HTML error pages
+  const safeParseJson = async (response: Response): Promise<Record<string, unknown>> => {
+    const contentType = response.headers.get("content-type") || "";
+    const text = await response.text();
+
+    if (contentType.includes("application/json") || text.trim().startsWith("{")) {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { success: false, message: "Error al procesar la respuesta del servidor" };
+      }
+    }
+
+    // Server returned HTML (Netlify error page, Next.js error page, etc.)
+    console.error("[SocialPublisher] Received non-JSON response:", text.substring(0, 200));
+    if (response.status === 502 || response.status === 504) {
+      return { success: false, message: "El servidor está tardando demasiado. Intenta de nuevo en unos segundos." };
+    }
+    if (response.status === 500) {
+      return { success: false, message: "Error interno del servidor. Verifica la configuración de las credenciales Meta en /admin/social." };
+    }
+    if (!response.ok) {
+      return { success: false, message: `Error del servidor (${response.status}). Verifica que las credenciales Meta estén configuradas.` };
+    }
+    return { success: false, message: "Respuesta inesperada del servidor. Verifica la configuración de credenciales." };
+  };
+
   // Auto-post to Facebook and Instagram
   const handleAutoPost = useCallback(async () => {
     if (!coverImageUrl) return;
@@ -349,19 +385,19 @@ export function SocialPublisher({
         }),
       });
 
-      const data = await response.json();
+      const data = await safeParseJson(response);
 
       if (data.success) {
         setAutoPostResult({
           success: true,
-          message: data.message || "¡Publicación exitosa!",
-          fbPostUrl: data.results?.facebook?.postUrl,
-          igPostUrl: data.results?.instagram?.permalink,
+          message: (data.message as string) || "¡Publicación exitosa!",
+          fbPostUrl: (data.results as Record<string, Record<string, string>>)?.facebook?.postUrl,
+          igPostUrl: (data.results as Record<string, Record<string, string>>)?.instagram?.permalink,
         });
       } else {
         setAutoPostResult({
           success: false,
-          message: data.message || data.error || "Error al publicar",
+          message: (data.message as string) || (data.error as string) || "Error al publicar",
         });
       }
     } catch (err) {
@@ -411,19 +447,19 @@ export function SocialPublisher({
         }),
       });
 
-      const data = await response.json();
+      const data = await safeParseJson(response);
 
       if (data.success) {
         setReelPostResult({
           success: true,
-          message: data.message || "¡Reel publicado exitosamente!",
-          igReelUrl: data.results?.instagram?.permalink,
-          fbReelUrl: data.results?.facebook?.postUrl,
+          message: (data.message as string) || "¡Reel publicado exitosamente!",
+          igReelUrl: (data.results as Record<string, Record<string, string>>)?.instagram?.permalink,
+          fbReelUrl: (data.results as Record<string, Record<string, string>>)?.facebook?.postUrl,
         });
       } else {
         setReelPostResult({
           success: false,
-          message: data.message || data.error || "Error al publicar Reel",
+          message: (data.message as string) || (data.error as string) || "Error al publicar Reel",
         });
       }
     } catch (err) {
@@ -435,6 +471,43 @@ export function SocialPublisher({
       setIsPostingReel(false);
     }
   }, [verticalVideoUrl, releaseId, releaseTitle, generateCaption]);
+
+  // Validate Meta token for reel posting
+  const handleValidateReelToken = useCallback(async () => {
+    setTokenStatus({ checked: false, valid: false, message: "", checking: true });
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "validate-reel-token" }),
+      });
+      const data = await safeParseJson(response);
+      const result = data.data as Record<string, unknown>;
+      if (data.success && result?.canPostReel) {
+        setTokenStatus({
+          checked: true,
+          valid: true,
+          message: (result.message as string) || "Token válido",
+          checking: false,
+        });
+      } else {
+        setTokenStatus({
+          checked: true,
+          valid: false,
+          message: (result?.message as string) || (data.message as string) || "Token inválido",
+          guidance: (result?.guidance as string) || undefined,
+          checking: false,
+        });
+      }
+    } catch {
+      setTokenStatus({
+        checked: true,
+        valid: false,
+        message: "Error al validar el token",
+        checking: false,
+      });
+    }
+  }, [safeParseJson]);
 
   // Get recommended video for platform
   const getRecommendedVideo = useCallback(() => {
@@ -875,6 +948,45 @@ export function SocialPublisher({
                 </p>
               </div>
               <Smartphone className="w-4 h-4 text-green-500" />
+            </div>
+
+            {/* Meta Token Validation */}
+            <div className="p-3 bg-slc-dark border border-slc-border rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Token de Meta API</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleValidateReelToken}
+                  disabled={tokenStatus.checking}
+                  className="text-xs"
+                >
+                  {tokenStatus.checking ? (
+                    <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Validando...</>
+                  ) : tokenStatus.checked ? (
+                    tokenStatus.valid ? (
+                      <><Check className="w-3 h-3 mr-1 text-green-500" /> Válido</>
+                    ) : (
+                      <><AlertTriangle className="w-3 h-3 mr-1 text-red-500" /> Inválido</>
+                    )
+                  ) : (
+                    "Verificar token"
+                  )}
+                </Button>
+              </div>
+              {tokenStatus.checked && (
+                <p className={`text-xs ${tokenStatus.valid ? "text-green-400" : "text-red-400"}`}>
+                  {tokenStatus.message}
+                </p>
+              )}
+              {tokenStatus.checked && !tokenStatus.valid && tokenStatus.guidance && (
+                <p className="text-xs text-yellow-400">{tokenStatus.guidance}</p>
+              )}
+              {!tokenStatus.checked && !tokenStatus.checking && (
+                <p className="text-xs text-slc-muted">
+                  Verifica el token antes de publicar para evitar errores.
+                </p>
+              )}
             </div>
 
             {/* Platform selection for Reels */}

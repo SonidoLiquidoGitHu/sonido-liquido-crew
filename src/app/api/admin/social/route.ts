@@ -196,22 +196,39 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const action = body.action;
+    // Ensure we always return JSON, never HTML error pages
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
+    const action = body.action as string;
+
+    if (!action) {
+      return NextResponse.json(
+        { success: false, error: "Missing 'action' field in request body" },
+        { status: 400 }
+      );
+    }
 
     switch (action) {
       case "process-next":
         return await handleProcessNext();
       case "populate":
-        return await handlePopulate(body.options || {});
+        return await handlePopulate(body.options as Record<string, unknown> || {});
       case "post-upcoming-release":
-        return await handlePostUpcomingRelease(body);
+        return await handlePostUpcomingRelease(body as Parameters<typeof handlePostUpcomingRelease>[0]);
       case "post-reel":
-        return await handlePostReel(body);
+        return await handlePostReel(body as Parameters<typeof handlePostReel>[0]);
       case "reset-cycle":
         return await handleResetCycle();
       case "skip-item":
-        return await handleSkipItem(body.queueId);
+        return await handleSkipItem(body.queueId as string);
       case "validate-token":
         return await handleValidateToken();
       case "validate-tiktok":
@@ -220,6 +237,8 @@ export async function POST(request: NextRequest) {
         return await handleRetryFailed();
       case "clear-queue":
         return await handleClearQueue();
+      case "validate-reel-token":
+        return await handleValidateReelToken();
       default:
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },
@@ -228,8 +247,10 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("[Social API] POST error:", error);
+    // ALWAYS return JSON — never let Next.js return an HTML error page
+    const errorMessage = error instanceof Error ? error.message : "Request failed";
     return NextResponse.json(
-      { success: false, error: "Request failed" },
+      { success: false, error: errorMessage, message: `Error interno: ${errorMessage}` },
       { status: 500 }
     );
   }
@@ -303,7 +324,23 @@ async function handlePostUpcomingRelease(body: {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales o como variables de entorno.",
+      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
+    });
+  }
+
+  // Pre-validate the token before attempting the post
+  const tokenInfo = await validateToken();
+  if (!tokenInfo.isValid) {
+    const errorDetail = tokenInfo.raw?.message || "Token inválido";
+    const errorCode = tokenInfo.raw?.code || "";
+    let guidance = "";
+    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
+      guidance = " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    }
+    return NextResponse.json({
+      success: false,
+      message: `Token de Meta API inválido: ${errorDetail}.${guidance}`,
+      tokenError: { code: errorCode, message: errorDetail, type: tokenInfo.raw?.type },
     });
   }
 
@@ -427,7 +464,23 @@ async function handlePostReel(body: {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales.",
+      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
+    });
+  }
+
+  // Pre-validate the token before attempting the reel post
+  const tokenInfo = await validateToken();
+  if (!tokenInfo.isValid) {
+    const errorDetail = tokenInfo.raw?.message || "Token inválido";
+    const errorCode = tokenInfo.raw?.code || "";
+    let guidance = "";
+    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
+      guidance = " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    }
+    return NextResponse.json({
+      success: false,
+      message: `Token de Meta API inválido: ${errorDetail}.${guidance}`,
+      tokenError: { code: errorCode, message: errorDetail, type: tokenInfo.raw?.type },
     });
   }
 
@@ -1034,6 +1087,58 @@ async function handleValidateToken() {
   return NextResponse.json({
     success: true,
     data: tokenInfo,
+  });
+}
+
+async function handleValidateReelToken() {
+  // Pre-validate the Meta token for reel posting
+  // Returns detailed info about what's ready and what's missing
+  if (!(await isMetaConfiguredAsync())) {
+    return NextResponse.json({
+      success: false,
+      data: {
+        configured: false,
+        message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en /admin/social.",
+        canPostReel: false,
+      },
+    });
+  }
+
+  const tokenInfo = await validateToken();
+  if (!tokenInfo.isValid) {
+    const errorDetail = tokenInfo.raw?.message || "Token inválido";
+    const errorCode = tokenInfo.raw?.code || "";
+    let guidance = "";
+    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
+      guidance = "Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    }
+    return NextResponse.json({
+      success: false,
+      data: {
+        configured: true,
+        tokenValid: false,
+        message: `Token inválido: ${errorDetail}`,
+        guidance,
+        canPostReel: false,
+        error: { code: errorCode, message: errorDetail },
+      },
+    });
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      configured: true,
+      tokenValid: true,
+      pageAccessible: tokenInfo.pageAccessible,
+      igAccountAccessible: tokenInfo.igAccountAccessible,
+      canPostReel: tokenInfo.pageAccessible || tokenInfo.igAccountAccessible,
+      message: tokenInfo.igAccountAccessible
+        ? "Token válido. Se puede publicar en Instagram Reels y Facebook Reels."
+        : tokenInfo.pageAccessible
+          ? "Token válido. Se puede publicar en Facebook Reels pero no se encontró cuenta de Instagram Business."
+          : "Token válido pero no se puede acceder a la página de Facebook ni a la cuenta de Instagram.",
+    },
   });
 }
 

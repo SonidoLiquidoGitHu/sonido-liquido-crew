@@ -47,6 +47,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
   }
 
+  // Strip internal cache-buster params (e.g. _retry=1_1234567890)
+  // These are added by the frontend to force video reload on retry
+  const retryMatch = videoUrl.match(/[&?]_retry=\d+_\d+$/);
+  if (retryMatch) {
+    videoUrl = videoUrl.replace(retryMatch[0], "");
+  }
+
   // Normalize dl.dropboxusercontent.com URLs — they're broken for new-format links.
   // Convert to www.dropbox.com?raw=1 which works with ALL formats.
   if (videoUrl.includes("dl.dropboxusercontent.com")) {

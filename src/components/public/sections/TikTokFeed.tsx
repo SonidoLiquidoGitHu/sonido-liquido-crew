@@ -24,6 +24,7 @@ import {
   Music,
   ChevronUp,
   ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -395,18 +396,25 @@ function VideoPlayer({
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [showPlayIndicator, setShowPlayIndicator] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+
+  // Handle Dropbox URLs — use proxy for mobile compatibility
+  const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
+  const posterUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
 
   // Autoplay / pause based on visibility
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
 
-    if (isVisible && isPlaying) {
+    if (isVisible && isPlaying && !videoError) {
       el.play().catch(() => {});
     } else {
       el.pause();
     }
-  }, [isVisible, isPlaying]);
+  }, [isVisible, isPlaying, videoError]);
 
   // Muted state sync
   useEffect(() => {
@@ -419,7 +427,21 @@ function VideoPlayer({
   useEffect(() => {
     setIsLoading(true);
     setProgress(0);
+    setVideoError(null);
+    setRetryCount(0);
   }, [video.id]);
+
+  // Retry logic: when retryCount changes, force video reload with cache-buster
+  useEffect(() => {
+    if (retryCount > 0 && videoRef.current) {
+      const el = videoRef.current;
+      const separator = videoSrc.includes("?") ? "&" : "?";
+      el.src = `${videoSrc}${separator}_retry=${retryCount}_${Date.now()}`;
+      el.load();
+      setVideoError(null);
+      setIsLoading(true);
+    }
+  }, [retryCount, videoSrc]);
 
   // Progress tracking & events
   useEffect(() => {
@@ -434,13 +456,44 @@ function VideoPlayer({
       }
     };
 
-    const onLoadedData = () => setIsLoading(false);
+    const onLoadedData = () => {
+      setIsLoading(false);
+      setVideoError(null);
+    };
     const onWaiting = () => setIsLoading(true);
-    const onCanPlay = () => setIsLoading(false);
+    const onCanPlay = () => {
+      setIsLoading(false);
+      setVideoError(null);
+    };
 
     // Feature #5: Auto-advance when video ends
     const onEnded = () => {
       onVideoEnd?.();
+    };
+
+    // Error handling — detect video load failures
+    const onError = () => {
+      const error = el.error;
+      let errorMsg = "Error al cargar el video";
+      if (error) {
+        switch (error.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMsg = "Carga cancelada";
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMsg = "Error de red al cargar el video";
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMsg = "Error al decodificar el video — formato no compatible";
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMsg = "Formato de video no soportado por este navegador";
+            break;
+        }
+      }
+      console.error(`[VideoPlayer] Error loading video ${video.id}:`, errorMsg, error);
+      setIsLoading(false);
+      setVideoError(errorMsg);
     };
 
     el.addEventListener("timeupdate", onTimeUpdate);
@@ -448,6 +501,7 @@ function VideoPlayer({
     el.addEventListener("waiting", onWaiting);
     el.addEventListener("canplay", onCanPlay);
     el.addEventListener("ended", onEnded);
+    el.addEventListener("error", onError);
 
     return () => {
       el.removeEventListener("timeupdate", onTimeUpdate);
@@ -455,8 +509,9 @@ function VideoPlayer({
       el.removeEventListener("waiting", onWaiting);
       el.removeEventListener("canplay", onCanPlay);
       el.removeEventListener("ended", onEnded);
+      el.removeEventListener("error", onError);
     };
-  }, [onVideoEnd, onProgress]);
+  }, [onVideoEnd, onProgress, video.id]);
 
   // Show play/pause indicator briefly
   useEffect(() => {
@@ -467,14 +522,17 @@ function VideoPlayer({
     }
   }, [isPlaying, isVisible]);
 
-  // Handle Dropbox URLs — use proxy for mobile compatibility
-  const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
-  const posterUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
+  // Handle retry
+  const handleRetry = useCallback(() => {
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1);
+    }
+  }, [retryCount]);
 
   return (
     <div className="relative w-full h-full">
       {/* Feature #6: Blurred thumbnail background while loading */}
-      {isLoading && posterUrl && (
+      {(isLoading || videoError) && posterUrl && (
         <div
           className="absolute inset-0 z-[5] scale-105"
           style={{
@@ -487,9 +545,40 @@ function VideoPlayer({
       )}
 
       {/* Loading spinner on top of blurred thumbnail */}
-      {isLoading && (
+      {isLoading && !videoError && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
           <Loader2 className="w-10 h-10 text-white animate-spin" />
+        </div>
+      )}
+
+      {/* Error state — show error message with retry button */}
+      {videoError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/40 gap-3 px-6">
+          <AlertTriangle className="w-8 h-8 text-red-400" />
+          <p className="text-sm text-white text-center">{videoError}</p>
+          {retryCount < maxRetries ? (
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm text-white transition-colors"
+            >
+              Reintentar ({maxRetries - retryCount} intentos restantes)
+            </button>
+          ) : (
+            <p className="text-xs text-white/60 text-center">
+              No se pudo cargar el video después de {maxRetries} intentos.
+              {video.platformUrl && (
+                <a
+                  href={video.platformUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline ml-1"
+                >
+                  Ver en plataforma
+                </a>
+              )}
+            </p>
+          )}
         </div>
       )}
 
@@ -505,7 +594,7 @@ function VideoPlayer({
       />
 
       {/* Feature #4: Circular progress ring + play/pause indicator (center) */}
-      {isVisible && (showPlayIndicator || !isPlaying) && (
+      {isVisible && !videoError && (showPlayIndicator || !isPlaying) && (
         <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
           <div className="relative w-20 h-20 flex items-center justify-center">
             {/* Progress ring */}
@@ -528,7 +617,7 @@ function VideoPlayer({
       )}
 
       {/* Feature #4: Progress ring always visible (small, top-right) when playing */}
-      {isVisible && isPlaying && !showPlayIndicator && (
+      {isVisible && isPlaying && !showPlayIndicator && !videoError && (
         <div className="absolute top-4 right-4 z-20 pointer-events-none">
           <div className="relative w-8 h-8 flex items-center justify-center">
             <CircularProgressRing
