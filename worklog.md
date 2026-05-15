@@ -199,3 +199,31 @@ Stage Summary:
 - Fix: Direct computation of proxied URLs + pre-proxied thumbnail URLs in components
 - Files changed: safe-image.tsx, VerticalVideoSection.tsx, ReelsGrid.tsx, ReelDetail.tsx, ArtistReelsSection.tsx, ReelsStoriesBar.tsx, TikTokFeed.tsx, next.config.js, netlify.toml
 - Commit: 5dfcb96 pushed to origin/master
+
+---
+Task ID: 3
+Agent: Main
+Task: Investigate and fix vertical video thumbnail loading
+
+Work Log:
+- Read ReelsGrid.tsx — uses getProxiedThumbnailUrl(video) to get thumbnail URL, passes to SafeImage
+- Read video-utils.ts — getProxiedThumbnailUrl converts Dropbox URLs to /api/image-proxy?url=... format
+- Read SafeImage component — handles proxy routing and retry logic, works with Next.js Image
+- Read image-proxy/route.ts — properly handles Dropbox URLs with content-type fixing
+- Read video-proxy/route.ts — redirect-first strategy for Dropbox, streaming fallback
+- Read ReelsPage — server-side data fetch from DB, passes to ReelsGrid
+- Read vertical-videos schema — has thumbnailUrl, videoUrl, platform, etc.
+- Checked for remaining merge conflict markers in src/ — NONE found
+- Ran `next build` — compiled successfully (no SyntaxError)
+- Build fails only due to missing local DB (expected in this env)
+
+Stage Summary:
+- The next.config.js merge conflict fix has been pushed to master
+- No other source files contain merge conflict markers
+- Build compilation succeeds — the Netlify build should now work
+- The thumbnail loading code path looks correct:
+  1. DB thumbnailUrl → getDirectDropboxUrl → getProxiedThumbnailUrl → /api/image-proxy
+  2. YouTube → auto-generated thumbnail URL
+  3. null → placeholder SVG
+- The previously deployed version was from before the fix commit; once Netlify rebuilds with the new master, thumbnails should load correctly
+- Need to verify on the live site after deploy
