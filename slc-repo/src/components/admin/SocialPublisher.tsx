@@ -265,6 +265,15 @@ export function SocialPublisher({
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [customHashtags, setCustomHashtags] = useState(hashtags.join(" #"));
 
+  // Reel publishing state
+  const [reelPlatforms, setReelPlatforms] = useState<("instagram" | "facebook")[]>(["instagram", "facebook"]);
+  const [reelPublishing, setReelPublishing] = useState(false);
+  const [reelResult, setReelResult] = useState<{
+    success: boolean;
+    message: string;
+    results?: any;
+  } | null>(null);
+
   const platform = PLATFORMS.find((p) => p.id === selectedPlatform)!;
 
   // Generate caption
@@ -672,6 +681,214 @@ export function SocialPublisher({
             <span>Programar publicación para hora óptima (7-9pm)</span>
           </li>
         </ul>
+      </div>
+
+      {/* Publish as Reel Section */}
+      <div className="bg-slc-card border border-purple-500/30 rounded-xl p-6">
+        <h3 className="font-oswald text-xl uppercase flex items-center gap-2 mb-4">
+          <Video className="w-5 h-5 text-purple-500" />
+          Publicar como Reel
+        </h3>
+        <p className="text-sm text-slc-muted mb-4">
+          Publica el video vertical directamente como Reel en Instagram y Facebook.
+          El video debe ser vertical (9:16), formato MP4, y máximo 90 segundos.
+          Se usará el caption generado arriba.
+        </p>
+
+        {/* Video availability status */}
+        {verticalVideoUrl ? (
+          <div className="p-3 mb-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-green-500" />
+              <span className="text-sm font-medium text-green-400">Video vertical disponible</span>
+            </div>
+            <p className="text-xs text-slc-muted mt-1 truncate">{verticalVideoUrl}</p>
+          </div>
+        ) : (
+          <div className="p-3 mb-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-500" />
+              <span className="text-sm font-medium text-yellow-400">No hay video vertical</span>
+            </div>
+            <p className="text-xs text-slc-muted mt-1">
+              Sube un video vertical en la pestaña "Videos" antes de publicar como Reel.
+            </p>
+          </div>
+        )}
+
+        {/* Platform selection checkboxes */}
+        <div className="space-y-3 mb-4">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={reelPlatforms.includes("instagram")}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setReelPlatforms([...reelPlatforms, "instagram"]);
+                } else {
+                  setReelPlatforms(reelPlatforms.filter((p) => p !== "instagram"));
+                }
+              }}
+              className="w-4 h-4 rounded border-slc-border bg-slc-dark text-primary focus:ring-primary"
+            />
+            <div className="flex items-center gap-2">
+              <Instagram className="w-4 h-4 text-pink-500" />
+              <span className="text-sm font-medium">Instagram Reels</span>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={reelPlatforms.includes("facebook")}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setReelPlatforms([...reelPlatforms, "facebook"]);
+                } else {
+                  setReelPlatforms(reelPlatforms.filter((p) => p !== "facebook"));
+                }
+              }}
+              className="w-4 h-4 rounded border-slc-border bg-slc-dark text-primary focus:ring-primary"
+            />
+            <div className="flex items-center gap-2">
+              <Facebook className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-medium">Facebook Reels</span>
+            </div>
+          </label>
+        </div>
+
+        {/* Publish button */}
+        <Button
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          disabled={!verticalVideoUrl || reelPlatforms.length === 0 || reelPublishing}
+          onClick={async () => {
+            if (!verticalVideoUrl || reelPlatforms.length === 0) return;
+
+            setReelPublishing(true);
+            setReelResult(null);
+
+            try {
+              const caption = generateCaption();
+
+              const response = await fetch("/api/admin/publish-reel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  videoUrl: verticalVideoUrl,
+                  caption,
+                  platforms: reelPlatforms,
+                  releaseTitle,
+                  artistName,
+                }),
+              });
+
+              // Handle non-JSON responses (e.g., HTML 404 pages)
+              const contentType = response.headers.get("content-type") || "";
+              if (!contentType.includes("application/json")) {
+                const text = await response.text();
+                throw new Error(
+                  `El servidor respondió con un formato inesperado (${response.status}). ` +
+                  `Esto puede indicar que la API no está disponible. Intenta de nuevo más tarde.`
+                );
+              }
+
+              const data = await response.json();
+              setReelResult({
+                success: data.success,
+                message: data.message || (data.success ? "Reel publicado" : "Error al publicar"),
+                results: data.results,
+              });
+            } catch (err) {
+              setReelResult({
+                success: false,
+                message: err instanceof Error ? err.message : "Error desconocido al publicar el Reel",
+              });
+            } finally {
+              setReelPublishing(false);
+            }
+          }}
+        >
+          {reelPublishing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Publicando Reel...
+            </>
+          ) : (
+            <>
+              <Video className="w-4 h-4 mr-2" />
+              Publicar como Reel
+            </>
+          )}
+        </Button>
+
+        {/* Result message */}
+        {reelResult && (
+          <div
+            className={`mt-4 p-4 rounded-lg border ${
+              reelResult.success
+                ? "bg-green-500/10 border-green-500/20"
+                : "bg-red-500/10 border-red-500/20"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              {reelResult.success ? (
+                <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              )}
+              <div>
+                <p className={`text-sm font-medium ${reelResult.success ? "text-green-400" : "text-red-400"}`}>
+                  {reelResult.success ? "Reel publicado" : "Error al publicar Reel"}
+                </p>
+                <p className="text-xs text-slc-muted mt-1">{reelResult.message}</p>
+                {/* Show individual platform results */}
+                {reelResult.results && (
+                  <div className="mt-2 space-y-1">
+                    {reelResult.results.instagram && (
+                      <p className={`text-xs ${reelResult.results.instagram.success ? "text-green-400" : "text-red-400"}`}>
+                        Instagram: {reelResult.results.instagram.success ? `Publicado (${reelResult.results.instagram.permalink || reelResult.results.instagram.mediaId})` : reelResult.results.instagram.error}
+                      </p>
+                    )}
+                    {reelResult.results.facebook && (
+                      <p className={`text-xs ${reelResult.results.facebook.success ? "text-green-400" : "text-red-400"}`}>
+                        Facebook: {reelResult.results.facebook.success ? `Publicado (${reelResult.results.facebook.postUrl || reelResult.results.facebook.postId})` : reelResult.results.facebook.error}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Publishing checklist for Reels */}
+        <div className="p-4 bg-slc-dark rounded-lg border border-slc-border mt-4">
+          <h4 className="font-oswald text-sm uppercase mb-2 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            Checklist de publicación
+          </h4>
+          <ul className="text-xs text-slc-muted space-y-1">
+            <li className="flex items-start gap-2">
+              <div className="w-4 h-4 rounded border border-slc-border mt-0.5 shrink-0" />
+              <span>Verificar que el video cumple con las especificaciones</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <div className="w-4 h-4 rounded border border-slc-border mt-0.5 shrink-0" />
+              <span>Agregar música/audio desde la biblioteca de la app</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <div className="w-4 h-4 rounded border border-slc-border mt-0.5 shrink-0" />
+              <span>Pegar caption con hashtags</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <div className="w-4 h-4 rounded border border-slc-border mt-0.5 shrink-0" />
+              <span>Agregar link de presave (Link sticker en Stories)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <div className="w-4 h-4 rounded border border-slc-border mt-0.5 shrink-0" />
+              <span>Programar publicación para hora óptima (7-9pm)</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );

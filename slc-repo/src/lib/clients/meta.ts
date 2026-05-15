@@ -498,6 +498,355 @@ export async function postToInstagram(
 }
 
 // ===========================================
+// INSTAGRAM REELS POSTING
+// ===========================================
+
+export interface InstagramReelResult {
+  success: boolean;
+  mediaId: string | null;
+  permalink: string | null;
+  error?: string;
+}
+
+/**
+ * Post a video as an Instagram Reel.
+ * IG Reels API requires:
+ * 1. Create a media container with media_type=REELS and video_url
+ * 2. Wait for processing (poll status — videos take longer than images)
+ * 3. Publish the container
+ *
+ * Requirements:
+ * - Video must be MP4 or MOV
+ * - Vertical (9:16) recommended, 1080x1920 ideal
+ * - Max 90 seconds for Reels
+ * - video_url must be publicly accessible
+ */
+export async function postReelToInstagram(
+  videoUrl: string,
+  caption: string,
+  shareToFeed: boolean = true
+): Promise<InstagramReelResult> {
+  if (!isMetaConfigured()) {
+    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured" };
+  }
+
+  const igAccountId = await getInstagramBusinessAccountId();
+  if (!igAccountId) {
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error: "Instagram Business Account not found",
+    };
+  }
+
+  const token = getSystemUserToken();
+
+  try {
+    // Step 1: Create Reels container
+    console.log("[Meta] Creating IG Reels container with video:", videoUrl.substring(0, 80));
+
+    const containerResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        media_type: "REELS",
+        video_url: videoUrl,
+        caption: caption,
+        share_to_feed: shareToFeed,
+        access_token: token,
+      }),
+    });
+
+    const containerData = await containerResponse.json();
+
+    if (containerData.error) {
+      console.error("[Meta] IG Reels container creation error:", containerData.error);
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `${containerData.error.code}: ${containerData.error.message}`,
+      };
+    }
+
+    const containerId = containerData.id;
+    console.log("[Meta] IG Reels container created:", containerId);
+
+    // Step 2: Poll container status — videos take longer than images
+    let statusCode = "IN_PROGRESS";
+    let attempts = 0;
+    const maxAttempts = 30; // Up to 60 seconds for video processing
+
+    while (statusCode === "IN_PROGRESS" && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // 3s between polls for video
+      attempts++;
+
+      const statusResponse = await fetch(
+        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`
+      );
+      const statusData = await statusResponse.json();
+      statusCode = statusData.status_code || "IN_PROGRESS";
+
+      console.log(`[Meta] IG Reels container status: ${statusCode} (attempt ${attempts})`);
+
+      if (statusCode === "FINISHED") {
+        break;
+      }
+
+      if (statusCode === "ERROR") {
+        console.error("[Meta] IG Reels container processing error:", statusData);
+        return {
+          success: false,
+          mediaId: null,
+          permalink: null,
+          error: `Reel processing failed after ${attempts} polls: ${statusData.status_msg || "unknown"}`,
+        };
+      }
+    }
+
+    if (statusCode !== "FINISHED") {
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `Reel still processing after ${maxAttempts * 3}s timeout`,
+      };
+    }
+
+    // Step 3: Publish the container
+    const publishResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        creation_id: containerId,
+        access_token: token,
+      }),
+    });
+
+    const publishData = await publishResponse.json();
+
+    if (publishData.error) {
+      console.error("[Meta] IG Reels publish error:", publishData.error);
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `${publishData.error.code}: ${publishData.error.message}`,
+      };
+    }
+
+    const mediaId = publishData.id;
+
+    // Step 4: Get permalink
+    let permalink: string | null = null;
+    try {
+      const permalinkResponse = await fetch(
+        `${META_GRAPH_API}/${mediaId}?fields=permalink&access_token=${token}`
+      );
+      const permalinkData = await permalinkResponse.json();
+      permalink = permalinkData.permalink || null;
+    } catch {
+      // Non-critical
+    }
+
+    console.log("[Meta] Instagram Reel published successfully:", mediaId, permalink);
+    return { success: true, mediaId, permalink };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Meta] Instagram Reel post exception:", errMsg);
+    return { success: false, mediaId: null, permalink: null, error: errMsg };
+  }
+}
+
+// ===========================================
+// FACEBOOK REELS POSTING
+// ===========================================
+
+export interface FacebookReelResult {
+  success: boolean;
+  postId: string | null;
+  postUrl: string | null;
+  error?: string;
+}
+
+/**
+ * Post a video as a Facebook Reel.
+ * Facebook Reels API uses /{page-id}/video_reels endpoint:
+ * 1. Create a video reel container
+ * 2. Upload the video URL
+ * 3. Wait for processing
+ * 4. Publish
+ *
+ * Requirements:
+ * - Video must be MP4 or MOV
+ * - Vertical (9:16) recommended
+ * - Max 60 seconds for Reels
+ * - video_url must be publicly accessible
+ */
+export async function postReelToFacebook(
+  videoUrl: string,
+  caption: string
+): Promise<FacebookReelResult> {
+  if (!isMetaConfigured()) {
+    return { success: false, postId: null, postUrl: null, error: "Meta API not configured" };
+  }
+
+  const pageToken = await getPageAccessToken();
+  const pageId = getFacebookPageId();
+
+  try {
+    // Step 1: Create a video reel container
+    console.log("[Meta] Creating FB Reel container with video:", videoUrl.substring(0, 80));
+
+    const containerResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        upload_phase: "start",
+        access_token: pageToken,
+      }),
+    });
+
+    const containerData = await containerResponse.json();
+
+    if (containerData.error) {
+      console.error("[Meta] FB Reel container creation error:", containerData.error);
+      // Fallback: try posting as a regular video post on the page
+      console.log("[Meta] Attempting fallback: post as page video with video_url");
+      return await postFacebookVideoFallback(videoUrl, caption, pageToken, pageId);
+    }
+
+    const videoId = containerData.id;
+    console.log("[Meta] FB Reel container created:", videoId);
+
+    // Step 2: Upload the video URL to the container
+    const uploadResponse = await fetch(`${META_GRAPH_API}/${videoId}/video_reels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        upload_phase: "finish",
+        video_url: videoUrl,
+        access_token: pageToken,
+      }),
+    });
+
+    const uploadData = await uploadResponse.json();
+
+    if (uploadData.error) {
+      console.error("[Meta] FB Reel upload error:", uploadData.error);
+      return await postFacebookVideoFallback(videoUrl, caption, pageToken, pageId);
+    }
+
+    console.log("[Meta] FB Reel video uploaded, waiting for processing...");
+
+    // Step 3: Poll for processing status
+    let statusCode = "processing";
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    while (statusCode === "processing" && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      attempts++;
+
+      const statusResponse = await fetch(
+        `${META_GRAPH_API}/${videoId}?fields=status,processing_progress&access_token=${pageToken}`
+      );
+      const statusData = await statusResponse.json();
+      statusCode = statusData.status || "processing";
+
+      console.log(`[Meta] FB Reel status: ${statusCode} (attempt ${attempts})`);
+
+      if (statusCode === "ready" || statusCode === "complete") {
+        break;
+      }
+
+      if (statusCode === "error") {
+        console.error("[Meta] FB Reel processing error:", statusData);
+        return await postFacebookVideoFallback(videoUrl, caption, pageToken, pageId);
+      }
+    }
+
+    // Step 4: Publish the reel with caption
+    const publishResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        upload_phase: "finish",
+        video_id: videoId,
+        title: caption.substring(0, 100),
+        description: caption,
+        access_token: pageToken,
+      }),
+    });
+
+    const publishData = await publishResponse.json();
+
+    if (publishData.error) {
+      console.error("[Meta] FB Reel publish error:", publishData.error);
+      return await postFacebookVideoFallback(videoUrl, caption, pageToken, pageId);
+    }
+
+    const postId = publishData.id || videoId;
+    const postUrl = postId ? `https://facebook.com/reel/${postId}` : null;
+
+    console.log("[Meta] Facebook Reel published successfully:", postId);
+    return { success: true, postId, postUrl };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Meta] Facebook Reel post exception:", errMsg);
+    return { success: false, postId: null, postUrl: null, error: errMsg };
+  }
+}
+
+/**
+ * Fallback: Post a video to Facebook Page as a regular video post.
+ * Used when the video_reels endpoint is not available or fails.
+ */
+async function postFacebookVideoFallback(
+  videoUrl: string,
+  caption: string,
+  pageToken: string,
+  pageId: string
+): Promise<FacebookReelResult> {
+  try {
+    console.log("[Meta] FB Reel fallback: posting as page video");
+
+    const response = await fetch(`${META_GRAPH_API}/${pageId}/videos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        file_url: videoUrl,
+        description: caption,
+        access_token: pageToken,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error("[Meta] FB video fallback error:", data.error);
+      return {
+        success: false,
+        postId: null,
+        postUrl: null,
+        error: `${data.error.code}: ${data.error.message}`,
+      };
+    }
+
+    const postId = data.id;
+    const postUrl = postId ? `https://facebook.com/${postId}` : null;
+
+    console.log("[Meta] Facebook video post (fallback) successful:", postId);
+    return { success: true, postId, postUrl };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Meta] FB video fallback exception:", errMsg);
+    return { success: false, postId: null, postUrl: null, error: errMsg };
+  }
+}
+
+// ===========================================
 // DELETE POSTS (for cleanup)
 // ===========================================
 
