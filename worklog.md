@@ -155,3 +155,27 @@ Stage Summary:
 - "Sincronizar" button tries fast method first, falls back to slower method
 - The top-tracks (403) issue is handled: uses album-based fallback internally
 - Should eliminate all 504 timeout errors
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix vertical video thumbnails not loading
+
+Work Log:
+- Investigated the thumbnail loading pipeline end-to-end
+- Found that production HTML renders raw Dropbox URLs (e.g., https://www.dropbox.com/scl/fi/...) instead of proxied URLs (/api/image-proxy?url=...)
+- Verified raw Dropbox URLs return content-type: text/html (302 redirect), causing broken thumbnails
+- Identified root cause: SafeImage component used useMemo to compute proxied URLs, but useMemo does not execute during SSR in React 19 / Next.js 16
+- Applied 3-layer fix:
+  1. SafeImage: Replaced useMemo with direct computation of processedSrc
+  2. All reel components: Switched from getVideoThumbnail() to getProxiedThumbnailUrl() as a second safety layer
+  3. SafeImage: Added check for already-proxied URLs to prevent double-proxying
+- Fixed next.config.js header ordering: moved /api/image-proxy cache rule AFTER /api/:path* no-store rule so the specific rule takes precedence
+- Added www.dropbox.com to netlify.toml remote_images list
+- TypeScript compilation passes with no errors
+- Pushed commit 5dfcb96 to master
+
+Stage Summary:
+- Root cause: useMemo not executing during SSR caused raw Dropbox URLs in HTML
+- Fix: Direct computation of proxied URLs + pre-proxied thumbnail URLs in components
+- Files changed: safe-image.tsx, VerticalVideoSection.tsx, ReelsGrid.tsx, ReelDetail.tsx, ArtistReelsSection.tsx, ReelsStoriesBar.tsx, TikTokFeed.tsx, next.config.js, netlify.toml
+- Commit: 5dfcb96 pushed to origin/master
