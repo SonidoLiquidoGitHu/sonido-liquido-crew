@@ -659,6 +659,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                       autoPlay
                       playsInline
                       loop
+                      preload="auto"
                     />
                     {/* Feature #2: Instagram Stories-style progress bar at top */}
                     <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/20 z-10">

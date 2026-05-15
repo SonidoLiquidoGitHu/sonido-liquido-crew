@@ -213,7 +213,21 @@ const nextConfig = {
         ],
       },
       {
+        // Video proxy - cache for 1 hour, stale OK for 24 hours
+        // CRITICAL: Must come before the general /api/:path* no-store rule!
+        // Without this, videos are never cached and must be re-fetched every time,
+        // causing slow loading and failed playback on mobile.
+        source: "/api/video-proxy",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
         // API routes - no CDN caching to prevent stale data
+        // NOTE: Specific proxy routes above must be listed BEFORE this catch-all
         source: "/api/:path*",
         headers: [
           {

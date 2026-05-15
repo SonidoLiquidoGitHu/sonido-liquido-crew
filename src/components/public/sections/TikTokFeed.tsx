@@ -1112,10 +1112,12 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
       }
 
       // For direct videos, preload the video element
+      // Use proxied URL for mobile compatibility (Dropbox direct links fail on mobile)
       if (isDirectVideo(video)) {
         const videoEl = document.createElement("video");
         videoEl.preload = "auto";
-        videoEl.src = getVideoSrc(video as unknown as VideoLike);
+        videoEl.playsInline = true;
+        videoEl.src = getProxiedVideoSrc(video as unknown as VideoLike);
         // Don't need to append to DOM — just creating starts preloading in most browsers
         preloadedRef.current.add(video.id);
       }

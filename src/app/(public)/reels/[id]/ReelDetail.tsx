@@ -126,6 +126,7 @@ export function ReelDetail({ video }: ReelDetailProps) {
             autoPlay
             playsInline
             loop
+            preload="auto"
             poster={getProxiedThumbnailUrl(video) || undefined}
           />
         ) : (
