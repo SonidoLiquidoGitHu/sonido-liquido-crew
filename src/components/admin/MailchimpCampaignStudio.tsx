@@ -1,0 +1,1538 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Mail,
+  Send,
+  Calendar,
+  Users,
+  Eye,
+  Trash2,
+  Plus,
+  RefreshCw,
+  ChevronDown,
+  ExternalLink,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Copy,
+  Sparkles,
+  Tag,
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight,
+  Zap,
+  FileEdit,
+  Image as ImageIcon,
+  Link2,
+} from "lucide-react";
+
+// ===========================================
+// TYPES
+// ===========================================
+
+interface AudienceData {
+  id: string;
+  name: string;
+  stats: {
+    member_count: number;
+    unsubscribe_count: number;
+    cleaned_count: number;
+    open_rate: number;
+    click_rate: number;
+  };
+}
+
+interface CampaignData {
+  id: string;
+  web_id: number;
+  type: string;
+  status: string;
+  emails_sent: number;
+  send_time: string;
+  settings: {
+    subject_line: string;
+    preview_text: string;
+    title: string;
+  };
+  report_summary?: {
+    opens: number;
+    unique_opens: number;
+    open_rate: number;
+    clicks: number;
+    subscriber_clicks: number;
+    click_rate: number;
+  };
+}
+
+interface TagData {
+  id: number;
+  name: string;
+  count: number;
+}
+
+interface GrowthItem {
+  month: string;
+  existing: number;
+  imports: number;
+  optins: number;
+}
+
+type TabType = "dashboard" | "create" | "campaigns" | "audience" | "settings";
+
+// ===========================================
+// EMAIL TEMPLATES
+// ===========================================
+
+const EMAIL_TEMPLATES = [
+  {
+    id: "blank",
+    name: "Desde Cero",
+    description: "Empieza con un email vacío y personalízalo",
+    icon: FileEdit,
+    subject: "",
+    body: "",
+    ctaText: "",
+    ctaUrl: "",
+  },
+  {
+    id: "announcement",
+    name: "Anuncio de Lanzamiento",
+    description: "Anuncia un nuevo lanzamiento musical",
+    icon: Sparkles,
+    subject: "Nuevo lanzamiento de Sonido Liquido",
+    body: "Tenemos algo especial para ti.\n\n**Nuevo lanzamiento disponible ahora** en todas las plataformas.\n\nNo te lo pierdas - escucha antes que nadie y agrega a tus playlists.",
+    ctaText: "Escuchar Ahora",
+    ctaUrl: "https://sonidoliquido.com/lanzamientos",
+  },
+  {
+    id: "event",
+    name: "Evento Próximo",
+    description: "Promociona un evento o concierto",
+    icon: Calendar,
+    subject: "No te pierdas este evento",
+    body: "Se acerca un evento que no te quieres perder.\n\n**Fecha:** [agregar fecha]\n**Lugar:** [agregar lugar]\n\nConsigue tus boletos antes de que se agoten.",
+    ctaText: "Comprar Boletos",
+    ctaUrl: "https://sonidoliquido.com/eventos",
+  },
+  {
+    id: "newsletter",
+    name: "Newsletter Semanal",
+    description: "Resumen semanal de novedades",
+    icon: Mail,
+    subject: "Lo que pasó esta semana en Sonido Liquido",
+    body: "Hola, aqui te traemos lo mejor de la semana:\n\n### Nuevos Lanzamientos\n[Resumen de lanzamientos]\n\n### Próximos Eventos\n[Resumen de eventos]\n\n### En la Comunidad\n[Noticias de la comunidad]\n\nMantente conectado con la escena del hip hop mexicano.",
+    ctaText: "Ver Todo",
+    ctaUrl: "https://sonidoliquido.com",
+  },
+  {
+    id: "presave",
+    name: "Campaña de Pre-Save",
+    description: "Campaña de pre-save para un lanzamiento",
+    icon: Zap,
+    subject: "Pre-save disponible ahora",
+    body: "El nuevo lanzamiento está por llegar y puedes ser de los primeros en escucharlo.\n\nHaz **pre-save** ahora y la música aparecerá automáticamente en tu biblioteca el día del lanzamiento.\n\n### Beneficios del Pre-Save\n- Escucha antes que nadie\n- Apoya al artista\n- La música llega directo a tu biblioteca",
+    ctaText: "Pre-Save Ahora",
+    ctaUrl: "https://sonidoliquido.com",
+  },
+  {
+    id: "community",
+    name: "Invitación a Comunidad",
+    description: "Invita a suscriptores a unirse a la comunidad",
+    icon: Users,
+    subject: "Unete a la comunidad Sonido Liquido",
+    body: "La comunidad de Sonido Liquido Crew está creciendo y te queremos dentro.\n\n### Que encontraras:\n- Contenido exclusivo\n- Acceso anticipado a lanzamientos\n- Eventos solo para miembros\n- Directo con los artistas\n\nSe parte del movimiento del hip hop mexicano.",
+    ctaText: "Unirme Ahora",
+    ctaUrl: "https://sonidoliquido.com/comunidad",
+  },
+];
+
+// ===========================================
+// PREVIEW HTML GENERATOR (client-side)
+// ===========================================
+
+function generatePreviewHTML(data: {
+  title: string;
+  body: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  coverImageUrl?: string;
+}): string {
+  const { title, body, ctaText, ctaUrl, coverImageUrl } = data;
+
+  const formattedBody = body
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>")
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #ff6b00; text-decoration: underline;">$1</a>')
+    .replace(/^### (.*?)$/gm, '<h3 style="color: #ff6b00; margin: 20px 0 10px;">$1</h3>')
+    .replace(/^# (.*?)$/gm, '<h1 style="color: #ff6b00; margin: 20px 0 10px;">$1</h1>');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #1a1a1a; border-radius: 16px; overflow: hidden; max-width: 100%;">
+          <tr>
+            <td style="padding: 30px 40px; text-align: center; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%);">
+              <h1 style="margin: 0; color: white; font-size: 24px;">SONIDO LIQUIDO CREW</h1>
+            </td>
+          </tr>
+          ${coverImageUrl ? `
+          <tr>
+            <td style="padding: 30px 40px 0;">
+              <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(255, 107, 0, 0.3);">
+            </td>
+          </tr>
+          ` : ""}
+          <tr>
+            <td style="padding: 30px 40px 10px; text-align: center;">
+              <h1 style="margin: 0; color: #ff6b00; font-size: 28px; font-weight: bold;">${title}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 40px 30px; color: #ffffff;">
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #cccccc;">
+                ${formattedBody}
+              </p>
+            </td>
+          </tr>
+          ${ctaText && ctaUrl ? `
+          <tr>
+            <td style="padding: 0 40px 30px; text-align: center;">
+              <a href="${ctaUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%); color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">
+                ${ctaText}
+              </a>
+            </td>
+          </tr>
+          ` : ""}
+          <tr>
+            <td style="padding: 30px 40px; background-color: #0a0a0a; text-align: center;">
+              <p style="margin: 0 0 15px; color: #666666; font-size: 12px;">
+                Sonido Liquido Crew - Hip Hop Mexico desde 1999
+              </p>
+              <p style="margin: 0; color: #444444; font-size: 11px;">
+                <a href="https://sonidoliquido.com" style="color: #ff6b00; text-decoration: none;">sonidoliquido.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
+// ===========================================
+// COMPONENT
+// ===========================================
+
+export function MailchimpCampaignStudio() {
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [isConfigured, setIsConfigured] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [audience, setAudience] = useState<AudienceData | null>(null);
+  const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
+  const [tags, setTags] = useState<TagData[]>([]);
+  const [growthHistory, setGrowthHistory] = useState<GrowthItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Create campaign form
+  const [selectedTemplate, setSelectedTemplate] = useState(EMAIL_TEMPLATES[0]);
+  const [formSubject, setFormSubject] = useState("");
+  const [formPreviewText, setFormPreviewText] = useState("");
+  const [formTitle, setFormTitle] = useState("");
+  const [formBody, setFormBody] = useState("");
+  const [formCtaText, setFormCtaText] = useState("");
+  const [formCtaUrl, setFormCtaUrl] = useState("");
+  const [formCoverImageUrl, setFormCoverImageUrl] = useState("");
+  const [formScheduleTime, setFormScheduleTime] = useState("");
+  const [formSelectedTags, setFormSelectedTags] = useState<string[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Campaign detail
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignData | null>(null);
+  const [campaignReport, setCampaignReport] = useState<Record<string, unknown> | null>(null);
+  const [campaignHtml, setCampaignHtml] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Campaigns filter
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
+
+  // Fetch dashboard data
+  const fetchDashboard = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/mailchimp?action=audience");
+      const data = await res.json();
+      if (data.success) {
+        setIsConfigured(true);
+        setAudience(data.data.audience);
+        setTags(data.data.tags || []);
+        setGrowthHistory(data.data.growthHistory || []);
+      } else {
+        setIsConfigured(false);
+        setError(data.error || "Mailchimp not configured");
+      }
+    } catch (err) {
+      setError("Failed to connect to Mailchimp");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch campaigns
+  const fetchCampaigns = useCallback(async (status?: string) => {
+    try {
+      const url = `/api/admin/mailchimp?action=campaigns&count=50${status && status !== "all" ? `&status=${status}` : ""}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) {
+        setCampaigns(data.data.campaigns || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch campaigns:", err);
+    }
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  useEffect(() => {
+    if (isConfigured) {
+      fetchCampaigns(campaignFilter);
+    }
+  }, [isConfigured, campaignFilter, fetchCampaigns]);
+
+  // Handle template selection
+  const handleTemplateSelect = (template: typeof EMAIL_TEMPLATES[0]) => {
+    setSelectedTemplate(template);
+    setFormSubject(template.subject);
+    setFormBody(template.body);
+    setFormCtaText(template.ctaText);
+    setFormCtaUrl(template.ctaUrl);
+    if (!formTitle) setFormTitle(template.name);
+  };
+
+  // Handle create campaign
+  const handleCreateCampaign = async (sendNow: boolean) => {
+    setIsSending(true);
+    setSendResult(null);
+    try {
+      const payload: Record<string, unknown> = {
+        action: sendNow ? "create-campaign" : "create-draft",
+        subject: formSubject,
+        previewText: formPreviewText,
+        title: formTitle || formSubject,
+        body: formBody,
+        ctaText: formCtaText || undefined,
+        ctaUrl: formCtaUrl || undefined,
+        coverImageUrl: formCoverImageUrl || undefined,
+        tags: formSelectedTags.length > 0 ? formSelectedTags : undefined,
+      };
+
+      if (sendNow && formScheduleTime) {
+        payload.scheduleTime = formScheduleTime;
+      }
+
+      const res = await fetch("/api/admin/mailchimp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSendResult({
+          success: true,
+          message: sendNow
+            ? formScheduleTime
+              ? `Campana programada para ${new Date(formScheduleTime).toLocaleString("es-MX")}`
+              : "Campana enviada exitosamente!"
+            : "Borrador creado exitosamente!",
+        });
+        // Reset form
+        setFormSubject("");
+        setFormPreviewText("");
+        setFormTitle("");
+        setFormBody("");
+        setFormCtaText("");
+        setFormCtaUrl("");
+        setFormCoverImageUrl("");
+        setFormScheduleTime("");
+        setFormSelectedTags([]);
+        // Refresh campaigns
+        fetchCampaigns(campaignFilter);
+      } else {
+        setSendResult({ success: false, message: data.error || "Error al crear campana" });
+      }
+    } catch (err) {
+      setSendResult({ success: false, message: "Error de conexion" });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Handle campaign action
+  const handleCampaignAction = async (campaignId: string, action: string) => {
+    try {
+      const res = await fetch(`/api/admin/mailchimp/campaigns/${campaignId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCampaigns(campaignFilter);
+        if (selectedCampaign?.id === campaignId) {
+          setSelectedCampaign(null);
+        }
+      } else {
+        alert(data.error || "Error");
+      }
+    } catch (err) {
+      alert("Error de conexion");
+    }
+  };
+
+  // Handle delete campaign
+  const handleDeleteCampaign = async (campaignId: string) => {
+    if (!confirm("Estas seguro de eliminar esta campana?")) return;
+    try {
+      const res = await fetch(`/api/admin/mailchimp/campaigns/${campaignId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCampaigns(campaignFilter);
+        setSelectedCampaign(null);
+      } else {
+        alert(data.error || "Error");
+      }
+    } catch (err) {
+      alert("Error de conexion");
+    }
+  };
+
+  // View campaign details
+  const viewCampaignDetails = async (campaign: CampaignData) => {
+    setSelectedCampaign(campaign);
+    setCampaignReport(null);
+    setCampaignHtml(null);
+    try {
+      if (campaign.status === "sent") {
+        const reportRes = await fetch(`/api/admin/mailchimp/campaigns/${campaign.id}?detail=report`);
+        const reportData = await reportRes.json();
+        if (reportData.success) setCampaignReport(reportData.data);
+      }
+      const contentRes = await fetch(`/api/admin/mailchimp/campaigns/${campaign.id}?detail=content`);
+      const contentData = await contentRes.json();
+      if (contentData.success) setCampaignHtml(contentData.data?.html || null);
+    } catch (err) {
+      console.error("Failed to load campaign details:", err);
+    }
+  };
+
+  // Get status badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "sent":
+        return { color: "bg-green-500/10 text-green-500", label: "Enviado", icon: CheckCircle };
+      case "schedule":
+        return { color: "bg-blue-500/10 text-blue-500", label: "Programado", icon: Clock };
+      case "saving":
+        return { color: "bg-yellow-500/10 text-yellow-500", label: "Guardando", icon: RefreshCw };
+      case "sending":
+        return { color: "bg-orange-500/10 text-orange-500", label: "Enviando", icon: Send };
+      case "draft":
+        return { color: "bg-slc-muted/10 text-slc-muted", label: "Borrador", icon: FileEdit };
+      case "paused":
+        return { color: "bg-yellow-500/10 text-yellow-500", label: "Pausado", icon: AlertTriangle };
+      default:
+        return { color: "bg-slc-muted/10 text-slc-muted", label: status, icon: XCircle };
+    }
+  };
+
+  // Format rate
+  const formatRate = (rate: number) => {
+    return (rate * 100).toFixed(1) + "%";
+  };
+
+  // Format date
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // ===========================================
+  // NOT CONFIGURED STATE
+  // ===========================================
+
+  if (!isLoading && !isConfigured) {
+    return (
+      <div className="p-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+            <Mail className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="font-oswald text-3xl uppercase mb-4">Email Studio</h2>
+          <p className="text-slc-muted mb-8">
+            Conecta tu cuenta de Mailchimp para crear y gestionar campanas de email directamente desde aqui.
+          </p>
+          <div className="p-6 bg-slc-card rounded-xl border border-slc-border text-left space-y-4">
+            <h3 className="font-oswald text-lg uppercase">Configuracion Requerida</h3>
+            <p className="text-sm text-slc-muted">
+              Agrega estas variables de entorno en tu dashboard de Netlify:
+            </p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-slc-dark rounded-lg">
+                <code className="text-sm text-primary font-mono">MAILCHIMP_API_KEY</code>
+                <span className="text-xs text-slc-muted ml-auto">Tu API key de Mailchimp</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-slc-dark rounded-lg">
+                <code className="text-sm text-primary font-mono">MAILCHIMP_SERVER_PREFIX</code>
+                <span className="text-xs text-slc-muted ml-auto">Ej: us1, us14, etc.</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-slc-dark rounded-lg">
+                <code className="text-sm text-primary font-mono">MAILCHIMP_AUDIENCE_ID</code>
+                <span className="text-xs text-slc-muted ml-auto">ID de tu lista/audiencia</span>
+              </div>
+            </div>
+            <div className="pt-4 border-t border-slc-border">
+              <h4 className="font-medium text-sm mb-2">Donde encontrar tus credenciales:</h4>
+              <ol className="text-sm text-slc-muted space-y-2 list-decimal list-inside">
+                <li>Ve a <a href="https://mailchimp.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mailchimp.com</a> e inicia sesion</li>
+                <li>Haz clic en tu perfil (esquina superior derecha) &rarr; Profile &rarr; Extras &rarr; API keys</li>
+                <li>Crea una nueva API key y copiala</li>
+                <li>El server prefix esta en tu URL de Mailchimp (ej: us14.admin.mailchimp.com = us14)</li>
+                <li>Ve a Audience &rarr; Settings &rarr; Audience name and defaults para encontrar el Audience ID</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===========================================
+  // MAIN UI
+  // ===========================================
+
+  return (
+    <div className="p-6 lg:p-8 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-oswald text-3xl uppercase flex items-center gap-3">
+            <Mail className="w-8 h-8 text-primary" />
+            Email Studio
+          </h1>
+          <p className="text-slc-muted mt-1">
+            Crea y gestiona campanas de email con Mailchimp
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {audience && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-slc-card rounded-lg border border-slc-border">
+              <Users className="w-4 h-4 text-primary" />
+              <span className="font-medium">{audience.stats.member_count.toLocaleString()}</span>
+              <span className="text-xs text-slc-muted">suscriptores</span>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => { fetchDashboard(); fetchCampaigns(campaignFilter); }}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-slc-card rounded-lg border border-slc-border overflow-x-auto">
+        {[
+          { id: "dashboard" as TabType, label: "Dashboard", icon: BarChart3 },
+          { id: "create" as TabType, label: "Crear Campana", icon: Plus },
+          { id: "campaigns" as TabType, label: "Campanas", icon: Send },
+          { id: "audience" as TabType, label: "Audiencia", icon: Users },
+          { id: "settings" as TabType, label: "Config", icon: Activity },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+              activeTab === tab.id
+                ? "bg-primary text-white"
+                : "text-slc-muted hover:text-white hover:bg-slc-dark"
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-20">
+          <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+          <span className="ml-3 text-slc-muted">Cargando datos de Mailchimp...</span>
+        </div>
+      )}
+
+      {/* ==================== DASHBOARD TAB ==================== */}
+      {!isLoading && activeTab === "dashboard" && audience && (
+        <div className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-5 h-5 text-primary" />
+                <span className="text-xs text-slc-muted">Suscriptores</span>
+              </div>
+              <p className="text-3xl font-oswald">{audience.stats.member_count.toLocaleString()}</p>
+              {growthHistory.length >= 2 && (
+                <div className="flex items-center gap-1 mt-1">
+                  {growthHistory[0].optins >= growthHistory[1]?.optins ? (
+                    <ArrowUpRight className="w-3 h-3 text-green-500" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3 text-red-500" />
+                  )}
+                  <span className="text-xs text-slc-muted">
+                    {growthHistory[0]?.optins || 0} nuevos este mes
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Eye className="w-5 h-5 text-blue-500" />
+                <span className="text-xs text-slc-muted">Tasa de Apertura</span>
+              </div>
+              <p className="text-3xl font-oswald">{formatRate(audience.stats.open_rate)}</p>
+              <span className="text-xs text-slc-muted">Promedio de la lista</span>
+            </div>
+
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Send className="w-5 h-5 text-green-500" />
+                <span className="text-xs text-slc-muted">Campanas Enviadas</span>
+              </div>
+              <p className="text-3xl font-oswald">{campaigns.filter(c => c.status === "sent").length}</p>
+              <span className="text-xs text-slc-muted">Total de campanas</span>
+            </div>
+
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-5 h-5 text-purple-500" />
+                <span className="text-xs text-slc-muted">Tasa de Clicks</span>
+              </div>
+              <p className="text-3xl font-oswald">{formatRate(audience.stats.click_rate)}</p>
+              <span className="text-xs text-slc-muted">Promedio de la lista</span>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+            <h3 className="font-oswald text-lg uppercase mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" />
+              Acciones Rapidas
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <button
+                onClick={() => setActiveTab("create")}
+                className="flex items-center gap-3 p-4 bg-slc-dark rounded-lg border border-slc-border hover:border-primary/50 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Nueva Campana</p>
+                  <p className="text-xs text-slc-muted">Crear un email</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("campaigns")}
+                className="flex items-center gap-3 p-4 bg-slc-dark rounded-lg border border-slc-border hover:border-primary/50 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <Send className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Ver Campanas</p>
+                  <p className="text-xs text-slc-muted">Historial y reportes</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("audience")}
+                className="flex items-center gap-3 p-4 bg-slc-dark rounded-lg border border-slc-border hover:border-primary/50 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Ver Audiencia</p>
+                  <p className="text-xs text-slc-muted">Suscriptores y tags</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Recent Campaigns */}
+          <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-oswald text-lg uppercase flex items-center gap-2">
+                <Send className="w-5 h-5 text-primary" />
+                Campanas Recientes
+              </h3>
+              <button
+                onClick={() => setActiveTab("campaigns")}
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                Ver todas <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+            {campaigns.length === 0 ? (
+              <p className="text-slc-muted text-sm text-center py-8">No hay campanas todavia. Crea tu primera campana!</p>
+            ) : (
+              <div className="space-y-3">
+                {campaigns.slice(0, 5).map((campaign) => {
+                  const badge = getStatusBadge(campaign.status);
+                  return (
+                    <div
+                      key={campaign.id}
+                      className="flex items-center justify-between p-4 bg-slc-dark rounded-lg border border-slc-border hover:border-primary/30 transition-colors cursor-pointer"
+                      onClick={() => viewCampaignDetails(campaign)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm truncate">
+                            {campaign.settings.title || campaign.settings.subject_line}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${badge.color} flex items-center gap-1`}>
+                            <badge.icon className="w-3 h-3" />
+                            {badge.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slc-muted truncate">
+                          {campaign.settings.subject_line}
+                        </p>
+                      </div>
+                      <div className="text-right ml-4">
+                        {campaign.emails_sent > 0 && (
+                          <p className="text-sm font-medium">{campaign.emails_sent.toLocaleString()} enviados</p>
+                        )}
+                        {campaign.report_summary && (
+                          <p className="text-xs text-slc-muted">
+                            {formatRate(campaign.report_summary.open_rate)} apertura
+                          </p>
+                        )}
+                        <p className="text-xs text-slc-muted">{formatDate(campaign.send_time)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Tags Overview */}
+          {tags.length > 0 && (
+            <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+              <h3 className="font-oswald text-lg uppercase mb-4 flex items-center gap-2">
+                <Tag className="w-5 h-5 text-primary" />
+                Tags de Audiencia
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="px-3 py-1.5 bg-slc-dark rounded-full border border-slc-border text-sm flex items-center gap-2"
+                  >
+                    {tag.name}
+                    <span className="text-xs text-primary font-medium">{tag.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== CREATE CAMPAIGN TAB ==================== */}
+      {!isLoading && activeTab === "create" && (
+        <div className="space-y-6">
+          {/* Send result notification */}
+          {sendResult && (
+            <div className={`p-4 rounded-lg border flex items-center gap-3 ${
+              sendResult.success
+                ? "bg-green-500/10 border-green-500/20 text-green-500"
+                : "bg-red-500/10 border-red-500/20 text-red-500"
+            }`}>
+              {sendResult.success ? (
+                <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              )}
+              <span className="text-sm">{sendResult.message}</span>
+              <button onClick={() => setSendResult(null)} className="ml-auto">
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Template Selection */}
+            <div className="lg:col-span-1 space-y-4">
+              <h3 className="font-oswald text-lg uppercase flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Plantillas
+              </h3>
+              <div className="space-y-2">
+                {EMAIL_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => handleTemplateSelect(template)}
+                    className={`w-full p-4 rounded-lg border text-left transition-all ${
+                      selectedTemplate.id === template.id
+                        ? "bg-primary/10 border-primary"
+                        : "bg-slc-card border-slc-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded flex items-center justify-center ${
+                        selectedTemplate.id === template.id ? "bg-primary/20" : "bg-slc-dark"
+                      }`}>
+                        <template.icon className={`w-4 h-4 ${
+                          selectedTemplate.id === template.id ? "text-primary" : "text-slc-muted"
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{template.name}</p>
+                        <p className="text-xs text-slc-muted">{template.description}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Tags selection */}
+              {tags.length > 0 && (
+                <div className="pt-4">
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-primary" />
+                    Segmentar por Tags
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag) => (
+                      <button
+                        key={tag.id}
+                        onClick={() => {
+                          setFormSelectedTags(prev =>
+                            prev.includes(tag.name)
+                              ? prev.filter(t => t !== tag.name)
+                              : [...prev, tag.name]
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                          formSelectedTags.includes(tag.name)
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-slc-dark border-slc-border text-slc-muted hover:border-primary/50"
+                        }`}
+                      >
+                        {tag.name} ({tag.count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Campaign Form */}
+            <div className="lg:col-span-2 space-y-4">
+              <h3 className="font-oswald text-lg uppercase flex items-center gap-2">
+                <FileEdit className="w-5 h-5 text-primary" />
+                Contenido del Email
+              </h3>
+
+              <div className="space-y-4 p-6 bg-slc-card rounded-xl border border-slc-border">
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Nombre de la Campana</label>
+                  <input
+                    type="text"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    placeholder="Nombre interno (no visible para suscriptores)"
+                    className="w-full px-4 py-2.5 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Asunto *</label>
+                  <input
+                    type="text"
+                    value={formSubject}
+                    onChange={(e) => setFormSubject(e.target.value)}
+                    placeholder="El asunto del email"
+                    className="w-full px-4 py-2.5 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Preview text */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Texto de Preview</label>
+                  <input
+                    type="text"
+                    value={formPreviewText}
+                    onChange={(e) => setFormPreviewText(e.target.value)}
+                    placeholder="Texto que aparece junto al asunto en la bandeja"
+                    className="w-full px-4 py-2.5 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Body */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Contenido *</label>
+                  <textarea
+                    value={formBody}
+                    onChange={(e) => setFormBody(e.target.value)}
+                    placeholder="Escribe el contenido del email. Usa **negrita**, [enlace](url), y ### para headings."
+                    rows={10}
+                    className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none resize-y"
+                  />
+                  <p className="text-xs text-slc-muted mt-1">
+                    Formato: **negrita**, [texto](url), ### heading
+                  </p>
+                </div>
+
+                {/* CTA */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                      <Link2 className="w-3 h-3" /> Texto del Boton CTA
+                    </label>
+                    <input
+                      type="text"
+                      value={formCtaText}
+                      onChange={(e) => setFormCtaText(e.target.value)}
+                      placeholder="Ej: Escuchar Ahora"
+                      className="w-full px-4 py-2.5 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                      <Link2 className="w-3 h-3" /> URL del Boton CTA
+                    </label>
+                    <input
+                      type="url"
+                      value={formCtaUrl}
+                      onChange={(e) => setFormCtaUrl(e.target.value)}
+                      placeholder="https://sonidoliquido.com/..."
+                      className="w-full px-4 py-2.5 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Cover Image */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3" /> URL de Imagen de Portada (opcional)
+                  </label>
+                  <input
+                    type="url"
+                    value={formCoverImageUrl}
+                    onChange={(e) => setFormCoverImageUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Schedule */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Programar Envio (opcional)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formScheduleTime}
+                    onChange={(e) => setFormScheduleTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slc-dark border border-slc-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                  />
+                  <p className="text-xs text-slc-muted mt-1">
+                    Deja vacio para enviar inmediatamente
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => handleCreateCampaign(true)}
+                  disabled={isSending || !formSubject || !formBody}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {isSending ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : formScheduleTime ? (
+                    <Calendar className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  {isSending
+                    ? "Enviando..."
+                    : formScheduleTime
+                    ? "Programar Campana"
+                    : "Enviar Ahora"
+                  }
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleCreateCampaign(false)}
+                  disabled={isSending || !formSubject || !formBody}
+                >
+                  <FileEdit className="w-4 h-4 mr-2" />
+                  Guardar como Borrador
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPreview(true)}
+                  disabled={!formSubject && !formBody}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview Modal */}
+          {showPreview && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+              <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-auto">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="font-medium">Preview del Email</h3>
+                  <button onClick={() => setShowPreview(false)}>
+                    <XCircle className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+                <div className="p-4">
+                  <iframe
+                    srcDoc={generatePreviewHTML({
+                      title: formTitle || formSubject,
+                      body: formBody,
+                      ctaText: formCtaText,
+                      ctaUrl: formCtaUrl,
+                      coverImageUrl: formCoverImageUrl,
+                    })}
+                    className="w-full border-0"
+                    style={{ minHeight: "600px" }}
+                    title="Email Preview"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== CAMPAIGNS TAB ==================== */}
+      {!isLoading && activeTab === "campaigns" && (
+        <div className="space-y-6">
+          {/* Filter */}
+          <div className="flex items-center gap-2">
+            {["all", "sent", "schedule", "draft", "sending"].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setCampaignFilter(filter)}
+                className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                  campaignFilter === filter
+                    ? "bg-primary/10 border-primary text-primary"
+                    : "bg-slc-card border-slc-border text-slc-muted hover:border-primary/50"
+                }`}
+              >
+                {filter === "all" ? "Todas" :
+                 filter === "sent" ? "Enviadas" :
+                 filter === "schedule" ? "Programadas" :
+                 filter === "draft" ? "Borradores" :
+                 "Enviando"}
+              </button>
+            ))}
+          </div>
+
+          {/* Campaigns List */}
+          <div className="space-y-3">
+            {campaigns.length === 0 ? (
+              <div className="text-center py-16">
+                <Send className="w-12 h-12 text-slc-muted mx-auto mb-4" />
+                <p className="text-slc-muted">No hay campanas {campaignFilter !== "all" ? "con este filtro" : "todavia"}</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setActiveTab("create")}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Crear Campana
+                </Button>
+              </div>
+            ) : (
+              campaigns.map((campaign) => {
+                const badge = getStatusBadge(campaign.status);
+                return (
+                  <div
+                    key={campaign.id}
+                    className={`p-5 rounded-xl border transition-all cursor-pointer ${
+                      selectedCampaign?.id === campaign.id
+                        ? "bg-slc-card border-primary"
+                        : "bg-slc-card border-slc-border hover:border-primary/30"
+                    }`}
+                    onClick={() => viewCampaignDetails(campaign)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium truncate">
+                            {campaign.settings.title || campaign.settings.subject_line}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${badge.color}`}>
+                            <badge.icon className="w-3 h-3" />
+                            {badge.label}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slc-muted truncate mb-2">
+                          {campaign.settings.subject_line}
+                        </p>
+                        {campaign.settings.preview_text && (
+                          <p className="text-xs text-slc-muted/60 truncate">
+                            {campaign.settings.preview_text}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {campaign.emails_sent > 0 && (
+                          <p className="text-sm font-medium">{campaign.emails_sent.toLocaleString()}</p>
+                        )}
+                        {campaign.report_summary && (
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-green-500 flex items-center gap-1">
+                              <Eye className="w-3 h-3" /> {formatRate(campaign.report_summary.open_rate)}
+                            </span>
+                            <span className="text-xs text-blue-500 flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" /> {formatRate(campaign.report_summary.click_rate)}
+                            </span>
+                          </div>
+                        )}
+                        <p className="text-xs text-slc-muted mt-1">{formatDate(campaign.send_time)}</p>
+                      </div>
+                    </div>
+
+                    {/* Campaign Actions */}
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slc-border">
+                      {(campaign.status === "draft" || campaign.status === "schedule") && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCampaignAction(campaign.id, "send");
+                          }}
+                        >
+                          <Send className="w-3 h-3 mr-1" />
+                          Enviar
+                        </Button>
+                      )}
+                      {campaign.status === "draft" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const time = prompt("Fecha y hora de envio (ISO):", new Date(Date.now() + 3600000).toISOString());
+                            if (time) handleCampaignAction(campaign.id, "schedule");
+                          }}
+                        >
+                          <Calendar className="w-3 h-3 mr-1" />
+                          Programar
+                        </Button>
+                      )}
+                      {campaign.status === "schedule" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCampaignAction(campaign.id, "unschedule");
+                          }}
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          Desprogramar
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCampaignAction(campaign.id, "replicate");
+                        }}
+                      >
+                        <Copy className="w-3 h-3 mr-1" />
+                        Duplicar
+                      </Button>
+                      {(campaign.status === "draft" || campaign.status === "schedule") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCampaign(campaign.id);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Eliminar
+                        </Button>
+                      )}
+                      <a
+                        href={`https://admin.mailchimp.com/campaigns/edit?id=${campaign.web_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-auto flex items-center gap-1 text-xs text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Abrir en Mailchimp <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Campaign Detail Panel */}
+          {selectedCampaign && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+              <div className="bg-slc-dark border border-slc-border rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+                <div className="flex items-center justify-between p-6 border-b border-slc-border">
+                  <div>
+                    <h3 className="font-oswald text-xl uppercase">
+                      {selectedCampaign.settings.title || selectedCampaign.settings.subject_line}
+                    </h3>
+                    <p className="text-sm text-slc-muted mt-1">
+                      {selectedCampaign.settings.subject_line}
+                    </p>
+                  </div>
+                  <button onClick={() => setSelectedCampaign(null)}>
+                    <XCircle className="w-6 h-6 text-slc-muted hover:text-white" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Report Stats */}
+                  {campaignReport && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                        <p className="text-2xl font-oswald">
+                          {(campaignReport as Record<string, unknown>).emails_sent as number || 0}
+                        </p>
+                        <p className="text-xs text-slc-muted">Enviados</p>
+                      </div>
+                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                        <p className="text-2xl font-oswald text-green-500">
+                          {((campaignReport as Record<string, Record<string, number>>).opens?.unique_opens || 0)}
+                        </p>
+                        <p className="text-xs text-slc-muted">Aperturas Unicas</p>
+                      </div>
+                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                        <p className="text-2xl font-oswald text-blue-500">
+                          {((campaignReport as Record<string, Record<string, number>>).clicks?.unique_clicks || 0)}
+                        </p>
+                        <p className="text-xs text-slc-muted">Clicks Unicos</p>
+                      </div>
+                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                        <p className="text-2xl font-oswald text-red-500">
+                          {(campaignReport as Record<string, Record<string, number>>).bounces?.hard_bounces || 0}
+                        </p>
+                        <p className="text-xs text-slc-muted">Rebotes</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Campaign HTML Preview */}
+                  {campaignHtml && (
+                    <div>
+                      <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-primary" />
+                        Contenido del Email
+                      </h4>
+                      <div className="border border-slc-border rounded-lg overflow-hidden bg-white">
+                        <iframe
+                          srcDoc={campaignHtml}
+                          className="w-full border-0"
+                          style={{ minHeight: "500px" }}
+                          title="Campaign Content"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Campaign metadata */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-slc-muted">ID:</span>{" "}
+                      <span className="font-mono">{selectedCampaign.id}</span>
+                    </div>
+                    <div>
+                      <span className="text-slc-muted">Estado:</span>{" "}
+                      <span className={getStatusBadge(selectedCampaign.status).color}>
+                        {getStatusBadge(selectedCampaign.status).label}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slc-muted">Tipo:</span>{" "}
+                      {selectedCampaign.type}
+                    </div>
+                    <div>
+                      <span className="text-slc-muted">Enviados:</span>{" "}
+                      {selectedCampaign.emails_sent.toLocaleString()}
+                    </div>
+                    {selectedCampaign.send_time && (
+                      <div>
+                        <span className="text-slc-muted">Fecha de envio:</span>{" "}
+                        {formatDate(selectedCampaign.send_time)}
+                      </div>
+                    )}
+                    {selectedCampaign.settings.preview_text && (
+                      <div>
+                        <span className="text-slc-muted">Preview:</span>{" "}
+                        {selectedCampaign.settings.preview_text}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== AUDIENCE TAB ==================== */}
+      {!isLoading && activeTab === "audience" && audience && (
+        <div className="space-y-6">
+          {/* Audience Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-5 h-5 text-primary" />
+                <span className="text-xs text-slc-muted">Total Suscriptores</span>
+              </div>
+              <p className="text-3xl font-oswald">{audience.stats.member_count.toLocaleString()}</p>
+            </div>
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <XCircle className="w-5 h-5 text-red-500" />
+                <span className="text-xs text-slc-muted">Desuscritos</span>
+              </div>
+              <p className="text-3xl font-oswald">{audience.stats.unsubscribe_count.toLocaleString()}</p>
+            </div>
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Eye className="w-5 h-5 text-blue-500" />
+                <span className="text-xs text-slc-muted">Tasa de Apertura</span>
+              </div>
+              <p className="text-3xl font-oswald">{formatRate(audience.stats.open_rate)}</p>
+            </div>
+            <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-5 h-5 text-green-500" />
+                <span className="text-xs text-slc-muted">Tasa de Clicks</span>
+              </div>
+              <p className="text-3xl font-oswald">{formatRate(audience.stats.click_rate)}</p>
+            </div>
+          </div>
+
+          {/* Audience Info */}
+          <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+            <h3 className="font-oswald text-lg uppercase mb-4">Informacion de la Audiencia</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-slc-muted">Nombre:</span>{" "}
+                <span className="font-medium">{audience.name}</span>
+              </div>
+              <div>
+                <span className="text-slc-muted">ID:</span>{" "}
+                <span className="font-mono text-xs">{audience.id}</span>
+              </div>
+              <div>
+                <span className="text-slc-muted">Suscriptores Activos:</span>{" "}
+                <span className="font-medium">{audience.stats.member_count.toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-slc-muted">Limpiados:</span>{" "}
+                <span className="font-medium">{audience.stats.cleaned_count.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Growth History */}
+          {growthHistory.length > 0 && (
+            <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+              <h3 className="font-oswald text-lg uppercase mb-4 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                Historial de Crecimiento
+              </h3>
+              <div className="space-y-2">
+                {growthHistory.slice().reverse().map((item) => (
+                  <div
+                    key={item.month}
+                    className="flex items-center justify-between p-3 bg-slc-dark rounded-lg"
+                  >
+                    <span className="text-sm font-medium">{item.month}</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-slc-muted">
+                        {item.existing.toLocaleString()} suscriptores
+                      </span>
+                      <span className="text-sm text-green-500">
+                        +{item.optins} opt-ins
+                      </span>
+                      {item.imports > 0 && (
+                        <span className="text-sm text-blue-500">
+                          +{item.imports} importados
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+              <h3 className="font-oswald text-lg uppercase mb-4 flex items-center gap-2">
+                <Tag className="w-5 h-5 text-primary" />
+                Tags ({tags.length})
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {tags.map((tag) => (
+                  <div
+                    key={tag.id}
+                    className="p-4 bg-slc-dark rounded-lg border border-slc-border"
+                  >
+                    <p className="font-medium text-sm truncate">{tag.name}</p>
+                    <p className="text-xs text-slc-muted mt-1">{tag.count} contactos</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== SETTINGS TAB ==================== */}
+      {!isLoading && activeTab === "settings" && audience && (
+        <div className="space-y-6">
+          <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+            <h3 className="font-oswald text-lg uppercase mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />
+              Estado de la Conexion
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
+                <span className="text-sm">API Key</span>
+                <span className="text-sm text-green-500 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" /> Configurada
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
+                <span className="text-sm">Server Prefix</span>
+                <span className="text-sm text-green-500 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" /> Configurado
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
+                <span className="text-sm">Audience ID</span>
+                <span className="text-sm text-green-500 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" /> Configurado
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
+                <span className="text-sm">Audiencia</span>
+                <span className="text-sm font-medium">{audience.name}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
+                <span className="text-sm">Suscriptores</span>
+                <span className="text-sm font-medium">{audience.stats.member_count.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+            <h3 className="font-oswald text-lg uppercase mb-4">Abrir en Mailchimp</h3>
+            <p className="text-sm text-slc-muted mb-4">
+              Para opciones avanzadas como A/B testing, automaciones, y editar plantillas visuales, usa el dashboard de Mailchimp directamente.
+            </p>
+            <a
+              href="https://admin.mailchimp.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Abrir Dashboard de Mailchimp
+              </Button>
+            </a>
+          </div>
+
+          <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
+            <h3 className="font-oswald text-lg uppercase mb-4">Variables de Entorno</h3>
+            <p className="text-sm text-slc-muted mb-4">
+              Estas son las variables de entorno necesarias. Se configuran en el dashboard de Netlify.
+            </p>
+            <div className="space-y-2">
+              {[
+                { key: "MAILCHIMP_API_KEY", desc: "Tu API key de Mailchimp" },
+                { key: "MAILCHIMP_SERVER_PREFIX", desc: "Servidor de la API (ej: us14)" },
+                { key: "MAILCHIMP_AUDIENCE_ID", desc: "ID de tu lista/audiencia" },
+              ].map((env) => (
+                <div key={env.key} className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
+                  <code className="text-sm text-primary font-mono">{env.key}</code>
+                  <span className="text-xs text-slc-muted">{env.desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default MailchimpCampaignStudio;

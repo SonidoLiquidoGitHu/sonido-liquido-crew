@@ -33,6 +33,7 @@ import {
   Brush,
   Share2,
   Smartphone,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -56,6 +57,7 @@ const sidebarLinks = [
   { href: "/admin/products", label: "Productos", icon: ShoppingBag },
   { href: "/admin/events", label: "Eventos", icon: Calendar },
   { href: "/admin/subscribers", label: "Suscriptores", icon: Mail },
+  { href: "/admin/email-studio", label: "Email Studio", icon: Zap },
   { href: "/admin/community", label: "Comunidad", icon: MessageCircle },
   { href: "/admin/social", label: "Social Auto-Post", icon: Share2 },
   { href: "/admin/sync", label: "Sincronización", icon: RefreshCw },

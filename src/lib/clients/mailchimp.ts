@@ -552,6 +552,212 @@ class MailchimpClient {
   }
 
   /**
+   * Get a single campaign's details
+   */
+  async getCampaignDetails(campaignId: string): Promise<MailchimpCampaign> {
+    return this.request<MailchimpCampaign>(`/campaigns/${campaignId}`);
+  }
+
+  /**
+   * Get campaign HTML content
+   */
+  async getCampaignContent(campaignId: string): Promise<{ html: string }> {
+    return this.request<{ html: string }>(`/campaigns/${campaignId}/content`);
+  }
+
+  /**
+   * Delete a campaign draft
+   */
+  async deleteCampaign(campaignId: string): Promise<void> {
+    await this.request(`/campaigns/${campaignId}`, { method: "DELETE" });
+    console.log(`[Mailchimp] Campaign deleted: ${campaignId}`);
+  }
+
+  /**
+   * Unschedule a scheduled campaign
+   */
+  async unscheduleCampaign(campaignId: string): Promise<void> {
+    await this.request(`/campaigns/${campaignId}/actions/unschedule`, {
+      method: "POST",
+    });
+    console.log(`[Mailchimp] Campaign unscheduled: ${campaignId}`);
+  }
+
+  /**
+   * Cancel a campaign send (for campaigns in "sending" state)
+   */
+  async cancelCampaign(campaignId: string): Promise<void> {
+    await this.request(`/campaigns/${campaignId}/actions/cancel-send`, {
+      method: "POST",
+    });
+    console.log(`[Mailchimp] Campaign cancelled: ${campaignId}`);
+  }
+
+  /**
+   * Replicate an existing campaign (create a copy)
+   */
+  async replicateCampaign(campaignId: string): Promise<MailchimpCampaign> {
+    return this.request<MailchimpCampaign>(`/campaigns/${campaignId}/actions/replicate`, {
+      method: "POST",
+    });
+  }
+
+  /**
+   * Get tags for the audience
+   */
+  async getTags(): Promise<{ tags: { id: number; name: string; count: number }[]; total_items: number }> {
+    return this.request(`/lists/${this.audienceId}/tag-search`);
+  }
+
+  /**
+   * Get segments for the audience
+   */
+  async getSegments(): Promise<{
+    segments: {
+      id: number;
+      name: string;
+      type: string;
+      member_count: number;
+      created_at: string;
+      updated_at: string;
+    }[];
+    total_items: number;
+  }> {
+    return this.request(`/lists/${this.audienceId}/segments`);
+  }
+
+  /**
+   * Get audience growth history (last 12 months)
+   */
+  async getGrowthHistory(): Promise<{
+    history: {
+      month: string;
+      existing: number;
+      imports: number;
+      optins: number;
+    }[];
+  }> {
+    return this.request(`/lists/${this.audienceId}/growth-history?count=12`);
+  }
+
+  /**
+   * Get recent activity for the audience
+   */
+  async getActivity(): Promise<{
+    activity: {
+      day: string;
+      emails_sent: number;
+      unique_opens: number;
+      recipient_clicks: number;
+      hard_bounce: number;
+      soft_bounce: number;
+      subs: number;
+      unsubs: number;
+    }[];
+  }> {
+    return this.request(`/lists/${this.audienceId}/activity?count=30`);
+  }
+
+  /**
+   * Generate a custom HTML email template (not release-specific)
+   */
+  generateCustomEmailHTML(data: {
+    title: string;
+    body: string;
+    ctaText?: string;
+    ctaUrl?: string;
+    coverImageUrl?: string;
+  }): string {
+    const { title, body, ctaText, ctaUrl, coverImageUrl } = data;
+
+    const formattedBody = body
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n\n/g, "</p><p>")
+      .replace(/\n/g, "<br>")
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #ff6b00; text-decoration: underline;">$1</a>')
+      .replace(/^### (.*?)$/gm, '<h3 style="color: #ff6b00; margin: 20px 0 10px;">$1</h3>')
+      .replace(/^# (.*?)$/gm, '<h1 style="color: #ff6b00; margin: 20px 0 10px;">$1</h1>');
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #1a1a1a; border-radius: 16px; overflow: hidden; max-width: 100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 30px 40px; text-align: center; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%);">
+              <img src="https://sonidoliquido.com/images/logo-white.png" alt="Sonido Liquido Crew" width="180" style="max-width: 100%;">
+            </td>
+          </tr>
+
+          ${coverImageUrl ? `
+          <!-- Cover Image -->
+          <tr>
+            <td style="padding: 30px 40px 0;">
+              <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(255, 107, 0, 0.3);">
+            </td>
+          </tr>
+          ` : ""}
+
+          <!-- Title -->
+          <tr>
+            <td style="padding: 30px 40px 10px; text-align: center;">
+              <h1 style="margin: 0; color: #ff6b00; font-size: 28px; font-weight: bold;">${title}</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 10px 40px 30px; color: #ffffff;">
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #cccccc;">
+                ${formattedBody}
+              </p>
+            </td>
+          </tr>
+
+          ${ctaText && ctaUrl ? `
+          <!-- CTA Button -->
+          <tr>
+            <td style="padding: 0 40px 30px; text-align: center;">
+              <a href="${ctaUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%); color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">
+                ${ctaText}
+              </a>
+            </td>
+          </tr>
+          ` : ""}
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 30px 40px; background-color: #0a0a0a; text-align: center;">
+              <p style="margin: 0 0 15px; color: #666666; font-size: 12px;">
+                Sonido Liquido Crew - Hip Hop Mexico desde 1999
+              </p>
+              <p style="margin: 0; color: #444444; font-size: 11px;">
+                <a href="https://sonidoliquido.com" style="color: #ff6b00; text-decoration: none;">sonidoliquido.com</a> |
+                <a href="|UNSUB|" style="color: #666666; text-decoration: none;">Darse de baja</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim();
+  }
+
+  /**
    * Get MD5 hash of email for subscriber ID (Mailchimp requires lowercase MD5)
    */
   private getSubscriberHash(email: string): string {
