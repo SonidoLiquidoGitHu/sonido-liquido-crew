@@ -352,3 +352,27 @@ Work Log:
 Stage Summary:
 - Open rate and click rate now show as percentages in campaign detail modal
 - Additional metrics added for a complete analytics view
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Implement Mailchimp configuration from admin (credentials saved to DB)
+
+Work Log:
+- Updated MailchimpClient to support database-stored credentials
+  - Added loadDbCredentials() that reads from site_settings table
+  - DB credentials take priority over environment variables
+  - 5-minute cache to avoid excessive DB reads
+  - Added clearCredentialCache() for after credential updates
+- Added save-credentials action to POST /api/admin/mailchimp
+  - Saves API key, server prefix, and audience ID to site_settings
+  - Automatically tests connection after saving
+  - No need to access Netlify dashboard
+- Updated all Mailchimp API routes to use isConfiguredAsync()
+  - Ensures DB credentials are checked before env vars
+- Pushed to master successfully
+
+Stage Summary:
+- Mailchimp can now be configured entirely from the admin (Email Studio → Config)
+- Credentials stored in database with cache, env vars as fallback
+- Connection test runs automatically after saving
