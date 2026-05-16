@@ -1256,30 +1256,66 @@ export function MailchimpCampaignStudio() {
                 <div className="p-6 space-y-6">
                   {/* Report Stats */}
                   {campaignReport && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
-                        <p className="text-2xl font-oswald">
-                          {(campaignReport as Record<string, unknown>).emails_sent as number || 0}
-                        </p>
-                        <p className="text-xs text-slc-muted">Enviados</p>
+                    <div className="space-y-3">
+                      {/* Key Metrics */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                          <p className="text-2xl font-oswald">
+                            {(campaignReport as Record<string, unknown>).emails_sent as number || 0}
+                          </p>
+                          <p className="text-xs text-slc-muted">Enviados</p>
+                        </div>
+                        <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                          <p className="text-2xl font-oswald text-green-500">
+                            {((campaignReport as Record<string, Record<string, number>>).opens?.unique_opens || 0)}
+                          </p>
+                          <p className="text-xs text-slc-muted">Aperturas Unicas</p>
+                        </div>
+                        <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                          <p className="text-2xl font-oswald text-blue-500">
+                            {((campaignReport as Record<string, Record<string, number>>).clicks?.unique_clicks || 0)}
+                          </p>
+                          <p className="text-xs text-slc-muted">Clicks Unicos</p>
+                        </div>
+                        <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
+                          <p className="text-2xl font-oswald text-red-500">
+                            {(campaignReport as Record<string, Record<string, number>>).bounces?.hard_bounces || 0}
+                          </p>
+                          <p className="text-xs text-slc-muted">Rebotes Duros</p>
+                        </div>
                       </div>
-                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
-                        <p className="text-2xl font-oswald text-green-500">
-                          {((campaignReport as Record<string, Record<string, number>>).opens?.unique_opens || 0)}
-                        </p>
-                        <p className="text-xs text-slc-muted">Aperturas Unicas</p>
-                      </div>
-                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
-                        <p className="text-2xl font-oswald text-blue-500">
-                          {((campaignReport as Record<string, Record<string, number>>).clicks?.unique_clicks || 0)}
-                        </p>
-                        <p className="text-xs text-slc-muted">Clicks Unicos</p>
-                      </div>
-                      <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
-                        <p className="text-2xl font-oswald text-red-500">
-                          {(campaignReport as Record<string, Record<string, number>>).bounces?.hard_bounces || 0}
-                        </p>
-                        <p className="text-xs text-slc-muted">Rebotes</p>
+                      {/* Rates & Additional Metrics */}
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
+                          <p className="text-xl font-oswald text-green-500">
+                            {(((campaignReport as Record<string, Record<string, number>>).opens?.open_rate || 0) * 100).toFixed(1)}%
+                          </p>
+                          <p className="text-xs text-green-400">Tasa de Apertura</p>
+                        </div>
+                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
+                          <p className="text-xl font-oswald text-blue-500">
+                            {(((campaignReport as Record<string, Record<string, number>>).clicks?.click_rate || 0) * 100).toFixed(1)}%
+                          </p>
+                          <p className="text-xs text-blue-400">Tasa de Clicks</p>
+                        </div>
+                        <div className="p-3 bg-slc-card rounded-lg border border-slc-border text-center">
+                          <p className="text-xl font-oswald">
+                            {((campaignReport as Record<string, Record<string, number>>).opens?.total_opens || 0)}
+                          </p>
+                          <p className="text-xs text-slc-muted">Aperturas Totales</p>
+                        </div>
+                        <div className="p-3 bg-slc-card rounded-lg border border-slc-border text-center">
+                          <p className="text-xl font-oswald">
+                            {(campaignReport as Record<string, Record<string, number>>).bounces?.soft_bounces || 0}
+                          </p>
+                          <p className="text-xs text-slc-muted">Rebotes Suaves</p>
+                        </div>
+                        <div className="p-3 bg-slc-card rounded-lg border border-slc-border text-center">
+                          <p className="text-xl font-oswald">
+                            {((campaignReport as Record<string, unknown>).unsubscribed as number) || 0}
+                          </p>
+                          <p className="text-xs text-slc-muted">Bajas</p>
+                        </div>
                       </div>
                     </div>
                   )}

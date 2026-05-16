@@ -287,3 +287,32 @@ Stage Summary:
 - Error responses are never cached (fixes the "broken for 24 hours" issue)
 - Users can click refresh button on failed images
 - Netlify will rebuild with these changes automatically
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Fix Runway 'Fallido' error - migrate task store to database
+
+Work Log:
+- Diagnosed root cause: Runway task store was in-memory Map, lost on Netlify cold starts
+- When tasks persisted in memory were lost, polling would fail to find task metadata
+- Created database-backed runway_tasks table with auto-migration
+- Implemented runway-task-store.ts with:
+  - Database persistence (survives cold starts)
+  - Memory cache with 30s TTL (fast reads)
+  - storeTask(), updateTask(), getTask(), getAllTasks(), cleanupOldTasks()
+  - Backwards-compatible export of taskStore Map
+- Updated runway API routes to use new DB-backed store
+- Added user-friendly error messages for common Runway failures:
+  - Insufficient credits
+  - Invalid/expired image URL
+  - Content policy rejection
+  - API key issues
+- Improved error display in RunwayVideoStudio with causes and guidance
+- Better logging for Dropbox URL resolution in prompt image handling
+- Pushed to master successfully
+
+Stage Summary:
+- Runway tasks now persist in database across serverless cold starts
+- Error messages are more informative and actionable
+- Vertical video thumbnails should benefit from the image-proxy fix (magic bytes detection)

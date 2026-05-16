@@ -10,6 +10,7 @@ import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader"
 import { AudioPreviewPlayer } from "@/components/admin/AudioPreviewPlayer";
 import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
 import { RunwayVideoStudio } from "@/components/admin/RunwayVideoStudio";
+import { CampaignEmailModal } from "@/components/admin/CampaignEmailModal";
 import { type StyleSettings } from "@/lib/style-config";
 import {
   ArrowLeft,
@@ -32,6 +33,7 @@ import {
   Video,
   Film,
   Sparkles,
+  Mail,
 } from "lucide-react";
 
 interface Campaign {
@@ -94,6 +96,7 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -331,6 +334,13 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
               <BarChart3 className="w-4 h-4 mr-2" />
               Analytics
             </Link>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setEmailModalOpen(true)}
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Enviar Email
           </Button>
           <Button asChild variant="outline">
             <Link href={`/c/${campaign.slug}`} target="_blank">
@@ -946,6 +956,23 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </form>
+
+      {/* Email Campaign Modal */}
+      {campaign && (
+        <CampaignEmailModal
+          isOpen={emailModalOpen}
+          onClose={() => setEmailModalOpen(false)}
+          campaign={{
+            title: campaign.title,
+            description: campaign.description,
+            coverImageUrl: campaign.coverImageUrl,
+            bannerImageUrl: campaign.bannerImageUrl,
+            smartLinkUrl: campaign.smartLinkUrl,
+            slug: campaign.slug,
+            campaignType: campaign.campaignType,
+          }}
+        />
+      )}
     </div>
   );
 }
