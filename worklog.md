@@ -252,3 +252,38 @@ Stage Summary:
 - Features: Create/send/schedule/duplicate/delete campaigns, view reports, audience stats, tags, growth history
 - 6 pre-built email templates with SLC branding
 - Campaign HTML preview with iframe
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Diagnose and fix campaign images not loading in admin editor
+
+Work Log:
+- Explored campaign editor code: EditCampaignPage uses SafeImage for cover/banner images
+- SafeImage routes Dropbox URLs through /api/image-proxy
+- Diagnosed root causes of images not loading:
+  1. Image proxy rejected responses with non-image content-type even when body was a valid image (Dropbox returns application/json for images)
+  2. Error responses (502, 504) were cached for 24 hours due to next.config.js global cache header
+  3. No fallback when Dropbox API resolution failed (token expired)
+- Fixed image-proxy/route.ts:
+  - Added magic byte detection (JPEG, PNG, GIF, WebP, AVIF, SVG, BMP) to identify images regardless of content-type
+  - Added isHtmlResponse() check to prevent serving HTML pages as images
+  - Added isPrintableText() check as last resort filter
+  - All error responses now use Cache-Control: no-store (never cached)
+  - Added Dropbox API fallback for non-200 responses and timeouts
+  - Increased timeout from 10s to 15s
+  - Better structured code with helper functions (errorResponse, imageResponse, tryDropboxApiResolution)
+- Fixed next.config.js:
+  - Removed aggressive cache header for /api/image-proxy (was caching errors for 24h)
+  - Proxy now handles its own caching: success=86400, temp_link=3600, errors=no-store
+- Fixed SafeImage component:
+  - Added refresh button on failed images
+  - Better retry logic with key-based re-render
+  - Cache bust parameter on manual refresh
+- Pushed to master successfully
+
+Stage Summary:
+- Image proxy now detects images by magic bytes, not just content-type
+- Error responses are never cached (fixes the "broken for 24 hours" issue)
+- Users can click refresh button on failed images
+- Netlify will rebuild with these changes automatically
