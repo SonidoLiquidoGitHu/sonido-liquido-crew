@@ -138,10 +138,22 @@ export async function POST(request: NextRequest) {
     const cost = estimateCost(model as RunwayModel, validDuration);
 
     // Resolve the prompt image URL — Dropbox URLs must be converted to
-    // temporary direct CDN links so Runway can fetch the image
+    // temporary direct CDN links so Runway can fetch the image.
+    // If resolution fails, use the image proxy as a last resort so Runway
+    // gets a proper image content-type instead of Dropbox's HTML page.
     let promptImage = rawPromptImage;
     if (promptImage && isDropboxUrl(promptImage)) {
-      promptImage = await resolvePromptImageUrl(promptImage);
+      const resolved = await resolvePromptImageUrl(promptImage);
+      if (resolved === promptImage) {
+        // Resolution failed — use our image proxy as a fallback
+        // This ensures Runway gets an actual image, not an HTML page
+        const serverPrefix = process.env.NEXT_PUBLIC_SERVER_URL || "https://sonidoliquido.com";
+        const proxiedUrl = `${serverPrefix}/api/image-proxy?url=${encodeURIComponent(promptImage)}`;
+        console.log("[Runway API] Using image proxy fallback for Dropbox URL");
+        promptImage = proxiedUrl;
+      } else {
+        promptImage = resolved;
+      }
     }
 
     // Generate video

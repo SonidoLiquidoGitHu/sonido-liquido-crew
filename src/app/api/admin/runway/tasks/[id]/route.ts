@@ -18,12 +18,23 @@ export async function GET(
     // Get latest status from Runway API
     const task = await getTaskStatus(id);
 
-    // Update our database store
-    await updateTask(id, {
+    // Update our database store — only pass output/error if they have values
+    // to prevent overwriting valid data with null during intermediate polling
+    const updates: Partial<Pick<import("@/lib/clients/runway-task-store").RunwayTaskInfo, "status" | "output" | "error">> = {
       status: task.status,
-      output: task.output,
-      error: task.error,
-    });
+    };
+
+    // Only include output if Runway has actually produced something
+    if (task.output && task.output.length > 0) {
+      updates.output = task.output;
+    }
+
+    // Only include error if there's an actual error message
+    if (task.error) {
+      updates.error = task.error;
+    }
+
+    await updateTask(id, updates);
 
     // Get the full task info from database (includes artistName, model, etc.)
     const localTask = await getTask(id);

@@ -6,10 +6,8 @@
 // Previously used an in-memory Map which was lost on every cold start.
 
 import { type RunwayModel, type RunwayRatio } from "@/lib/clients/runway";
-import { db, isDatabaseConfigured } from "@/db/client";
-import { generateUUID } from "@/lib/utils";
-import { eq, desc } from "drizzle-orm";
-import { createClient } from "@libsql/client/web";
+import { isDatabaseConfigured } from "@/db/client";
+import { createClient, type Client } from "@libsql/client/web";
 
 export interface RunwayTaskInfo {
   id: string;
@@ -33,21 +31,50 @@ const memoryCache = new Map<string, RunwayTaskInfo>();
 const CACHE_TTL = 30 * 1000; // 30 seconds
 const cacheTimestamps = new Map<string, number>();
 
+// Singleton libsql client (reused across calls in the same function instance)
+let _dbClient: Client | null = null;
+
+function getDbClient(): Client | null {
+  if (_dbClient) return _dbClient;
+
+  const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
+  const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
+  if (!url || !token) return null;
+
+  _dbClient = createClient({ url, authToken: token });
+  return _dbClient;
+}
+
 // Ensure the runway_tasks table exists
 let _tableEnsured = false;
+let _tableEnsurePromise: Promise<void> | null = null;
 
 async function ensureTable(): Promise<void> {
   if (_tableEnsured) return;
-  _tableEnsured = true;
 
-  if (!isDatabaseConfigured()) return;
+  // Prevent concurrent table creation attempts
+  if (_tableEnsurePromise) {
+    await _tableEnsurePromise;
+    return;
+  }
+
+  _tableEnsurePromise = _doEnsureTable();
+  await _tableEnsurePromise;
+}
+
+async function _doEnsureTable(): Promise<void> {
+  if (!isDatabaseConfigured()) {
+    _tableEnsured = true; // Nothing to ensure, skip future calls
+    return;
+  }
+
+  const client = getDbClient();
+  if (!client) {
+    _tableEnsured = true;
+    return;
+  }
 
   try {
-    const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-    const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
-    if (!url || !token) return;
-
-    const client = createClient({ url, authToken: token });
     await client.execute(`
       CREATE TABLE IF NOT EXISTS runway_tasks (
         id TEXT PRIMARY KEY NOT NULL,
@@ -73,7 +100,12 @@ async function ensureTable(): Promise<void> {
     console.log("[Runway Task Store] Table ensured");
   } catch (err) {
     console.error("[Runway Task Store] Failed to ensure table:", err);
+    // Don't set _tableEnsured = true on failure — let it retry next time
+    return;
   }
+
+  // Only mark as ensured AFTER successful table creation
+  _tableEnsured = true;
 }
 
 /**
@@ -111,19 +143,17 @@ export async function storeTask(task: RunwayTaskInfo): Promise<void> {
 
   await ensureTable();
 
-  if (!isDatabaseConfigured()) {
+  const client = getDbClient();
+  if (!client) {
     console.warn("[Runway Task Store] Database not configured, task stored in memory only");
     return;
   }
 
   try {
-    const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-    const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
-    const client = createClient({ url, authToken: token });
-
+    // Use INSERT OR IGNORE to avoid overwriting existing tasks (preserves created_at)
     const now = Math.floor(Date.now() / 1000);
     await client.execute({
-      sql: `INSERT OR REPLACE INTO runway_tasks
+      sql: `INSERT OR IGNORE INTO runway_tasks
         (id, upcoming_release_id, artist_name, title, model, ratio, duration,
          prompt_text, prompt_image, status, output, error,
          estimated_cost_credits, estimated_cost_usd, created_at, updated_at)
@@ -153,37 +183,52 @@ export async function storeTask(task: RunwayTaskInfo): Promise<void> {
 }
 
 /**
- * Update an existing task's status, output, and error
+ * Update an existing task's status, output, and error.
+ *
+ * IMPORTANT: Only updates output/error if they have meaningful values.
+ * This prevents polling from overwriting valid data with null/undefined
+ * when Runway hasn't produced output yet.
  */
 export async function updateTask(taskId: string, updates: Partial<Pick<RunwayTaskInfo, "status" | "output" | "error">>): Promise<void> {
   // Update memory cache
   const cached = memoryCache.get(taskId);
   if (cached) {
     if (updates.status !== undefined) cached.status = updates.status;
-    if (updates.output !== undefined) cached.output = updates.output;
-    if (updates.error !== undefined) cached.error = updates.error;
+    // Only update output if we have actual output data
+    if (updates.output !== undefined && updates.output.length > 0) cached.output = updates.output;
+    // Only update error if there's an actual error message
+    if (updates.error !== undefined && updates.error) cached.error = updates.error;
   }
   cacheTimestamps.set(taskId, Date.now());
 
   await ensureTable();
 
-  if (!isDatabaseConfigured()) return;
+  const client = getDbClient();
+  if (!client) return;
 
   try {
-    const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-    const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
-    const client = createClient({ url, authToken: token });
-
     const now = Math.floor(Date.now() / 1000);
+
+    // Build dynamic SET clause — only update fields that have values
+    // This prevents overwriting valid output with null during polling
+    const setClauses: string[] = ["status = ?", "updated_at = ?"];
+    const args: any[] = [updates.status ?? "PENDING", now];
+
+    if (updates.output !== undefined && updates.output.length > 0) {
+      setClauses.push("output = ?");
+      args.push(JSON.stringify(updates.output));
+    }
+
+    if (updates.error !== undefined && updates.error) {
+      setClauses.push("error = ?");
+      args.push(updates.error);
+    }
+
+    args.push(taskId);
+
     await client.execute({
-      sql: `UPDATE runway_tasks SET status = ?, output = ?, error = ?, updated_at = ? WHERE id = ?`,
-      args: [
-        updates.status ?? null,
-        updates.output ? JSON.stringify(updates.output) : null,
-        updates.error ?? null,
-        now,
-        taskId,
-      ],
+      sql: `UPDATE runway_tasks SET ${setClauses.join(", ")} WHERE id = ?`,
+      args,
     });
   } catch (err) {
     console.error("[Runway Task Store] Failed to update task:", err);
@@ -203,15 +248,12 @@ export async function getTask(taskId: string): Promise<RunwayTaskInfo | undefine
 
   await ensureTable();
 
-  if (!isDatabaseConfigured()) {
+  const client = getDbClient();
+  if (!client) {
     return cached; // Return stale cache if DB not available
   }
 
   try {
-    const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-    const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
-    const client = createClient({ url, authToken: token });
-
     const result = await client.execute({
       sql: "SELECT * FROM runway_tasks WHERE id = ?",
       args: [taskId],
@@ -237,7 +279,8 @@ export async function getTask(taskId: string): Promise<RunwayTaskInfo | undefine
 export async function getAllTasks(): Promise<RunwayTaskInfo[]> {
   await ensureTable();
 
-  if (!isDatabaseConfigured()) {
+  const client = getDbClient();
+  if (!client) {
     // Return memory cache if DB not available
     return Array.from(memoryCache.values()).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -245,10 +288,6 @@ export async function getAllTasks(): Promise<RunwayTaskInfo[]> {
   }
 
   try {
-    const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-    const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
-    const client = createClient({ url, authToken: token });
-
     const result = await client.execute(
       "SELECT * FROM runway_tasks ORDER BY created_at DESC LIMIT 100"
     );
@@ -274,13 +313,10 @@ export async function getAllTasks(): Promise<RunwayTaskInfo[]> {
  * Delete old completed tasks (cleanup)
  */
 export async function cleanupOldTasks(maxAgeDays: number = 7): Promise<number> {
-  if (!isDatabaseConfigured()) return 0;
+  const client = getDbClient();
+  if (!client) return 0;
 
   try {
-    const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-    const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
-    const client = createClient({ url, authToken: token });
-
     const cutoff = Math.floor(Date.now() / 1000) - (maxAgeDays * 86400);
     const result = await client.execute({
       sql: "DELETE FROM runway_tasks WHERE status IN ('SUCCEEDED', 'FAILED', 'CANCELLED') AND created_at < ?",
@@ -297,7 +333,3 @@ export async function cleanupOldTasks(maxAgeDays: number = 7): Promise<number> {
     return 0;
   }
 }
-
-// Legacy in-memory Map export for backwards compatibility
-// (used by the old route handlers that import taskStore directly)
-export const taskStore: Map<string, RunwayTaskInfo> = new Map();
