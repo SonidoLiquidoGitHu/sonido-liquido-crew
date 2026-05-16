@@ -9,7 +9,6 @@ import { db } from "@/db/client";
 import { socialCredentials } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { invalidateMetaCredentialsCache } from "@/lib/clients/meta";
-import { invalidateTikTokCredentialsCache } from "@/lib/clients/tiktok";
 
 export const dynamic = "force-dynamic";
 
@@ -24,22 +23,14 @@ const META_KEYS = [
   "FACEBOOK_PAGE_ID",
 ] as const;
 
-const TIKTOK_KEYS = [
-  "TIKTOK_CLIENT_KEY",
-  "TIKTOK_CLIENT_SECRET",
-  "TIKTOK_ACCESS_TOKEN",
-  "TIKTOK_REFRESH_TOKEN",
-  "TIKTOK_OPEN_ID",
-] as const;
+const TIKTOK_KEYS = [] as const;
 
 const ALL_KEYS = [...META_KEYS, ...TIKTOK_KEYS] as const;
 
 type CredentialKey = (typeof ALL_KEYS)[number];
 
-function getPlatformForKey(key: string): "meta" | "tiktok" {
-  if (key.startsWith("META_") || key.startsWith("FACEBOOK_")) return "meta";
-  if (key.startsWith("TIKTOK_")) return "tiktok";
-  return "meta"; // default
+function getPlatformForKey(key: string): "meta" {
+  return "meta";
 }
 
 /**
@@ -191,7 +182,6 @@ export async function PUT(request: NextRequest) {
 
     // Invalidate credential caches so the next API call picks up the new values
     invalidateMetaCredentialsCache();
-    invalidateTikTokCredentialsCache();
 
     return NextResponse.json({
       success: true,

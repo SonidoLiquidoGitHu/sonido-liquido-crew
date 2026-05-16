@@ -3,7 +3,7 @@
 // ===========================================
 // Handles posting to Facebook Page and Instagram Business Account
 // via the Meta Graph API using a System User token.
-// Also coordinates with the TikTok client for multi-platform posting.
+// Also coordinates posting to Facebook and Instagram via the Meta Graph API.
 //
 // Key learnings from live API testing:
 // - FB: Use /{page-id}/feed (link post) with Page access token.
@@ -17,13 +17,12 @@
 import { db } from "@/db/client";
 import { socialPostQueue, socialPostsLog } from "@/db/schema";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
-import { postToTikTok, isTikTokConfigured, type TikTokPostResult } from "./tiktok";
 
 // ===========================================
 // CONFIGURATION
 // ===========================================
 
-const META_GRAPH_API = "https://graph.facebook.com/v21.0";
+const META_GRAPH_API = "https://graph.facebook.com/v22.0";
 
 // Cached DB credentials (fetched once per process lifetime, or when invalidated)
 let _dbCredentials: Record<string, string> | null = null;
@@ -365,7 +364,8 @@ export async function postToFacebook(
       const data = await response.json();
 
       if (data.error) {
-        console.warn("[Meta] FB feed post failed, trying photo post:", data.error.message);
+        const errMsg = data.error.message || data.error.type || JSON.stringify(data.error);
+        console.warn("[Meta] FB feed post failed, trying photo post:", errMsg);
         // Fall through to photo post
       } else {
         const postId = data.id || null;
@@ -393,12 +393,13 @@ export async function postToFacebook(
     const photoData = await photoResponse.json();
 
     if (photoData.error) {
+      const errMsg = photoData.error.message || photoData.error.type || `Error ${photoData.error.code || 'unknown'}`;
       console.error("[Meta] Facebook photo post error:", photoData.error);
       return {
         success: false,
         postId: null,
         postUrl: null,
-        error: `${photoData.error.code}: ${photoData.error.message}`,
+        error: errMsg,
       };
     }
 
@@ -479,7 +480,7 @@ export async function postToInstagram(
         success: false,
         mediaId: null,
         permalink: null,
-        error: `${containerData.error.code}: ${containerData.error.message}`,
+        error: containerData.error.message || containerData.error.type || `IG Error ${containerData.error.code || 'unknown'}`,
       };
     }
 
@@ -543,7 +544,7 @@ export async function postToInstagram(
         success: false,
         mediaId: null,
         permalink: null,
-        error: `${publishData.error.code}: ${publishData.error.message}`,
+        error: publishData.error.message || publishData.error.type || `IG Publish Error ${publishData.error.code || 'unknown'}`,
       };
     }
 
@@ -637,7 +638,7 @@ export async function postInstagramReel(
         success: false,
         mediaId: null,
         permalink: null,
-        error: `${containerData.error.code}: ${containerData.error.message}`,
+        error: containerData.error.message || containerData.error.type || `IG Error ${containerData.error.code || 'unknown'}`,
       };
     }
 
@@ -715,7 +716,7 @@ export async function postInstagramReel(
         success: false,
         mediaId: null,
         permalink: null,
-        error: `${publishData.error.code}: ${publishData.error.message}`,
+        error: publishData.error.message || publishData.error.type || `IG Publish Error ${publishData.error.code || 'unknown'}`,
       };
     }
 
@@ -880,7 +881,7 @@ export async function postFacebookReel(
         success: false,
         reelId: null,
         postUrl: null,
-        error: `FB Reel failed (video_id missing) and video fallback also failed: ${videoData.error.code}: ${videoData.error.message}`,
+        error: `FB Reel failed and video fallback also failed: ${videoData.error.message || videoData.error.type || 'Error ' + (videoData.error.code || 'unknown')}`,
       };
     }
 
@@ -956,7 +957,7 @@ async function pollFacebookReelStatus(
       }
 
       if (statusData.error) {
-        return `${statusData.error.code}: ${statusData.error.message}`;
+        return statusData.error.message || statusData.error.type || `Error ${statusData.error.code || 'unknown'}`;
       }
     } catch (statusErr) {
       console.warn("[Meta] FB Reel status poll failed:", statusErr);
@@ -1003,7 +1004,7 @@ async function pollFacebookVideoStatus(
       }
 
       if (statusData.error) {
-        return `${statusData.error.code}: ${statusData.error.message}`;
+        return statusData.error.message || statusData.error.type || `Error ${statusData.error.code || 'unknown'}`;
       }
     } catch (statusErr) {
       console.warn("[Meta] FB video status poll failed:", statusErr);
@@ -1230,7 +1231,6 @@ export interface PostQueueItemResult {
   queueId: string;
   facebook: FacebookPostResult;
   instagram: InstagramPostResult;
-  tiktok: TikTokPostResult;
 }
 
 // Type helper — the queue item as returned from DB
@@ -1252,7 +1252,7 @@ export interface SocialPostQueueWithId {
 }
 
 /**
- * Process a single queue item: post to FB, IG, and/or TikTok, log results, update queue status.
+ * Process a single queue item: post to FB and/or IG, log results, update queue status.
  */
 export async function processQueueItem(item: SocialPostQueueWithId): Promise<PostQueueItemResult> {
   const platforms: string[] = JSON.parse(item.platforms || "[]");
@@ -1260,7 +1260,6 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
 
   let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null };
   let igResult: InstagramPostResult = { success: false, mediaId: null, permalink: null };
-  let tkResult: TikTokPostResult = { success: false, videoId: null, postUrl: null };
 
   // Post to Facebook
   if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
@@ -1326,51 +1325,13 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     }
   }
 
-  // Post to TikTok
-  if (platforms.includes("tiktok") && !postedPlatforms.includes("tiktok")) {
-    if (isTikTokConfigured()) {
-      console.log(`[Social] Posting to TikTok: ${item.contentType} (${item.sourceId})`);
-      tkResult = await postToTikTok(item.imageUrl, item.caption || "", item.linkUrl || undefined);
-
-      // Log the result
-      try {
-        await db.insert(socialPostsLog).values({
-          id: crypto.randomUUID(),
-          queueId: item.id,
-          platform: "tiktok",
-          contentType: item.contentType as any,
-          sourceId: item.sourceId,
-          imageUrl: item.imageUrl,
-          caption: item.caption,
-          linkUrl: item.linkUrl,
-          platformPostId: tkResult.videoId,
-          platformPostUrl: tkResult.postUrl,
-          metaApiResponse: null,
-          status: tkResult.success ? "success" : "failed",
-          errorMessage: tkResult.error || null,
-          postedAt: new Date(),
-        });
-      } catch (logError) {
-        console.error("[Social] Failed to log TikTok result:", logError);
-      }
-
-      if (tkResult.success) {
-        postedPlatforms.push("tiktok");
-      }
-    } else {
-      console.log("[Social] TikTok not configured — skipping TikTok post");
-    }
-  }
-
   // Update queue item status
   const allTargetPlatformsPosted = platforms
-    .filter(p => p === "tiktok" ? isTikTokConfigured() : true) // Skip TikTok if not configured
     .every((p) => postedPlatforms.includes(p));
   const anyPlatformSucceeded = postedPlatforms.length > 0;
   const anyFailed =
     (!fbResult.success && platforms.includes("facebook") && !postedPlatforms.includes("facebook")) ||
-    (!igResult.success && platforms.includes("instagram") && !postedPlatforms.includes("instagram")) ||
-    (isTikTokConfigured() && !tkResult.success && platforms.includes("tiktok") && !postedPlatforms.includes("tiktok"));
+    (!igResult.success && platforms.includes("instagram") && !postedPlatforms.includes("instagram"));
 
   let newStatus: "posted" | "failed" | "pending" = "pending";
   if (allTargetPlatformsPosted) {
@@ -1394,7 +1355,6 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     const errors: string[] = [];
     if (!fbResult.success && platforms.includes("facebook")) errors.push(`FB: ${fbResult.error || "ok"}`);
     if (!igResult.success && platforms.includes("instagram")) errors.push(`IG: ${igResult.error || "ok"}`);
-    if (isTikTokConfigured() && !tkResult.success && platforms.includes("tiktok")) errors.push(`TK: ${tkResult.error || "ok"}`);
     updateData.errorMessage = errors.join(" | ");
   } else {
     updateData.errorMessage = null;
@@ -1409,7 +1369,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     console.error("[Social] Failed to update queue item:", updateError);
   }
 
-  return { queueId: item.id, facebook: fbResult, instagram: igResult, tiktok: tkResult };
+  return { queueId: item.id, facebook: fbResult, instagram: igResult };
 }
 
 // ===========================================
@@ -1520,8 +1480,7 @@ export function generateCaption(ctx: CaptionContext): string {
     case "vertical_video": {
       const artistLine = ctx.artistName || "Sonido Liquido Crew";
       const titleLine = ctx.videoTitle ? `${ctx.videoTitle}` : "Video exclusivo";
-      const platformLabel = ctx.videoPlatform === "tiktok" ? "TikTok"
-        : ctx.videoPlatform === "youtube" ? "YouTube"
+      const platformLabel = ctx.videoPlatform === "youtube" ? "YouTube"
         : ctx.videoPlatform === "instagram" ? "Instagram"
         : "";
 

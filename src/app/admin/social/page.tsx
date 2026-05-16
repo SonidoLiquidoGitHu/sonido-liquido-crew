@@ -66,7 +66,7 @@ interface QueueItem {
 interface PostLog {
   id: string;
   queueId: string;
-  platform: "facebook" | "instagram" | "tiktok";
+  platform: "facebook" | "instagram";
   contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video";
   sourceId: string;
   imageUrl: string;
@@ -91,13 +91,6 @@ interface MetaStatus {
   appSecret: boolean;
   systemUserToken: boolean;
   facebookPageId: boolean;
-}
-
-interface TikTokStatus {
-  configured: boolean;
-  clientKey: boolean;
-  clientSecret: boolean;
-  accessToken: boolean;
 }
 
 interface ContentCounts {
@@ -171,13 +164,11 @@ const contentTypeIcons: Record<string, typeof ImageIcon> = {
 const platformLabels: Record<string, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
-  tiktok: "TikTok",
 };
 
 const platformIcons: Record<string, typeof Facebook> = {
   facebook: Facebook,
   instagram: Instagram,
-  tiktok: Music, // Using Music icon as TikTok placeholder
 };
 
 const statusColors: Record<string, string> = {
@@ -222,15 +213,15 @@ export default function AdminSocialPage() {
   const [nextPending, setNextPending] = useState<QueueItem[]>([]);
   const [recentLogs, setRecentLogs] = useState<PostLog[]>([]);
   const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
-  const [tiktokStatus, setTikTokStatus] = useState<TikTokStatus | null>(null);
+
   const [contentCounts, setContentCounts] = useState<ContentCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [populating, setPopulating] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [validatingTikTok, setValidatingTikTok] = useState(false);
+
   const [tokenInfo, setTokenInfo] = useState<any>(null);
-  const [tiktokTokenInfo, setTikTokTokenInfo] = useState<any>(null);
+
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"queue" | "history" | "config">("queue");
 
@@ -248,7 +239,7 @@ export default function AdminSocialPage() {
     includeArtists: true,
     includeCuratedTracks: true,
     includeVerticalVideos: true,
-    platforms: ["facebook", "instagram", "tiktok"],
+    platforms: ["facebook", "instagram"],
     force: false,
   });
 
@@ -262,7 +253,7 @@ export default function AdminSocialPage() {
         setNextPending(data.data.nextPending || []);
         setRecentLogs(data.data.recentLogs || []);
         setMetaStatus(data.data.metaStatus);
-        setTikTokStatus(data.data.tiktokStatus);
+
         setContentCounts(data.data.contentCounts);
       }
     } catch (error) {
@@ -272,36 +263,8 @@ export default function AdminSocialPage() {
     }
   }, []);
 
-  // Check for TikTok OAuth callback params in URL
-  const [tiktokOAuthResult, setTiktokOAuthResult] = useState<{
-    success: boolean;
-    accessToken?: string;
-    refreshToken?: string;
-    openId?: string;
-    error?: string;
-  } | null>(null);
-
   useEffect(() => {
     fetchData();
-
-    // Check URL for TikTok OAuth callback results
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("tiktok_success") === "true") {
-      setTiktokOAuthResult({
-        success: true,
-        accessToken: params.get("tiktok_access_token") || undefined,
-        refreshToken: params.get("tiktok_refresh_token") || undefined,
-        openId: params.get("tiktok_open_id") || undefined,
-      });
-      // Clean URL params
-      window.history.replaceState({}, "", "/admin/social");
-    } else if (params.get("tiktok_error")) {
-      setTiktokOAuthResult({
-        success: false,
-        error: params.get("tiktok_error") || "Unknown error",
-      });
-      window.history.replaceState({}, "", "/admin/social");
-    }
   }, [fetchData]);
 
   const processNext = async () => {
@@ -435,22 +398,6 @@ export default function AdminSocialPage() {
     }
   };
 
-  const validateTikTokToken = async () => {
-    setValidatingTikTok(true);
-    try {
-      const res = await fetch("/api/admin/social", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "validate-tiktok" }),
-      });
-      const data = await res.json();
-      setTikTokTokenInfo(data.data);
-    } catch (error) {
-      setTikTokTokenInfo({ isValid: false, error: "Validation failed" });
-    } finally {
-      setValidatingTikTok(false);
-    }
-  };
 
   const togglePlatform = (platform: string) => {
     setPopulateOptions((prev) => ({
@@ -545,7 +492,7 @@ export default function AdminSocialPage() {
             Social Auto-Post
           </h1>
           <p className="text-slc-muted mt-1">
-            Publicación automática a Facebook, Instagram y TikTok — 3x al día
+            Publicación automática a Facebook e Instagram — 3x al día
           </p>
         </div>
         <div className="flex gap-2">
@@ -581,57 +528,6 @@ export default function AdminSocialPage() {
         </div>
       )}
 
-      {/* TikTok OAuth Result Banner */}
-      {tiktokOAuthResult && (
-        <div className={`mb-6 p-4 rounded-lg border ${tiktokOAuthResult.success ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20"}`}>
-          <div className="flex items-start gap-3">
-            {tiktokOAuthResult.success ? (
-              <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-            ) : (
-              <XCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-            )}
-            <div className="flex-1 text-sm">
-              {tiktokOAuthResult.success ? (
-                <>
-                  <p className="text-green-300 font-medium">TikTok conectado exitosamente</p>
-                  <p className="text-green-300/70 mt-1">
-                    Para completar la configuración, agrega estas variables de entorno en Netlify:
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    <div className="bg-slc-dark p-2 rounded font-mono text-xs">
-                      <span className="text-slc-muted">TIKTOK_ACCESS_TOKEN=</span>
-                      <span className="text-primary break-all">{tiktokOAuthResult.accessToken}</span>
-                    </div>
-                    {tiktokOAuthResult.refreshToken && (
-                      <div className="bg-slc-dark p-2 rounded font-mono text-xs">
-                        <span className="text-slc-muted">TIKTOK_REFRESH_TOKEN=</span>
-                        <span className="text-primary break-all">{tiktokOAuthResult.refreshToken}</span>
-                      </div>
-                    )}
-                    {tiktokOAuthResult.openId && (
-                      <div className="bg-slc-dark p-2 rounded font-mono text-xs">
-                        <span className="text-slc-muted">TIKTOK_OPEN_ID=</span>
-                        <span className="text-primary">{tiktokOAuthResult.openId}</span>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-green-300/70 mt-2">
-                    Copia estos valores a las variables de entorno de Netlify y redeployea el sitio.
-                  </p>
-                </>
-              ) : (
-                <p className="text-red-300">Error al conectar TikTok: {tiktokOAuthResult.error}</p>
-              )}
-            </div>
-            <button
-              onClick={() => setTiktokOAuthResult(null)}
-              className="text-slc-muted hover:text-white"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Meta Config Warning */}
       {metaStatus && !metaStatus.configured && (
@@ -1037,7 +933,7 @@ export default function AdminSocialPage() {
             <div className="mb-4">
               <p className="text-sm text-slc-muted mb-2">Plataformas destino:</p>
               <div className="flex gap-3">
-                {(["facebook", "instagram", "tiktok"] as const).map((platform) => (
+                {(["facebook", "instagram"] as const).map((platform) => (
                   <label
                     key={platform}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
@@ -1054,10 +950,8 @@ export default function AdminSocialPage() {
                     />
                     {platform === "facebook" ? (
                       <Facebook className="w-4 h-4 text-blue-400" />
-                    ) : platform === "instagram" ? (
-                      <Instagram className="w-4 h-4 text-pink-400" />
                     ) : (
-                      <Music className="w-4 h-4 text-white" />
+                      <Instagram className="w-4 h-4 text-pink-400" />
                     )}
                     <span className="text-sm">{platformLabels[platform]}</span>
                   </label>
@@ -1208,151 +1102,6 @@ export default function AdminSocialPage() {
             </div>
           </div>
 
-          {/* TikTok Configuration */}
-          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
-            <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
-              <Music className="w-5 h-5 text-white" />
-              TikTok
-            </h2>
-            <p className="text-sm text-slc-muted mb-4">
-              Ingresa las credenciales de TikTok para publicar automaticamente.
-              Los valores guardados aqui tienen prioridad sobre las variables de entorno de Netlify.
-            </p>
-            {tiktokStatus && !tiktokStatus.configured && (
-              <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-300">
-                <p className="font-medium">TikTok no configurado aun</p>
-                <p className="text-yellow-300/70 mt-1">
-                  Para publicar en TikTok automaticamente, necesitas:
-                </p>
-                <ol className="text-yellow-300/70 mt-1 list-decimal list-inside space-y-1">
-                  <li>Crear una app en developers.tiktok.com</li>
-                  <li>Solicitar acceso al Content Posting API (Direct Post)</li>
-                  <li>Obtener client_key y client_secret</li>
-                  <li>Ingresar las credenciales abajo y luego conectar tu cuenta</li>
-                </ol>
-              </div>
-            )}
-            <div className="space-y-3">
-              <CredentialInput
-                label="TIKTOK_CLIENT_KEY"
-                info={credentialInfo?.TIKTOK_CLIENT_KEY}
-                editValue={credentialEdits.TIKTOK_CLIENT_KEY}
-                onEdit={(val) => {
-                  if (val === "__CANCEL__") {
-                    const { TIKTOK_CLIENT_KEY, ...rest } = credentialEdits;
-                    setCredentialEdits(rest);
-                  } else {
-                    setCredentialEdits((prev) => ({ ...prev, TIKTOK_CLIENT_KEY: val }));
-                  }
-                }}
-                showValue={showCredentialValues.TIKTOK_CLIENT_KEY}
-                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, TIKTOK_CLIENT_KEY: !prev.TIKTOK_CLIENT_KEY }))}
-              />
-              <CredentialInput
-                label="TIKTOK_CLIENT_SECRET"
-                info={credentialInfo?.TIKTOK_CLIENT_SECRET}
-                editValue={credentialEdits.TIKTOK_CLIENT_SECRET}
-                onEdit={(val) => {
-                  if (val === "__CANCEL__") {
-                    const { TIKTOK_CLIENT_SECRET, ...rest } = credentialEdits;
-                    setCredentialEdits(rest);
-                  } else {
-                    setCredentialEdits((prev) => ({ ...prev, TIKTOK_CLIENT_SECRET: val }));
-                  }
-                }}
-                showValue={showCredentialValues.TIKTOK_CLIENT_SECRET}
-                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, TIKTOK_CLIENT_SECRET: !prev.TIKTOK_CLIENT_SECRET }))}
-              />
-              <CredentialInput
-                label="TIKTOK_ACCESS_TOKEN"
-                info={credentialInfo?.TIKTOK_ACCESS_TOKEN}
-                editValue={credentialEdits.TIKTOK_ACCESS_TOKEN}
-                onEdit={(val) => {
-                  if (val === "__CANCEL__") {
-                    const { TIKTOK_ACCESS_TOKEN, ...rest } = credentialEdits;
-                    setCredentialEdits(rest);
-                  } else {
-                    setCredentialEdits((prev) => ({ ...prev, TIKTOK_ACCESS_TOKEN: val }));
-                  }
-                }}
-                showValue={showCredentialValues.TIKTOK_ACCESS_TOKEN}
-                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, TIKTOK_ACCESS_TOKEN: !prev.TIKTOK_ACCESS_TOKEN }))}
-              />
-            </div>
-
-            {/* TikTok OAuth Connect */}
-            <div className="mt-6 pt-4 border-t border-slc-border space-y-4">
-              {/* Connect Button (shown when Client Key is set but no Access Token) */}
-              {(tiktokStatus?.clientKey || credentialEdits.TIKTOK_CLIENT_KEY) && !tiktokStatus?.accessToken && !credentialEdits.TIKTOK_ACCESS_TOKEN && (
-                <div>
-                  <p className="text-sm text-slc-muted mb-3">
-                    Conecta tu cuenta de TikTok para autorizar la publicacion automatica:
-                  </p>
-                  <a href="/api/auth/tiktok?returnUrl=/admin/social">
-                    <Button className="bg-black hover:bg-gray-800 text-white">
-                      <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15.2a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.88a8.28 8.28 0 0 0 4.76 1.5V6.93a4.84 4.84 0 0 1-1-.24z"/>
-                      </svg>
-                      Conectar con TikTok
-                    </Button>
-                  </a>
-                </div>
-              )}
-
-              {/* Token Validation Button */}
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={validateTikTokToken}
-                  disabled={validatingTikTok || !tiktokStatus?.configured}
-                >
-                  {validatingTikTok ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Key className="w-4 h-4 mr-2" />
-                  )}
-                  Validar Token TikTok
-                </Button>
-                {tiktokTokenInfo && (
-                  <div className="flex items-center gap-2 text-sm">
-                    {tiktokTokenInfo.isValid ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        <span className="text-green-400">Token valido</span>
-                        <span className="text-slc-muted">
-                          — Open ID: {tiktokTokenInfo.openId || "N/A"}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4 text-red-400" />
-                        <span className="text-red-400">Token invalido</span>
-                        {tiktokTokenInfo.error && (
-                          <span className="text-slc-muted">— {tiktokTokenInfo.error}</span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Setup Instructions (shown when Client Key not set) */}
-              {!tiktokStatus?.clientKey && !credentialEdits.TIKTOK_CLIENT_KEY && (
-                <div className="p-3 bg-slc-dark rounded-lg text-sm text-slc-muted">
-                  <p className="font-medium text-white mb-2">Configuracion paso a paso:</p>
-                  <ol className="list-decimal list-inside space-y-1">
-                    <li>Crea una app en <a href="https://developers.tiktok.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">developers.tiktok.com</a></li>
-                    <li>Solicita acceso al <strong>Content Posting API (Direct Post)</strong></li>
-                    <li>Agrega la Redirect URI: <code className="text-primary">https://sonidoliquido.com/api/auth/tiktok/callback</code></li>
-                    <li>Copia el Client Key y Client Secret en los campos de arriba</li>
-                    <li>Guarda los cambios y luego haz clic en &quot;Conectar con TikTok&quot;</li>
-                  </ol>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Save Credentials Button */}
           <div className="bg-slc-card border border-slc-border rounded-xl p-6">
             <div className="flex items-center gap-4">
@@ -1395,7 +1144,7 @@ export default function AdminSocialPage() {
             <p className="text-sm text-slc-muted mt-4">
               La función programada publica 1 item por ejecución. Con 3 ejecuciones/día,
               se publican 3 items/día. Cada item se publica en todas las plataformas configuradas
-              (FB + IG + TikTok = hasta 9 posts/día).
+              (FB + IG = hasta 6 posts/día).
             </p>
           </div>
         </div>

@@ -29,15 +29,6 @@ import {
   Send,
 } from "lucide-react";
 
-// TikTok icon
-function TikTokIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-    </svg>
-  );
-}
-
 // Spotify icon
 function SpotifyIcon({ className }: { className?: string }) {
   return (
@@ -118,29 +109,6 @@ const PLATFORMS: Platform[] = [
     hashtagsLimit: 10,
     features: ["Link sticker (10K+ seguidores)", "Música", "Encuestas", "Countdown sticker"],
     uploadUrl: "https://www.instagram.com/",
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    icon: <TikTokIcon className="w-5 h-5" />,
-    color: "bg-black",
-    videoSpecs: {
-      formats: ["MP4", "MOV", "WebM"],
-      maxDuration: 180,
-      maxSize: 287,
-      dimensions: [
-        { width: 1080, height: 1920, orientation: "9:16 (Vertical)" },
-      ],
-    },
-    imageSpecs: {
-      formats: ["JPG", "PNG"],
-      maxSize: 20,
-      dimensions: [{ width: 1080, height: 1920, ratio: "9:16" }],
-    },
-    captionLimit: 2200,
-    hashtagsLimit: 100,
-    features: ["Sonidos virales", "Duets", "Stitch", "Efectos"],
-    uploadUrl: "https://www.tiktok.com/upload",
   },
   {
     id: "youtube-shorts",

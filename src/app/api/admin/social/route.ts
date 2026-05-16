@@ -32,7 +32,6 @@ import {
   type PostQueueItemResult,
   type FacebookReelResult,
 } from "@/lib/clients/meta";
-import { isTikTokConfigured, validateTikTokToken } from "@/lib/clients/tiktok";
 import { socialCredentials } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -142,23 +141,6 @@ export async function GET(request: NextRequest) {
       facebookPageId: !!(process.env.FACEBOOK_PAGE_ID || metaCredMap.get("FACEBOOK_PAGE_ID")),
     };
 
-    // TikTok configuration status
-    const tiktokDbCreds = await db
-      .select()
-      .from(socialCredentials)
-      .where(eq(socialCredentials.platform, "tiktok"));
-    const tiktokCredMap = new Map(tiktokDbCreds.map((c) => [c.key, c.value]));
-
-    const tiktokStatus = {
-      configured: !!(
-        (process.env.TIKTOK_CLIENT_KEY || tiktokCredMap.get("TIKTOK_CLIENT_KEY")) &&
-        (process.env.TIKTOK_ACCESS_TOKEN || tiktokCredMap.get("TIKTOK_ACCESS_TOKEN"))
-      ),
-      clientKey: !!(process.env.TIKTOK_CLIENT_KEY || tiktokCredMap.get("TIKTOK_CLIENT_KEY")),
-      clientSecret: !!(process.env.TIKTOK_CLIENT_SECRET || tiktokCredMap.get("TIKTOK_CLIENT_SECRET")),
-      accessToken: !!(process.env.TIKTOK_ACCESS_TOKEN || tiktokCredMap.get("TIKTOK_ACCESS_TOKEN")),
-    };
-
     // Get available content counts for population
     const contentCounts = await getContentCounts();
 
@@ -177,7 +159,6 @@ export async function GET(request: NextRequest) {
         nextPending,
         recentLogs,
         metaStatus,
-        tiktokStatus,
         contentCounts,
       },
     });
@@ -231,8 +212,6 @@ export async function POST(request: NextRequest) {
         return await handleSkipItem(body.queueId as string);
       case "validate-token":
         return await handleValidateToken();
-      case "validate-tiktok":
-        return await handleValidateTikTok();
       case "retry-failed":
         return await handleRetryFailed();
       case "clear-queue":
@@ -285,11 +264,10 @@ async function handleProcessNext() {
 
   const fbStatus = result.facebook.success ? "success" : `failed: ${result.facebook.error}`;
   const igStatus = result.instagram.success ? "success" : `failed: ${result.instagram.error}`;
-  const tkStatus = result.tiktok.success ? "success" : isTikTokConfigured() ? `failed: ${result.tiktok.error}` : "skipped (not configured)";
 
   return NextResponse.json({
-    success: result.facebook.success || result.instagram.success || result.tiktok.success,
-    message: `Posted to FB: ${fbStatus}, IG: ${igStatus}, TikTok: ${tkStatus}`,
+    success: result.facebook.success || result.instagram.success,
+    message: `Posted to FB: ${fbStatus}, IG: ${igStatus}`,
     result,
   });
 }
@@ -600,8 +578,8 @@ async function handlePopulate(options: {
       force = false,
     } = options;
 
-    // Default platforms: FB + IG + TikTok (TikTok is included but will be skipped if not configured)
-    const targetPlatforms = platforms || ["facebook", "instagram", "tiktok"];
+    // Default platforms: FB + IG
+    const targetPlatforms = platforms || ["facebook", "instagram"];
     const platformsJson = JSON.stringify(targetPlatforms);
 
     // Get existing items to avoid duplicates (unless force is enabled)
@@ -1139,14 +1117,6 @@ async function handleValidateReelToken() {
           ? "Token válido. Se puede publicar en Facebook Reels pero no se encontró cuenta de Instagram Business."
           : "Token válido pero no se puede acceder a la página de Facebook ni a la cuenta de Instagram.",
     },
-  });
-}
-
-async function handleValidateTikTok() {
-  const tiktokInfo = await validateTikTokToken();
-  return NextResponse.json({
-    success: true,
-    data: tiktokInfo,
   });
 }
 

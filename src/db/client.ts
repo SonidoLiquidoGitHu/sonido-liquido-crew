@@ -381,7 +381,7 @@ async function runAutoMigration(client: Client): Promise<void> {
       )`,
       `CREATE TABLE IF NOT EXISTS social_credentials (
         id TEXT PRIMARY KEY NOT NULL,
-        platform TEXT NOT NULL CHECK(platform IN ('meta','tiktok')),
+        platform TEXT NOT NULL CHECK(platform IN ('meta')),
         key TEXT NOT NULL,
         value TEXT NOT NULL,
         is_from_ui INTEGER DEFAULT 1 NOT NULL,

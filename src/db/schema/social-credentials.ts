@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 // ===========================================
 // SOCIAL CREDENTIALS TABLE
 // ===========================================
-// Stores API credentials for social platforms (Meta, TikTok, etc.)
+// Stores API credentials for social platforms (Meta, etc.)
 // These are read by the social clients as a fallback when env vars are not set.
 // Credentials stored here take priority over environment variables.
 
@@ -13,10 +13,10 @@ export const socialCredentials = sqliteTable("social_credentials", {
 
   // Which platform these credentials belong to
   platform: text("platform", {
-    enum: ["meta", "tiktok"],
+    enum: ["meta"],
   }).notNull(),
 
-  // The credential key name (e.g., "META_APP_ID", "TIKTOK_CLIENT_KEY")
+  // The credential key name (e.g., "META_APP_ID")
   key: text("key").notNull(),
 
   // The encrypted/masked credential value
