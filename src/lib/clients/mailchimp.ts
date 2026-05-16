@@ -60,23 +60,117 @@ interface MailchimpError {
 const DEFAULT_TAG = "sonidoliquido.com";
 
 class MailchimpClient {
-  private apiKey: string;
-  private serverPrefix: string;
-  private audienceId: string;
-  private baseUrl: string;
+  private envApiKey: string;
+  private envServerPrefix: string;
+  private envAudienceId: string;
+
+  // DB-cached credentials (loaded lazily)
+  private dbApiKey: string | null = null;
+  private dbServerPrefix: string | null = null;
+  private dbAudienceId: string | null = null;
+  private dbCredentialsLoaded = false;
+  private dbCredentialsExpiry = 0;
+  private static DB_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
-    this.apiKey = process.env.MAILCHIMP_API_KEY || "";
-    this.serverPrefix = process.env.MAILCHIMP_SERVER_PREFIX || "";
-    this.audienceId = process.env.MAILCHIMP_AUDIENCE_ID || "";
-    this.baseUrl = this.serverPrefix ? `https://${this.serverPrefix}.api.mailchimp.com/3.0` : "";
+    this.envApiKey = (process.env.MAILCHIMP_API_KEY || "").trim();
+    this.envServerPrefix = (process.env.MAILCHIMP_SERVER_PREFIX || "").trim();
+    this.envAudienceId = (process.env.MAILCHIMP_AUDIENCE_ID || "").trim();
   }
 
   /**
-   * Check if credentials are configured
+   * Get the active API key (DB-first, then env fallback)
+   */
+  private get apiKey(): string {
+    return this.dbApiKey || this.envApiKey;
+  }
+
+  /**
+   * Get the active server prefix (DB-first, then env fallback)
+   */
+  private get serverPrefix(): string {
+    return this.dbServerPrefix || this.envServerPrefix;
+  }
+
+  /**
+   * Get the active audience ID (DB-first, then env fallback)
+   */
+  private get audienceId(): string {
+    return this.dbAudienceId || this.envAudienceId;
+  }
+
+  /**
+   * Get the base URL derived from the active server prefix
+   */
+  private get baseUrl(): string {
+    return this.serverPrefix ? `https://${this.serverPrefix}.api.mailchimp.com/3.0` : "";
+  }
+
+  /**
+   * Load credentials from the database (site_settings table)
+   */
+  private async loadDbCredentials(): Promise<void> {
+    if (this.dbCredentialsLoaded && Date.now() < this.dbCredentialsExpiry) return;
+
+    try {
+      const { db, isDatabaseConfigured } = await import("@/db/client");
+      const { siteSettings } = await import("@/db/schema");
+      const { inArray } = await import("drizzle-orm");
+
+      if (!isDatabaseConfigured()) return;
+
+      const results = await db
+        .select()
+        .from(siteSettings)
+        .where(inArray(siteSettings.key, [
+          "mailchimp_api_key",
+          "mailchimp_server_prefix",
+          "mailchimp_audience_id",
+        ]));
+
+      for (const row of results) {
+        if (row.key === "mailchimp_api_key" && row.value) this.dbApiKey = row.value;
+        if (row.key === "mailchimp_server_prefix" && row.value) this.dbServerPrefix = row.value;
+        if (row.key === "mailchimp_audience_id" && row.value) this.dbAudienceId = row.value;
+      }
+
+      this.dbCredentialsLoaded = true;
+      this.dbCredentialsExpiry = Date.now() + MailchimpClient.DB_CACHE_TTL;
+      console.log("[Mailchimp] DB credentials loaded:", {
+        hasApiKey: !!this.dbApiKey,
+        hasPrefix: !!this.dbServerPrefix,
+        hasAudienceId: !!this.dbAudienceId,
+      });
+    } catch (err) {
+      console.warn("[Mailchimp] Failed to load DB credentials:", err);
+    }
+  }
+
+  /**
+   * Clear the DB credential cache (call after saving new credentials)
+   */
+  clearCredentialCache(): void {
+    this.dbCredentialsLoaded = false;
+    this.dbCredentialsExpiry = 0;
+    this.dbApiKey = null;
+    this.dbServerPrefix = null;
+    this.dbAudienceId = null;
+    console.log("[Mailchimp] Credential cache cleared");
+  }
+
+  /**
+   * Check if credentials are configured (sync check — may use stale DB cache or env vars)
    */
   isConfigured(): boolean {
     return Boolean(this.apiKey && this.serverPrefix && this.audienceId);
+  }
+
+  /**
+   * Async check that loads DB credentials first
+   */
+  async isConfiguredAsync(): Promise<boolean> {
+    await this.loadDbCredentials();
+    return this.isConfigured();
   }
 
   /**
@@ -98,8 +192,11 @@ class MailchimpClient {
     endpoint: string,
     options: { method?: string; body?: Record<string, unknown> } = {}
   ): Promise<T> {
+    // Ensure DB credentials are loaded before checking
+    await this.loadDbCredentials();
+
     if (!this.isConfigured()) {
-      throw new Error("Mailchimp credentials not configured. Set MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, and MAILCHIMP_AUDIENCE_ID environment variables.");
+      throw new Error("Mailchimp credentials not configured. Configúralas en Email Studio → Config o agrega MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, y MAILCHIMP_AUDIENCE_ID en Netlify.");
     }
 
     const url = `${this.baseUrl}${endpoint}`;

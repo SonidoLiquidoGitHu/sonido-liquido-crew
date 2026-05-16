@@ -316,3 +316,39 @@ Stage Summary:
 - Runway tasks now persist in database across serverless cold starts
 - Error messages are more informative and actionable
 - Vertical video thumbnails should benefit from the image-proxy fix (magic bytes detection)
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Implement Option A: 'Send Email' button in campaign editor with Mailchimp pre-fill
+
+Work Log:
+- Created CampaignEmailModal component with full email editing capabilities
+- Added 'Enviar Email' button to campaign editor header (next to Analytics and Ver Página)
+- Modal auto-fills: subject (🎵 {title} — Nuevo en Sonido Líquido), preview text, body, CTA
+- CTA text varies by campaign type: presave→"PRE-SAVE AHORA", smartlink→"ESCUCHAR AHORA", etc.
+- Supports: Send now, Schedule for later, Save as draft
+- Live email preview panel with "Open preview in new window" option
+- Checks Mailchimp config on open, shows helpful warning if not configured
+- Integrated with existing Mailchimp API client and routes
+- Pushed to master successfully
+
+Stage Summary:
+- Campaign editor now has "Enviar Email" button that opens pre-filled email modal
+- Mailchimp analytics fixed: added open rate %, click rate %, total opens, soft bounces, unsubscribes
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Fix Email Studio: tasa de clicks y apertura with real data
+
+Work Log:
+- Investigated analytics display in MailchimpCampaignStudio
+- Found that data IS real from Mailchimp API (not fake/placeholder)
+- Fixed campaign detail modal to show rate percentages (open_rate, click_rate)
+- Added missing metrics: total opens, soft bounces, unsubscribes
+- Better visual styling for rate metrics (colored backgrounds)
+
+Stage Summary:
+- Open rate and click rate now show as percentages in campaign detail modal
+- Additional metrics added for a complete analytics view

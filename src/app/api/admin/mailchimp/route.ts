@@ -12,10 +12,11 @@ export async function GET(request: NextRequest) {
 
     // Check config status
     if (action === "config") {
+      const configured = await mailchimpClient.isConfiguredAsync();
       return NextResponse.json({
         success: true,
         data: {
-          configured: mailchimpClient.isConfigured(),
+          configured,
           configStatus: mailchimpClient.getConfigStatus(),
         },
       });
@@ -23,13 +24,21 @@ export async function GET(request: NextRequest) {
 
     // Test connection
     if (action === "test") {
+      const configured = await mailchimpClient.isConfiguredAsync();
+      if (!configured) {
+        return NextResponse.json({
+          success: false,
+          data: { success: false, error: "Mailchimp not configured" },
+        });
+      }
       const result = await mailchimpClient.testConnection();
       return NextResponse.json({ success: result.success, data: result, error: result.error });
     }
 
     // Get audience info
     if (action === "audience") {
-      if (!mailchimpClient.isConfigured()) {
+      const configured = await mailchimpClient.isConfiguredAsync();
+      if (!configured) {
         return NextResponse.json(
           { success: false, error: "Mailchimp not configured" },
           { status: 400 }
@@ -55,7 +64,8 @@ export async function GET(request: NextRequest) {
 
     // Get campaigns
     if (action === "campaigns") {
-      if (!mailchimpClient.isConfigured()) {
+      const configured = await mailchimpClient.isConfiguredAsync();
+      if (!configured) {
         return NextResponse.json(
           { success: false, error: "Mailchimp not configured" },
           { status: 400 }
@@ -76,7 +86,8 @@ export async function GET(request: NextRequest) {
 
     // Get subscribers
     if (action === "subscribers") {
-      if (!mailchimpClient.isConfigured()) {
+      const configured = await mailchimpClient.isConfiguredAsync();
+      if (!configured) {
         return NextResponse.json(
           { success: false, error: "Mailchimp not configured" },
           { status: 400 }
@@ -97,10 +108,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Default: return config status
+    const configured = await mailchimpClient.isConfiguredAsync();
     return NextResponse.json({
       success: true,
       data: {
-        configured: mailchimpClient.isConfigured(),
+        configured,
         configStatus: mailchimpClient.getConfigStatus(),
       },
     });
@@ -115,15 +127,93 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!mailchimpClient.isConfigured()) {
+    const body = await request.json();
+    const { action } = body;
+
+    // Save Mailchimp credentials to database (no API key needed beforehand)
+    if (action === "save-credentials") {
+      const { apiKey, serverPrefix, audienceId } = body;
+
+      if (!apiKey || !serverPrefix || !audienceId) {
+        return NextResponse.json(
+          { success: false, error: "API Key, Server Prefix, y Audience ID son requeridos" },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const { db, isDatabaseConfigured } = await import("@/db/client");
+        const { siteSettings } = await import("@/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const { generateUUID } = await import("@/lib/utils");
+
+        if (!isDatabaseConfigured()) {
+          return NextResponse.json(
+            { success: false, error: "Database not configured" },
+            { status: 500 }
+          );
+        }
+
+        // Save each credential
+        const credentials = [
+          { key: "mailchimp_api_key", value: apiKey },
+          { key: "mailchimp_server_prefix", value: serverPrefix },
+          { key: "mailchimp_audience_id", value: audienceId },
+        ];
+
+        for (const cred of credentials) {
+          const existing = await db
+            .select({ id: siteSettings.id })
+            .from(siteSettings)
+            .where(eq(siteSettings.key, cred.key))
+            .limit(1);
+
+          if (existing.length > 0) {
+            await db
+              .update(siteSettings)
+              .set({ value: cred.value, updatedAt: new Date() })
+              .where(eq(siteSettings.key, cred.key));
+          } else {
+            await db.insert(siteSettings).values({
+              id: generateUUID(),
+              key: cred.key,
+              value: cred.value,
+              type: "string",
+              description: `Mailchimp ${cred.key.replace("mailchimp_", "")}`,
+            });
+          }
+        }
+
+        // Clear the Mailchimp client cache so it picks up the new credentials
+        mailchimpClient.clearCredentialCache();
+
+        // Test the connection with the new credentials
+        const testResult = await mailchimpClient.testConnection();
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            saved: true,
+            connectionTest: testResult,
+          },
+        });
+      } catch (dbError) {
+        console.error("[Mailchimp API] Error saving credentials:", dbError);
+        return NextResponse.json(
+          { success: false, error: `Error saving credentials: ${(dbError as Error).message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // All other actions require Mailchimp to be configured
+    const isConfigured = await mailchimpClient.isConfiguredAsync();
+    if (!isConfigured) {
       return NextResponse.json(
-        { success: false, error: "Mailchimp not configured. Set MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, and MAILCHIMP_AUDIENCE_ID." },
+        { success: false, error: "Mailchimp not configured. Configúralas en Email Studio → Config." },
         { status: 400 }
       );
     }
-
-    const body = await request.json();
-    const { action } = body;
 
     // Create and send/schedule a campaign
     if (action === "create-campaign") {
