@@ -227,3 +227,28 @@ Stage Summary:
   3. null → placeholder SVG
 - The previously deployed version was from before the fix commit; once Netlify rebuilds with the new master, thumbnails should load correctly
 - Need to verify on the live site after deploy
+---
+Task ID: 1
+Agent: Main Agent
+Task: Add Mailchimp Email Studio to Sonido Liquido admin panel
+
+Work Log:
+- Explored existing Mailchimp integration (client, API routes, EmailCampaignManager)
+- Enhanced Mailchimp API client with 10+ new methods (campaign details, content, delete, unschedule, cancel, replicate, tags, segments, growth history, activity, custom HTML template)
+- Created new API route /api/admin/mailchimp with GET (audience, campaigns, subscribers, config) and POST (create-campaign, create-draft)
+- Created new API route /api/admin/mailchimp/campaigns/[id] with GET (details, report, content), POST (send, schedule, unschedule, replicate), DELETE
+- Built MailchimpCampaignStudio component with 5 tabs: Dashboard, Create Campaign, Campaigns, Audience, Settings
+- Added 6 email templates: Blank, Announcement, Event, Newsletter, Pre-Save, Community
+- Created /admin/email-studio page
+- Added "Email Studio" nav link to admin sidebar with Zap icon
+- Fixed Schedule icon import error (not in lucide-react), replaced with Clock
+- Fixed require() in client component for preview modal, replaced with inline generatePreviewHTML function
+- Build compiles successfully (prerender errors are from DB only)
+- Pushed to master branch
+
+Stage Summary:
+- Full Mailchimp Email Studio available at /admin/email-studio
+- Requires env vars: MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, MAILCHIMP_AUDIENCE_ID (on Netlify)
+- Features: Create/send/schedule/duplicate/delete campaigns, view reports, audience stats, tags, growth history
+- 6 pre-built email templates with SLC branding
+- Campaign HTML preview with iframe
