@@ -603,6 +603,17 @@ export function MailchimpCampaignStudio() {
               <span className="text-xs text-slc-muted">suscriptores</span>
             </div>
           )}
+          <a
+            href="https://login.mailchimp.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Iniciar sesión en Mailchimp"
+          >
+            <Button variant="outline" size="sm" className="gap-2">
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Mailchimp</span>
+            </Button>
+          </a>
           <Button
             variant="outline"
             size="icon"
