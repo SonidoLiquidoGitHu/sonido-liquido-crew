@@ -32,6 +32,7 @@ import {
   type PostQueueItemResult,
   type FacebookReelResult,
 } from "@/lib/clients/meta";
+// TikTok integration removed per user request
 import { socialCredentials } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -262,8 +263,8 @@ async function handleProcessNext() {
 
   const result = await processQueueItem(nextItem);
 
-  const fbStatus = result.facebook.success ? "success" : `failed: ${result.facebook.error}`;
-  const igStatus = result.instagram.success ? "success" : `failed: ${result.instagram.error}`;
+  const fbStatus = result.facebook.success ? "success" : `failed: ${result.facebook.error || "unknown error"}`;
+  const igStatus = result.instagram.success ? "success" : `failed: ${result.instagram.error || "unknown error"}`;
 
   return NextResponse.json({
     success: result.facebook.success || result.instagram.success,

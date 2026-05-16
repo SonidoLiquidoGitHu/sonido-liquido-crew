@@ -16,7 +16,6 @@ import {
   Users,
   Loader2,
   ExternalLink,
-  ArrowRight,
   RotateCcw,
   Key,
   Facebook,
@@ -213,15 +212,12 @@ export default function AdminSocialPage() {
   const [nextPending, setNextPending] = useState<QueueItem[]>([]);
   const [recentLogs, setRecentLogs] = useState<PostLog[]>([]);
   const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
-
   const [contentCounts, setContentCounts] = useState<ContentCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [populating, setPopulating] = useState(false);
   const [validating, setValidating] = useState(false);
-
   const [tokenInfo, setTokenInfo] = useState<any>(null);
-
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"queue" | "history" | "config">("queue");
 
@@ -253,7 +249,6 @@ export default function AdminSocialPage() {
         setNextPending(data.data.nextPending || []);
         setRecentLogs(data.data.recentLogs || []);
         setMetaStatus(data.data.metaStatus);
-
         setContentCounts(data.data.contentCounts);
       }
     } catch (error) {
@@ -398,7 +393,6 @@ export default function AdminSocialPage() {
     }
   };
 
-
   const togglePlatform = (platform: string) => {
     setPopulateOptions((prev) => ({
       ...prev,
@@ -527,7 +521,6 @@ export default function AdminSocialPage() {
           </button>
         </div>
       )}
-
 
       {/* Meta Config Warning */}
       {metaStatus && !metaStatus.configured && (
@@ -786,10 +779,8 @@ export default function AdminSocialPage() {
                 <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slc-dark flex-shrink-0">
                   {log.platform === "facebook" ? (
                     <Facebook className="w-4 h-4 text-blue-400" />
-                  ) : log.platform === "instagram" ? (
-                    <Instagram className="w-4 h-4 text-pink-400" />
                   ) : (
-                    <Music className="w-4 h-4 text-white" />
+                    <Instagram className="w-4 h-4 text-pink-400" />
                   )}
                 </div>
 

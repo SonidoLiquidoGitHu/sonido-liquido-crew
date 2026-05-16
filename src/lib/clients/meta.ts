@@ -3,7 +3,6 @@
 // ===========================================
 // Handles posting to Facebook Page and Instagram Business Account
 // via the Meta Graph API using a System User token.
-// Also coordinates posting to Facebook and Instagram via the Meta Graph API.
 //
 // Key learnings from live API testing:
 // - FB: Use /{page-id}/feed (link post) with Page access token.
@@ -339,46 +338,27 @@ export async function postToFacebook(
   linkUrl?: string
 ): Promise<FacebookPostResult> {
   if (!(await isMetaConfiguredAsync())) {
-    return { success: false, postId: null, postUrl: null, error: "Meta API not configured" };
+    return { success: false, postId: null, postUrl: null, error: "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
   }
 
   const pageToken = await getPageAccessToken();
   const pageId = await getFacebookPageId();
 
+  if (!pageToken) {
+    return { success: false, postId: null, postUrl: null, error: "Could not obtain a Page access token — check META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
+  }
+
+  if (!pageId) {
+    return { success: false, postId: null, postUrl: null, error: "FACEBOOK_PAGE_ID is not set" };
+  }
+
   try {
-    // Strategy 1: Link post via /feed endpoint
-    // This creates a post with an attached link preview (shows image from the URL)
-    if (linkUrl) {
-      const fullCaption = caption;
-
-      const response = await fetch(`${META_GRAPH_API}/${pageId}/feed`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `${fullCaption}\n\n${linkUrl}`,
-          link: linkUrl,
-          access_token: pageToken,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.error) {
-        const errMsg = data.error.message || data.error.type || JSON.stringify(data.error);
-        console.warn("[Meta] FB feed post failed, trying photo post:", errMsg);
-        // Fall through to photo post
-      } else {
-        const postId = data.id || null;
-        const postUrl = postId ? `https://facebook.com/${postId}` : null;
-        console.log("[Meta] Facebook feed post successful:", postId);
-        return { success: true, postId, postUrl };
-      }
-    }
-
-    // Strategy 2: Photo post via /photos endpoint
-    // This requires publish_actions for user tokens, but works with Page tokens
-    // that have pages_manage_posts
+    // Strategy 1: Photo post via /photos endpoint (most reliable)
+    // This uploads an image with the caption as a Page photo post.
+    // Works with pages_manage_posts permission + Page access token.
     const fullCaption = linkUrl ? `${caption}\n\n${linkUrl}` : caption;
+
+    console.log("[Meta] Posting to FB Page photos with image:", imageUrl?.substring(0, 80));
 
     const photoResponse = await fetch(`${META_GRAPH_API}/${pageId}/photos`, {
       method: "POST",
@@ -393,23 +373,56 @@ export async function postToFacebook(
     const photoData = await photoResponse.json();
 
     if (photoData.error) {
-      const errMsg = photoData.error.message || photoData.error.type || `Error ${photoData.error.code || 'unknown'}`;
-      console.error("[Meta] Facebook photo post error:", photoData.error);
+      console.error("[Meta] FB photo post error:", JSON.stringify(photoData.error));
+      const fbErrorMsg = photoData.error.message || photoData.error.type || `Error code ${photoData.error.code || "unknown"}`;
+
+      // If photo post fails, try feed post with link as fallback
+      if (linkUrl) {
+        console.warn("[Meta] FB photo post failed, trying feed link post as fallback...");
+        const feedResponse = await fetch(`${META_GRAPH_API}/${pageId}/feed`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: fullCaption,
+            link: linkUrl,
+            access_token: pageToken,
+          }),
+        });
+
+        const feedData = await feedResponse.json();
+
+        if (feedData.error) {
+          console.error("[Meta] FB feed post also failed:", JSON.stringify(feedData.error));
+          const feedErrorMsg = feedData.error.message || feedData.error.type || `Error code ${feedData.error.code || "unknown"}`;
+          return {
+            success: false,
+            postId: null,
+            postUrl: null,
+            error: `Photo post: ${fbErrorMsg} | Feed post: ${feedErrorMsg}`,
+          };
+        }
+
+        const postId = feedData.id || null;
+        const postUrl = postId ? `https://facebook.com/${postId}` : null;
+        console.log("[Meta] Facebook feed link post successful (fallback):", postId);
+        return { success: true, postId, postUrl };
+      }
+
       return {
         success: false,
         postId: null,
         postUrl: null,
-        error: errMsg,
+        error: fbErrorMsg,
       };
     }
 
-    const postId = photoData.id || photoData.post_id || null;
+    const postId = photoData.post_id || photoData.id || null;
     const postUrl = postId ? `https://facebook.com/${postId}` : null;
 
     console.log("[Meta] Facebook photo post successful:", postId);
     return { success: true, postId, postUrl };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error("[Meta] Facebook post exception:", errMsg);
     return { success: false, postId: null, postUrl: null, error: errMsg };
   }
@@ -442,7 +455,7 @@ export async function postToInstagram(
   caption: string
 ): Promise<InstagramPostResult> {
   if (!(await isMetaConfiguredAsync())) {
-    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured" };
+    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
   }
 
   const igAccountId = await getInstagramBusinessAccountId();
@@ -451,7 +464,16 @@ export async function postToInstagram(
       success: false,
       mediaId: null,
       permalink: null,
-      error: "Instagram Business Account not found",
+      error: "Instagram Business Account not found — make sure your FB Page is connected to an IG Business Account in Meta Business Settings",
+    };
+  }
+
+  if (!imageUrl) {
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error: "No image URL provided — Instagram requires a publicly accessible image URL",
     };
   }
 
@@ -475,12 +497,20 @@ export async function postToInstagram(
     const containerData = await containerResponse.json();
 
     if (containerData.error) {
-      console.error("[Meta] IG container creation error:", containerData.error);
+      console.error("[Meta] IG container creation error:", JSON.stringify(containerData.error));
+      const igErrorMsg = containerData.error.message || containerData.error.type || `Error code ${containerData.error.code || "unknown"}`;
+      // Common IG errors guidance
+      let guidance = "";
+      if (igErrorMsg.includes("could not download") || igErrorMsg.includes("could not retrieve")) {
+        guidance = " — The image URL is not publicly accessible. Make sure it's a direct URL (not Dropbox/Google Drive). Spotify CDN URLs work.";
+      } else if (igErrorMsg.includes("OAuth") || igErrorMsg.includes("permission")) {
+        guidance = " — Check that your System User Token has instagram_basic and instagram_content_publish permissions.";
+      }
       return {
         success: false,
         mediaId: null,
         permalink: null,
-        error: containerData.error.message || containerData.error.type || `IG Error ${containerData.error.code || 'unknown'}`,
+        error: `${igErrorMsg}${guidance}`,
       };
     }
 
@@ -1258,8 +1288,9 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   const platforms: string[] = JSON.parse(item.platforms || "[]");
   const postedPlatforms: string[] = JSON.parse(item.postedPlatforms || "[]");
 
-  let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null };
-  let igResult: InstagramPostResult = { success: false, mediaId: null, permalink: null };
+  // Default results with explicit error field so we never get "undefined" in messages
+  let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null, error: "not attempted" };
+  let igResult: InstagramPostResult = { success: false, mediaId: null, permalink: null, error: "not attempted" };
 
   // Post to Facebook
   if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
@@ -1353,8 +1384,8 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
 
   if (anyFailed) {
     const errors: string[] = [];
-    if (!fbResult.success && platforms.includes("facebook")) errors.push(`FB: ${fbResult.error || "ok"}`);
-    if (!igResult.success && platforms.includes("instagram")) errors.push(`IG: ${igResult.error || "ok"}`);
+    if (!fbResult.success && platforms.includes("facebook")) errors.push(`FB: ${fbResult.error || "unknown error"}`);
+    if (!igResult.success && platforms.includes("instagram")) errors.push(`IG: ${igResult.error || "unknown error"}`);
     updateData.errorMessage = errors.join(" | ");
   } else {
     updateData.errorMessage = null;

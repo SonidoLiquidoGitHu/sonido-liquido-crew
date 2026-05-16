@@ -9,6 +9,7 @@ import { db } from "@/db/client";
 import { socialCredentials } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { invalidateMetaCredentialsCache } from "@/lib/clients/meta";
+// TikTok integration removed
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +24,7 @@ const META_KEYS = [
   "FACEBOOK_PAGE_ID",
 ] as const;
 
-const TIKTOK_KEYS = [] as const;
-
-const ALL_KEYS = [...META_KEYS, ...TIKTOK_KEYS] as const;
+const ALL_KEYS = [...META_KEYS] as const;
 
 type CredentialKey = (typeof ALL_KEYS)[number];
 
@@ -97,7 +96,6 @@ export async function GET(request: NextRequest) {
       data: {
         credentials: credentialMap,
         metaKeys: META_KEYS,
-        tiktokKeys: TIKTOK_KEYS,
       },
     });
   } catch (error) {
