@@ -13,6 +13,8 @@ interface SafeImageProps extends Omit<ImageProps, "onError" | "src"> {
   retryCount?: number;
   /** Delay in ms between retries (default: 1500) */
   retryDelay?: number;
+  /** Show a refresh overlay on error instead of just the fallback (default: true) */
+  showRefreshOn?: boolean;
 }
 
 /**
@@ -60,6 +62,7 @@ function proxyUrl(url: string): string {
  * 3. Works correctly on Netlify production
  * 4. Retries failed images (helpful for flaky mobile connections)
  * 5. Uses an inline SVG placeholder to avoid fallback cascade failures
+ * 6. Shows a refresh button when images fail to load (helps with cached errors)
  */
 export function SafeImage({
   src,
@@ -75,9 +78,11 @@ export function SafeImage({
   priority,
   retryCount = 2,
   retryDelay = 1500,
+  showRefreshOn = true,
   ...props
 }: SafeImageProps) {
   const [error, setError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const retryAttemptRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -147,6 +152,20 @@ export function SafeImage({
     handleFinalError();
   }, [src, processedSrc, error, fallbackSrc, retryCount, retryDelay, handleFinalError]);
 
+  // Manual refresh handler — busts cache and retries the image
+  const handleRefresh = useCallback(() => {
+    setError(false);
+    retryAttemptRef.current = 0;
+    setRetryKey(prev => prev + 1);
+    const bustParam = `_refresh=${Date.now()}`;
+    const refreshedSrc = typeof processedSrc === "string" && processedSrc.startsWith("/")
+      ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
+      : typeof processedSrc === "string" && processedSrc.startsWith("http")
+        ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
+        : processedSrc;
+    setImageSrc(refreshedSrc);
+  }, [processedSrc]);
+
   // If no valid src, show nothing or fallback
   if (!src || (typeof src === "string" && src.trim() === "")) {
     if (fallbackSrc) {
@@ -172,19 +191,37 @@ export function SafeImage({
   const finalSrc = error ? fallbackSrc : imageSrc;
 
   return (
-    <Image
-      {...props}
-      src={finalSrc || ""}
-      alt={alt || "Image"}
-      fill={fill}
-      width={width}
-      height={height}
-      className={className}
-      sizes={sizes}
-      priority={priority}
-      unoptimized={shouldUnoptimize}
-      onError={handleError}
-    />
+    <div className="relative" key={retryKey}>
+      <Image
+        {...props}
+        src={finalSrc || ""}
+        alt={alt || "Image"}
+        fill={fill}
+        width={width}
+        height={height}
+        className={className}
+        sizes={sizes}
+        priority={priority}
+        unoptimized={shouldUnoptimize}
+        onError={handleError}
+      />
+      {/* Show refresh button when image fails and showRefreshOn is true */}
+      {error && showRefreshOn && (
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="absolute bottom-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors z-10"
+          title="Reintentar cargar imagen"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 2v6h-6"/>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+            <path d="M3 22v-6h6"/>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }
 
