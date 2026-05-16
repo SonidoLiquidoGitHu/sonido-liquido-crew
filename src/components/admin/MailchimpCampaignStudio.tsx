@@ -470,10 +470,51 @@ export function MailchimpCampaignStudio() {
     }
   };
 
-  // Format rate
+  // Format rate — Mailchimp API returns rates as decimals (0-1) for list stats
+  // and sometimes as percentages (0-100) for campaign report_summary.
+  // We detect the format: if > 1, it's already a percentage.
   const formatRate = (rate: number) => {
+    if (rate > 1) {
+      // Already a percentage (e.g. 45.23 means 45.23%)
+      return rate.toFixed(1) + "%";
+    }
+    // Decimal format (e.g. 0.4523 means 45.23%)
     return (rate * 100).toFixed(1) + "%";
   };
+
+  // Calculate real average rates from sent campaigns
+  const getRealCampaignRates = () => {
+    const sentCampaigns = campaigns.filter(c => c.status === "sent" && c.report_summary);
+    if (sentCampaigns.length === 0) {
+      return { avgOpenRate: null, avgClickRate: null, campaignCount: 0 };
+    }
+
+    // Calculate weighted average based on emails sent
+    let totalEmailsSent = 0;
+    let weightedOpenSum = 0;
+    let weightedClickSum = 0;
+
+    for (const c of sentCampaigns) {
+      const emailsSent = c.emails_sent || 0;
+      const openRate = c.report_summary!.open_rate;
+      const clickRate = c.report_summary!.click_rate;
+
+      // Normalize to decimal (0-1) for calculation
+      const normalizedOpenRate = openRate > 1 ? openRate / 100 : openRate;
+      const normalizedClickRate = clickRate > 1 ? clickRate / 100 : clickRate;
+
+      totalEmailsSent += emailsSent;
+      weightedOpenSum += emailsSent * normalizedOpenRate;
+      weightedClickSum += emailsSent * normalizedClickRate;
+    }
+
+    const avgOpenRate = totalEmailsSent > 0 ? weightedOpenSum / totalEmailsSent : 0;
+    const avgClickRate = totalEmailsSent > 0 ? weightedClickSum / totalEmailsSent : 0;
+
+    return { avgOpenRate, avgClickRate, campaignCount: sentCampaigns.length };
+  };
+
+  const realRates = getRealCampaignRates();
 
   // Format date
   const formatDate = (dateStr: string) => {
@@ -635,8 +676,16 @@ export function MailchimpCampaignStudio() {
                 <Eye className="w-5 h-5 text-blue-500" />
                 <span className="text-xs text-slc-muted">Tasa de Apertura</span>
               </div>
-              <p className="text-3xl font-oswald">{formatRate(audience.stats.open_rate)}</p>
-              <span className="text-xs text-slc-muted">Promedio de la lista</span>
+              <p className="text-3xl font-oswald">
+                {realRates.avgOpenRate !== null
+                  ? formatRate(realRates.avgOpenRate)
+                  : formatRate(audience.stats.open_rate)}
+              </p>
+              <span className="text-xs text-slc-muted">
+                {realRates.avgOpenRate !== null
+                  ? `Promedio de ${realRates.campaignCount} campañas`
+                  : "Promedio de la lista"}
+              </span>
             </div>
 
             <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
@@ -653,8 +702,16 @@ export function MailchimpCampaignStudio() {
                 <TrendingUp className="w-5 h-5 text-purple-500" />
                 <span className="text-xs text-slc-muted">Tasa de Clicks</span>
               </div>
-              <p className="text-3xl font-oswald">{formatRate(audience.stats.click_rate)}</p>
-              <span className="text-xs text-slc-muted">Promedio de la lista</span>
+              <p className="text-3xl font-oswald">
+                {realRates.avgClickRate !== null
+                  ? formatRate(realRates.avgClickRate)
+                  : formatRate(audience.stats.click_rate)}
+              </p>
+              <span className="text-xs text-slc-muted">
+                {realRates.avgClickRate !== null
+                  ? `Promedio de ${realRates.campaignCount} campañas`
+                  : "Promedio de la lista"}
+              </span>
             </div>
           </div>
 
