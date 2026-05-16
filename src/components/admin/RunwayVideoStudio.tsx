@@ -781,8 +781,17 @@ export function RunwayVideoStudio({
                     </div>
                   )}
 
-                  {task.status === "FAILED" && task.error && (
-                    <p className="text-xs text-red-400 mt-1">{task.error}</p>
+                  {task.status === "FAILED" && (
+                    <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                      <p className="text-xs text-red-400 font-medium">Error:</p>
+                      <p className="text-xs text-red-400/80 mt-0.5">
+                        {task.error || "Error desconocido — Runway no proporcionó detalles"}
+                      </p>
+                      <p className="text-xs text-red-400/50 mt-1">
+                        Causas comunes: URL de imagen inaccesible, créditos insuficientes, o filtro de contenido.
+                        Intenta con otra plantilla o verifica tu cuenta en runwayml.com
+                      </p>
+                    </div>
                   )}
 
                   <p className="text-xs text-slc-muted line-clamp-1 mt-2">

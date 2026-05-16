@@ -13,7 +13,7 @@ import {
   type RunwayModel,
   type RunwayRatio,
 } from "@/lib/clients/runway";
-import { taskStore } from "@/lib/clients/runway-task-store";
+import { storeTask, getAllTasks } from "@/lib/clients/runway-task-store";
 import { getDirectDropboxUrl, isDropboxUrl } from "@/lib/video-utils";
 
 /**
@@ -57,7 +57,8 @@ async function resolvePromptImageUrl(url: string): Promise<string> {
     );
 
     if (!metaResponse.ok) {
-      console.warn(`[Runway API] Dropbox metadata API returned ${metaResponse.status}`);
+      const errorBody = await metaResponse.text();
+      console.warn(`[Runway API] Dropbox metadata API returned ${metaResponse.status}: ${errorBody.substring(0, 200)}`);
       return url; // Fallback to original URL
     }
 
@@ -83,7 +84,8 @@ async function resolvePromptImageUrl(url: string): Promise<string> {
     );
 
     if (!tempLinkResponse.ok) {
-      console.warn(`[Runway API] Dropbox temp link API returned ${tempLinkResponse.status}`);
+      const errorBody = await tempLinkResponse.text();
+      console.warn(`[Runway API] Dropbox temp link API returned ${tempLinkResponse.status}: ${errorBody.substring(0, 200)}`);
       return url; // Fallback to original URL
     }
 
@@ -91,7 +93,7 @@ async function resolvePromptImageUrl(url: string): Promise<string> {
     const tempLink = tempLinkData.link;
 
     if (tempLink) {
-      console.log("[Runway API] Resolved Dropbox URL to temporary CDN link");
+      console.log("[Runway API] Resolved Dropbox URL to temporary CDN link successfully");
       return tempLink;
     }
 
@@ -144,25 +146,45 @@ export async function POST(request: NextRequest) {
 
     // Generate video
     let result;
-    if (promptImage) {
-      result = await generateImageToVideo({
-        model: model as RunwayModel,
-        promptText,
-        promptImage,
-        ratio: ratio as RunwayRatio,
-        duration: validDuration,
-      });
-    } else {
-      result = await generateTextToVideo({
-        model: model as RunwayModel,
-        promptText,
-        ratio: ratio as RunwayRatio,
-        duration: validDuration,
-      });
+    try {
+      if (promptImage) {
+        result = await generateImageToVideo({
+          model: model as RunwayModel,
+          promptText,
+          promptImage,
+          ratio: ratio as RunwayRatio,
+          duration: validDuration,
+        });
+      } else {
+        result = await generateTextToVideo({
+          model: model as RunwayModel,
+          promptText,
+          ratio: ratio as RunwayRatio,
+          duration: validDuration,
+        });
+      }
+    } catch (genError) {
+      const errMsg = genError instanceof Error ? genError.message : "Unknown error";
+      console.error("[Runway API] Generation creation failed:", errMsg);
+
+      // Return a user-friendly error
+      let friendlyError = errMsg;
+      if (errMsg.includes("insufficient_credits") || errMsg.includes("credits")) {
+        friendlyError = "Créditos insuficientes en tu cuenta de Runway. Recarga en runwayml.com";
+      } else if (errMsg.includes("invalid") && errMsg.includes("image")) {
+        friendlyError = "La imagen de portada no se pudo cargar. Intenta con una URL directa (no Dropbox).";
+      } else if (errMsg.includes("content_policy") || errMsg.includes("safety")) {
+        friendlyError = "La imagen fue rechazada por la política de contenido de Runway.";
+      }
+
+      return NextResponse.json(
+        { success: false, error: friendlyError },
+        { status: 500 }
+      );
     }
 
-    // Store task info
-    taskStore.set(result.id, {
+    // Store task info in database (persists across cold starts)
+    const taskInfo = {
       id: result.id,
       upcomingReleaseId,
       artistName: artistName || "Unknown",
@@ -175,9 +197,13 @@ export async function POST(request: NextRequest) {
       status: result.status,
       output: result.output,
       error: result.error,
-      createdAt: result.createdAt,
+      createdAt: result.createdAt || new Date().toISOString(),
       estimatedCost: cost,
-    });
+    };
+
+    await storeTask(taskInfo);
+
+    console.log(`[Runway API] Task created: ${result.id} (${model}, ${ratio}, ${validDuration}s, $${cost.usd.toFixed(2)})`);
 
     return NextResponse.json({
       success: true,
@@ -199,10 +225,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // Return all tasks, sorted by creation date (newest first)
-    const tasks = Array.from(taskStore.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // Get tasks from database (persists across cold starts)
+    const tasks = await getAllTasks();
 
     return NextResponse.json({
       success: true,
