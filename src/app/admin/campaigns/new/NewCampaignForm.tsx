@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SafeImage } from "@/components/ui/safe-image";
 import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
 import { AudioPreviewPlayer } from "@/components/admin/AudioPreviewPlayer";
 import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
@@ -645,12 +646,13 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                 Portada
               </h2>
 
-              <div className="aspect-square rounded-lg overflow-hidden bg-slc-card mb-4">
+              <div className="aspect-square rounded-lg overflow-hidden bg-slc-card mb-4 relative">
                 {formData.coverImageUrl ? (
-                  <img
+                  <SafeImage
                     src={formData.coverImageUrl}
                     alt="Cover preview"
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -676,12 +678,13 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                 Banner
               </h2>
 
-              <div className="aspect-video rounded-lg overflow-hidden bg-slc-card mb-4">
+              <div className="aspect-video rounded-lg overflow-hidden bg-slc-card mb-4 relative">
                 {formData.bannerImageUrl ? (
-                  <img
+                  <SafeImage
                     src={formData.bannerImageUrl}
                     alt="Banner preview"
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">

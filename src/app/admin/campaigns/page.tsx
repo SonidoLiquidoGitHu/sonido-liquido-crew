@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   Plus,
   Search,
@@ -226,7 +226,7 @@ export default function AdminCampaignsPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded overflow-hidden bg-slc-card flex-shrink-0">
                           {campaign.coverImageUrl ? (
-                            <Image
+                            <SafeImage
                               src={campaign.coverImageUrl}
                               alt={campaign.title}
                               width={48}
