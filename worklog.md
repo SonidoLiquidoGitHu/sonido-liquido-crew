@@ -376,3 +376,26 @@ Stage Summary:
 - Mailchimp can now be configured entirely from the admin (Email Studio → Config)
 - Credentials stored in database with cache, env vars as fallback
 - Connection test runs automatically after saving
+---
+Task ID: 1
+Agent: main
+Task: Fix 3 issues with CampaignEmailModal - visual customization, audience selector, draft save
+
+Work Log:
+- Analyzed CampaignEmailModal code and found 3 separate issues
+- Issue 1: Email HTML generators used hardcoded colors (#ff6b00) instead of campaign styleSettings
+- Issue 2: No audience/tag selector - modal always sent to all subscribers
+- Issue 3: "Guardar borrador" didn't return webId/campaignUrl so user couldn't verify draft in Mailchimp
+- Updated CampaignEmailModal to accept styleSettings prop and pass it through to API
+- Added audience section with tag checkboxes fetched from Mailchimp API
+- Updated generateCustomEmailHTML() in mailchimp.ts to use styleSettings (colors, fonts, button styles, dark/light mode)
+- Updated generatePreviewHTML() client-side to also use styleSettings
+- Fixed create-draft API handler to return webId and campaignUrl
+- Passed styleSettings from campaign editor page to modal
+- Pushed to master (commit 5880047)
+
+Stage Summary:
+- Emails now respect the visual customization selected in "Personalización Visual"
+- Users can select specific audience tags instead of always sending to everyone
+- Draft saves now return proper Mailchimp URL for verification
+- 4 files modified: CampaignEmailModal.tsx, mailchimp.ts, mailchimp route.ts, campaigns/[id]/page.tsx
