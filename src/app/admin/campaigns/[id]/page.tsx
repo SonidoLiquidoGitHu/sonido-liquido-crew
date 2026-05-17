@@ -970,6 +970,7 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
             smartLinkUrl: campaign.smartLinkUrl,
             slug: campaign.slug,
             campaignType: campaign.campaignType,
+            styleSettings: formData.styleSettings,
           }}
         />
       )}

@@ -757,6 +757,7 @@ class MailchimpClient {
 
   /**
    * Generate a custom HTML email template (not release-specific)
+   * Now accepts and uses styleSettings for visual customization
    */
   generateCustomEmailHTML(data: {
     title: string;
@@ -764,16 +765,108 @@ class MailchimpClient {
     ctaText?: string;
     ctaUrl?: string;
     coverImageUrl?: string;
+    styleSettings?: Partial<import("@/lib/style-config").StyleSettings> | null;
   }): string {
-    const { title, body, ctaText, ctaUrl, coverImageUrl } = data;
+    const { title, body, ctaText, ctaUrl, coverImageUrl, styleSettings } = data;
+
+    // Merge with defaults
+    const { defaultStyleSettings } = require("@/lib/style-config") as typeof import("@/lib/style-config");
+    const s = { ...defaultStyleSettings, ...styleSettings };
+
+    // Resolve colors
+    const primaryColor = s.primaryColor || "#f97316";
+    const secondaryColor = s.secondaryColor || "#ea580c";
+    const accentColor = s.accentColor || "#22c55e";
+    const textColor = s.textColor || "#ffffff";
+    const darkMode = s.darkMode !== false; // default true
+
+    // Background colors based on darkMode
+    const bgColor = darkMode ? "#0a0a0a" : "#f5f5f5";
+    const cardBgColor = darkMode ? "#1a1a1a" : "#ffffff";
+    const footerBgColor = darkMode ? "#0a0a0a" : "#eeeeee";
+    const bodyTextColor = darkMode ? "#cccccc" : "#555555";
+    const footerTextColor = darkMode ? "#666666" : "#999999";
+    const footerSubTextColor = darkMode ? "#444444" : "#aaaaaa";
+    const headerTextColor = "#ffffff"; // Header always has white text on gradient
+
+    // Font mapping for email (Google Font family names)
+    const fontMap: Record<string, string> = {
+      "oswald": "'Oswald', sans-serif",
+      "bebas": "'Bebas Neue', sans-serif",
+      "anton": "'Anton', sans-serif",
+      "archivo-black": "'Archivo Black', sans-serif",
+      "righteous": "'Righteous', sans-serif",
+      "black-ops-one": "'Black Ops One', sans-serif",
+      "bangers": "'Bangers', sans-serif",
+      "permanent-marker": "'Permanent Marker', sans-serif",
+      "inter": "'Inter', sans-serif",
+      "montserrat": "'Montserrat', sans-serif",
+      "poppins": "'Poppins', sans-serif",
+      "raleway": "'Raleway', sans-serif",
+      "space-grotesk": "'Space Grotesk', sans-serif",
+      "dm-sans": "'DM Sans', sans-serif",
+      "outfit": "'Outfit', sans-serif",
+      "sora": "'Sora', sans-serif",
+      "playfair": "'Playfair Display', serif",
+      "libre-baskerville": "'Libre Baskerville', serif",
+      "cormorant": "'Cormorant Garamond', serif",
+      "cinzel": "'Cinzel', serif",
+      "merriweather": "'Merriweather', serif",
+      "roboto-mono": "'Roboto Mono', monospace",
+      "jetbrains-mono": "'JetBrains Mono', monospace",
+      "fira-code": "'Fira Code', monospace",
+      "source-code": "'Source Code Pro', monospace",
+      "dancing-script": "'Dancing Script', sans-serif",
+      "pacifico": "'Pacifico', sans-serif",
+      "caveat": "'Caveat', sans-serif",
+    };
+
+    const titleFontFamily = fontMap[s.titleFont] || "'Oswald', sans-serif";
+    const bodyFontFamily = fontMap[s.bodyFont] || "'Inter', sans-serif";
+
+    // Build Google Fonts link for used fonts
+    const googleFontUrl = this.buildGoogleFontsLink(s.titleFont, s.bodyFont);
+
+    // Button style mapping for email (inline CSS)
+    const buttonRoundedMap: Record<string, string> = {
+      "none": "0px",
+      "sm": "4px",
+      "md": "6px",
+      "lg": "8px",
+      "full": "50px",
+    };
+    const buttonRadius = buttonRoundedMap[s.buttonRounded] || "8px";
+
+    let buttonStyle = "";
+    switch (s.buttonStyle) {
+      case "solid":
+        buttonStyle = `background: ${primaryColor}; color: #ffffff; border: none;`;
+        break;
+      case "gradient":
+        buttonStyle = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`;
+        break;
+      case "outline":
+        buttonStyle = `background: transparent; border: 2px solid ${primaryColor}; color: ${primaryColor};`;
+        break;
+      case "glass":
+        buttonStyle = `background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff;`;
+        break;
+      default:
+        buttonStyle = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`;
+    }
+
+    // Cover image shadow color
+    const coverShadowColor = darkMode
+      ? `rgba(${parseInt(primaryColor.slice(1,3),16)}, ${parseInt(primaryColor.slice(3,5),16)}, ${parseInt(primaryColor.slice(5,7),16)}, 0.3)`
+      : `rgba(0, 0, 0, 0.1)`;
 
     const formattedBody = body
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\n\n/g, "</p><p>")
       .replace(/\n/g, "<br>")
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #ff6b00; text-decoration: underline;">$1</a>')
-      .replace(/^### (.*?)$/gm, '<h3 style="color: #ff6b00; margin: 20px 0 10px;">$1</h3>')
-      .replace(/^# (.*?)$/gm, '<h1 style="color: #ff6b00; margin: 20px 0 10px;">$1</h1>');
+      .replace(/\[(.*?)\]\((.*?)\)/g, `<a href="$2" style="color: ${primaryColor}; text-decoration: underline;">$1</a>`)
+      .replace(/^### (.*?)$/gm, `<h3 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h3>`)
+      .replace(/^# (.*?)$/gm, `<h1 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h1>`);
 
     return `
 <!DOCTYPE html>
@@ -782,17 +875,23 @@ class MailchimpClient {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
+  ${googleFontUrl ? `<link href="${googleFontUrl}" rel="stylesheet">` : ""}
+  <!--[if mso]>
+  <style type="text/css">
+    body, table, td { font-family: ${bodyFontFamily.replace(/'/g, "")} !important; }
+  </style>
+  <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a;">
+<body style="margin: 0; padding: 0; background-color: ${bgColor}; font-family: ${bodyFontFamily}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${bgColor};">
     <tr>
       <td align="center" style="padding: 40px 20px;">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #1a1a1a; border-radius: 16px; overflow: hidden; max-width: 100%;">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: ${cardBgColor}; border-radius: 16px; overflow: hidden; max-width: 100%;">
 
           <!-- Header -->
           <tr>
-            <td style="padding: 30px 40px; text-align: center; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%);">
-              <img src="https://sonidoliquido.com/images/logo-white.png" alt="Sonido Liquido Crew" width="180" style="max-width: 100%;">
+            <td style="padding: 30px 40px; text-align: center; background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%);">
+              <h1 style="margin: 0; color: ${headerTextColor}; font-size: 24px; font-family: ${titleFontFamily}, sans-serif;">SONIDO LIQUIDO CREW</h1>
             </td>
           </tr>
 
@@ -800,7 +899,7 @@ class MailchimpClient {
           <!-- Cover Image -->
           <tr>
             <td style="padding: 30px 40px 0;">
-              <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(255, 107, 0, 0.3);">
+              <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px ${coverShadowColor};">
             </td>
           </tr>
           ` : ""}
@@ -808,14 +907,14 @@ class MailchimpClient {
           <!-- Title -->
           <tr>
             <td style="padding: 30px 40px 10px; text-align: center;">
-              <h1 style="margin: 0; color: #ff6b00; font-size: 28px; font-weight: bold;">${title}</h1>
+              <h1 style="margin: 0; color: ${primaryColor}; font-size: 28px; font-weight: bold; font-family: ${titleFontFamily}, sans-serif;">${title}</h1>
             </td>
           </tr>
 
           <!-- Content -->
           <tr>
-            <td style="padding: 10px 40px 30px; color: #ffffff;">
-              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #cccccc;">
+            <td style="padding: 10px 40px 30px; color: ${textColor};">
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: ${bodyTextColor}; font-family: ${bodyFontFamily}, sans-serif;">
                 ${formattedBody}
               </p>
             </td>
@@ -825,7 +924,7 @@ class MailchimpClient {
           <!-- CTA Button -->
           <tr>
             <td style="padding: 0 40px 30px; text-align: center;">
-              <a href="${ctaUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%); color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">
+              <a href="${ctaUrl}" style="display: inline-block; padding: 16px 40px; ${buttonStyle} text-decoration: none; font-weight: bold; font-size: 18px; border-radius: ${buttonRadius}; text-transform: uppercase; letter-spacing: 1px; font-family: ${titleFontFamily}, sans-serif;">
                 ${ctaText}
               </a>
             </td>
@@ -834,13 +933,13 @@ class MailchimpClient {
 
           <!-- Footer -->
           <tr>
-            <td style="padding: 30px 40px; background-color: #0a0a0a; text-align: center;">
-              <p style="margin: 0 0 15px; color: #666666; font-size: 12px;">
+            <td style="padding: 30px 40px; background-color: ${footerBgColor}; text-align: center;">
+              <p style="margin: 0 0 15px; color: ${footerTextColor}; font-size: 12px;">
                 Sonido Liquido Crew - Hip Hop Mexico desde 1999
               </p>
-              <p style="margin: 0; color: #444444; font-size: 11px;">
-                <a href="https://sonidoliquido.com" style="color: #ff6b00; text-decoration: none;">sonidoliquido.com</a> |
-                <a href="|UNSUB|" style="color: #666666; text-decoration: none;">Darse de baja</a>
+              <p style="margin: 0; color: ${footerSubTextColor}; font-size: 11px;">
+                <a href="https://sonidoliquido.com" style="color: ${primaryColor}; text-decoration: none;">sonidoliquido.com</a> |
+                <a href="|UNSUB|" style="color: ${footerTextColor}; text-decoration: none;">Darse de baja</a>
               </p>
             </td>
           </tr>
@@ -852,6 +951,54 @@ class MailchimpClient {
 </body>
 </html>
     `.trim();
+  }
+
+  /**
+   * Build a Google Fonts CSS link for the given font values
+   */
+  private buildGoogleFontsLink(titleFont?: string, bodyFont?: string): string {
+    const fontUrlMap: Record<string, string> = {
+      "oswald": "Oswald:wght@400;500;600;700",
+      "bebas": "Bebas+Neue",
+      "anton": "Anton",
+      "archivo-black": "Archivo+Black",
+      "righteous": "Righteous",
+      "black-ops-one": "Black+Ops+One",
+      "bangers": "Bangers",
+      "permanent-marker": "Permanent+Marker",
+      "inter": "Inter:wght@400;500;600;700",
+      "montserrat": "Montserrat:wght@400;500;600;700",
+      "poppins": "Poppins:wght@400;500;600;700",
+      "raleway": "Raleway:wght@400;500;600;700",
+      "space-grotesk": "Space+Grotesk:wght@400;500;600;700",
+      "dm-sans": "DM+Sans:wght@400;500;600;700",
+      "outfit": "Outfit:wght@400;500;600;700",
+      "sora": "Sora:wght@400;500;600;700",
+      "playfair": "Playfair+Display:wght@400;500;600;700",
+      "libre-baskerville": "Libre+Baskerville:wght@400;700",
+      "cormorant": "Cormorant+Garamond:wght@400;500;600;700",
+      "cinzel": "Cinzel:wght@400;500;600;700",
+      "merriweather": "Merriweather:wght@400;700",
+      "roboto-mono": "Roboto+Mono:wght@400;500;600;700",
+      "jetbrains-mono": "JetBrains+Mono:wght@400;500;600;700",
+      "fira-code": "Fira+Code:wght@400;500;600;700",
+      "source-code": "Source+Code+Pro:wght@400;500;600;700",
+      "dancing-script": "Dancing+Script:wght@400;500;600;700",
+      "pacifico": "Pacifico",
+      "caveat": "Caveat:wght@400;500;600;700",
+    };
+
+    const families: string[] = [];
+    const seen = new Set<string>();
+    for (const font of [titleFont, bodyFont]) {
+      if (font && fontUrlMap[font] && !seen.has(font)) {
+        families.push(`family=${fontUrlMap[font]}`);
+        seen.add(font);
+      }
+    }
+
+    if (families.length === 0) return "";
+    return `https://fonts.googleapis.com/css2?${families.join("&")}&display=swap`;
   }
 
   /**

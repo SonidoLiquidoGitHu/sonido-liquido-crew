@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
 
     // Create and send/schedule a campaign
     if (action === "create-campaign") {
-      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, scheduleTime, tags } = body;
+      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, scheduleTime, tags, styleSettings } = body;
 
       if (!subject || !title || !emailBody) {
         return NextResponse.json(
@@ -233,6 +233,7 @@ export async function POST(request: NextRequest) {
         ctaText: ctaText || undefined,
         ctaUrl: ctaUrl || undefined,
         coverImageUrl: coverImageUrl || undefined,
+        styleSettings: styleSettings || undefined,
       });
 
       // Create and send/schedule
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest) {
 
     // Create a draft campaign (don't send)
     if (action === "create-draft") {
-      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, tags } = body;
+      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, tags, styleSettings } = body;
 
       if (!subject || !title || !emailBody) {
         return NextResponse.json(
@@ -275,6 +276,7 @@ export async function POST(request: NextRequest) {
         ctaText: ctaText || undefined,
         ctaUrl: ctaUrl || undefined,
         coverImageUrl: coverImageUrl || undefined,
+        styleSettings: styleSettings || undefined,
       });
 
       // Create campaign only (don't send)
@@ -288,10 +290,19 @@ export async function POST(request: NextRequest) {
       // Set content
       await mailchimpClient.setCampaignContent(campaign.id, htmlContent);
 
+      console.log(`[Mailchimp] Draft campaign created: id=${campaign.id}, web_id=${campaign.web_id}`);
+
+      // Construct the Mailchimp campaign URL from web_id
+      const campaignUrl = campaign.web_id
+        ? `https://admin.mailchimp.com/campaigns/edit?id=${campaign.web_id}`
+        : null;
+
       return NextResponse.json({
         success: true,
         data: {
           campaignId: campaign.id,
+          webId: campaign.web_id,
+          campaignUrl,
           status: "draft",
         },
       });
