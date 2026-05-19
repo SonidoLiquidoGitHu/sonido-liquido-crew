@@ -505,7 +505,7 @@ class MailchimpClient {
     htmlContent: string;
     tags?: string[];
     scheduleTime?: Date;
-  }): Promise<{ campaignId: string; status: "sent" | "scheduled" }> {
+  }): Promise<{ campaignId: string; webId: number; status: "sent" | "scheduled" }> {
     // Step 1: Create campaign
     const campaign = await this.createCampaign({
       subject: data.subject,
@@ -520,10 +520,10 @@ class MailchimpClient {
     // Step 3: Send or schedule
     if (data.scheduleTime) {
       await this.scheduleCampaign(campaign.id, data.scheduleTime);
-      return { campaignId: campaign.id, status: "scheduled" };
+      return { campaignId: campaign.id, webId: campaign.web_id, status: "scheduled" };
     } else {
       await this.sendCampaign(campaign.id);
-      return { campaignId: campaign.id, status: "sent" };
+      return { campaignId: campaign.id, webId: campaign.web_id, status: "sent" };
     }
   }
 
@@ -700,10 +700,84 @@ class MailchimpClient {
   }
 
   /**
-   * Get tags for the audience
+   * Get tags for the audience with accurate member counts.
+   * The /tag-search endpoint may not return reliable member counts per tag,
+   * so we fetch all subscribed members and count per tag ourselves.
    */
   async getTags(): Promise<{ tags: { id: number; name: string; count: number }[]; total_items: number }> {
-    return this.request(`/lists/${this.audienceId}/tag-search`);
+    // First, get the tag list from tag-search
+    const tagSearchResult = await this.request<{
+      tags: { id: number; name: string; count?: number; total_items?: number }[];
+      total_items: number;
+    }>(`/lists/${this.audienceId}/tag-search`);
+
+    // If no tags, return early
+    if (!tagSearchResult.tags || tagSearchResult.tags.length === 0) {
+      return { tags: [], total_items: 0 };
+    }
+
+    // Build a map of tag id -> tag data
+    const tagMap = new Map<number, { id: number; name: string; count: number }>();
+    for (const tag of tagSearchResult.tags) {
+      // Try both 'count' and 'total_items' fields (API version dependent)
+      const memberCount = tag.count ?? tag.total_items ?? 0;
+      tagMap.set(tag.id, { id: tag.id, name: tag.name, count: memberCount });
+    }
+
+    // Fetch all subscribed members and count per tag for accuracy
+    try {
+      const allMembers = await this.getAllMembers();
+      // Reset all counts to 0
+      for (const [id] of tagMap) {
+        const existing = tagMap.get(id)!;
+        tagMap.set(id, { ...existing, count: 0 });
+      }
+      // Count members per tag
+      for (const member of allMembers) {
+        if (member.tags && Array.isArray(member.tags)) {
+          for (const tag of member.tags) {
+            const tagData = tagMap.get(tag.id);
+            if (tagData) {
+              tagMap.set(tag.id, { ...tagData, count: tagData.count + 1 });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // If member fetch fails, keep the tag-search counts as fallback
+      console.warn("[Mailchimp] Failed to fetch members for tag counts, using tag-search counts:", err);
+    }
+
+    return {
+      tags: Array.from(tagMap.values()),
+      total_items: tagSearchResult.total_items || tagMap.size,
+    };
+  }
+
+  /**
+   * Get ALL subscribed members (handles pagination automatically)
+   */
+  private async getAllMembers(): Promise<MailchimpMember[]> {
+    const allMembers: MailchimpMember[] = [];
+    let offset = 0;
+    const batchSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const result = await this.request<{ members: MailchimpMember[]; total_items: number }>(
+        `/lists/${this.audienceId}/members?count=${batchSize}&offset=${offset}&status=subscribed&fields=members.id,members.tags`
+      );
+
+      if (result.members && result.members.length > 0) {
+        allMembers.push(...result.members);
+        offset += result.members.length;
+        hasMore = allMembers.length < result.total_items;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allMembers;
   }
 
   /**

@@ -90,16 +90,17 @@ export function AudienceSelector({
     onSelectedTagsChange(tags.map(t => t.name));
   };
 
-  // Calculate reach
+  // Calculate reach (with NaN protection)
+  const safeAudienceCount = audienceMemberCount || 0;
   const selectedReach = selectedTags.length > 0
     ? tags
         .filter(t => selectedTags.includes(t.name))
-        .reduce((sum, t) => sum + t.count, 0)
-    : audienceMemberCount;
+        .reduce((sum, t) => sum + (t.count || 0), 0)
+    : safeAudienceCount;
 
   const reachLabel = selectedTags.length > 0
     ? `~${selectedReach.toLocaleString()} contacto${selectedReach !== 1 ? "s" : ""}`
-    : `${audienceMemberCount.toLocaleString()} contacto${audienceMemberCount !== 1 ? "s" : ""}`;
+    : `${safeAudienceCount.toLocaleString()} contacto${safeAudienceCount !== 1 ? "s" : ""}`;
 
   return (
     <div className={`p-4 bg-slc-card rounded-lg border border-slc-border space-y-3 ${className}`}>

@@ -253,6 +253,10 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           campaignId: result.campaignId,
+          webId: result.webId,
+          campaignUrl: result.webId
+            ? `https://admin.mailchimp.com/campaigns/edit?id=${result.webId}`
+            : null,
           status: result.status,
           scheduledFor: shouldSchedule ? scheduleDate?.toISOString() : null,
         },

@@ -390,8 +390,12 @@ export function CampaignEmailModal({
     try {
       const res = await fetch("/api/admin/mailchimp?action=audience");
       const data = await res.json();
-      if (data.success && data.data?.tags) {
-        setAvailableTags(data.data.tags);
+      if (data.success && data.data) {
+        setAvailableTags(data.data.tags || []);
+        // Set the total audience member count for reach calculation
+        if (data.data.audience?.stats?.member_count) {
+          setAudienceMemberCount(data.data.audience.stats.member_count);
+        }
       }
     } catch {
       // Non-critical — tags are optional
