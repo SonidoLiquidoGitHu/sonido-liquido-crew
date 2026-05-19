@@ -399,3 +399,25 @@ Stage Summary:
 - Users can select specific audience tags instead of always sending to everyone
 - Draft saves now return proper Mailchimp URL for verification
 - 4 files modified: CampaignEmailModal.tsx, mailchimp.ts, mailchimp route.ts, campaigns/[id]/page.tsx
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix Mailchimp tag sync, NaN bug, local campaigns in Email Studio
+
+Work Log:
+- Analyzed user screenshots showing: tags with 0 contactos, -NaN contactos bug, campaigns not appearing in Email Studio
+- Fixed `getTags()` in mailchimp.ts to fetch actual member counts by querying all subscribed members and counting per tag (instead of relying on tag-search endpoint which returns unreliable counts)
+- Added `getAllMembers()` private helper method with pagination support
+- Fixed `audienceMemberCount` never being set in CampaignEmailModal (was initialized as 0, never updated)
+- Fixed NaN bug in AudienceSelector by adding `safeAudienceCount = audienceMemberCount || 0` protection
+- Added `LocalCampaign` type and "Mis Campañas" section in Email Studio's Create tab
+- Local campaigns pre-fill email form (subject, body, CTA, cover image, styleSettings)
+- Updated `createAndSendCampaign()` to return `webId` for Mailchimp campaign URL construction
+- Updated API route to return `webId` and `campaignUrl` for create-campaign action
+- Pushed all changes to master branch (not main)
+
+Stage Summary:
+- Tags now show real member counts from Mailchimp (e.g., "Crew — 45 contactos")
+- NaN bug fixed with proper null/undefined protection
+- Local campaigns from Campañas section now appear in Email Studio's "Mis Campañas" selector
+- Pushed commit 71c5e77 to master on GitHub
