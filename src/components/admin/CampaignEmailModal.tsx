@@ -17,6 +17,7 @@ import {
   Tag,
 } from "lucide-react";
 import { type StyleSettings, defaultStyleSettings } from "@/lib/style-config";
+import { AudienceSelector, type AudienceTag } from "@/components/admin/AudienceSelector";
 
 // ===========================================
 // TYPES
@@ -306,15 +307,8 @@ function generatePreviewHTML(data: {
 </html>`.trim();
 }
 
-// ===========================================
-// TAG TYPE
-// ===========================================
-
-interface MailchimpTag {
-  id: number;
-  name: string;
-  count: number;
-}
+// MailchimpTag is now AudienceTag from the shared component
+type MailchimpTag = AudienceTag;
 
 // ===========================================
 // COMPONENT
@@ -345,6 +339,7 @@ export function CampaignEmailModal({
   const [availableTags, setAvailableTags] = useState<MailchimpTag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
+  const [audienceMemberCount, setAudienceMemberCount] = useState<number>(0);
 
   // Action state
   const [modalState, setModalState] = useState<ModalState>("idle");
@@ -439,15 +434,6 @@ export function CampaignEmailModal({
       checkConfig();
     }
   }, [isOpen, checkConfig]);
-
-  // Toggle tag selection
-  const toggleTag = (tagName: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tagName)
-        ? prev.filter(t => t !== tagName)
-        : [...prev, tagName]
-    );
-  };
 
   // Handle send / schedule campaign
   const handleSendCampaign = async (isDraft: boolean = false) => {
@@ -867,60 +853,17 @@ export function CampaignEmailModal({
                 </div>
 
                 {/* Audience / Tags Selector */}
-                <div className="p-4 bg-slc-card rounded-lg border border-slc-border space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Users className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Audiencia</p>
-                      <p className="text-xs text-slc-muted">
-                        Selecciona qué suscriptores recibirán este email
-                      </p>
-                    </div>
-                  </div>
-
-                  {tagsLoading ? (
-                    <div className="flex items-center gap-2 py-2">
-                      <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                      <span className="text-xs text-slc-muted">Cargando tags...</span>
-                    </div>
-                  ) : availableTags.length > 0 ? (
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                      {availableTags.map((tag) => (
-                        <label
-                          key={tag.id}
-                          className="flex items-center gap-2.5 p-2 rounded-md hover:bg-slc-dark/50 cursor-pointer transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedTags.includes(tag.name)}
-                            onChange={() => toggleTag(tag.name)}
-                            className="w-4 h-4 rounded border-slc-border accent-primary"
-                          />
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Tag className="w-3 h-3 text-slc-muted flex-shrink-0" />
-                            <span className="text-sm truncate">{tag.name}</span>
-                          </div>
-                          <span className="text-xs text-slc-muted flex-shrink-0">
-                            {tag.count}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slc-muted py-1">
-                      No se encontraron tags. Se enviará a todos los suscriptores.
-                    </p>
-                  )}
-
-                  <p className="text-xs text-slc-muted">
-                    {selectedTags.length > 0
-                      ? `${selectedTags.length} tag${selectedTags.length > 1 ? "s" : ""} seleccionado${selectedTags.length > 1 ? "s" : ""} — los suscriptores con cualquiera de estos tags recibirán el email`
-                      : "Todos los suscriptores recibirán este email"
-                    }
-                  </p>
-                </div>
+                <AudienceSelector
+                  tags={availableTags}
+                  selectedTags={selectedTags}
+                  onSelectedTagsChange={setSelectedTags}
+                  audienceMemberCount={audienceMemberCount}
+                  tagsLoading={tagsLoading}
+                  variant="checkbox"
+                  showReachSummary={true}
+                  showSearch={true}
+                  disabled={modalState === "sending"}
+                />
 
                 {/* Cover Image Toggle */}
                 <div className="flex items-center justify-between p-4 bg-slc-card rounded-lg border border-slc-border">
@@ -1111,10 +1054,12 @@ export function CampaignEmailModal({
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit",
-                      })}`
+                      })} — ${selectedTags.length > 0
+                        ? `~${availableTags.filter(t => selectedTags.includes(t.name)).reduce((sum, t) => sum + t.count, 0).toLocaleString()} contactos`
+                        : `${audienceMemberCount.toLocaleString()} suscriptores`}`
                     : selectedTags.length > 0
-                      ? `Se enviará a suscriptores con ${selectedTags.length} tag${selectedTags.length > 1 ? "s" : ""} seleccionado${selectedTags.length > 1 ? "s" : ""}`
-                      : "Se enviará inmediatamente a todos los suscriptores"}
+                      ? `Se enviará a ~${availableTags.filter(t => selectedTags.includes(t.name)).reduce((sum, t) => sum + t.count, 0).toLocaleString()} contactos (${selectedTags.length} tag${selectedTags.length > 1 ? "s" : ""})`
+                      : `Se enviará inmediatamente a ${audienceMemberCount.toLocaleString()} suscriptores`}
                 </span>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">

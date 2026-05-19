@@ -30,6 +30,7 @@ import {
   Image as ImageIcon,
   Link2,
 } from "lucide-react";
+import { AudienceSelector, type AudienceTag } from "@/components/admin/AudienceSelector";
 
 // ===========================================
 // TYPES
@@ -69,11 +70,8 @@ interface CampaignData {
   };
 }
 
-interface TagData {
-  id: number;
-  name: string;
-  count: number;
-}
+// TagData is now AudienceTag from the shared component
+type TagData = AudienceTag;
 
 interface GrowthItem {
   month: string;
@@ -910,36 +908,20 @@ export function MailchimpCampaignStudio() {
                 ))}
               </div>
 
-              {/* Tags selection */}
-              {tags.length > 0 && (
-                <div className="pt-4">
-                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-primary" />
-                    Segmentar por Tags
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {tags.map((tag) => (
-                      <button
-                        key={tag.id}
-                        onClick={() => {
-                          setFormSelectedTags(prev =>
-                            prev.includes(tag.name)
-                              ? prev.filter(t => t !== tag.name)
-                              : [...prev, tag.name]
-                          );
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                          formSelectedTags.includes(tag.name)
-                            ? "bg-primary/10 border-primary text-primary"
-                            : "bg-slc-dark border-slc-border text-slc-muted hover:border-primary/50"
-                        }`}
-                      >
-                        {tag.name} ({tag.count})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Audience / Tags Selector */}
+              <div className="pt-4">
+                <AudienceSelector
+                  tags={tags}
+                  selectedTags={formSelectedTags}
+                  onSelectedTagsChange={setFormSelectedTags}
+                  audienceMemberCount={audience?.stats?.member_count || 0}
+                  tagsLoading={false}
+                  variant="checkbox"
+                  showReachSummary={true}
+                  showSearch={true}
+                  disabled={isSending}
+                />
+              </div>
             </div>
 
             {/* Campaign Form */}
