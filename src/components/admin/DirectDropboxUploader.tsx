@@ -61,17 +61,7 @@ export function DirectDropboxUploader({
   useEffect(() => {
     const initDropbox = async () => {
       try {
-        // First check if configured
-        const statusRes = await fetch("/api/admin/dropbox");
-        const statusData = await statusRes.json();
-
-        if (!statusData?.data?.connected) {
-          console.log("[DirectDropbox] Not connected");
-          setDropboxConfigured(false);
-          return;
-        }
-
-        // Get access token for direct uploads
+        // Get access token for direct uploads — this endpoint auto-refreshes
         const tokenRes = await fetch("/api/admin/dropbox/token");
         const tokenData = await tokenRes.json();
 
@@ -80,6 +70,25 @@ export function DirectDropboxUploader({
           setDropboxConfigured(true);
           console.log("[DirectDropbox] Ready for direct uploads");
         } else {
+          // Token endpoint couldn't provide a valid token — check status for details
+          console.log("[DirectDropbox] Token endpoint failed, checking status...");
+          try {
+            const statusRes = await fetch("/api/admin/dropbox");
+            const statusData = await statusRes.json();
+            // If status says connected, the token might just need a refresh — try again
+            if (statusData?.data?.connected || statusData?.data?.hasRefreshToken) {
+              console.log("[DirectDropbox] Status says connected, retrying token fetch...");
+              const retryRes = await fetch("/api/admin/dropbox/token");
+              const retryData = await retryRes.json();
+              if (retryData.success && retryData.data?.token) {
+                setAccessToken(retryData.data.token);
+                setDropboxConfigured(true);
+                return;
+              }
+            }
+          } catch {
+            // Ignore status check error
+          }
           setDropboxConfigured(false);
         }
       } catch (error) {
@@ -162,6 +171,27 @@ export function DirectDropboxUploader({
     } catch (error) {
       console.error("[DirectDropbox] Upload error:", error);
       const errorMessage = (error as Error).message || "Error desconocido";
+
+      // If it's a 401/auth error, try refreshing the token automatically
+      if (errorMessage.includes("401") || errorMessage.includes("expired") || errorMessage.includes("invalid_access_token")) {
+        console.log("[DirectDropbox] Auth error during upload, attempting token refresh...");
+        try {
+          const refreshRes = await fetch("/api/admin/dropbox/token");
+          const refreshData = await refreshRes.json();
+          if (refreshData.success && refreshData.data?.token) {
+            setAccessToken(refreshData.data.token);
+            // Don't retry automatically — just show a "try again" message
+            setUploadState({
+              status: "error",
+              progress: 0,
+              message: "Token renovado. Intenta subir de nuevo.",
+            });
+            return;
+          }
+        } catch {
+          // Refresh failed
+        }
+      }
 
       setUploadState({
         status: "error",

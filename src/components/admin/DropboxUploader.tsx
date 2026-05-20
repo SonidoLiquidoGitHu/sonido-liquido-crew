@@ -65,14 +65,28 @@ export function DropboxUploader({
         // connected = token actually works with Dropbox API
         const hasToken = data?.data?.configured === true || data?.data?.hasDatabaseToken === true;
         const isConnected = data?.data?.connected === true;
+        const hasRefreshToken = data?.data?.hasRefreshToken === true;
         const hasError = data?.data?.error;
 
-        console.log("[DropboxUploader] Has token:", hasToken, "Connected:", isConnected, "Error:", hasError);
+        console.log("[DropboxUploader] Has token:", hasToken, "Connected:", isConnected, "Has refresh:", hasRefreshToken, "Error:", hasError);
 
         // Only mark as configured if BOTH token exists AND connection works
         if (hasToken && isConnected) {
           console.log("[DropboxUploader] ✓ Dropbox is ready to use");
           setDropboxConfigured(true);
+        } else if (hasToken && !isConnected && hasRefreshToken) {
+          // Token exists but is expired — we have a refresh token, so auto-refresh should work
+          // Try the token endpoint which auto-refreshes
+          console.log("[DropboxUploader] Token expired but refresh_token exists, trying token endpoint...");
+          const tokenRes = await fetch("/api/admin/dropbox/token");
+          const tokenData = await tokenRes.json();
+          if (tokenData.success && tokenData.data?.token) {
+            console.log("[DropboxUploader] ✓ Token refreshed successfully");
+            setDropboxConfigured(true);
+          } else {
+            console.error("[DropboxUploader] ✗ Token refresh failed:", tokenData.error);
+            setDropboxConfigured(false);
+          }
         } else if (hasToken && !isConnected) {
           // Token exists but is invalid/expired
           console.error("[DropboxUploader] ✗ Token exists but connection failed:", hasError);
