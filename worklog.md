@@ -443,3 +443,21 @@ Stage Summary:
 - Dropbox connection is now automatic — the access token refreshes transparently using the stored refresh_token
 - Users no longer need to go to Sincronizar → Conectar con Dropbox each time
 - Only truly invalid refresh tokens (revoked access) require manual reconnection
+---
+Task ID: 1
+Agent: main
+Task: Fix beat cover images not loading on public beats page + add detailed statistics
+
+Work Log:
+- Diagnosed SafeImage layout bug: when fill=true, wrapper div had className="relative" with 0 height, making images invisible
+- Fixed SafeImage: when fill=true, use "absolute inset-0" on wrapper so it fills its positioned parent
+- Fixed BeatPageClient: added "relative" to cover container div
+- Fixed next.config.js: added specific cache rule for /api/image-proxy before /api/:path* catch-all
+- Created /api/admin/beats/stats endpoint with detailed metrics
+- Enhanced admin beats page with stats dashboard, gate actions breakdown, sparkline chart, recent downloads list
+- Added per-beat conversion rate bar and expandable detail panel with funnel visualization
+
+Stage Summary:
+- Commit a006ea8: SafeImage fill mode layout bug fix
+- Commit e831f4e: Detailed beat statistics feature
+- Both pushed to master
