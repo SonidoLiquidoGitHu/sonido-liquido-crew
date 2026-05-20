@@ -281,7 +281,7 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
       <div className="max-w-lg mx-auto px-4">
         {/* Cover & Player */}
         <div className="relative mb-6">
-          <div className="aspect-square rounded-xl overflow-hidden shadow-2xl">
+          <div className="relative aspect-square rounded-xl overflow-hidden shadow-2xl">
             {beat.coverImageUrl ? (
               <SafeImage
                 src={beat.coverImageUrl}

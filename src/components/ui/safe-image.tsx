@@ -191,7 +191,7 @@ export function SafeImage({
   const finalSrc = error ? fallbackSrc : imageSrc;
 
   return (
-    <div className="relative" key={retryKey}>
+    <div className={fill ? "absolute inset-0" : "relative"} key={retryKey}>
       <Image
         {...props}
         src={finalSrc || ""}

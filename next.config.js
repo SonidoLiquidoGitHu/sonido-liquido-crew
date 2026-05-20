@@ -202,17 +202,20 @@ const nextConfig = {
           },
         ],
       },
-      // NOTE: Image proxy caching is now handled entirely by the API route itself.
-      // Successful image responses get aggressive caching (max-age=86400).
+      // NOTE: Image proxy caching is handled by the API route itself.
+      // Successful responses get aggressive caching (max-age=86400).
       // Error responses get no-store to prevent temporary failures from being cached.
-      // Previously, a global cache header here caused 502/504 errors to be cached
-      // for 24 hours, making broken images persist even after the issue was fixed.
-      // {
-      //   source: "/api/image-proxy",
-      //   headers: [
-      //     { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" },
-      //   ],
-      // },
+      // This rule MUST come before the /api/:path* catch-all, which would otherwise
+      // override with no-store and prevent any browser/CDN caching of images.
+      {
+        source: "/api/image-proxy",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
       {
         // Video proxy - cache for 1 hour, stale OK for 24 hours
         // CRITICAL: Must come before the general /api/:path* no-store rule!
