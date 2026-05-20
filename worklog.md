@@ -421,3 +421,25 @@ Stage Summary:
 - NaN bug fixed with proper null/undefined protection
 - Local campaigns from Campañas section now appear in Email Studio's "Mis Campañas" selector
 - Pushed commit 71c5e77 to master on GitHub
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Make Dropbox connection automatic — no more manual reconnection
+
+Work Log:
+- Analyzed full Dropbox OAuth flow: token stored in DB, expires every ~4hrs, refresh_token is long-lived
+- Root cause: status API tested token WITHOUT refreshing first, so expired tokens showed "not connected"
+- Fixed GET /api/admin/dropbox to auto-refresh expired tokens BEFORE testing connection
+- Added second chance: if connection test fails but refresh_token exists, tries refreshing and retesting
+- Updated DirectDropboxUploader to try token endpoint first (which auto-refreshes) instead of checking status then token
+- Added auto-retry on 401 during upload: fetches fresh token and tells user to try again
+- Updated DropboxUploader to check for refresh_token when token expired and attempt auto-refresh
+- Added upsertDbSetting() and clearDbDropboxTokens() helper functions to admin dropbox route
+- Invalid refresh tokens (HTTP 400) trigger token cleanup to force clean re-auth
+- Pushed commit e8ec157 to master
+
+Stage Summary:
+- Dropbox connection is now automatic — the access token refreshes transparently using the stored refresh_token
+- Users no longer need to go to Sincronizar → Conectar con Dropbox each time
+- Only truly invalid refresh tokens (revoked access) require manual reconnection
