@@ -123,6 +123,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if ('identityConflictFlag' in body) updateData.identityConflictFlag = body.identityConflictFlag ?? false;
     if ('adminNotes' in body) updateData.adminNotes = body.adminNotes || null;
 
+    console.log(`[API] Updating artist ${id} with fields:`, Object.keys(updateData).join(", "));
+
     const [updatedArtist] = await db
       .update(artists)
       .set(updateData)
@@ -265,7 +267,31 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       data: updatedArtist,
     });
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     console.error("[API] Error updating artist:", error);
+
+    // Provide a more helpful error message for missing columns
+    if (errorMsg.includes("no such column") || errorMsg.includes("has no column")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Database schema mismatch: ${errorMsg}. Try running /api/admin/ensure-tables to add missing columns.`,
+        },
+        { status: 500 }
+      );
+    }
+
+    // Provide helpful error for unique constraint violations
+    if (errorMsg.includes("UNIQUE constraint failed")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "El slug ya existe para otro artista. Cambia el slug o el nombre.",
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: "Failed to update artist" },
       { status: 500 }

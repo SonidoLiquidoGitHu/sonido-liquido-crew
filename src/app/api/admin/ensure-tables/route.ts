@@ -391,6 +391,21 @@ const ADD_COLUMNS_SQL = [
 
   // Media releases - attached press kit IDs (JSON array of press kit IDs from roster artists)
   `ALTER TABLE media_releases ADD COLUMN attached_press_kit_ids TEXT`,
+
+  // === ARTISTS TABLE - columns expected by Drizzle schema but missing from old migrations ===
+  // Migration 0002 used different column names (header_image_url, origin, active_since, etc.)
+  // These are the correct column names that match the Drizzle schema
+  `ALTER TABLE artists ADD COLUMN real_name TEXT`,
+  `ALTER TABLE artists ADD COLUMN banner_image_url TEXT`,
+  `ALTER TABLE artists ADD COLUMN country TEXT`,
+  `ALTER TABLE artists ADD COLUMN year_started INTEGER`,
+  `ALTER TABLE artists ADD COLUMN booking_email TEXT`,
+  `ALTER TABLE artists ADD COLUMN management_email TEXT`,
+  `ALTER TABLE artists ADD COLUMN website_url TEXT`,
+  `ALTER TABLE artists ADD COLUMN monthly_listeners INTEGER`,
+  `ALTER TABLE artists ADD COLUMN followers INTEGER`,
+  `ALTER TABLE artists ADD COLUMN location TEXT`,
+  `ALTER TABLE artists ADD COLUMN labels TEXT`,
 ];
 
 const ENSURE_INDEXES_SQL = [

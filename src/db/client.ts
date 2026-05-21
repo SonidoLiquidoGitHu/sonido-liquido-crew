@@ -221,6 +221,60 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
 }
 
 /**
+ * Migrate old artist column names to the new ones expected by the Drizzle schema.
+ *
+ * Migration 0002 used different column names:
+ *   header_image_url  → banner_image_url
+ *   origin            → country
+ *   active_since      → year_started
+ *   booking_contact   → booking_email
+ *   management_contact→ management_email
+ *   spotify_monthly_listeners → monthly_listeners
+ *   spotify_followers → followers
+ *
+ * We detect whether the old columns exist by checking sqlite_master,
+ * then copy data from old → new (only when the new column is still NULL).
+ */
+async function migrateArtistColumns(client: Client): Promise<void> {
+  try {
+    // Check which columns the artists table actually has
+    const tableInfo = await client.execute("PRAGMA table_info(artists)");
+    const existingColumns = new Set(tableInfo.rows.map(r => r.name as string));
+
+    const migrations: { oldCol: string; newCol: string; type: 'text' | 'integer' }[] = [
+      { oldCol: "header_image_url", newCol: "banner_image_url", type: "text" },
+      { oldCol: "origin", newCol: "country", type: "text" },
+      { oldCol: "active_since", newCol: "year_started", type: "integer" },
+      { oldCol: "booking_contact", newCol: "booking_email", type: "text" },
+      { oldCol: "management_contact", newCol: "management_email", type: "text" },
+      { oldCol: "spotify_monthly_listeners", newCol: "monthly_listeners", type: "integer" },
+      { oldCol: "spotify_followers", newCol: "followers", type: "integer" },
+    ];
+
+    let migrated = 0;
+    for (const { oldCol, newCol } of migrations) {
+      // Only migrate if both old and new columns exist, and new column might still be empty
+      if (existingColumns.has(oldCol) && existingColumns.has(newCol)) {
+        try {
+          await client.execute(
+            `UPDATE artists SET ${newCol} = ${oldCol} WHERE ${newCol} IS NULL AND ${oldCol} IS NOT NULL`
+          );
+          migrated++;
+        } catch (err) {
+          console.warn(`[DB] Artist column migration ${oldCol} → ${newCol} failed:`, err);
+        }
+      }
+    }
+
+    if (migrated > 0) {
+      console.log(`[DB] Migrated ${migrated} artist columns from old names to new names`);
+    }
+  } catch (err) {
+    console.error("[DB] Artist column migration failed (non-fatal):", err);
+  }
+}
+
+/**
  * Run auto-migration to ensure critical tables exist.
  * This runs once when the database client is first initialized.
  * Uses CREATE TABLE IF NOT EXISTS so it's safe to run repeatedly.
@@ -434,6 +488,21 @@ async function runAutoMigration(client: Client): Promise<void> {
       `ALTER TABLE curated_playlists ADD COLUMN track_count INTEGER DEFAULT 0`,
       `ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT`,
       `ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT`,
+
+      // === ARTISTS TABLE - columns expected by Drizzle schema but missing from old migrations ===
+      // Migration 0002 used different column names (header_image_url, origin, active_since, etc.)
+      // These are the correct column names that match the Drizzle schema
+      `ALTER TABLE artists ADD COLUMN real_name TEXT`,
+      `ALTER TABLE artists ADD COLUMN banner_image_url TEXT`,
+      `ALTER TABLE artists ADD COLUMN country TEXT`,
+      `ALTER TABLE artists ADD COLUMN year_started INTEGER`,
+      `ALTER TABLE artists ADD COLUMN booking_email TEXT`,
+      `ALTER TABLE artists ADD COLUMN management_email TEXT`,
+      `ALTER TABLE artists ADD COLUMN website_url TEXT`,
+      `ALTER TABLE artists ADD COLUMN monthly_listeners INTEGER`,
+      `ALTER TABLE artists ADD COLUMN followers INTEGER`,
+      `ALTER TABLE artists ADD COLUMN location TEXT`,
+      `ALTER TABLE artists ADD COLUMN labels TEXT`,
     ];
 
     for (const sql of criticalTables) {
@@ -450,6 +519,13 @@ async function runAutoMigration(client: Client): Promise<void> {
         }
       }
     }
+
+    // ===========================================
+    // MIGRATE ARTIST OLD COLUMNS → NEW COLUMNS
+    // ===========================================
+    // Migration 0002 used different column names. Copy data from old columns
+    // to the new ones (if the old columns still exist and have data).
+    await migrateArtistColumns(client);
 
     // ===========================================
     // MIGRATE STALE CHECK CONSTRAINTS
