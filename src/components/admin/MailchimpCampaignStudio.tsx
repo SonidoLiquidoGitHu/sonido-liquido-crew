@@ -176,16 +176,70 @@ function generatePreviewHTML(data: {
   ctaText?: string;
   ctaUrl?: string;
   coverImageUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  darkMode?: boolean;
+  titleFont?: string;
+  bodyFont?: string;
+  buttonStyle?: string;
+  buttonRounded?: string;
 }): string {
   const { title, body, ctaText, ctaUrl, coverImageUrl } = data;
+  const primaryColor = data.primaryColor || "#f97316";
+  const secondaryColor = data.secondaryColor || "#ea580c";
+  const darkMode = data.darkMode !== false;
+  const titleFont = data.titleFont || "oswald";
+  const bodyFont = data.bodyFont || "inter";
+
+  const fontMap: Record<string, string> = {
+    "oswald": "'Oswald', sans-serif",
+    "bebas": "'Bebas Neue', sans-serif",
+    "anton": "'Anton', sans-serif",
+    "archivo-black": "'Archivo Black', sans-serif",
+    "righteous": "'Righteous', sans-serif",
+    "bangers": "'Bangers', sans-serif",
+    "permanent-marker": "'Permanent Marker', sans-serif",
+    "montserrat": "'Montserrat', sans-serif",
+    "poppins": "'Poppins', sans-serif",
+    "inter": "'Inter', sans-serif",
+    "raleway": "'Raleway', sans-serif",
+    "dm-sans": "'DM Sans', sans-serif",
+    "outfit": "'Outfit', sans-serif",
+    "sora": "'Sora', sans-serif",
+    "space-grotesk": "'Space Grotesk', sans-serif",
+    "playfair": "'Playfair Display', serif",
+    "merriweather": "'Merriweather', serif",
+    "roboto-mono": "'Roboto Mono', monospace",
+  };
+
+  const titleFontFamily = fontMap[titleFont] || "'Oswald', sans-serif";
+  const bodyFontFamily = fontMap[bodyFont] || "'Inter', sans-serif";
+
+  const bgColor = darkMode ? "#0a0a0a" : "#f5f5f5";
+  const cardBgColor = darkMode ? "#1a1a1a" : "#ffffff";
+  const bodyTextColor = darkMode ? "#cccccc" : "#555555";
+  const footerBgColor = darkMode ? "#0a0a0a" : "#eeeeee";
+  const footerTextColor = darkMode ? "#666666" : "#999999";
+
+  const buttonRoundedMap: Record<string, string> = { "none": "0px", "sm": "4px", "md": "6px", "lg": "8px", "full": "50px" };
+  const buttonRadius = buttonRoundedMap[data.buttonRounded || "full"] || "50px";
+
+  let buttonCss = "";
+  switch (data.buttonStyle || "gradient") {
+    case "solid": buttonCss = `background: ${primaryColor}; color: #ffffff; border: none;`; break;
+    case "gradient": buttonCss = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`; break;
+    case "outline": buttonCss = `background: transparent; border: 2px solid ${primaryColor}; color: ${primaryColor};`; break;
+    case "glass": buttonCss = `background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff;`; break;
+    default: buttonCss = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`;
+  }
 
   const formattedBody = body
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\n\n/g, "</p><p>")
     .replace(/\n/g, "<br>")
-    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #ff6b00; text-decoration: underline;">$1</a>')
-    .replace(/^### (.*?)$/gm, '<h3 style="color: #ff6b00; margin: 20px 0 10px;">$1</h3>')
-    .replace(/^# (.*?)$/gm, '<h1 style="color: #ff6b00; margin: 20px 0 10px;">$1</h1>');
+    .replace(/\[(.*?)\]\((.*?)\)/g, `<a href="$2" style="color: ${primaryColor}; text-decoration: underline;">$1</a>`)
+    .replace(/^### (.*?)$/gm, `<h3 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h3>`)
+    .replace(/^# (.*?)$/gm, `<h1 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h1>`);
 
   return `
 <!DOCTYPE html>
@@ -195,31 +249,31 @@ function generatePreviewHTML(data: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a;">
+<body style="margin: 0; padding: 0; background-color: ${bgColor}; font-family: ${bodyFontFamily}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${bgColor};">
     <tr>
       <td align="center" style="padding: 40px 20px;">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #1a1a1a; border-radius: 16px; overflow: hidden; max-width: 100%;">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: ${cardBgColor}; border-radius: 16px; overflow: hidden; max-width: 100%;">
           <tr>
-            <td style="padding: 30px 40px; text-align: center; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%);">
-              <h1 style="margin: 0; color: white; font-size: 24px;">SONIDO LIQUIDO CREW</h1>
+            <td style="padding: 30px 40px; text-align: center; background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%);">
+              <h1 style="margin: 0; color: white; font-size: 24px; font-family: ${titleFontFamily}, sans-serif;">SONIDO LIQUIDO CREW</h1>
             </td>
           </tr>
           ${coverImageUrl ? `
           <tr>
             <td style="padding: 30px 40px 0;">
-              <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(255, 107, 0, 0.3);">
+              <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
             </td>
           </tr>
           ` : ""}
           <tr>
             <td style="padding: 30px 40px 10px; text-align: center;">
-              <h1 style="margin: 0; color: #ff6b00; font-size: 28px; font-weight: bold;">${title}</h1>
+              <h1 style="margin: 0; color: ${primaryColor}; font-size: 28px; font-weight: bold; font-family: ${titleFontFamily}, sans-serif;">${title}</h1>
             </td>
           </tr>
           <tr>
             <td style="padding: 10px 40px 30px; color: #ffffff;">
-              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #cccccc;">
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: ${bodyTextColor}; font-family: ${bodyFontFamily}, sans-serif;">
                 ${formattedBody}
               </p>
             </td>
@@ -227,19 +281,19 @@ function generatePreviewHTML(data: {
           ${ctaText && ctaUrl ? `
           <tr>
             <td style="padding: 0 40px 30px; text-align: center;">
-              <a href="${ctaUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%); color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;">
+              <a href="${ctaUrl}" style="display: inline-block; padding: 16px 40px; ${buttonCss} text-decoration: none; font-weight: bold; font-size: 18px; border-radius: ${buttonRadius}; text-transform: uppercase; letter-spacing: 1px; font-family: ${titleFontFamily}, sans-serif;">
                 ${ctaText}
               </a>
             </td>
           </tr>
           ` : ""}
           <tr>
-            <td style="padding: 30px 40px; background-color: #0a0a0a; text-align: center;">
-              <p style="margin: 0 0 15px; color: #666666; font-size: 12px;">
+            <td style="padding: 30px 40px; background-color: ${footerBgColor}; text-align: center;">
+              <p style="margin: 0 0 15px; color: ${footerTextColor}; font-size: 12px;">
                 Sonido Liquido Crew - Hip Hop Mexico desde 1999
               </p>
-              <p style="margin: 0; color: #444444; font-size: 11px;">
-                <a href="https://sonidoliquido.com" style="color: #ff6b00; text-decoration: none;">sonidoliquido.com</a>
+              <p style="margin: 0; color: ${darkMode ? '#444444' : '#aaaaaa'}; font-size: 11px;">
+                <a href="https://sonidoliquido.com" style="color: ${primaryColor}; text-decoration: none;">sonidoliquido.com</a>
               </p>
             </td>
           </tr>
@@ -278,6 +332,16 @@ export function MailchimpCampaignStudio() {
   const [formSelectedTags, setFormSelectedTags] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Email style customization
+  const [formStylePrimaryColor, setFormStylePrimaryColor] = useState("#f97316");
+  const [formStyleSecondaryColor, setFormStyleSecondaryColor] = useState("#ea580c");
+  const [formStyleDarkMode, setFormStyleDarkMode] = useState(true);
+  const [formStyleTitleFont, setFormStyleTitleFont] = useState("oswald");
+  const [formStyleBodyFont, setFormStyleBodyFont] = useState("inter");
+  const [formStyleButtonStyle, setFormStyleButtonStyle] = useState<"solid" | "gradient" | "outline" | "glass">("gradient");
+  const [formStyleButtonRounded, setFormStyleButtonRounded] = useState<"none" | "sm" | "md" | "lg" | "full">("full");
+  const [showStylePanel, setShowStylePanel] = useState(false);
 
   // Campaign detail
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignData | null>(null);
@@ -439,7 +503,26 @@ Hip Hop México desde 1999`);
         ctaUrl: formCtaUrl || undefined,
         coverImageUrl: formCoverImageUrl || undefined,
         tags: formSelectedTags.length > 0 ? formSelectedTags : undefined,
-        styleSettings: selectedLocalCampaign?.styleSettings || undefined,
+        styleSettings: selectedLocalCampaign?.styleSettings || {
+          primaryColor: formStylePrimaryColor,
+          secondaryColor: formStyleSecondaryColor,
+          darkMode: formStyleDarkMode,
+          titleFont: formStyleTitleFont,
+          bodyFont: formStyleBodyFont,
+          buttonStyle: formStyleButtonStyle,
+          buttonRounded: formStyleButtonRounded,
+          colorPreset: "custom",
+          accentColor: formStylePrimaryColor,
+          textColor: "#ffffff",
+          titleStyle: "uppercase",
+          backgroundStyle: formStyleDarkMode ? "gradient-dark" : "solid-light",
+          backgroundOverlayOpacity: 50,
+          backgroundBlur: 0,
+          enableGlow: true,
+          enableAnimations: false,
+          enableParticles: false,
+          animationPreset: "none",
+        },
       };
 
       if (sendNow && formScheduleTime) {
@@ -1173,6 +1256,268 @@ Hip Hop México desde 1999`);
                   />
                 </div>
 
+                {/* Style Customization */}
+                <div className="border-t border-slc-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowStylePanel(!showStylePanel)}
+                    className="w-full flex items-center justify-between text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" x="0" y="0" width="3" height="3" rx="1.5"/><circle cx="17.5" cy="10.5" width="3" height="3" rx="1.5"/><circle cx="8.5" cy="7.5" width="3" height="3" rx="1.5"/><circle cx="6.5" cy="12.5" width="3" height="3" rx="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                      Personalizar Diseño y Colores
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showStylePanel ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {showStylePanel && (
+                    <div className="mt-4 space-y-4">
+                      {/* Color Presets */}
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-2">Presets de Color</label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { label: "Naranja (SLC)", primary: "#f97316", secondary: "#ea580c" },
+                            { label: "Dorado", primary: "#eab308", secondary: "#ca8a04" },
+                            { label: "Rojo", primary: "#ef4444", secondary: "#dc2626" },
+                            { label: "Rosa", primary: "#ec4899", secondary: "#db2777" },
+                            { label: "Morado", primary: "#a855f7", secondary: "#9333ea" },
+                            { label: "Azul", primary: "#3b82f6", secondary: "#2563eb" },
+                            { label: "Verde", primary: "#22c55e", secondary: "#16a34a" },
+                            { label: "Spotify", primary: "#1db954", secondary: "#1ed760" },
+                            { label: "Blanco", primary: "#ffffff", secondary: "#e5e7eb" },
+                            { label: "Neón", primary: "#00ff88", secondary: "#00ffcc" },
+                          ].map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() => {
+                                setFormStylePrimaryColor(preset.primary);
+                                setFormStyleSecondaryColor(preset.secondary);
+                              }}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                                formStylePrimaryColor === preset.primary
+                                  ? "border-primary bg-primary/10"
+                                  : "border-slc-border bg-slc-dark hover:border-primary/50"
+                              }`}
+                            >
+                              <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
+                              <span className="text-slc-muted">{preset.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Colors */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Color Principal</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={formStylePrimaryColor}
+                              onChange={(e) => setFormStylePrimaryColor(e.target.value)}
+                              className="w-8 h-8 rounded border border-slc-border cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={formStylePrimaryColor}
+                              onChange={(e) => setFormStylePrimaryColor(e.target.value)}
+                              className="flex-1 px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Color Secundario</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={formStyleSecondaryColor}
+                              onChange={(e) => setFormStyleSecondaryColor(e.target.value)}
+                              className="w-8 h-8 rounded border border-slc-border cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={formStyleSecondaryColor}
+                              onChange={(e) => setFormStyleSecondaryColor(e.target.value)}
+                              className="flex-1 px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dark/Light Mode */}
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs text-slc-muted">Modo:</label>
+                        <div className="flex gap-1 bg-slc-dark rounded-lg p-1">
+                          <button
+                            type="button"
+                            onClick={() => setFormStyleDarkMode(true)}
+                            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                              formStyleDarkMode ? "bg-primary text-white" : "text-slc-muted hover:text-white"
+                            }`}
+                          >
+                            Oscuro
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormStyleDarkMode(false)}
+                            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                              !formStyleDarkMode ? "bg-primary text-white" : "text-slc-muted hover:text-white"
+                            }`}
+                          >
+                            Claro
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Fonts */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Fuente de Títulos</label>
+                          <select
+                            value={formStyleTitleFont}
+                            onChange={(e) => setFormStyleTitleFont(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
+                          >
+                            <option value="oswald">Oswald</option>
+                            <option value="bebas">Bebas Neue</option>
+                            <option value="anton">Anton</option>
+                            <option value="archivo-black">Archivo Black</option>
+                            <option value="righteous">Righteous</option>
+                            <option value="bangers">Bangers</option>
+                            <option value="permanent-marker">Permanent Marker</option>
+                            <option value="montserrat">Montserrat</option>
+                            <option value="poppins">Poppins</option>
+                            <option value="inter">Inter</option>
+                            <option value="space-grotesk">Space Grotesk</option>
+                            <option value="playfair">Playfair Display</option>
+                            <option value="roboto-mono">Roboto Mono</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slc-muted mb-1">Fuente del Cuerpo</label>
+                          <select
+                            value={formStyleBodyFont}
+                            onChange={(e) => setFormStyleBodyFont(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
+                          >
+                            <option value="inter">Inter</option>
+                            <option value="montserrat">Montserrat</option>
+                            <option value="poppins">Poppins</option>
+                            <option value="raleway">Raleway</option>
+                            <option value="dm-sans">DM Sans</option>
+                            <option value="outfit">Outfit</option>
+                            <option value="sora">Sora</option>
+                            <option value="oswald">Oswald</option>
+                            <option value="space-grotesk">Space Grotesk</option>
+                            <option value="merriweather">Merriweather</option>
+                            <option value="roboto-mono">Roboto Mono</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Button Style */}
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-2">Estilo del Botón</label>
+                        <div className="flex gap-2 flex-wrap">
+                          {[
+                            { value: "gradient" as const, label: "Gradiente" },
+                            { value: "solid" as const, label: "Sólido" },
+                            { value: "outline" as const, label: "Contorno" },
+                            { value: "glass" as const, label: "Cristal" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setFormStyleButtonStyle(opt.value)}
+                              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                                formStyleButtonStyle === opt.value
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-slc-border bg-slc-dark text-slc-muted hover:border-primary/50"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Button Rounded */}
+                      <div>
+                        <label className="block text-xs text-slc-muted mb-2">Bordes del Botón</label>
+                        <div className="flex gap-2">
+                          {[
+                            { value: "none" as const, label: "Cuadrado" },
+                            { value: "sm" as const, label: "Sutil" },
+                            { value: "md" as const, label: "Medio" },
+                            { value: "lg" as const, label: "Grande" },
+                            { value: "full" as const, label: "Píldora" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setFormStyleButtonRounded(opt.value)}
+                              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                                formStyleButtonRounded === opt.value
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-slc-border bg-slc-dark text-slc-muted hover:border-primary/50"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Preview swatch */}
+                      <div className="p-3 bg-slc-dark rounded-lg border border-slc-border">
+                        <p className="text-xs text-slc-muted mb-2">Vista previa</p>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-24 h-16 rounded-lg overflow-hidden flex-shrink-0"
+                            style={{ backgroundColor: formStyleDarkMode ? "#1a1a1a" : "#ffffff" }}
+                          >
+                            <div
+                              className="h-5"
+                              style={{ background: `linear-gradient(135deg, ${formStylePrimaryColor}, ${formStyleSecondaryColor})` }}
+                            />
+                            <div className="flex items-center justify-center h-11">
+                              <div
+                                className="px-3 py-1 text-[10px] text-white font-bold"
+                                style={{
+                                  background: formStyleButtonStyle === "gradient"
+                                    ? `linear-gradient(135deg, ${formStylePrimaryColor}, ${formStyleSecondaryColor})`
+                                    : formStyleButtonStyle === "solid"
+                                    ? formStylePrimaryColor
+                                    : formStyleButtonStyle === "outline"
+                                    ? "transparent"
+                                    : "rgba(255,255,255,0.1)",
+                                  border: formStyleButtonStyle === "outline" ? `2px solid ${formStylePrimaryColor}` : "none",
+                                  borderRadius:
+                                    formStyleButtonRounded === "full" ? "50px" :
+                                    formStyleButtonRounded === "lg" ? "8px" :
+                                    formStyleButtonRounded === "md" ? "6px" :
+                                    formStyleButtonRounded === "sm" ? "4px" : "0px",
+                                  color: formStyleButtonStyle === "outline" ? formStylePrimaryColor : "#ffffff",
+                                }}
+                              >
+                                BOTÓN
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs space-y-1">
+                            <p style={{ color: formStyleDarkMode ? "#fff" : "#333" }}>
+                              <span style={{ color: formStylePrimaryColor, fontWeight: "bold" }}>Título</span> de ejemplo
+                            </p>
+                            <p style={{ color: formStyleDarkMode ? "#999" : "#666" }}>Cuerpo del email</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Schedule */}
                 <div>
                   <label className="block text-sm font-medium mb-1 flex items-center gap-1">
@@ -1249,6 +1594,13 @@ Hip Hop México desde 1999`);
                       ctaText: formCtaText,
                       ctaUrl: formCtaUrl,
                       coverImageUrl: formCoverImageUrl,
+                      primaryColor: formStylePrimaryColor,
+                      secondaryColor: formStyleSecondaryColor,
+                      darkMode: formStyleDarkMode,
+                      titleFont: formStyleTitleFont,
+                      bodyFont: formStyleBodyFont,
+                      buttonStyle: formStyleButtonStyle,
+                      buttonRounded: formStyleButtonRounded,
                     })}
                     className="w-full border-0"
                     style={{ minHeight: "600px" }}

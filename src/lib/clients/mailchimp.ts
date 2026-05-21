@@ -54,6 +54,7 @@ interface MailchimpError {
   status: number;
   detail: string;
   instance: string;
+  errors?: Array<{ field: string; message: string }>;
 }
 
 // Default tag for all subscribers from sonidoliquido.com
@@ -220,8 +221,15 @@ class MailchimpClient {
         instance: endpoint,
       }));
 
-      console.error(`[Mailchimp] Error: ${error.title} - ${error.detail}`);
-      throw new Error(`Mailchimp API error: ${error.title} - ${error.detail}`);
+      console.error(`[Mailchimp] Error: ${error.title} - ${error.detail}`, error.errors || "");
+
+      // Build a more detailed error message including field-specific errors
+      let detailMsg = `Mailchimp API error: ${error.title} - ${error.detail}`;
+      if (error.errors && error.errors.length > 0) {
+        const fieldErrors = error.errors.map(e => `${e.field}: ${e.message}`).join(", ");
+        detailMsg += ` (${fieldErrors})`;
+      }
+      throw new Error(detailMsg);
     }
 
     return response.json();
@@ -410,23 +418,54 @@ class MailchimpClient {
     previewText?: string;
     title: string;
     segmentId?: number;
+    tagIds?: number[];
     tags?: string[];
   }): Promise<MailchimpCampaign> {
     const recipients: Record<string, unknown> = {
       list_id: this.audienceId,
     };
 
-    // If tags are provided, create a segment condition
-    if (data.tags && data.tags.length > 0) {
+    // If a saved segment ID is provided, use it directly
+    if (data.segmentId) {
+      recipients.segment_opts = {
+        saved_segment_id: data.segmentId,
+      };
+    }
+    // If tag IDs are provided, create a segment condition with numeric IDs
+    else if (data.tagIds && data.tagIds.length > 0) {
       recipients.segment_opts = {
         match: "any",
-        conditions: data.tags.map((tag) => ({
+        conditions: data.tagIds.map((tagId) => ({
           condition_type: "StaticSegment",
           field: "static_segment",
           op: "static_is",
-          value: tag,
+          value: tagId,
         })),
       };
+    }
+    // Legacy: if tag names are provided, resolve them to IDs first
+    else if (data.tags && data.tags.length > 0) {
+      try {
+        const tagData = await this.getTags();
+        const tagIdMap = new Map(tagData.tags.map(t => [t.name, t.id]));
+        const resolvedIds = data.tags
+          .map(name => tagIdMap.get(name))
+          .filter((id): id is number => id !== undefined);
+
+        if (resolvedIds.length > 0) {
+          recipients.segment_opts = {
+            match: "any",
+            conditions: resolvedIds.map((tagId) => ({
+              condition_type: "StaticSegment",
+              field: "static_segment",
+              op: "static_is",
+              value: tagId,
+            })),
+          };
+        }
+      } catch (err) {
+        console.warn("[Mailchimp] Failed to resolve tag names to IDs, sending to full list:", err);
+      }
     }
 
     return this.request<MailchimpCampaign>("/campaigns", {
