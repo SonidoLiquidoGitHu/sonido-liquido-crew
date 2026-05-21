@@ -3,6 +3,7 @@
 // ===========================================
 
 import { createHash } from "crypto";
+import { defaultStyleSettings } from "@/lib/style-config";
 
 interface MailchimpMember {
   id: string;
@@ -213,13 +214,26 @@ class MailchimpClient {
     });
 
     if (!response.ok) {
-      const error: MailchimpError = await response.json().catch(() => ({
-        type: "unknown",
-        title: "Unknown error",
-        status: response.status,
-        detail: response.statusText,
-        instance: endpoint,
-      }));
+      // Try to parse error body — Mailchimp sometimes returns empty bodies for errors
+      let error: MailchimpError;
+      try {
+        const text = await response.text();
+        error = text ? JSON.parse(text) : {
+          type: "unknown",
+          title: "Unknown error",
+          status: response.status,
+          detail: response.statusText,
+          instance: endpoint,
+        };
+      } catch {
+        error = {
+          type: "unknown",
+          title: "Unknown error",
+          status: response.status,
+          detail: response.statusText,
+          instance: endpoint,
+        };
+      }
 
       console.error(`[Mailchimp] Error: ${error.title} - ${error.detail}`, error.errors || "");
 
@@ -232,7 +246,20 @@ class MailchimpClient {
       throw new Error(detailMsg);
     }
 
-    return response.json();
+    // Many Mailchimp action endpoints (send, schedule, unschedule, etc.)
+    // return 204 No Content. Trying response.json() on an empty body throws
+    // "Unexpected end of JSON input", so we handle it explicitly.
+    const contentLength = response.headers.get("content-length");
+    if (response.status === 204 || contentLength === "0") {
+      return {} as T;
+    }
+
+    // Some responses may have a body but still not be valid JSON
+    const text = await response.text();
+    if (!text || text.trim() === "") {
+      return {} as T;
+    }
+    return JSON.parse(text) as T;
   }
 
   /**
@@ -883,7 +910,6 @@ class MailchimpClient {
     const { title, body, ctaText, ctaUrl, coverImageUrl, styleSettings } = data;
 
     // Merge with defaults
-    const { defaultStyleSettings } = require("@/lib/style-config") as typeof import("@/lib/style-config");
     const s = { ...defaultStyleSettings, ...styleSettings };
 
     // Resolve colors

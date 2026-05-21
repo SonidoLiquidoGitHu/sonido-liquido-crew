@@ -548,7 +548,14 @@ Hip Hop México desde 1999`);
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      let data: { success: boolean; error?: string; data?: unknown };
+      try {
+        const text = await res.text();
+        data = text ? JSON.parse(text) : { success: false, error: "Respuesta vacía del servidor" };
+      } catch {
+        data = { success: false, error: "Error al procesar la respuesta del servidor" };
+      }
+
       if (data.success) {
         setSendResult({
           success: true,
