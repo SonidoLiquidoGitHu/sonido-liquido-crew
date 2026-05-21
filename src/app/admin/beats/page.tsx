@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -651,7 +651,7 @@ export default function AdminBeatsPage() {
                   {/* Cover */}
                   <div className="aspect-square relative bg-slc-border">
                     {beat.coverImageUrl ? (
-                      <Image
+                      <SafeImage
                         src={beat.coverImageUrl}
                         alt={beat.title}
                         fill

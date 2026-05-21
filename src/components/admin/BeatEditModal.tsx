@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface DownloadGateAction {
   id?: string;
@@ -450,14 +451,15 @@ export default function BeatEditModal({ beatId, isOpen, onClose, onSave }: Props
 
                     {formData.coverImageUrl && (
                       <div className="mt-3 relative w-24 h-24">
-                        <img
+                        <SafeImage
                           src={formData.coverImageUrl}
                           alt="Cover"
-                          className="w-full h-full object-cover rounded-lg"
+                          fill
+                          className="object-cover rounded-lg"
                         />
                         <button
                           onClick={() => setFormData((prev) => ({ ...prev, coverImageUrl: "" }))}
-                          className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white"
+                          className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white z-10"
                         >
                           <X className="h-3 w-3" />
                         </button>
