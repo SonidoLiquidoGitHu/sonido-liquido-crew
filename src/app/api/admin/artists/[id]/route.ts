@@ -110,10 +110,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if ('pressEmail' in body) updateData.pressEmail = body.pressEmail || null;
     if ('websiteUrl' in body) updateData.websiteUrl = body.websiteUrl || null;
     if ('yearStarted' in body) updateData.yearStarted = body.yearStarted ? parseInt(body.yearStarted) : null;
-    if ('genres' in body) updateData.genres = body.genres ? JSON.stringify(body.genres) : null;
-    if ('labels' in body) updateData.labels = body.labels ? JSON.stringify(body.labels) : null;
-    if ('pressQuotes' in body) updateData.pressQuotes = body.pressQuotes ? JSON.stringify(body.pressQuotes) : null;
-    if ('featuredVideos' in body) updateData.featuredVideos = body.featuredVideos ? JSON.stringify(body.featuredVideos) : null;
+    // For JSON fields: if the value is already a string, use it as-is (prevents double-escaping).
+    // If it's an array/object, stringify it. If empty/null, store null.
+    if ('genres' in body) updateData.genres = body.genres ? (typeof body.genres === 'string' ? body.genres : JSON.stringify(body.genres)) : null;
+    if ('labels' in body) updateData.labels = body.labels ? (typeof body.labels === 'string' ? body.labels : JSON.stringify(body.labels)) : null;
+    if ('pressQuotes' in body) updateData.pressQuotes = body.pressQuotes ? (typeof body.pressQuotes === 'string' ? body.pressQuotes : JSON.stringify(body.pressQuotes)) : null;
+    if ('featuredVideos' in body) updateData.featuredVideos = body.featuredVideos ? (typeof body.featuredVideos === 'string' ? body.featuredVideos : JSON.stringify(body.featuredVideos)) : null;
     if ('isActive' in body) updateData.isActive = body.isActive ?? true;
     if ('isFeatured' in body) updateData.isFeatured = body.isFeatured ?? false;
     if ('sortOrder' in body) updateData.sortOrder = body.sortOrder || 0;
@@ -307,10 +309,10 @@ export async function POST(request: NextRequest) {
         pressEmail: body.pressEmail || null,
         websiteUrl: body.websiteUrl || null,
         yearStarted: body.yearStarted ? parseInt(body.yearStarted) : null,
-        genres: body.genres ? JSON.stringify(body.genres) : null,
-        labels: body.labels ? JSON.stringify(body.labels) : null,
-        pressQuotes: body.pressQuotes ? JSON.stringify(body.pressQuotes) : null,
-        featuredVideos: body.featuredVideos ? JSON.stringify(body.featuredVideos) : null,
+        genres: body.genres ? (typeof body.genres === 'string' ? body.genres : JSON.stringify(body.genres)) : null,
+        labels: body.labels ? (typeof body.labels === 'string' ? body.labels : JSON.stringify(body.labels)) : null,
+        pressQuotes: body.pressQuotes ? (typeof body.pressQuotes === 'string' ? body.pressQuotes : JSON.stringify(body.pressQuotes)) : null,
+        featuredVideos: body.featuredVideos ? (typeof body.featuredVideos === 'string' ? body.featuredVideos : JSON.stringify(body.featuredVideos)) : null,
         isActive: body.isActive ?? true,
         isFeatured: body.isFeatured ?? false,
         sortOrder: body.sortOrder || 0,

@@ -68,6 +68,38 @@ const verificationStatuses = [
   { value: "rejected", label: "Rechazado", color: "red" },
 ];
 
+/**
+ * Safely parse a JSON string that may be double-escaped.
+ * Some older data in the database was saved with extra layers of JSON.stringify(),
+ * resulting in values like '"[\\"quote\\"]"' instead of '["quote"]'.
+ * This helper keeps parsing until we get a non-string value or the string can't be parsed.
+ */
+function safeJsonParse(value: string | null | undefined, fallback: any = null): any {
+  if (!value) return fallback;
+  try {
+    let parsed: unknown = JSON.parse(value);
+    // If the result is still a string, it was double-escaped — keep parsing
+    let depth = 0;
+    while (typeof parsed === "string" && depth < 5) {
+      try {
+        const next = JSON.parse(parsed);
+        parsed = next;
+        depth++;
+      } catch {
+        break; // Can't parse further — this is the final value
+      }
+    }
+    return parsed;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Ensure a value is an array; if not, return empty array */
+function ensureArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 interface ExternalProfile {
   id?: string;
   platform: string;
@@ -223,8 +255,8 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
               pressEmail: artist.pressEmail || "",
               websiteUrl: artist.websiteUrl || "",
               yearStarted: artist.yearStarted?.toString() || "",
-              genres: artist.genres ? JSON.parse(artist.genres) : [],
-              labels: artist.labels ? JSON.parse(artist.labels) : [],
+              genres: ensureArray<string>(safeJsonParse(artist.genres, [])),
+              labels: ensureArray<string>(safeJsonParse(artist.labels, [])),
               isActive: artist.isActive ?? true,
               isFeatured: artist.isFeatured ?? false,
               sortOrder: artist.sortOrder ?? 0,
@@ -257,20 +289,16 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
               })));
             }
 
-            // Load press quotes and featured videos
+            // Load press quotes and featured videos (handle double-escaped JSON)
             if (artist.pressQuotes) {
-              try {
-                setPressQuotes(JSON.parse(artist.pressQuotes));
-              } catch (e) {
-                setPressQuotes([]);
-              }
+              setPressQuotes(ensureArray<{ quote: string; source: string; sourceUrl: string }>(
+                safeJsonParse(artist.pressQuotes, [])
+              ));
             }
             if (artist.featuredVideos) {
-              try {
-                setFeaturedVideos(JSON.parse(artist.featuredVideos));
-              } catch (e) {
-                setFeaturedVideos([]);
-              }
+              setFeaturedVideos(ensureArray<{ videoUrl: string; title: string; platform: string; views: number; thumbnailUrl: string }>(
+                safeJsonParse(artist.featuredVideos, [])
+              ));
             }
           }
         } catch (error) {
@@ -423,23 +451,36 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
       const method = mode === "edit" ? "PUT" : "POST";
 
+      // Defensive: ensure arrays are actually arrays before calling .filter()
+      const safePressQuotes = ensureArray<{ quote: string; source: string; sourceUrl: string }>(pressQuotes);
+      const safeFeaturedVideos = ensureArray<{ videoUrl: string; title: string; platform: string; views: number; thumbnailUrl: string }>(featuredVideos);
+      const safeExternalProfiles = ensureArray<ExternalProfile>(externalProfiles);
+      const safeGalleryAssets = ensureArray<GalleryAsset>(galleryAssets);
+      const safeArtistRelations = ensureArray<ArtistRelation>(artistRelationsList);
+
       const response = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          externalProfiles: externalProfiles.filter(p => p.externalUrl),
-          galleryAssets: galleryAssets.filter(a => a.assetUrl),
-          artistRelations: artistRelationsList.map(r => ({
+          externalProfiles: safeExternalProfiles.filter(p => p.externalUrl),
+          galleryAssets: safeGalleryAssets.filter(a => a.assetUrl),
+          artistRelations: safeArtistRelations.map(r => ({
             relatedArtistId: r.relatedArtistId,
             relationType: r.relationType,
           })),
-          pressQuotes: pressQuotes.filter(q => q.quote),
-          featuredVideos: featuredVideos.filter(v => v.videoUrl),
+          pressQuotes: safePressQuotes.filter(q => q.quote),
+          featuredVideos: safeFeaturedVideos.filter(v => v.videoUrl),
         }),
       });
 
-      const data = await response.json();
+      // Handle non-JSON responses gracefully
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(`Error del servidor (${response.status})`);
+      }
 
       if (data.success) {
         showMessage("success", mode === "edit" ? "Artista actualizado" : "Artista creado");
@@ -449,8 +490,10 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
       } else {
         showMessage("error", data.error || "Error al guardar");
       }
-    } catch (error) {
-      showMessage("error", "Error de conexion");
+    } catch (error: any) {
+      console.error("[ArtistForm] Error saving artist:", error);
+      const msg = error?.message || "Error de conexión";
+      showMessage("error", msg.includes("fetch") ? "Error de conexión al servidor" : msg);
     } finally {
       setIsLoading(false);
     }
