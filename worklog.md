@@ -439,3 +439,29 @@ Stage Summary:
 - Beat covers in admin now use SafeImage which proxies Dropbox URLs
 - Fix applies to both the beats list page and the beat edit modal preview
 - Pushed commit 0a5c475 to master
+---
+Task ID: 2
+Agent: main
+Task: Fix Mailchimp campaign API error + add email design customization
+
+Work Log:
+- Diagnosed "Invalid Resource" error: tag names were used as segment values but Mailchimp expects numeric IDs
+- Updated createCampaign in mailchimp.ts to resolve tag names to IDs via getTags()
+- Added tagIds parameter for direct numeric ID support
+- Improved error messages to include field-specific errors from Mailchimp errors array
+- Added email design customization panel in MailchimpCampaignStudio:
+  - Color presets (10 options: Naranja, Dorado, Rojo, Rosa, Morado, Azul, Verde, Spotify, Blanco, Neón)
+  - Custom primary/secondary color pickers
+  - Dark/Light mode toggle
+  - Title and body font selection (13+ fonts)
+  - Button style options (gradient, solid, outline, glass)
+  - Button border radius options (5 levels)
+  - Live preview swatch in the panel
+- Updated generatePreviewHTML client-side to use custom styles
+- Updated handleCreateCampaign payload to include styleSettings
+- Pushed to master successfully
+
+Stage Summary:
+- Mailchimp API error fixed by resolving tag names to numeric IDs
+- Email design customization panel added with colors, fonts, button styles, dark/light mode
+- Commit d2d6e89 pushed to master
