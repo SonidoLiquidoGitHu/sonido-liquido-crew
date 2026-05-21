@@ -33,6 +33,19 @@ import {
 import { AudienceSelector, type AudienceTag } from "@/components/admin/AudienceSelector";
 import { type StyleSettings } from "@/lib/style-config";
 
+/**
+ * Proxy a Dropbox URL through our image-proxy endpoint so mobile browsers
+ * can render it (Dropbox returns wrong content-type for image files).
+ */
+function proxyImageUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith("/api/image-proxy")) return url;
+  if (url.includes("dropbox.com") || url.includes("dropboxusercontent.com")) {
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 // ===========================================
 // TYPES
 // ===========================================
@@ -1114,7 +1127,7 @@ Hip Hop México desde 1999`);
                           <div className="flex items-center gap-2">
                             {lc.coverImageUrl ? (
                               <img
-                                src={lc.coverImageUrl}
+                                src={proxyImageUrl(lc.coverImageUrl)}
                                 alt={lc.title}
                                 className="w-8 h-8 rounded object-cover flex-shrink-0"
                               />
@@ -1593,7 +1606,7 @@ Hip Hop México desde 1999`);
                       body: formBody,
                       ctaText: formCtaText,
                       ctaUrl: formCtaUrl,
-                      coverImageUrl: formCoverImageUrl,
+                      coverImageUrl: proxyImageUrl(formCoverImageUrl),
                       primaryColor: formStylePrimaryColor,
                       secondaryColor: formStyleSecondaryColor,
                       darkMode: formStyleDarkMode,
