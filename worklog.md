@@ -421,3 +421,21 @@ Stage Summary:
 - NaN bug fixed with proper null/undefined protection
 - Local campaigns from Campañas section now appear in Email Studio's "Mis Campañas" selector
 - Pushed commit 71c5e77 to master on GitHub
+---
+Task ID: 1
+Agent: main
+Task: Fix beat covers not loading in admin on mobile
+
+Work Log:
+- Identified that admin beats page uses raw Next.js `Image` component instead of `SafeImage`
+- Dropbox URLs on mobile fail because Dropbox returns `content-type: application/json` instead of proper MIME type
+- SafeImage component proxies Dropbox URLs through `/api/image-proxy` which fixes the content-type header
+- Replaced `Image` with `SafeImage` in `src/app/admin/beats/page.tsx`
+- Replaced raw `<img>` with `SafeImage` in `src/components/admin/BeatEditModal.tsx`
+- Added z-10 to BeatEditModal delete button to prevent overlap with SafeImage wrapper
+- Pushed to master successfully
+
+Stage Summary:
+- Beat covers in admin now use SafeImage which proxies Dropbox URLs
+- Fix applies to both the beats list page and the beat edit modal preview
+- Pushed commit 0a5c475 to master
