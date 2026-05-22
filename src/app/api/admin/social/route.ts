@@ -71,6 +71,15 @@ function extractYouTubeId(
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const action = searchParams.get("action");
+
+    // Schedule config endpoint — used by the Netlify cron function
+    if (action === "schedule-config") {
+      const config = await getScheduleConfig();
+      return NextResponse.json({ success: true, data: config });
+    }
+
     // Get queue summary
     const queueSummary = await db
       .select({
@@ -161,6 +170,7 @@ export async function GET(request: NextRequest) {
         recentLogs,
         metaStatus,
         contentCounts,
+        scheduleConfig: await getScheduleConfig(),
       },
     });
   } catch (error) {
@@ -219,6 +229,8 @@ export async function POST(request: NextRequest) {
         return await handleClearQueue();
       case "validate-reel-token":
         return await handleValidateReelToken();
+      case "save-schedule-config":
+        return await handleSaveScheduleConfig(body);
       default:
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },
@@ -1241,5 +1253,141 @@ async function getContentCounts() {
       curatedTracks: 0,
       verticalVideos: 0,
     };
+  }
+}
+
+// ===========================================
+// SCHEDULE CONFIG — Store/retrieve posting schedule in social_credentials
+// ===========================================
+// Keys used: AUTOPOST_SCHEDULE_HOURS (comma-separated hours in Mexico City time, e.g. "4,10,15")
+//            AUTOPOST_POSTS_PER_RUN (number of queue items to process per cron run)
+//            AUTOPOST_MAX_POSTS_PER_DAY (maximum posts per day)
+
+const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm Mexico City time
+const DEFAULT_POSTS_PER_RUN = 1;
+const DEFAULT_MAX_POSTS_PER_DAY = 3;
+
+async function getScheduleConfig(): Promise<{
+  scheduleHours: number[];
+  postsPerRun: number;
+  maxPostsPerDay: number;
+}> {
+  try {
+    const creds = await db
+      .select()
+      .from(socialCredentials)
+      .where(eq(socialCredentials.platform, "meta"));
+
+    const credMap = new Map(creds.map(c => [c.key, c.value]));
+
+    const scheduleHoursStr = credMap.get("AUTOPOST_SCHEDULE_HOURS");
+    const postsPerRunStr = credMap.get("AUTOPOST_POSTS_PER_RUN");
+    const maxPostsPerDayStr = credMap.get("AUTOPOST_MAX_POSTS_PER_DAY");
+
+    let scheduleHours = DEFAULT_SCHEDULE_HOURS;
+    if (scheduleHoursStr) {
+      const parsed = scheduleHoursStr.split(",").map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 23);
+      if (parsed.length > 0) scheduleHours = parsed.sort((a, b) => a - b);
+    }
+
+    let postsPerRun = DEFAULT_POSTS_PER_RUN;
+    if (postsPerRunStr) {
+      const parsed = parseInt(postsPerRunStr);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 10) postsPerRun = parsed;
+    }
+
+    let maxPostsPerDay = DEFAULT_MAX_POSTS_PER_DAY;
+    if (maxPostsPerDayStr) {
+      const parsed = parseInt(maxPostsPerDayStr);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 24) maxPostsPerDay = parsed;
+    }
+
+    return { scheduleHours, postsPerRun, maxPostsPerDay };
+  } catch (error) {
+    console.warn("[Social API] Error reading schedule config:", error);
+    return {
+      scheduleHours: DEFAULT_SCHEDULE_HOURS,
+      postsPerRun: DEFAULT_POSTS_PER_RUN,
+      maxPostsPerDay: DEFAULT_MAX_POSTS_PER_DAY,
+    };
+  }
+}
+
+async function handleSaveScheduleConfig(body: Record<string, unknown>) {
+  try {
+    const { scheduleHours, postsPerRun, maxPostsPerDay } = body;
+
+    const configToSave: Array<{ key: string; value: string }> = [];
+
+    if (Array.isArray(scheduleHours)) {
+      const validHours = scheduleHours
+        .map(Number)
+        .filter((n: number) => !isNaN(n) && n >= 0 && n <= 23)
+        .sort((a: number, b: number) => a - b);
+      if (validHours.length > 0) {
+        configToSave.push({ key: "AUTOPOST_SCHEDULE_HOURS", value: validHours.join(",") });
+      }
+    }
+
+    if (postsPerRun !== undefined) {
+      const val = parseInt(String(postsPerRun));
+      if (!isNaN(val) && val >= 1 && val <= 10) {
+        configToSave.push({ key: "AUTOPOST_POSTS_PER_RUN", value: String(val) });
+      }
+    }
+
+    if (maxPostsPerDay !== undefined) {
+      const val = parseInt(String(maxPostsPerDay));
+      if (!isNaN(val) && val >= 1 && val <= 24) {
+        configToSave.push({ key: "AUTOPOST_MAX_POSTS_PER_DAY", value: String(val) });
+      }
+    }
+
+    for (const config of configToSave) {
+      const existing = await db
+        .select({ id: socialCredentials.id })
+        .from(socialCredentials)
+        .where(
+          and(
+            eq(socialCredentials.platform, "meta"),
+            eq(socialCredentials.key, config.key)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(socialCredentials)
+          .set({ value: config.value, updatedAt: new Date() })
+          .where(
+            and(
+              eq(socialCredentials.platform, "meta"),
+              eq(socialCredentials.key, config.key)
+            )
+          );
+      } else {
+        await db.insert(socialCredentials).values({
+          id: crypto.randomUUID(),
+          platform: "meta",
+          key: config.key,
+          value: config.value,
+          isFromUi: true,
+        });
+      }
+    }
+
+    const savedConfig = await getScheduleConfig();
+
+    return NextResponse.json({
+      success: true,
+      message: "Configuración de horario guardada exitosamente",
+      data: savedConfig,
+    });
+  } catch (error) {
+    console.error("[Social API] Save schedule config error:", error);
+    return NextResponse.json(
+      { success: false, error: "Error al guardar la configuración de horario" },
+      { status: 500 }
+    );
   }
 }

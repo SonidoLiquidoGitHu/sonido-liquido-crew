@@ -100,6 +100,12 @@ interface ContentCounts {
   verticalVideos: number;
 }
 
+interface ScheduleConfig {
+  scheduleHours: number[];
+  postsPerRun: number;
+  maxPostsPerDay: number;
+}
+
 interface CredentialInfo {
   maskedValue: string;
   hasValue: boolean;
@@ -219,7 +225,15 @@ export default function AdminSocialPage() {
   const [validating, setValidating] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<any>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"queue" | "history" | "config">("queue");
+  const [activeTab, setActiveTab] = useState<"queue" | "history" | "schedule" | "config">("queue");
+
+  // Schedule config state
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
+  const [editScheduleHours, setEditScheduleHours] = useState<number[]>([]);
+  const [editPostsPerRun, setEditPostsPerRun] = useState(1);
+  const [editMaxPostsPerDay, setEditMaxPostsPerDay] = useState(3);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleSaveResult, setScheduleSaveResult] = useState<string | null>(null);
 
   // Credentials state
   const [credentialInfo, setCredentialInfo] = useState<Record<string, CredentialInfo> | null>(null);
@@ -250,6 +264,13 @@ export default function AdminSocialPage() {
         setRecentLogs(data.data.recentLogs || []);
         setMetaStatus(data.data.metaStatus);
         setContentCounts(data.data.contentCounts);
+        // Load schedule config
+        if (data.data.scheduleConfig) {
+          setScheduleConfig(data.data.scheduleConfig);
+          setEditScheduleHours(data.data.scheduleConfig.scheduleHours);
+          setEditPostsPerRun(data.data.scheduleConfig.postsPerRun);
+          setEditMaxPostsPerDay(data.data.scheduleConfig.maxPostsPerDay);
+        }
       }
     } catch (error) {
       console.error("Error fetching social data:", error);
@@ -376,6 +397,42 @@ export default function AdminSocialPage() {
     }
   };
 
+  const saveScheduleConfig = async () => {
+    setSavingSchedule(true);
+    setScheduleSaveResult(null);
+    try {
+      const res = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-schedule-config",
+          scheduleHours: editScheduleHours,
+          postsPerRun: editPostsPerRun,
+          maxPostsPerDay: editMaxPostsPerDay,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setScheduleSaveResult("Horario guardado exitosamente");
+        setScheduleConfig(data.data);
+      } else {
+        setScheduleSaveResult(`Error: ${data.error || "No se pudo guardar"}`);
+      }
+    } catch {
+      setScheduleSaveResult("Error al guardar la configuración");
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
+  const toggleScheduleHour = (hour: number) => {
+    setEditScheduleHours((prev) =>
+      prev.includes(hour)
+        ? prev.filter((h) => h !== hour)
+        : [...prev, hour].sort((a, b) => a - b)
+    );
+  };
+
   const validateToken = async () => {
     setValidating(true);
     try {
@@ -486,7 +543,7 @@ export default function AdminSocialPage() {
             Social Auto-Post
           </h1>
           <p className="text-slc-muted mt-1">
-            Publicación automática a Facebook e Instagram — 3x al día
+            Publicación automática a Facebook e Instagram — {scheduleConfig?.scheduleHours?.length || 3}x al día
           </p>
         </div>
         <div className="flex gap-2">
@@ -612,12 +669,12 @@ export default function AdminSocialPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-slc-border">
-        {(["queue", "history", "config"] as const).map((tab) => (
+      <div className="flex gap-1 mb-6 border-b border-slc-border overflow-x-auto">
+        {(["queue", "history", "schedule", "config"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
               activeTab === tab
                 ? "border-primary text-primary"
                 : "border-transparent text-slc-muted hover:text-white"
@@ -625,6 +682,7 @@ export default function AdminSocialPage() {
           >
             {tab === "queue" && "Cola Pendiente"}
             {tab === "history" && "Historial"}
+            {tab === "schedule" && "Horario"}
             {tab === "config" && "Configuración"}
           </button>
         ))}
@@ -830,6 +888,189 @@ export default function AdminSocialPage() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {activeTab === "schedule" && (
+        <div className="space-y-6">
+          {/* Schedule Configuration */}
+          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+            <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Horario de Publicación
+            </h2>
+            <p className="text-sm text-slc-muted mb-6">
+              Configura a qué horas se publican los posts automáticamente (hora de Ciudad de México / CST).
+              El sistema revisa la cola cada 2 horas y publica los items pendientes en los horarios seleccionados.
+            </p>
+
+            {/* Schedule Hours Grid */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-3">Horas de publicación (hora México)</label>
+              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2">
+                {Array.from({ length: 24 }, (_, h) => (
+                  <button
+                    key={h}
+                    onClick={() => toggleScheduleHour(h)}
+                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                      editScheduleHours.includes(h)
+                        ? "bg-primary text-white border border-primary"
+                        : "bg-slc-dark text-slc-muted border border-slc-border hover:border-primary/50"
+                    }`}
+                  >
+                    {h.toString().padStart(2, "0")}:00
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slc-muted mt-2">
+                Seleccionadas: {editScheduleHours.length > 0
+                  ? editScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
+                  : "Ninguna — se usarán las horas por defecto (04:00, 10:00, 15:00)"}
+              </p>
+            </div>
+
+            {/* Posts Per Run */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Posts por ejecución</label>
+              <p className="text-xs text-slc-muted mb-3">
+                Cuántos items de la cola se procesan cada vez que el cron corre (cada 2 horas).
+                Más items = más posts por día.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setEditPostsPerRun(Math.max(1, editPostsPerRun - 1))}
+                  className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
+                >
+                  −
+                </button>
+                <span className="text-2xl font-oswald w-12 text-center">{editPostsPerRun}</span>
+                <button
+                  onClick={() => setEditPostsPerRun(Math.min(10, editPostsPerRun + 1))}
+                  className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
+                >
+                  +
+                </button>
+                <span className="text-sm text-slc-muted ml-2">
+                  ({editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} cada 2 horas en horarios seleccionados)
+                </span>
+              </div>
+            </div>
+
+            {/* Max Posts Per Day */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Máximo de posts por día</label>
+              <p className="text-xs text-slc-muted mb-3">
+                Límite diario de publicaciones. Si el cron intenta pasar este límite, se detiene.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setEditMaxPostsPerDay(Math.max(1, editMaxPostsPerDay - 1))}
+                  className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
+                >
+                  −
+                </button>
+                <span className="text-2xl font-oswald w-12 text-center">{editMaxPostsPerDay}</span>
+                <button
+                  onClick={() => setEditMaxPostsPerDay(Math.min(24, editMaxPostsPerDay + 1))}
+                  className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
+                >
+                  +
+                </button>
+                <span className="text-sm text-slc-muted ml-2">
+                  (máximo {editMaxPostsPerDay} publicación{editMaxPostsPerDay > 1 ? "es" : ""} por día en FB + IG)
+                </span>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="p-4 bg-slc-dark rounded-lg border border-slc-border mb-6">
+              <h3 className="text-sm font-medium mb-2">Resumen de tu configuración</h3>
+              <div className="space-y-1 text-sm text-slc-muted">
+                <p>
+                  <span className="text-white font-medium">Horarios:</span>{" "}
+                  {editScheduleHours.length > 0
+                    ? editScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
+                    : "04:00, 10:00, 15:00 (por defecto)"} (hora México)
+                </p>
+                <p>
+                  <span className="text-white font-medium">Posts por ejecución:</span> {editPostsPerRun}
+                </p>
+                <p>
+                  <span className="text-white font-medium">Máximo diario:</span> {editMaxPostsPerDay} posts
+                </p>
+                <p>
+                  <span className="text-white font-medium">Estimado real:</span>{" "}
+                  {editScheduleHours.length > 0 ? editScheduleHours.length : 3} horarios × {editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} ={" "}
+                  {(editScheduleHours.length || 3) * editPostsPerRun} posts/día (×2 plataformas ={" "}
+                  {(editScheduleHours.length || 3) * editPostsPerRun * 2} publicaciones totales)
+                </p>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={saveScheduleConfig}
+                disabled={savingSchedule}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {savingSchedule ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Guardar Horario
+              </Button>
+              {scheduleSaveResult && (
+                <span className={`text-sm ${scheduleSaveResult.includes("Error") ? "text-red-400" : "text-green-400"}`}>
+                  {scheduleSaveResult}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Last Post Info */}
+          {recentLogs.length > 0 && (
+            <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+              <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-primary" />
+                Última Publicación
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-slc-muted">Último post exitoso</p>
+                  <p className="font-medium text-sm">
+                    {recentLogs.find(l => l.status === "success")
+                      ? formatDate(recentLogs.find(l => l.status === "success")!.postedAt)
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slc-muted">Plataforma</p>
+                  <p className="font-medium text-sm">
+                    {recentLogs.find(l => l.status === "success")
+                      ? platformLabels[recentLogs.find(l => l.status === "success")!.platform] || recentLogs.find(l => l.status === "success")!.platform
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slc-muted">Posts hoy</p>
+                  <p className="font-medium text-sm">
+                    {recentLogs.filter(l => {
+                      if (!l.postedAt) return false;
+                      const postDate = new Date(l.postedAt);
+                      const today = new Date();
+                      return postDate.toDateString() === today.toDateString() && l.status === "success";
+                    }).length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slc-muted">Pendientes en cola</p>
+                  <p className="font-medium text-sm">{queueSummary?.pending || 0}</p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
