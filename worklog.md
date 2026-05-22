@@ -465,3 +465,25 @@ Stage Summary:
 - Mailchimp API error fixed by resolving tag names to numeric IDs
 - Email design customization panel added with colors, fonts, button styles, dark/light mode
 - Commit d2d6e89 pushed to master
+
+---
+Task ID: 1
+Agent: main
+Task: Fix autopost round-robin + mobile Beats visibility
+
+Work Log:
+- Analyzed autopost system: getNextPendingItem() was selecting next item by queueOrder only, resulting in consecutive same-type posts
+- Implemented round-robin logic in getNextPendingItem() in meta.ts
+- Added CONTENT_TYPE_ROTATION constant: gallery_photo → spotify_track → artist_profile → curated_track
+- Function now checks last posted content type from social_posts_log, then picks next type in rotation
+- Falls back to any pending item if rotation types exhausted
+- Fixed MusicaSection.tsx: removed `hidden sm:inline` from tab labels so they show on mobile
+- Added Beats link to Footer.tsx navigation
+- Added `desc` to drizzle-orm import in meta.ts for the new query
+- Build verified, pushed to master
+
+Stage Summary:
+- Autopost now cycles through content types instead of posting same type consecutively
+- Mobile users can now see tab labels (Artistas, Beats, Playlists) in Música section
+- Beats link added to footer navigation
+- Commit: c8b3b36 pushed to origin/master
