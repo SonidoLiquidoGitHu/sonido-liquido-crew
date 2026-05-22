@@ -58,6 +58,7 @@ const footerLinks: {
     { label: "Inicio", href: "/" },
     { label: "Artistas", href: "/artistas" },
     { label: "Discografía", href: "/discografia" },
+    { label: "Beats", href: "/beats" },
     { label: "Videos", href: "/videos" },
     { label: "Eventos", href: "/eventos" },
     { label: "Tienda", href: "/tienda" },

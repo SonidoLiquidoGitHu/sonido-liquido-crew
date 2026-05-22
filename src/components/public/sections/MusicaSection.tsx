@@ -65,7 +65,7 @@ export function MusicaSection({ featuredBeats }: MusicaSectionProps) {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all
+                    flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all
                     ${activeTab === tab.id
                       ? "bg-primary text-white shadow-sm"
                       : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -73,7 +73,7 @@ export function MusicaSection({ featuredBeats }: MusicaSectionProps) {
                   `}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}

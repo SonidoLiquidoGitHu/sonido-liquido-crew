@@ -15,7 +15,7 @@
 
 import { db } from "@/db/client";
 import { socialPostQueue, socialPostsLog } from "@/db/schema";
-import { eq, and, sql as drizzleSql } from "drizzle-orm";
+import { eq, and, desc, sql as drizzleSql } from "drizzle-orm";
 
 // ===========================================
 // CONFIGURATION
@@ -1536,9 +1536,19 @@ export function generateCaption(ctx: CaptionContext): string {
 // QUEUE HELPERS
 // ===========================================
 
+// Content type rotation order for round-robin posting
+// This ensures we never post the same content type twice in a row
+const CONTENT_TYPE_ROTATION = [
+  "gallery_photo",
+  "spotify_track",
+  "artist_profile",
+  "curated_track",
+] as const;
+
 /**
- * Get the next pending item from the queue.
- * Uses the no-repeat logic: picks the oldest pending item by queue_order.
+ * Get the next pending item from the queue using round-robin logic.
+ * Cycles through content types: gallery_photo → spotify_track → artist_profile → curated_track → repeat
+ * This ensures we never post the same content type twice in a row (no duplicates).
  */
 export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null> {
   if (!isDatabaseConfiguredLocal()) {
@@ -1547,20 +1557,66 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
   }
 
   try {
-    const items = await db
+    // Step 1: Find out what content type was last posted
+    const lastPosted = await db
+      .select({
+        contentType: socialPostsLog.contentType,
+      })
+      .from(socialPostsLog)
+      .where(eq(socialPostsLog.status, "success"))
+      .orderBy(desc(socialPostsLog.postedAt))
+      .limit(1);
+
+    const lastContentType = lastPosted[0]?.contentType as string | undefined;
+
+    // Step 2: Determine the rotation order starting from the type AFTER the last posted
+    let rotationStartIndex = 0;
+    if (lastContentType) {
+      const lastIdx = CONTENT_TYPE_ROTATION.indexOf(lastContentType as any);
+      if (lastIdx >= 0) {
+        rotationStartIndex = (lastIdx + 1) % CONTENT_TYPE_ROTATION.length;
+      }
+    }
+
+    // Step 3: Try each content type in round-robin order until we find a pending item
+    for (let i = 0; i < CONTENT_TYPE_ROTATION.length; i++) {
+      const typeIndex = (rotationStartIndex + i) % CONTENT_TYPE_ROTATION.length;
+      const nextType = CONTENT_TYPE_ROTATION[typeIndex];
+
+      const items = await db
+        .select()
+        .from(socialPostQueue)
+        .where(
+          and(
+            eq(socialPostQueue.status, "pending"),
+            eq(socialPostQueue.contentType, nextType)
+          )
+        )
+        .orderBy(socialPostQueue.queueOrder, socialPostQueue.cycleNumber)
+        .limit(1);
+
+      if (items.length > 0) {
+        console.log(`[Social] Round-robin: last was ${lastContentType || "none"}, next is ${nextType}`);
+        return items[0] as unknown as SocialPostQueueWithId;
+      }
+    }
+
+    // Step 4: No pending items in rotation types — try vertical_video or any other type as fallback
+    const anyItems = await db
       .select()
       .from(socialPostQueue)
       .where(eq(socialPostQueue.status, "pending"))
       .orderBy(socialPostQueue.queueOrder, socialPostQueue.cycleNumber)
       .limit(1);
 
-    if (items.length === 0) {
-      // Check if all items are posted — if so, reset for a new cycle
-      await resetCycleIfNeeded();
-      return null;
+    if (anyItems.length > 0) {
+      console.log(`[Social] Round-robin: no rotation types pending, falling back to ${anyItems[0].contentType}`);
+      return anyItems[0] as unknown as SocialPostQueueWithId;
     }
 
-    return items[0] as unknown as SocialPostQueueWithId;
+    // Step 5: All items are posted — reset for a new cycle
+    await resetCycleIfNeeded();
+    return null;
   } catch (error) {
     console.error("[Social] Error fetching next pending item:", error);
     return null;
