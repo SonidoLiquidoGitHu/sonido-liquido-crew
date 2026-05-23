@@ -514,3 +514,29 @@ Stage Summary:
 - Caption variations rotate by cycle to avoid repetition
 - All Spanish text has proper accents (años, música, acción, etc.)
 - 90-day logic evaluated at post time, not populate time
+
+---
+Task ID: 1
+Agent: Main
+Task: Fix Email Studio draft save + schedule action + implement AI captions
+
+Work Log:
+- Fixed MailchimpCampaignStudio.tsx: After creating a draft, campaignFilter now switches to "draft" so the draft appears immediately
+- Fixed schedule action: handleCampaignAction now accepts extra params, scheduleTime is properly passed from the UI prompt
+- Fixed mailchimp campaign detail route: Changed isConfigured() to isConfiguredAsync() in all 3 handlers (GET, POST, DELETE)
+- Added generateAICaption() function to meta.ts using z-ai-web-dev-sdk
+- AI captions use z-ai-web-dev-sdk chat completions with a system prompt enforcing SLC brand voice
+- AI captions respect 90-day "nueva" threshold and "años" spelling rules
+- regenerateCaptionForItem() now uses AI captions by default (toggle via site_settings key "social_ai_captions")
+- Added "generate-ai-caption" action to /api/admin/social for preview/testing
+- Installed z-ai-web-dev-sdk npm package
+- Added safety check: all captions run through .replace(/\banos\b/g, "años") 
+- Build succeeded, pushed to master
+
+Stage Summary:
+- Email Studio drafts now appear correctly after save
+- Schedule action works properly (passes scheduleTime to API)
+- AI captions generate varied, on-brand Spanish text for each social post
+- Template captions serve as fallback if AI fails
+- "años" spelling enforced in all caption paths
+- API endpoint available for testing AI captions
