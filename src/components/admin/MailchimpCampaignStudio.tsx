@@ -364,6 +364,7 @@ export function MailchimpCampaignStudio() {
 
   // Campaigns filter
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
 
   // Local campaigns (from Campañas section)
   const [localCampaigns, setLocalCampaigns] = useState<LocalCampaign[]>([]);
@@ -395,6 +396,7 @@ export function MailchimpCampaignStudio() {
 
   // Fetch campaigns
   const fetchCampaigns = useCallback(async (status?: string) => {
+    setCampaignsLoading(true);
     try {
       const url = `/api/admin/mailchimp?action=campaigns&count=50${status && status !== "all" ? `&status=${status}` : ""}`;
       const res = await fetch(url);
@@ -404,6 +406,8 @@ export function MailchimpCampaignStudio() {
       }
     } catch (err) {
       console.error("Failed to fetch campaigns:", err);
+    } finally {
+      setCampaignsLoading(false);
     }
   }, []);
 
@@ -579,7 +583,9 @@ Hip Hop México desde 1999`);
         // Switch to the appropriate filter so the new campaign is visible
         const newFilter = sendNow ? "all" : "draft";
         setCampaignFilter(newFilter);
-        fetchCampaigns(newFilter);
+        setActiveTab("campaigns");
+        // Small delay to allow Mailchimp to index the new campaign
+        setTimeout(() => fetchCampaigns(newFilter), 500);
       } else {
         setSendResult({ success: false, message: data.error || "Error al crear campana" });
       }
@@ -662,6 +668,7 @@ Hip Hop México desde 1999`);
       case "sending":
         return { color: "bg-orange-500/10 text-orange-500", label: "Enviando", icon: Send };
       case "draft":
+      case "save":
         return { color: "bg-slc-muted/10 text-slc-muted", label: "Borrador", icon: FileEdit };
       case "paused":
         return { color: "bg-yellow-500/10 text-yellow-500", label: "Pausado", icon: AlertTriangle };
@@ -1661,7 +1668,12 @@ Hip Hop México desde 1999`);
 
           {/* Campaigns List */}
           <div className="space-y-3">
-            {campaigns.length === 0 ? (
+            {campaignsLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+                <span className="ml-3 text-slc-muted">Cargando campañas...</span>
+              </div>
+            ) : campaigns.length === 0 ? (
               <div className="text-center py-16">
                 <Send className="w-12 h-12 text-slc-muted mx-auto mb-4" />
                 <p className="text-slc-muted">No hay campanas {campaignFilter !== "all" ? "con este filtro" : "todavia"}</p>
@@ -1727,7 +1739,7 @@ Hip Hop México desde 1999`);
 
                     {/* Campaign Actions */}
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slc-border">
-                      {(campaign.status === "draft" || campaign.status === "schedule") && (
+                      {(campaign.status === "draft" || campaign.status === "save" || campaign.status === "schedule") && (
                         <Button
                           size="sm"
                           onClick={(e) => {
@@ -1739,7 +1751,7 @@ Hip Hop México desde 1999`);
                           Enviar
                         </Button>
                       )}
-                      {campaign.status === "draft" && (
+                      {(campaign.status === "draft" || campaign.status === "save") && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -1777,7 +1789,7 @@ Hip Hop México desde 1999`);
                         <Copy className="w-3 h-3 mr-1" />
                         Duplicar
                       </Button>
-                      {(campaign.status === "draft" || campaign.status === "schedule") && (
+                      {(campaign.status === "draft" || campaign.status === "save" || campaign.status === "schedule") && (
                         <Button
                           size="sm"
                           variant="outline"

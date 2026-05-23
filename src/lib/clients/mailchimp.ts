@@ -431,7 +431,10 @@ class MailchimpClient {
     });
 
     if (options.status) {
-      params.set("status", options.status);
+      // Mailchimp uses "save" for drafts, but our UI uses "draft" for consistency.
+      // Translate "draft" → "save" for the API call.
+      const apiStatus = options.status === "draft" ? "save" : options.status;
+      params.set("status", apiStatus);
     }
 
     return this.request(`/campaigns?${params.toString()}`);

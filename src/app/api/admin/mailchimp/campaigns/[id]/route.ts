@@ -82,7 +82,7 @@ export async function POST(
 
     if (action === "unschedule") {
       await mailchimpClient.unscheduleCampaign(id);
-      return NextResponse.json({ success: true, data: { status: "draft" } });
+      return NextResponse.json({ success: true, data: { status: "save" } });
     }
 
     if (action === "replicate") {
