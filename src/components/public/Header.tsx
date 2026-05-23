@@ -86,7 +86,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-slc-border animate-fade-in">
+          <nav className="md:hidden py-4 border-t border-slc-border animate-[navFadeIn_0.2s_ease-out_forwards]">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link

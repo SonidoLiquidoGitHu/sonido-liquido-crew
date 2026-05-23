@@ -606,6 +606,11 @@ export function MailchimpCampaignStudio() {
 
   // Handle campaign action (supports optional extra payload fields like scheduleTime)
   const handleCampaignAction = async (campaignId: string, action: string, extra?: Record<string, unknown>) => {
+    // Require confirmation before sending
+    if (action === "send") {
+      const confirmed = confirm("Estas seguro de enviar esta campana ahora? Esta accion no se puede deshacer.");
+      if (!confirmed) return;
+    }
     try {
       const res = await fetch(`/api/admin/mailchimp/campaigns/${campaignId}`, {
         method: "POST",
@@ -619,7 +624,56 @@ export function MailchimpCampaignStudio() {
           setSelectedCampaign(null);
         }
       } else {
-        alert(data.error || "Error");
+        // Provide actionable error messages for common issues
+        const errorMsg = data.error || "Error desconocido";
+        if (errorMsg.includes("currently 'sending'") || errorMsg.includes("ya se esta enviando")) {
+          const shouldCancel = confirm(
+            `${errorMsg}\n\nQuieres cancelar el envio y duplicar la campana para reintentar?`
+          );
+          if (shouldCancel) {
+            try {
+              // Cancel the stuck send
+              await fetch(`/api/admin/mailchimp/campaigns/${campaignId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "cancel" }),
+              });
+              // Replicate the campaign as a new draft
+              const replicateRes = await fetch(`/api/admin/mailchimp/campaigns/${campaignId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "replicate" }),
+              });
+              const replicateData = await replicateRes.json();
+              if (replicateData.success && replicateData.data?.campaignId) {
+                // Send the new replicated campaign
+                const sendRes = await fetch(`/api/admin/mailchimp/campaigns/${replicateData.data.campaignId}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "send" }),
+                });
+                const sendData = await sendRes.json();
+                if (sendData.success) {
+                  alert("Campana duplicada y enviada exitosamente!");
+                } else {
+                  alert(`Se duplico la campana pero no se pudo enviar: ${sendData.error}`);
+                }
+              }
+              fetchCampaigns(campaignFilter);
+            } catch {
+              alert("No se pudo recuperar la campana. Intenta duplicarla manualmente.");
+            }
+          }
+        } else if (errorMsg.includes("ya fue enviada")) {
+          const shouldDuplicate = confirm(
+            `${errorMsg}\n\nQuieres duplicar esta campana para crear una nueva copia?`
+          );
+          if (shouldDuplicate) {
+            handleCampaignAction(campaignId, "replicate");
+          }
+        } else {
+          alert(errorMsg);
+        }
       }
     } catch (err) {
       alert("Error de conexion");
@@ -1562,7 +1616,12 @@ export function MailchimpCampaignStudio() {
               {/* Actions */}
               <div className="flex items-center gap-3">
                 <Button
-                  onClick={() => handleCreateCampaign(true)}
+                  onClick={() => {
+                    const confirmed = confirm(formScheduleTime
+                      ? "Programar esta campana para envio?"
+                      : "Enviar esta campana ahora? Esta accion no se puede deshacer.");
+                    if (confirmed) handleCreateCampaign(true);
+                  }}
                   disabled={isSending || !formSubject || !formBody}
                   className="bg-primary hover:bg-primary/90"
                 >
@@ -1733,7 +1792,7 @@ export function MailchimpCampaignStudio() {
                     </div>
 
                     {/* Campaign Actions */}
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slc-border">
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slc-border flex-wrap">
                       {(campaign.status === "draft" || campaign.status === "save") && (
                         <Button
                           size="sm"
@@ -1757,6 +1816,21 @@ export function MailchimpCampaignStudio() {
                         >
                           <Send className="w-3 h-3 mr-1" />
                           Enviar
+                        </Button>
+                      )}
+                      {campaign.status === "sending" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm("Cancelar el envio de esta campana?")) {
+                              handleCampaignAction(campaign.id, "cancel");
+                            }
+                          }}
+                        >
+                          <XCircle className="w-3 h-3 mr-1" />
+                          Cancelar Envio
                         </Button>
                       )}
                       {(campaign.status === "draft" || campaign.status === "save") && (

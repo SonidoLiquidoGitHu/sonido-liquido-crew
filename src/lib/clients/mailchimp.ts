@@ -515,23 +515,27 @@ class MailchimpClient {
   }
 
   /**
-   * Update campaign settings (subject, title, preview_text, etc.)
+   * Update campaign settings (subject, title, preview text, etc.)
+   * Only works on draft/save campaigns.
    */
-  async updateCampaignSettings(campaignId: string, data: {
-    subject?: string;
-    previewText?: string;
-    title?: string;
-  }): Promise<MailchimpCampaign> {
-    return this.request<MailchimpCampaign>(`/campaigns/${campaignId}`, {
+  async updateCampaignSettings(
+    campaignId: string,
+    settings: {
+      subject_line?: string;
+      preview_text?: string;
+      title?: string;
+      from_name?: string;
+      reply_to?: string;
+    }
+  ): Promise<MailchimpCampaign> {
+    const result = await this.request<MailchimpCampaign>(`/campaigns/${campaignId}`, {
       method: "PATCH",
       body: {
-        settings: {
-          subject_line: data.subject,
-          preview_text: data.previewText,
-          title: data.title,
-        },
+        settings,
       },
     });
+    console.log(`[Mailchimp] Campaign settings updated: ${campaignId}`);
+    return result;
   }
 
   /**

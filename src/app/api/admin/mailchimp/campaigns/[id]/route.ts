@@ -64,8 +64,31 @@ export async function POST(
     const { action } = body;
 
     if (action === "send") {
+      // Check campaign status before sending to avoid "currently sending" errors
+      try {
+        const details = await mailchimpClient.getCampaignDetails(id);
+        if (details.status === "sending") {
+          return NextResponse.json(
+            { success: false, error: `La campana ya se esta enviando. Usa "Cancelar envio" para detenerla y luego duplica la campana para reintentar.`, data: { status: details.status } },
+            { status: 400 }
+          );
+        }
+        if (details.status === "sent") {
+          return NextResponse.json(
+            { success: false, error: `Esta campana ya fue enviada. Duplica la campana para crear una nueva copia.`, data: { status: details.status } },
+            { status: 400 }
+          );
+        }
+      } catch {
+        // If we can't check status, proceed with send attempt
+      }
       await mailchimpClient.sendCampaign(id);
       return NextResponse.json({ success: true, data: { status: "sent" } });
+    }
+
+    if (action === "cancel") {
+      await mailchimpClient.cancelCampaign(id);
+      return NextResponse.json({ success: true, data: { status: "cancelled" } });
     }
 
     if (action === "schedule") {
@@ -96,8 +119,8 @@ export async function POST(
       // Update settings if any settings fields provided
       if (subject || title || previewText) {
         await mailchimpClient.updateCampaignSettings(id, {
-          subject,
-          previewText,
+          subject_line: subject,
+          preview_text: previewText,
           title,
         });
       }
@@ -119,7 +142,7 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { success: false, error: "Invalid action. Use: send, schedule, unschedule, replicate, update" },
+      { success: false, error: "Invalid action. Use: send, cancel, schedule, unschedule, replicate, update" },
       { status: 400 }
     );
   } catch (error) {
