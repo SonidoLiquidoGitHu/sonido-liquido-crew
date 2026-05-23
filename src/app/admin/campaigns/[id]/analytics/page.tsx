@@ -20,7 +20,40 @@ import {
   Loader2,
   BarChart3,
   Globe,
+  Headphones,
+  Clock,
+  Play,
+  XCircle,
+  AlertTriangle,
+  UserCheck,
+  UserX,
 } from "lucide-react";
+
+interface Listener {
+  sessionId: string;
+  label: string;
+  email: string | null;
+  ipAddress: string | null;
+  playCount: number;
+  maxPercent: number;
+  totalWatchTime: number;
+  duration: number;
+  firstPlayAt: string | null;
+  lastPlayAt: string | null;
+  completed: boolean;
+  presave: boolean;
+  follow: boolean;
+}
+
+interface ListeningStats {
+  totalListeners: number;
+  knownListeners: number;
+  anonymousListeners: number;
+  totalPlays: number;
+  avgListenPercent: number;
+  completionRate: number;
+  totalListenTimeSeconds: number;
+}
 
 interface CampaignAnalytics {
   campaign: {
@@ -60,6 +93,10 @@ interface CampaignAnalytics {
     date: string;
     source: string;
   }>;
+  listening: {
+    stats: ListeningStats;
+    listeners: Listener[];
+  };
 }
 
 function formatDate(dateStr: string) {
@@ -78,6 +115,20 @@ function formatDateTime(dateStr: string) {
   });
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function getListenQuality(maxPercent: number): { label: string; color: string; bg: string } {
+  if (maxPercent >= 90) return { label: "Completo", color: "text-green-500", bg: "bg-green-500/10" };
+  if (maxPercent >= 50) return { label: "Parcial", color: "text-yellow-500", bg: "bg-yellow-500/10" };
+  if (maxPercent >= 10) return { label: "Muestra", color: "text-orange-500", bg: "bg-orange-500/10" };
+  return { label: "Rápido", color: "text-red-400", bg: "bg-red-500/10" };
+}
+
 export default function CampaignAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const [loading, setLoading] = useState(true);
@@ -87,6 +138,7 @@ export default function CampaignAnalyticsPage({ params }: { params: Promise<{ id
     start: "",
     end: "",
   });
+  const [listenerFilter, setListenerFilter] = useState<"all" | "known" | "anonymous">("all");
 
   useEffect(() => {
     fetchAnalytics();
@@ -123,7 +175,6 @@ export default function CampaignAnalyticsPage({ params }: { params: Promise<{ id
       const res = await fetch(url);
       const blob = await res.blob();
 
-      // Download the CSV
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -164,6 +215,15 @@ export default function CampaignAnalyticsPage({ params }: { params: Promise<{ id
     ...data.dailyStats.map((d) => Math.max(d.views, d.conversions, d.downloads)),
     1
   );
+
+  // Filtered listeners
+  const filteredListeners = data.listening.listeners.filter((l) => {
+    if (listenerFilter === "known") return !!l.email;
+    if (listenerFilter === "anonymous") return !l.email;
+    return true;
+  });
+
+  const ls = data.listening.stats;
 
   return (
     <div className="p-6 lg:p-8">
@@ -237,6 +297,255 @@ export default function CampaignAnalyticsPage({ params }: { params: Promise<{ id
           </Button>
         )}
       </div>
+
+      {/* ==================== WHO'S LISTENING DASHBOARD ==================== */}
+      <div className="mb-8">
+        <h2 className="font-oswald text-2xl uppercase flex items-center gap-3 mb-6">
+          <Headphones className="w-7 h-7 text-primary" />
+          Quién Está Escuchando
+        </h2>
+
+        {ls.totalListeners === 0 ? (
+          <div className="bg-slc-dark border border-slc-border rounded-xl p-12 text-center">
+            <Headphones className="w-16 h-16 mx-auto mb-4 text-slc-muted opacity-40" />
+            <p className="text-slc-muted text-lg mb-2">Aún nadie ha escuchado</p>
+            <p className="text-slc-muted text-sm">
+              Cuando alguien reproduzca el audio o video de esta campaña, aparecerá aquí con su información de escucha.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Listening Stats Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+              <div className="bg-gradient-to-br from-violet-500/20 to-violet-600/5 border border-violet-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Headphones className="w-4 h-4 text-violet-500" />
+                  <span className="text-xs text-slc-muted">Oyentes</span>
+                </div>
+                <div className="font-oswald text-2xl text-violet-500">{ls.totalListeners}</div>
+              </div>
+
+              <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 border border-emerald-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserCheck className="w-4 h-4 text-emerald-500" />
+                  <span className="text-xs text-slc-muted">Identificados</span>
+                </div>
+                <div className="font-oswald text-2xl text-emerald-500">{ls.knownListeners}</div>
+              </div>
+
+              <div className="bg-gradient-to-br from-slate-500/20 to-slate-600/5 border border-slate-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserX className="w-4 h-4 text-slate-400" />
+                  <span className="text-xs text-slc-muted">Anónimos</span>
+                </div>
+                <div className="font-oswald text-2xl text-slate-400">{ls.anonymousListeners}</div>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/5 border border-blue-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Play className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs text-slc-muted">Reproducciones</span>
+                </div>
+                <div className="font-oswald text-2xl text-blue-500">{ls.totalPlays}</div>
+              </div>
+
+              <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs text-slc-muted">Prom. Escucha</span>
+                </div>
+                <div className="font-oswald text-2xl text-amber-500">{ls.avgListenPercent}%</div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-500/20 to-green-600/5 border border-green-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-xs text-slc-muted">Completaron</span>
+                </div>
+                <div className="font-oswald text-2xl text-green-500">{ls.completionRate}%</div>
+              </div>
+
+              <div className="bg-gradient-to-br from-pink-500/20 to-pink-600/5 border border-pink-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-4 h-4 text-pink-500" />
+                  <span className="text-xs text-slc-muted">Tiempo Total</span>
+                </div>
+                <div className="font-oswald text-2xl text-pink-500">{formatDuration(ls.totalListenTimeSeconds)}</div>
+              </div>
+            </div>
+
+            {/* Listener Filter Tabs */}
+            <div className="flex gap-2 mb-4">
+              {[
+                { key: "all" as const, label: "Todos", count: ls.totalListeners },
+                { key: "known" as const, label: "Identificados", count: ls.knownListeners },
+                { key: "anonymous" as const, label: "Anónimos", count: ls.anonymousListeners },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setListenerFilter(tab.key)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                    listenerFilter === tab.key
+                      ? "bg-primary text-white"
+                      : "bg-slc-card border border-slc-border text-slc-muted hover:text-white hover:bg-slc-dark"
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    listenerFilter === tab.key ? "bg-white/20" : "bg-slc-dark"
+                  }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Listeners Table */}
+            <div className="bg-slc-dark border border-slc-border rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slc-border bg-slc-card/30">
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        Oyente
+                      </th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        Reproducciones
+                      </th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        % Escuchado
+                      </th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        Tiempo
+                      </th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        Calidad
+                      </th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        Pre-save
+                      </th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        Follow
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slc-muted uppercase">
+                        Última vez
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slc-border">
+                    {filteredListeners.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-8 text-center text-slc-muted">
+                          No hay oyentes con este filtro
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredListeners.map((listener) => {
+                        const quality = getListenQuality(listener.maxPercent);
+                        return (
+                          <tr key={listener.sessionId} className="hover:bg-slc-card/30 transition-colors">
+                            {/* Oyente */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                  listener.email
+                                    ? "bg-emerald-500/10 text-emerald-500"
+                                    : "bg-slc-card text-slc-muted"
+                                }`}>
+                                  {listener.email
+                                    ? listener.email.charAt(0).toUpperCase()
+                                    : "?"}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate max-w-[200px]">
+                                    {listener.label}
+                                  </p>
+                                  {listener.email && (
+                                    <p className="text-xs text-slc-muted truncate max-w-[200px]">
+                                      {listener.email}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Reproducciones */}
+                            <td className="px-4 py-3 text-center">
+                              <span className="inline-flex items-center gap-1 text-sm">
+                                <Play className="w-3 h-3 text-blue-400" />
+                                {listener.playCount}
+                              </span>
+                            </td>
+
+                            {/* % Escuchado */}
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-16 h-1.5 bg-slc-border rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      listener.maxPercent >= 90 ? "bg-green-500" :
+                                      listener.maxPercent >= 50 ? "bg-yellow-500" :
+                                      listener.maxPercent >= 10 ? "bg-orange-500" :
+                                      "bg-red-400"
+                                    }`}
+                                    style={{ width: `${listener.maxPercent}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-slc-muted w-8 text-right">{listener.maxPercent}%</span>
+                              </div>
+                            </td>
+
+                            {/* Tiempo */}
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-xs text-slc-muted">
+                                {formatDuration(listener.totalWatchTime)}
+                              </span>
+                            </td>
+
+                            {/* Calidad */}
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${quality.color} ${quality.bg}`}>
+                                {quality.label}
+                              </span>
+                            </td>
+
+                            {/* Pre-save */}
+                            <td className="px-4 py-3 text-center">
+                              {listener.presave ? (
+                                <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-slc-muted/30 mx-auto" />
+                              )}
+                            </td>
+
+                            {/* Follow */}
+                            <td className="px-4 py-3 text-center">
+                              {listener.follow ? (
+                                <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-slc-muted/30 mx-auto" />
+                              )}
+                            </td>
+
+                            {/* Última vez */}
+                            <td className="px-4 py-3">
+                              <span className="text-xs text-slc-muted">
+                                {listener.lastPlayAt ? formatDateTime(listener.lastPlayAt) : "—"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ==================== ORIGINAL STATS SECTION ==================== */}
 
       {/* Main Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">

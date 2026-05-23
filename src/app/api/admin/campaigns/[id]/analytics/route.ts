@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { campaigns, campaignActions } from "@/db/schema";
+import { campaigns, campaignActions, videoAnalytics } from "@/db/schema";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 
 export async function GET(
@@ -129,6 +129,123 @@ export async function GET(
       source: a.referrer ? new URL(a.referrer).hostname.replace("www.", "") : "directo",
     }));
 
+    // ===========================================
+    // WHO'S LISTENING DATA
+    // ===========================================
+    // Fetch all video/audio analytics events for this campaign
+    const listeningEvents = await db
+      .select()
+      .from(videoAnalytics)
+      .where(
+        and(
+          eq(videoAnalytics.contentId, id),
+          eq(videoAnalytics.contentType, "campaign"),
+        )
+      )
+      .orderBy(desc(videoAnalytics.createdAt));
+
+    // Build a map: sessionId → listening data
+    const sessionMap = new Map<string, {
+      sessionId: string;
+      ipAddress: string | null;
+      userAgent: string | null;
+      playCount: number;
+      maxPercent: number;
+      totalWatchTime: number;
+      duration: number;
+      firstPlayAt: Date | null;
+      lastPlayAt: Date | null;
+      completed: boolean;
+    }>();
+
+    for (const event of listeningEvents) {
+      const sid = event.sessionId;
+      if (!sessionMap.has(sid)) {
+        sessionMap.set(sid, {
+          sessionId: sid,
+          ipAddress: event.ipAddress,
+          userAgent: event.userAgent,
+          playCount: 0,
+          maxPercent: 0,
+          totalWatchTime: 0,
+          duration: event.duration,
+          firstPlayAt: null,
+          lastPlayAt: null,
+          completed: false,
+        });
+      }
+      const entry = sessionMap.get(sid)!;
+      if (event.eventType === "play") {
+        entry.playCount++;
+        if (!entry.firstPlayAt) entry.firstPlayAt = event.createdAt;
+        entry.lastPlayAt = event.createdAt;
+      }
+      if (event.maxPercentWatched > entry.maxPercent) {
+        entry.maxPercent = event.maxPercentWatched;
+      }
+      if (event.totalWatchTime > entry.totalWatchTime) {
+        entry.totalWatchTime = event.totalWatchTime;
+      }
+      if (event.eventType === "complete") {
+        entry.completed = true;
+      }
+    }
+
+    // Correlate sessions with campaign actions (match by IP address)
+    const ipToEmail = new Map<string, string>();
+    const ipToAction = new Map<string, typeof actions[0] | null>();
+    for (const action of actions) {
+      if (action.ipAddress) {
+        if (action.email) ipToEmail.set(action.ipAddress, action.email);
+        ipToAction.set(action.ipAddress, action);
+      }
+    }
+
+    // Build the listeners list
+    const listeners = Array.from(sessionMap.values())
+      .map((session) => {
+        const email = session.ipAddress ? ipToEmail.get(session.ipAddress) || null : null;
+        const action = session.ipAddress ? ipToAction.get(session.ipAddress) || null : null;
+        // Determine label: email if known, otherwise truncated IP
+        const label = email || (session.ipAddress ? session.ipAddress.split('.').slice(0, 3).join('.') + '.xxx' : 'Desconocido');
+        return {
+          sessionId: session.sessionId,
+          label,
+          email,
+          ipAddress: session.ipAddress,
+          playCount: session.playCount,
+          maxPercent: session.maxPercent,
+          totalWatchTime: session.totalWatchTime,
+          duration: session.duration,
+          firstPlayAt: session.firstPlayAt?.toISOString() || null,
+          lastPlayAt: session.lastPlayAt?.toISOString() || null,
+          completed: session.completed,
+          presave: action?.completedPresave || false,
+          follow: action?.completedFollow || false,
+        };
+      })
+      // Sort: known emails first, then by most recent play
+      .sort((a, b) => {
+        if (a.email && !b.email) return -1;
+        if (!a.email && b.email) return 1;
+        return (b.lastPlayAt || '').localeCompare(a.lastPlayAt || '');
+      });
+
+    // Listening summary stats
+    const listeningStats = {
+      totalListeners: listeners.length,
+      knownListeners: listeners.filter(l => l.email).length,
+      anonymousListeners: listeners.filter(l => !l.email).length,
+      totalPlays: listeners.reduce((sum, l) => sum + l.playCount, 0),
+      avgListenPercent: listeners.length > 0
+        ? Math.round(listeners.reduce((sum, l) => sum + l.maxPercent, 0) / listeners.length)
+        : 0,
+      completionRate: listeners.length > 0
+        ? Math.round((listeners.filter(l => l.completed).length / listeners.length) * 100)
+        : 0,
+      totalListenTimeSeconds: listeners.reduce((sum, l) => sum + l.totalWatchTime, 0),
+    };
+
     return NextResponse.json({
       success: true,
       data: {
@@ -160,6 +277,10 @@ export async function GET(
           .sort((a, b) => b.count - a.count)
           .slice(0, 10),
         recentActions,
+        listening: {
+          stats: listeningStats,
+          listeners,
+        },
       },
     });
   } catch (error) {
