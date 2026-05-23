@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarDashboard } from "@/components/admin/CalendarDashboard";
 import { SpotifySyncButton } from "@/components/admin/SpotifySyncButton";
 import { EnsureTablesButton } from "@/components/admin/EnsureTablesButton";
+import { VisitorMetrics } from "@/components/admin/VisitorMetrics";
 
 export const dynamic = "force-dynamic";
 
@@ -247,6 +248,11 @@ export default async function AdminDashboardPage() {
           icon={<Mail className="w-6 h-6" />}
           href="/admin/subscribers"
         />
+      </div>
+
+      {/* Visitor Metrics */}
+      <div className="mb-8">
+        <VisitorMetrics />
       </div>
 
       {/* Upcoming Releases / Presave Stats */}

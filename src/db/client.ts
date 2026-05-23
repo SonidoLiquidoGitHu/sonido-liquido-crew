@@ -478,6 +478,23 @@ async function runAutoMigration(client: Client): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_vertical_videos_featured ON vertical_videos(is_featured)`,
       `CREATE INDEX IF NOT EXISTS idx_vertical_videos_artist ON vertical_videos(artist_id)`,
       `CREATE INDEX IF NOT EXISTS idx_vertical_video_tags_video ON vertical_video_tags(video_id)`,
+      // Analytics table (visitor tracking)
+      `CREATE TABLE IF NOT EXISTS analytics (
+        id TEXT PRIMARY KEY NOT NULL,
+        event_type TEXT NOT NULL,
+        entity_type TEXT,
+        entity_id TEXT,
+        metadata TEXT,
+        session_id TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        referrer TEXT,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type)`,
+      `CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON analytics(session_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at)`,
+      `CREATE INDEX IF NOT EXISTS idx_analytics_entity_id ON analytics(entity_id)`,
     ];
 
     // Add missing columns (safe - ignores "duplicate column" errors)
