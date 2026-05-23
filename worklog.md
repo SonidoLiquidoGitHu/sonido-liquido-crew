@@ -487,3 +487,30 @@ Stage Summary:
 - Mobile users can now see tab labels (Artistas, Beats, Playlists) in Música section
 - Beats link added to footer navigation
 - Commit: c8b3b36 pushed to origin/master
+
+---
+Task ID: caption-enhancements
+Agent: main
+Task: 90-day caption logic, años fix, caption variation system
+
+Work Log:
+- Added releaseDate field to CaptionContext interface
+- Created isNewRelease() function: ≤90 days = "Nueva música", >90 days = "Música"
+- Fixed all Spanish accents: anos→años, accion→acción, musica→música, mas→más, album→álbum
+- Built CAPTION_VARIATIONS system with 3 variations per content type
+- spotify_track has newRelease vs oldRelease variants per variation
+- gallery_photo has withArtist vs withoutArtist variants
+- Added variationIndex parameter to generateCaption()
+- Created regenerateCaptionForItem() that runs at POST TIME:
+  - Fetches release date from DB for accurate 90-day check
+  - Uses cycleNumber as variation seed (different cycle = different caption)
+  - Reconstructs CaptionContext from existing queue item data
+- Updated processQueueItem to use regenerated caption
+- Updated handlePopulate to pass releaseDate to generateCaption
+- Build verified, pushed to master (48d009f)
+
+Stage Summary:
+- Posts now correctly say "Nueva música" only for releases ≤90 days
+- Caption variations rotate by cycle to avoid repetition
+- All Spanish text has proper accents (años, música, acción, etc.)
+- 90-day logic evaluated at post time, not populate time
