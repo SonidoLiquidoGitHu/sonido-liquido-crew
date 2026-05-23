@@ -12,7 +12,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    if (!mailchimpClient.isConfigured()) {
+    if (!(await mailchimpClient.isConfiguredAsync())) {
       return NextResponse.json(
         { success: false, error: "Mailchimp not configured" },
         { status: 400 }
@@ -53,7 +53,7 @@ export async function POST(
   try {
     const { id } = await params;
 
-    if (!mailchimpClient.isConfigured()) {
+    if (!(await mailchimpClient.isConfiguredAsync())) {
       return NextResponse.json(
         { success: false, error: "Mailchimp not configured" },
         { status: 400 }
@@ -110,7 +110,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (!mailchimpClient.isConfigured()) {
+    if (!(await mailchimpClient.isConfiguredAsync())) {
       return NextResponse.json(
         { success: false, error: "Mailchimp not configured" },
         { status: 400 }

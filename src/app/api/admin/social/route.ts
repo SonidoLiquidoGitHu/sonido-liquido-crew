@@ -25,6 +25,7 @@ import {
   getNextPendingItem,
   ensurePublicImageUrl,
   generateCaption,
+  generateAICaption,
   postToFacebook,
   postToInstagram,
   postInstagramReel,
@@ -231,6 +232,8 @@ export async function POST(request: NextRequest) {
         return await handleValidateReelToken();
       case "save-schedule-config":
         return await handleSaveScheduleConfig(body);
+      case "generate-ai-caption":
+        return await handleGenerateAICaption(body);
       default:
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },
@@ -1389,6 +1392,60 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
     console.error("[Social API] Save schedule config error:", error);
     return NextResponse.json(
       { success: false, error: "Error al guardar la configuración de horario" },
+      { status: 500 }
+    );
+  }
+}
+
+// ===========================================
+// GENERATE AI CAPTION — Preview/test AI caption generation
+// ===========================================
+
+async function handleGenerateAICaption(body: Record<string, unknown>) {
+  try {
+    const contentType = body.contentType as string;
+    if (!contentType) {
+      return NextResponse.json(
+        { success: false, error: "contentType is required" },
+        { status: 400 }
+      );
+    }
+
+    const ctx = {
+      contentType: contentType as "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video",
+      artistName: body.artistName as string | undefined,
+      artistRole: body.artistRole as string | undefined,
+      releaseTitle: body.releaseTitle as string | undefined,
+      releaseType: body.releaseType as string | undefined,
+      releaseDate: body.releaseDate ? new Date(body.releaseDate as string) : undefined,
+      trackName: body.trackName as string | undefined,
+      albumName: body.albumName as string | undefined,
+      photoLocation: body.photoLocation as string | undefined,
+      photographer: body.photographer as string | undefined,
+      videoTitle: body.videoTitle as string | undefined,
+      videoPlatform: body.videoPlatform as string | undefined,
+      linkUrl: body.linkUrl as string | undefined,
+      spotifyUrl: body.spotifyUrl as string | undefined,
+    };
+
+    // Generate both AI and template captions for comparison
+    const [aiCaption, templateCaption] = await Promise.all([
+      generateAICaption(ctx, body.variationIndex as number | undefined).catch(() => null),
+      Promise.resolve(generateCaption(ctx, body.variationIndex as number | undefined)),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        aiCaption,
+        templateCaption,
+        context: ctx,
+      },
+    });
+  } catch (error) {
+    console.error("[Social API] Generate AI caption error:", error);
+    return NextResponse.json(
+      { success: false, error: `Error al generar caption: ${(error as Error).message}` },
       { status: 500 }
     );
   }

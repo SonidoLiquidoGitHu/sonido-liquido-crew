@@ -1282,11 +1282,35 @@ export interface SocialPostQueueWithId {
 }
 
 /**
+ * Check if AI captions are enabled in site settings.
+ * Defaults to true (enabled) if no setting exists.
+ */
+async function isAICaptionEnabled(): Promise<boolean> {
+  try {
+    const { db } = await import("@/db/client");
+    const { siteSettings } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const rows = await db
+      .select({ value: siteSettings.value })
+      .from(siteSettings)
+      .where(eq(siteSettings.key, "social_ai_captions"))
+      .limit(1);
+
+    if (rows.length === 0) return true; // Default: enabled
+    return rows[0].value !== "false" && rows[0].value !== "0";
+  } catch {
+    return true; // Default: enabled
+  }
+}
+
+/**
  * Regenerate a caption for a queue item at post time.
  * This ensures:
  * 1. The 90-day "Nueva música" vs "Música" logic is evaluated at post time (not populate time)
  * 2. Different variation index per cycle, so repeated cycles get different captions
  * 3. The caption matches the current state of the release (new vs catalog)
+ * 4. AI captions are used when enabled (site setting "social_ai_captions")
  */
 async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<string> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
@@ -1350,7 +1374,19 @@ async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<st
     }
   }
 
-  return generateCaption(ctx, variationIndex);
+  // Try AI caption if enabled, fall back to template-based
+  const useAI = await isAICaptionEnabled();
+  if (useAI) {
+    try {
+      return await generateAICaption(ctx, variationIndex);
+    } catch (err) {
+      console.warn("[Social] AI caption failed, using template:", err);
+    }
+  }
+
+  const caption = generateCaption(ctx, variationIndex);
+  // Safety: ensure "años" is always spelled with ñ, never "anos"
+  return caption.replace(/\banos\b/g, "años");
 }
 
 /**
@@ -1848,6 +1884,105 @@ export function generateCaption(ctx: CaptionContext, variationIndex?: number): s
 
     default:
       return `Sonido Líquido Crew — Hip Hop México desde 1999\n\n${siteUrl}\n\n${hashtags}`;
+  }
+}
+
+// ===========================================
+// AI-POWERED CAPTION GENERATION
+// ===========================================
+
+/**
+ * Generate a unique, creative caption using AI (z-ai-web-dev-sdk).
+ *
+ * This function uses the LLM to produce varied, on-brand captions in Spanish
+ * that match the Sonido Líquido Crew voice. It receives the same CaptionContext
+ * as generateCaption() and produces a fresh caption each time.
+ *
+ * The AI is instructed to:
+ * - Write in Spanish, matching the SLC brand voice (street, authentic, hip hop)
+ * - Use "años" (with ñ), never "anos"
+ * - Label releases ≤90 days old as "nueva música", older ones without "nueva"
+ * - Include relevant hashtags
+ * - Keep the caption concise and engaging for social media
+ * - Vary the tone and phrasing each time (no repetition)
+ *
+ * Falls back to generateCaption() if AI fails.
+ */
+export async function generateAICaption(ctx: CaptionContext, variationIndex?: number): Promise<string> {
+  try {
+    const ZAI = (await import("z-ai-web-dev-sdk")).default;
+    const zai = await ZAI.create();
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+    const isNew = isNewRelease(ctx.releaseDate);
+    const daysSinceRelease = ctx.releaseDate
+      ? Math.floor((Date.now() - new Date(ctx.releaseDate).getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    // Build context description for the AI
+    const contextParts: string[] = [];
+    contextParts.push(`Tipo de contenido: ${ctx.contentType}`);
+
+    if (ctx.artistName) contextParts.push(`Artista: ${ctx.artistName}`);
+    if (ctx.artistRole) contextParts.push(`Rol: ${ctx.artistRole}`);
+    if (ctx.releaseTitle) contextParts.push(`Título: ${ctx.releaseTitle}`);
+    if (ctx.releaseType) contextParts.push(`Tipo de lanzamiento: ${ctx.releaseType}`);
+    if (daysSinceRelease !== null) {
+      contextParts.push(`Días desde lanzamiento: ${daysSinceRelease} (${isNew ? "NUEVA — usar 'nueva música'" : "catálogo — NO usar 'nueva'"})`);
+    }
+    if (ctx.trackName) contextParts.push(`Track: ${ctx.trackName}`);
+    if (ctx.albumName) contextParts.push(`Álbum: ${ctx.albumName}`);
+    if (ctx.photoLocation) contextParts.push(`Ubicación: ${ctx.photoLocation}`);
+    if (ctx.photographer) contextParts.push(`Fotógrafo: ${ctx.photographer}`);
+    if (ctx.videoTitle) contextParts.push(`Video: ${ctx.videoTitle}`);
+    if (ctx.videoPlatform) contextParts.push(`Plataforma video: ${ctx.videoPlatform}`);
+    if (ctx.linkUrl) contextParts.push(`Link: ${ctx.linkUrl}`);
+    if (ctx.spotifyUrl) contextParts.push(`Spotify: ${ctx.spotifyUrl}`);
+
+    const variationSeed = variationIndex ?? Math.floor(Math.random() * 100);
+
+    const systemPrompt = `Eres el community manager de Sonido Líquido Crew, un colectivo de hip hop mexicano con más de 25 años de trayectoria. Tu voz es auténtica, calle, directa, con sabor a hip hop. Erescribes captions para redes sociales (Instagram, Facebook).
+
+REGLAS ESTRICTAS:
+1. SIEMPRE escribe en español.
+2. SIEMPRE usa "años" con ñ, NUNCA "anos".
+3. Para lanzamientos de 90 días o menos: usa "nueva música" o "nuevo lanzamiento".
+4. Para lanzamientos de más de 90 días: NO uses "nueva" — es música de catálogo.
+5. Incluye SIEMPRE estos hashtags: #SonidoLiquido #HipHopMexico #HipHop #CDMX #RapMexicano
+6. Incluye SIEMPRE un link (el proporcionado o ${siteUrl}).
+7. Sé creativo y variado — no repitas frases. Cambia el tono, las frases, el estilo.
+8. Mantén el caption conciso (3-5 líneas + hashtags).
+9. NO uses emojis excesivos (máximo 2-3 por caption).
+10. Cada caption debe ser diferente. Variación #${variationSeed}.`;
+
+    const userPrompt = `Genera un caption para este post de redes sociales:
+
+${contextParts.join("\n")}
+
+Responde SOLO con el caption, sin explicaciones adicionales.`;
+
+    const completion = await zai.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      thinking: { type: "disabled" },
+    });
+
+    const aiCaption = completion.choices[0]?.message?.content?.trim();
+
+    if (aiCaption && aiCaption.length > 20) {
+      // Verify the caption doesn't have "anos" (without ñ)
+      const safeCaption = aiCaption.replace(/\banos\b/g, "años");
+      console.log("[Social AI] Generated AI caption successfully");
+      return safeCaption;
+    }
+
+    console.warn("[Social AI] AI caption was too short or empty, falling back to template");
+    return generateCaption(ctx, variationIndex);
+  } catch (error) {
+    console.warn("[Social AI] AI caption generation failed, falling back to template:", error);
+    return generateCaption(ctx, variationIndex);
   }
 }
 

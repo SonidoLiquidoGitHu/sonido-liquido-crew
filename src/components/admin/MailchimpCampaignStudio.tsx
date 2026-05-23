@@ -576,8 +576,10 @@ Hip Hop México desde 1999`);
         setFormScheduleTime("");
         setFormSelectedTags([]);
         setSelectedLocalCampaign(null);
-        // Refresh campaigns
-        fetchCampaigns(campaignFilter);
+        // Switch to the appropriate filter so the new campaign is visible
+        const newFilter = sendNow ? "all" : "draft";
+        setCampaignFilter(newFilter);
+        fetchCampaigns(newFilter);
       } else {
         setSendResult({ success: false, message: data.error || "Error al crear campana" });
       }
@@ -588,13 +590,13 @@ Hip Hop México desde 1999`);
     }
   };
 
-  // Handle campaign action
-  const handleCampaignAction = async (campaignId: string, action: string) => {
+  // Handle campaign action (supports optional extra payload fields like scheduleTime)
+  const handleCampaignAction = async (campaignId: string, action: string, extra?: Record<string, unknown>) => {
     try {
       const res = await fetch(`/api/admin/mailchimp/campaigns/${campaignId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...extra }),
       });
       const data = await res.json();
       if (data.success) {
@@ -1744,7 +1746,7 @@ Hip Hop México desde 1999`);
                           onClick={(e) => {
                             e.stopPropagation();
                             const time = prompt("Fecha y hora de envio (ISO):", new Date(Date.now() + 3600000).toISOString());
-                            if (time) handleCampaignAction(campaign.id, "schedule");
+                            if (time) handleCampaignAction(campaign.id, "schedule", { scheduleTime: time });
                           }}
                         >
                           <Calendar className="w-3 h-3 mr-1" />
