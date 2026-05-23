@@ -15,6 +15,7 @@ import {
   Eye,
   Users,
   Tag,
+  FileEdit,
 } from "lucide-react";
 import { type StyleSettings, defaultStyleSettings } from "@/lib/style-config";
 import { AudienceSelector, type AudienceTag } from "@/components/admin/AudienceSelector";
@@ -657,7 +658,7 @@ export function CampaignEmailModal({
                 <p className="text-slc-muted max-w-md mb-6">
                   {successMessage}
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-3">
                   {mailchimpCampaignUrl && (
                     <a
                       href={mailchimpCampaignUrl}
@@ -670,6 +671,12 @@ export function CampaignEmailModal({
                       </Button>
                     </a>
                   )}
+                  <a href="/admin/email-studio">
+                    <Button variant="outline" size="sm">
+                      <Mail className="w-4 h-4 mr-1" />
+                      Ver borradores en Email Studio
+                    </Button>
+                  </a>
                   <Button onClick={onClose} size="sm">
                     Cerrar
                   </Button>
@@ -1079,8 +1086,10 @@ export function CampaignEmailModal({
                 >
                   {modalState === "sending" ? (
                     <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : null}
-                  Guardar borrador
+                  ) : (
+                    <FileEdit className="w-4 h-4 mr-1" />
+                  )}
+                  Guardar como Borrador
                 </Button>
                 <Button
                   onClick={() => handleSendCampaign(false)}

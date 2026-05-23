@@ -17,6 +17,7 @@ import {
   Eye,
   Star,
   LinkIcon,
+  Mail,
 } from "lucide-react";
 
 interface Campaign {
@@ -323,6 +324,11 @@ export default function AdminCampaignsPage() {
                         <Button asChild variant="ghost" size="icon">
                           <Link href={`/admin/campaigns/${campaign.id}`}>
                             <Edit className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        <Button asChild variant="ghost" size="icon" title="Enviar Email">
+                          <Link href={`/admin/campaigns/${campaign.id}#send-email`}>
+                            <Mail className="w-4 h-4" />
                           </Link>
                         </Button>
                         <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-400">

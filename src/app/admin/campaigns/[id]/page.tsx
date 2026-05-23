@@ -133,6 +133,15 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
     fetchCampaign();
   }, [resolvedParams.id]);
 
+  // Auto-open email modal if #send-email hash is present
+  useEffect(() => {
+    if (window.location.hash === '#send-email') {
+      setEmailModalOpen(true);
+      // Clean up the hash
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
   async function fetchCampaign() {
     try {
       const res = await fetch(`/api/admin/campaigns/${resolvedParams.id}`);

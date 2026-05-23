@@ -31,7 +31,7 @@ import {
   Link2,
 } from "lucide-react";
 import { AudienceSelector, type AudienceTag } from "@/components/admin/AudienceSelector";
-import { type StyleSettings } from "@/lib/style-config";
+
 
 /**
  * Proxy a Dropbox URL through our image-proxy endpoint so mobile browsers
@@ -95,22 +95,6 @@ interface GrowthItem {
 }
 
 type TabType = "dashboard" | "create" | "campaigns" | "audience" | "settings";
-
-// ===========================================
-// LOCAL CAMPAIGN TYPE (from DB)
-// ===========================================
-
-interface LocalCampaign {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  campaignType: string;
-  coverImageUrl: string | null;
-  bannerImageUrl: string | null;
-  smartLinkUrl: string | null;
-  styleSettings: Partial<StyleSettings> | null;
-}
 
 // ===========================================
 // EMAIL TEMPLATES
@@ -366,10 +350,7 @@ export function MailchimpCampaignStudio() {
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [campaignsLoading, setCampaignsLoading] = useState(false);
 
-  // Local campaigns (from Campañas section)
-  const [localCampaigns, setLocalCampaigns] = useState<LocalCampaign[]>([]);
-  const [selectedLocalCampaign, setSelectedLocalCampaign] = useState<LocalCampaign | null>(null);
-  const [localCampaignsLoading, setLocalCampaignsLoading] = useState(false);
+
 
   // Fetch dashboard data
   const fetchDashboard = useCallback(async () => {
@@ -422,82 +403,11 @@ export function MailchimpCampaignStudio() {
     }
   }, [isConfigured, campaignFilter, fetchCampaigns]);
 
-  // Fetch local campaigns from Campañas section
-  const fetchLocalCampaigns = useCallback(async () => {
-    setLocalCampaignsLoading(true);
-    try {
-      const res = await fetch("/api/admin/campaigns");
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setLocalCampaigns(data.data);
-      }
-    } catch (err) {
-      console.warn("[Email Studio] Failed to fetch local campaigns:", err);
-    } finally {
-      setLocalCampaignsLoading(false);
-    }
-  }, []);
 
-  // Load local campaigns on mount
-  useEffect(() => {
-    fetchLocalCampaigns();
-  }, [fetchLocalCampaigns]);
-
-  // Handle local campaign selection — pre-fill form
-  const handleLocalCampaignSelect = (localCampaign: LocalCampaign) => {
-    setSelectedLocalCampaign(localCampaign);
-
-    // Generate subject based on campaign type
-    const campaignTypeLabels: Record<string, string> = {
-      presave: "Pre-Save",
-      smartlink: "Nuevo Lanzamiento",
-      download: "Descarga",
-      contest: "Participa",
-      hyperfollow: "Síguenos",
-    };
-    const typeLabel = campaignTypeLabels[localCampaign.campaignType?.toLowerCase()] || "Nuevo";
-    setFormSubject(`${localCampaign.title} — ${typeLabel} | Sonido Líquido`);
-    setFormTitle(localCampaign.title);
-    setFormPreviewText(localCampaign.description || "");
-
-    // Generate body
-    const description = localCampaign.description || "Nuevo contenido disponible ahora.";
-    setFormBody(`¡Hola!
-
-Tenemos algo especial para ti.
-
-**${localCampaign.title}**
-
-${description}
-
-No te lo pierdas — haz clic abajo para ver más.
-
----
-
-Sonido Líquido Crew
-Hip Hop México desde 1999`);
-
-    // Set CTA based on campaign type
-    const ctaLabels: Record<string, string> = {
-      presave: "Pre-Save Ahora",
-      smartlink: "Escuchar Ahora",
-      download: "Descargar",
-      contest: "Participar",
-      hyperfollow: "Seguir",
-    };
-    setFormCtaText(ctaLabels[localCampaign.campaignType?.toLowerCase()] || "Escuchar Ahora");
-    setFormCtaUrl(localCampaign.smartLinkUrl || `https://sonidoliquido.com/c/${localCampaign.slug}`);
-
-    // Set cover image if available
-    if (localCampaign.coverImageUrl) {
-      setFormCoverImageUrl(localCampaign.coverImageUrl);
-    }
-  };
 
   // Handle template selection
   const handleTemplateSelect = (template: typeof EMAIL_TEMPLATES[0]) => {
     setSelectedTemplate(template);
-    setSelectedLocalCampaign(null); // Clear local campaign when selecting template
     setFormSubject(template.subject);
     setFormBody(template.body);
     setFormCtaText(template.ctaText);
@@ -520,7 +430,7 @@ Hip Hop México desde 1999`);
         ctaUrl: formCtaUrl || undefined,
         coverImageUrl: formCoverImageUrl || undefined,
         tags: formSelectedTags.length > 0 ? formSelectedTags : undefined,
-        styleSettings: selectedLocalCampaign?.styleSettings || {
+        styleSettings: {
           primaryColor: formStylePrimaryColor,
           secondaryColor: formStyleSecondaryColor,
           darkMode: formStyleDarkMode,
@@ -579,13 +489,18 @@ Hip Hop México desde 1999`);
         setFormCoverImageUrl("");
         setFormScheduleTime("");
         setFormSelectedTags([]);
-        setSelectedLocalCampaign(null);
         // Switch to the appropriate filter so the new campaign is visible
         const newFilter = sendNow ? "all" : "draft";
         setCampaignFilter(newFilter);
         setActiveTab("campaigns");
-        // Small delay to allow Mailchimp to index the new campaign
-        setTimeout(() => fetchCampaigns(newFilter), 500);
+        // Retry pattern for draft visibility
+        const refreshWithRetry = async (attempt = 0) => {
+          await fetchCampaigns(newFilter);
+          if (attempt < 2) {
+            setTimeout(() => refreshWithRetry(attempt + 1), 1500);
+          }
+        };
+        setTimeout(() => refreshWithRetry(), 1000);
       } else {
         setSendResult({ success: false, message: data.error || "Error al crear campana" });
       }
@@ -836,7 +751,7 @@ Hip Hop México desde 1999`);
       <div className="flex gap-1 p-1 bg-slc-card rounded-lg border border-slc-border overflow-x-auto">
         {[
           { id: "dashboard" as TabType, label: "Dashboard", icon: BarChart3 },
-          { id: "create" as TabType, label: "Crear Campana", icon: Plus },
+          { id: "create" as TabType, label: "Nuevo Email", icon: Plus },
           { id: "campaigns" as TabType, label: "Campanas", icon: Send },
           { id: "audience" as TabType, label: "Audiencia", icon: Users },
           { id: "settings" as TabType, label: "Config", icon: Activity },
@@ -1117,56 +1032,16 @@ Hip Hop México desde 1999`);
                 ))}
               </div>
 
-              {/* Mis Campañas — pick from local campaigns */}
-              {localCampaigns.length > 0 && (
-                <div className="pt-2">
-                  <h4 className="font-oswald text-sm uppercase flex items-center gap-2 mb-2">
-                    <Zap className="w-4 h-4 text-primary" />
-                    Mis Campañas
-                  </h4>
-                  <p className="text-xs text-slc-muted mb-2">
-                    Selecciona una campaña para pre-llenar el email
-                  </p>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {localCampaigns.map((lc) => {
-                      const isSelected = selectedLocalCampaign?.id === lc.id;
-                      return (
-                        <button
-                          key={lc.id}
-                          onClick={() => handleLocalCampaignSelect(lc)}
-                          className={`w-full p-3 rounded-lg border text-left transition-all ${
-                            isSelected
-                              ? "bg-primary/10 border-primary"
-                              : "bg-slc-card border-slc-border hover:border-primary/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {lc.coverImageUrl ? (
-                              <img
-                                src={proxyImageUrl(lc.coverImageUrl)}
-                                alt={lc.title}
-                                className="w-8 h-8 rounded object-cover flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded bg-slc-dark flex items-center justify-center flex-shrink-0">
-                                <Zap className="w-3 h-3 text-slc-muted" />
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <p className={`text-xs font-medium truncate ${isSelected ? "text-primary" : ""}`}>
-                                {lc.title}
-                              </p>
-                              <p className="text-[10px] text-slc-muted">
-                                {lc.campaignType?.toUpperCase() || "CAMPAIGN"}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Info: Campaign-specific emails */}
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <p className="text-xs text-slc-muted">
+                  Para enviar emails de una campaña específica (presave, smartlink, etc.), ve a{" "}
+                  <a href="/admin/campaigns" className="text-primary hover:underline font-medium">
+                    Campañas
+                  </a>{" "}
+                  → editar → Enviar Email
+                </p>
+              </div>
 
               {/* Audience / Tags Selector */}
               <div className="pt-4">
@@ -1683,7 +1558,7 @@ Hip Hop México desde 1999`);
                   onClick={() => setActiveTab("create")}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Crear Campana
+                  Nuevo Email
                 </Button>
               </div>
             ) : (
