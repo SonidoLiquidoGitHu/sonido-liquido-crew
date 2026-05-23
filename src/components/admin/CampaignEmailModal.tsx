@@ -347,6 +347,7 @@ export function CampaignEmailModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [mailchimpCampaignUrl, setMailchimpCampaignUrl] = useState<string | null>(null);
+  const [mailchimpCampaignId, setMailchimpCampaignId] = useState<string | null>(null);
 
   // Preview state
   const [showPreview, setShowPreview] = useState(false);
@@ -372,6 +373,7 @@ export function CampaignEmailModal({
       setErrorMessage(null);
       setSuccessMessage(null);
       setMailchimpCampaignUrl(null);
+      setMailchimpCampaignId(null);
       setShowPreview(false);
       setScheduleTime("");
       setSelectedTags([]);
@@ -448,6 +450,44 @@ export function CampaignEmailModal({
     setMailchimpCampaignUrl(null);
 
     try {
+      // If we already have a mailchimpCampaignId and saving as draft, update instead of creating
+      if (mailchimpCampaignId && isDraft) {
+        const res = await fetch(`/api/admin/mailchimp/campaigns/${mailchimpCampaignId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "update",
+            subject,
+            previewText,
+            title: subject,
+            body,
+            ctaText: ctaText || undefined,
+            ctaUrl: ctaUrl || undefined,
+            coverImageUrl:
+              includeCoverImage && campaign.coverImageUrl
+                ? campaign.coverImageUrl
+                : undefined,
+            styleSettings: resolvedStyleSettings || undefined,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          setModalState("success");
+          setSuccessMessage("Borrador actualizado exitosamente en Mailchimp.");
+          if (data.data?.campaignUrl) {
+            setMailchimpCampaignUrl(data.data.campaignUrl);
+          }
+        } else {
+          setModalState("error");
+          setErrorMessage(
+            data.error || "Error al actualizar el borrador. Intenta de nuevo."
+          );
+        }
+        return;
+      }
+
       const payload: Record<string, unknown> = {
         action: isDraft ? "create-draft" : "create-campaign",
         subject,
@@ -481,6 +521,10 @@ export function CampaignEmailModal({
 
       if (data.success) {
         setModalState("success");
+        // Store the campaign ID so subsequent draft saves update instead of creating new
+        if (data.data?.campaignId) {
+          setMailchimpCampaignId(data.data.campaignId);
+        }
         if (isDraft) {
           setSuccessMessage("Borrador guardado exitosamente en Mailchimp.");
         } else if (activeTab === "schedule" && scheduleTime) {
@@ -670,6 +714,19 @@ export function CampaignEmailModal({
                         Ver en Mailchimp
                       </Button>
                     </a>
+                  )}
+                  {mailchimpCampaignId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setModalState("idle");
+                        setErrorMessage(null);
+                      }}
+                    >
+                      <FileEdit className="w-4 h-4 mr-1" />
+                      Seguir Editando
+                    </Button>
                   )}
                   <a href="/admin/email-studio">
                     <Button variant="outline" size="sm">
@@ -1089,7 +1146,7 @@ export function CampaignEmailModal({
                   ) : (
                     <FileEdit className="w-4 h-4 mr-1" />
                   )}
-                  Guardar como Borrador
+                  {mailchimpCampaignId ? "Guardar Cambios" : "Guardar como Borrador"}
                 </Button>
                 <Button
                   onClick={() => handleSendCampaign(false)}

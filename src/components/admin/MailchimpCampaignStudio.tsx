@@ -318,6 +318,7 @@ export function MailchimpCampaignStudio() {
 
   // Create campaign form
   const [selectedTemplate, setSelectedTemplate] = useState(EMAIL_TEMPLATES[0]);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [formSubject, setFormSubject] = useState("");
   const [formPreviewText, setFormPreviewText] = useState("");
   const [formTitle, setFormTitle] = useState("");
@@ -415,94 +416,186 @@ export function MailchimpCampaignStudio() {
     if (!formTitle) setFormTitle(template.name);
   };
 
+  // Load an existing draft into the editor for editing
+  const loadCampaignForEditing = async (campaign: CampaignData) => {
+    setEditingCampaignId(campaign.id);
+    setFormSubject(campaign.settings.subject_line || "");
+    setFormPreviewText(campaign.settings.preview_text || "");
+    setFormTitle(campaign.settings.title || "");
+    setActiveTab("create");
+    // Try to extract body text from the HTML content
+    try {
+      const contentRes = await fetch(`/api/admin/mailchimp/campaigns/${campaign.id}?detail=content`);
+      const contentData = await contentRes.json();
+      if (contentData.success && contentData.data?.html) {
+        const html = contentData.data.html as string;
+        // Extract text between paragraph tags in the main content area
+        const bodyMatch = html.match(/<p[^>]*style="[^"]*line-height[^"]*"[^>]*>([\s\S]*?)<\/p>/);
+        if (bodyMatch) {
+          let text = bodyMatch[1]
+            .replace(/<br\s*\/?>/g, "\n")
+            .replace(/<\/p>\s*<p[^>]*>/g, "\n\n")
+            .replace(/<strong>(.*?)<\/strong>/g, "**$1**")
+            .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, "[$2]($1)")
+            .replace(/<h3[^>]*>(.*?)<\/h3>/g, "### $1")
+            .replace(/<h1[^>]*>(.*?)<\/h1>/g, "# $1")
+            .replace(/<[^>]+>/g, "")
+            .trim();
+          setFormBody(text);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load campaign content for editing:", err);
+    }
+  };
+
   // Handle create campaign
   const handleCreateCampaign = async (sendNow: boolean) => {
     setIsSending(true);
     setSendResult(null);
     try {
-      const payload: Record<string, unknown> = {
-        action: sendNow ? "create-campaign" : "create-draft",
-        subject: formSubject,
-        previewText: formPreviewText,
-        title: formTitle || formSubject,
-        body: formBody,
-        ctaText: formCtaText || undefined,
-        ctaUrl: formCtaUrl || undefined,
-        coverImageUrl: formCoverImageUrl || undefined,
-        tags: formSelectedTags.length > 0 ? formSelectedTags : undefined,
-        styleSettings: {
-          primaryColor: formStylePrimaryColor,
-          secondaryColor: formStyleSecondaryColor,
-          darkMode: formStyleDarkMode,
-          titleFont: formStyleTitleFont,
-          bodyFont: formStyleBodyFont,
-          buttonStyle: formStyleButtonStyle,
-          buttonRounded: formStyleButtonRounded,
-          colorPreset: "custom",
-          accentColor: formStylePrimaryColor,
-          textColor: "#ffffff",
-          titleStyle: "uppercase",
-          backgroundStyle: formStyleDarkMode ? "gradient-dark" : "solid-light",
-          backgroundOverlayOpacity: 50,
-          backgroundBlur: 0,
-          enableGlow: true,
-          enableAnimations: false,
-          enableParticles: false,
-          animationPreset: "none",
-        },
+      const styleSettingsPayload = {
+        primaryColor: formStylePrimaryColor,
+        secondaryColor: formStyleSecondaryColor,
+        darkMode: formStyleDarkMode,
+        titleFont: formStyleTitleFont,
+        bodyFont: formStyleBodyFont,
+        buttonStyle: formStyleButtonStyle,
+        buttonRounded: formStyleButtonRounded,
+        colorPreset: "custom",
+        accentColor: formStylePrimaryColor,
+        textColor: "#ffffff",
+        titleStyle: "uppercase",
+        backgroundStyle: formStyleDarkMode ? "gradient-dark" : "solid-light",
+        backgroundOverlayOpacity: 50,
+        backgroundBlur: 0,
+        enableGlow: true,
+        enableAnimations: false,
+        enableParticles: false,
+        animationPreset: "none",
       };
 
-      if (sendNow && formScheduleTime) {
-        payload.scheduleTime = formScheduleTime;
-      }
-
-      const res = await fetch("/api/admin/mailchimp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      let data: { success: boolean; error?: string; data?: unknown };
-      try {
-        const text = await res.text();
-        data = text ? JSON.parse(text) : { success: false, error: "Respuesta vacía del servidor" };
-      } catch {
-        data = { success: false, error: "Error al procesar la respuesta del servidor" };
-      }
-
-      if (data.success) {
-        setSendResult({
-          success: true,
-          message: sendNow
-            ? formScheduleTime
-              ? `Campana programada para ${new Date(formScheduleTime).toLocaleString("es-MX")}`
-              : "Campana enviada exitosamente!"
-            : "Borrador creado exitosamente!",
+      if (editingCampaignId) {
+        // Update existing campaign
+        const res = await fetch(`/api/admin/mailchimp/campaigns/${editingCampaignId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "update",
+            subject: formSubject,
+            previewText: formPreviewText,
+            title: formTitle || formSubject,
+            body: formBody,
+            ctaText: formCtaText || undefined,
+            ctaUrl: formCtaUrl || undefined,
+            coverImageUrl: formCoverImageUrl || undefined,
+            styleSettings: styleSettingsPayload,
+          }),
         });
-        // Reset form
-        setFormSubject("");
-        setFormPreviewText("");
-        setFormTitle("");
-        setFormBody("");
-        setFormCtaText("");
-        setFormCtaUrl("");
-        setFormCoverImageUrl("");
-        setFormScheduleTime("");
-        setFormSelectedTags([]);
-        // Switch to the appropriate filter so the new campaign is visible
-        const newFilter = sendNow ? "all" : "draft";
-        setCampaignFilter(newFilter);
-        setActiveTab("campaigns");
-        // Retry pattern for draft visibility
-        const refreshWithRetry = async (attempt = 0) => {
-          await fetchCampaigns(newFilter);
-          if (attempt < 2) {
-            setTimeout(() => refreshWithRetry(attempt + 1), 1500);
-          }
-        };
-        setTimeout(() => refreshWithRetry(), 1000);
+
+        let data: { success: boolean; error?: string; data?: unknown };
+        try {
+          const text = await res.text();
+          data = text ? JSON.parse(text) : { success: false, error: "Respuesta vacía del servidor" };
+        } catch {
+          data = { success: false, error: "Error al procesar la respuesta del servidor" };
+        }
+
+        if (data.success) {
+          setSendResult({
+            success: true,
+            message: "Borrador actualizado exitosamente!",
+          });
+          // Reset form and editing state
+          setEditingCampaignId(null);
+          setFormSubject("");
+          setFormPreviewText("");
+          setFormTitle("");
+          setFormBody("");
+          setFormCtaText("");
+          setFormCtaUrl("");
+          setFormCoverImageUrl("");
+          setFormScheduleTime("");
+          setFormSelectedTags([]);
+          setCampaignFilter("draft");
+          setActiveTab("campaigns");
+          const refreshWithRetry = async (attempt = 0) => {
+            await fetchCampaigns("draft");
+            if (attempt < 2) {
+              setTimeout(() => refreshWithRetry(attempt + 1), 1500);
+            }
+          };
+          setTimeout(() => refreshWithRetry(), 1000);
+        } else {
+          setSendResult({ success: false, message: data.error || "Error al actualizar borrador" });
+        }
       } else {
-        setSendResult({ success: false, message: data.error || "Error al crear campana" });
+        // Create new campaign (existing code)
+        const payload: Record<string, unknown> = {
+          action: sendNow ? "create-campaign" : "create-draft",
+          subject: formSubject,
+          previewText: formPreviewText,
+          title: formTitle || formSubject,
+          body: formBody,
+          ctaText: formCtaText || undefined,
+          ctaUrl: formCtaUrl || undefined,
+          coverImageUrl: formCoverImageUrl || undefined,
+          tags: formSelectedTags.length > 0 ? formSelectedTags : undefined,
+          styleSettings: styleSettingsPayload,
+        };
+
+        if (sendNow && formScheduleTime) {
+          payload.scheduleTime = formScheduleTime;
+        }
+
+        const res = await fetch("/api/admin/mailchimp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        let data: { success: boolean; error?: string; data?: unknown };
+        try {
+          const text = await res.text();
+          data = text ? JSON.parse(text) : { success: false, error: "Respuesta vacía del servidor" };
+        } catch {
+          data = { success: false, error: "Error al procesar la respuesta del servidor" };
+        }
+
+        if (data.success) {
+          setSendResult({
+            success: true,
+            message: sendNow
+              ? formScheduleTime
+                ? `Campana programada para ${new Date(formScheduleTime).toLocaleString("es-MX")}`
+                : "Campana enviada exitosamente!"
+              : "Borrador creado exitosamente!",
+          });
+          // Reset form
+          setFormSubject("");
+          setFormPreviewText("");
+          setFormTitle("");
+          setFormBody("");
+          setFormCtaText("");
+          setFormCtaUrl("");
+          setFormCoverImageUrl("");
+          setFormScheduleTime("");
+          setFormSelectedTags([]);
+          // Switch to the appropriate filter so the new campaign is visible
+          const newFilter = sendNow ? "all" : "draft";
+          setCampaignFilter(newFilter);
+          setActiveTab("campaigns");
+          // Retry pattern for draft visibility
+          const refreshWithRetry = async (attempt = 0) => {
+            await fetchCampaigns(newFilter);
+            if (attempt < 2) {
+              setTimeout(() => refreshWithRetry(attempt + 1), 1500);
+            }
+          };
+          setTimeout(() => refreshWithRetry(), 1000);
+        } else {
+          setSendResult({ success: false, message: data.error || "Error al crear campana" });
+        }
       }
     } catch (err) {
       setSendResult({ success: false, message: "Error de conexion" });
@@ -978,6 +1071,33 @@ export function MailchimpCampaignStudio() {
       {/* ==================== CREATE CAMPAIGN TAB ==================== */}
       {!isLoading && activeTab === "create" && (
         <div className="space-y-6">
+          {/* Editing existing draft banner */}
+          {editingCampaignId && (
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileEdit className="w-5 h-5 text-blue-500" />
+                <span className="text-sm">Editando borrador existente</span>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingCampaignId(null);
+                  setFormSubject("");
+                  setFormPreviewText("");
+                  setFormTitle("");
+                  setFormBody("");
+                  setFormCtaText("");
+                  setFormCtaUrl("");
+                  setFormCoverImageUrl("");
+                  setFormScheduleTime("");
+                  setFormSelectedTags([]);
+                }}
+                className="text-xs text-primary hover:underline"
+              >
+                Crear nuevo en su lugar
+              </button>
+            </div>
+          )}
+
           {/* Send result notification */}
           {sendResult && (
             <div className={`p-4 rounded-lg border flex items-center gap-3 ${
@@ -1466,7 +1586,7 @@ export function MailchimpCampaignStudio() {
                   disabled={isSending || !formSubject || !formBody}
                 >
                   <FileEdit className="w-4 h-4 mr-2" />
-                  Guardar como Borrador
+                  {editingCampaignId ? "Guardar Cambios" : "Guardar como Borrador"}
                 </Button>
                 <Button
                   variant="outline"
@@ -1614,6 +1734,19 @@ export function MailchimpCampaignStudio() {
 
                     {/* Campaign Actions */}
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slc-border">
+                      {(campaign.status === "draft" || campaign.status === "save") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            loadCampaignForEditing(campaign);
+                          }}
+                        >
+                          <FileEdit className="w-3 h-3 mr-1" />
+                          Editar
+                        </Button>
+                      )}
                       {(campaign.status === "draft" || campaign.status === "save" || campaign.status === "schedule") && (
                         <Button
                           size="sm"
@@ -1830,6 +1963,21 @@ export function MailchimpCampaignStudio() {
                       </div>
                     )}
                   </div>
+
+                  {/* Edit button for drafts */}
+                  {(selectedCampaign.status === "draft" || selectedCampaign.status === "save") && (
+                    <div className="flex items-center gap-3 pt-2">
+                      <Button
+                        onClick={() => {
+                          setSelectedCampaign(null);
+                          loadCampaignForEditing(selectedCampaign);
+                        }}
+                      >
+                        <FileEdit className="w-4 h-4 mr-2" />
+                        Editar Borrador
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

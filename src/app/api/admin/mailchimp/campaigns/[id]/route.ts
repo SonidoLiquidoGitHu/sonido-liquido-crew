@@ -90,8 +90,36 @@ export async function POST(
       return NextResponse.json({ success: true, data: { campaignId: newCampaign.id } });
     }
 
+    if (action === "update") {
+      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, styleSettings } = body;
+
+      // Update settings if any settings fields provided
+      if (subject || title || previewText) {
+        await mailchimpClient.updateCampaignSettings(id, {
+          subject,
+          previewText,
+          title,
+        });
+      }
+
+      // Update content if body provided
+      if (emailBody) {
+        const htmlContent = mailchimpClient.generateCustomEmailHTML({
+          title: title || subject,
+          body: emailBody,
+          ctaText: ctaText || undefined,
+          ctaUrl: ctaUrl || undefined,
+          coverImageUrl: coverImageUrl || undefined,
+          styleSettings: styleSettings || undefined,
+        });
+        await mailchimpClient.setCampaignContent(id, htmlContent);
+      }
+
+      return NextResponse.json({ success: true, data: { campaignId: id, status: "updated" } });
+    }
+
     return NextResponse.json(
-      { success: false, error: "Invalid action. Use: send, schedule, unschedule, replicate" },
+      { success: false, error: "Invalid action. Use: send, schedule, unschedule, replicate, update" },
       { status: 400 }
     );
   } catch (error) {

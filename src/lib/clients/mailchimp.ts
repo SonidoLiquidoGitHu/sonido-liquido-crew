@@ -515,6 +515,26 @@ class MailchimpClient {
   }
 
   /**
+   * Update campaign settings (subject, title, preview_text, etc.)
+   */
+  async updateCampaignSettings(campaignId: string, data: {
+    subject?: string;
+    previewText?: string;
+    title?: string;
+  }): Promise<MailchimpCampaign> {
+    return this.request<MailchimpCampaign>(`/campaigns/${campaignId}`, {
+      method: "PATCH",
+      body: {
+        settings: {
+          subject_line: data.subject,
+          preview_text: data.previewText,
+          title: data.title,
+        },
+      },
+    });
+  }
+
+  /**
    * Set campaign HTML content
    */
   async setCampaignContent(campaignId: string, htmlContent: string): Promise<void> {
