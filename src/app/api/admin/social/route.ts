@@ -688,6 +688,7 @@ async function handlePopulate(options: {
           title: releases.title,
           slug: releases.slug,
           releaseType: releases.releaseType,
+          releaseDate: releases.releaseDate,
           coverImageUrl: releases.coverImageUrl,
           spotifyUrl: releases.spotifyUrl,
         })
@@ -728,6 +729,7 @@ async function handlePopulate(options: {
           artistRole: primaryArtist?.role || undefined,
           releaseTitle: release.title,
           releaseType: release.releaseType,
+          releaseDate: release.releaseDate,
           spotifyUrl: release.spotifyUrl || undefined,
           linkUrl: `${SITE_URL}/lanzamientos/${release.slug}`,
         });

@@ -1282,11 +1282,93 @@ export interface SocialPostQueueWithId {
 }
 
 /**
+ * Regenerate a caption for a queue item at post time.
+ * This ensures:
+ * 1. The 90-day "Nueva música" vs "Música" logic is evaluated at post time (not populate time)
+ * 2. Different variation index per cycle, so repeated cycles get different captions
+ * 3. The caption matches the current state of the release (new vs catalog)
+ */
+async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<string> {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+
+  // Use cycleNumber as variation seed — different cycle = different caption style
+  const variationIndex = item.cycleNumber || 0;
+
+  // For spotify_track items, fetch the release date to apply 90-day logic
+  let releaseDate: Date | null = null;
+  if (item.contentType === "spotify_track" && item.releaseId) {
+    try {
+      const { releases } = await import("@/db/schema");
+      const releaseRows = await db
+        .select({ releaseDate: releases.releaseDate })
+        .from(releases)
+        .where(eq(releases.id, item.releaseId))
+        .limit(1);
+      if (releaseRows[0]?.releaseDate) {
+        releaseDate = releaseRows[0].releaseDate;
+      }
+    } catch (err) {
+      console.warn("[Social] Could not fetch release date for caption:", err);
+    }
+  }
+
+  // Build a minimal caption context from the queue item data
+  // The full context was available at populate time, but we reconstruct what we can
+  const ctx: CaptionContext = {
+    contentType: item.contentType as CaptionContext["contentType"],
+    linkUrl: item.linkUrl || undefined,
+    releaseDate,
+  };
+
+  // Try to extract artist name from the existing caption as a hint
+  const existingCaption = item.caption || "";
+  if (existingCaption.includes(" de ")) {
+    const match = existingCaption.match(/de\s+([^\n,—]+)/);
+    if (match) {
+      ctx.artistName = match[1].trim();
+    }
+  }
+
+  // For tracks, try to extract release title from existing caption
+  if (item.contentType === "spotify_track") {
+    const titleMatch = existingCaption.match(/^.{1,80}—\s*(.+?)(?:\s*—|\s*$)/m);
+    if (titleMatch) {
+      ctx.releaseTitle = titleMatch[1].trim();
+    }
+    // Extract Spotify URL from existing caption
+    const urlMatch = existingCaption.match(/(https:\/\/open\.spotify\.com\/[^\s]+)/);
+    if (urlMatch) {
+      ctx.spotifyUrl = urlMatch[1];
+    }
+  }
+
+  // For curated tracks, try to extract track name
+  if (item.contentType === "curated_track") {
+    const trackMatch = existingCaption.match(/"([^"]+)"/);
+    if (trackMatch) {
+      ctx.trackName = trackMatch[1];
+    }
+  }
+
+  return generateCaption(ctx, variationIndex);
+}
+
+/**
  * Process a single queue item: post to FB and/or IG, log results, update queue status.
+ * Regenerates the caption at post time with variation to avoid repetition.
  */
 export async function processQueueItem(item: SocialPostQueueWithId): Promise<PostQueueItemResult> {
   const platforms: string[] = JSON.parse(item.platforms || "[]");
   const postedPlatforms: string[] = JSON.parse(item.postedPlatforms || "[]");
+
+  // Regenerate caption at post time with variation
+  // This ensures: (1) 90-day "nueva" logic is current, (2) captions vary between posts
+  let caption = item.caption || "";
+  try {
+    caption = await regenerateCaptionForItem(item);
+  } catch (err) {
+    console.warn("[Social] Caption regeneration failed, using original:", err);
+  }
 
   // Default results with explicit error field so we never get "undefined" in messages
   let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null, error: "not attempted" };
@@ -1295,7 +1377,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   // Post to Facebook
   if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
     console.log(`[Social] Posting to Facebook: ${item.contentType} (${item.sourceId})`);
-    fbResult = await postToFacebook(item.imageUrl, item.caption || "", item.linkUrl || undefined);
+    fbResult = await postToFacebook(item.imageUrl, caption, item.linkUrl || undefined);
 
     // Log the result
     try {
@@ -1327,7 +1409,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   // Post to Instagram
   if (platforms.includes("instagram") && !postedPlatforms.includes("instagram")) {
     console.log(`[Social] Posting to Instagram: ${item.contentType} (${item.sourceId})`);
-    igResult = await postToInstagram(item.imageUrl, item.caption || "");
+    igResult = await postToInstagram(item.imageUrl, caption);
 
     // Log the result
     try {
@@ -1413,6 +1495,7 @@ export interface CaptionContext {
   artistRole?: string;
   releaseTitle?: string;
   releaseType?: string;
+  releaseDate?: Date | null; // For 90-day "Nueva música" logic
   photoTitle?: string;
   photoLocation?: string;
   photographer?: string;
@@ -1425,110 +1508,346 @@ export interface CaptionContext {
 }
 
 /**
- * Generate a caption for a social media post based on content type and context.
- * All captions are in Spanish, matching the SLC brand voice.
+ * Check if a release date is within 90 days (considered "new").
  */
-export function generateCaption(ctx: CaptionContext): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
-  const hashtags = "#SonidoLiquido #HipHopMexico #HipHop #CDMX #RapMexicano";
+function isNewRelease(releaseDate?: Date | null): boolean {
+  if (!releaseDate) return false;
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  return new Date(releaseDate) > ninetyDaysAgo;
+}
 
-  switch (ctx.contentType) {
-    case "gallery_photo": {
-      const photoCredit = ctx.photographer ? `\nFoto: ${ctx.photographer}` : "";
-      const location = ctx.photoLocation ? ` ${ctx.photoLocation}` : "";
-
-      if (ctx.artistName) {
+// Multiple caption variations per content type to avoid repetition
+// Each array has several options; we pick one based on a rotation index
+const CAPTION_VARIATIONS = {
+  gallery_photo: [
+    {
+      withArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const location = ctx.photoLocation ? ` ${ctx.photoLocation}` : "";
+        const photoCredit = ctx.photographer ? `\nFoto: ${ctx.photographer}` : "";
         return [
-          `${ctx.artistName} en accion${location}${photoCredit}`,
+          `${ctx.artistName} en acción${location}${photoCredit}`,
           "",
-          `Descubre mas de ${ctx.artistName} en ${ctx.linkUrl || `${siteUrl}/artistas`}`,
+          `Descubre más de ${ctx.artistName} en ${ctx.linkUrl || `${siteUrl}/artistas`}`,
           "",
           hashtags,
         ].join("\n");
-      }
+      },
+      withoutArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const location = ctx.photoLocation ? ` ${ctx.photoLocation}` : "";
+        const photoCredit = ctx.photographer ? `\nFoto: ${ctx.photographer}` : "";
+        return [
+          `Sonido Líquido Crew${location}${photoCredit}`,
+          "",
+          `Más en ${siteUrl}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+    },
+    {
+      withArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const location = ctx.photoLocation ? ` desde ${ctx.photoLocation}` : "";
+        const photoCredit = ctx.photographer ? ` | Foto: ${ctx.photographer}` : "";
+        return [
+          `Capturando la esencia de ${ctx.artistName}${location}${photoCredit}`,
+          "",
+          `${ctx.artistName} es parte del colectivo → ${ctx.linkUrl || `${siteUrl}/artistas`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+      withoutArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const location = ctx.photoLocation ? ` ${ctx.photoLocation}` : "";
+        const photoCredit = ctx.photographer ? `\nFoto: ${ctx.photographer}` : "";
+        return [
+          `El colectivo en su elemento${location}${photoCredit}`,
+          "",
+          `Hip hop mexicano desde 1999 → ${siteUrl}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+    },
+    {
+      withArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const photoCredit = ctx.photographer ? `\n📸 ${ctx.photographer}` : "";
+        return [
+          `${ctx.artistName} representando${photoCredit}`,
+          "",
+          `Conoce al roster completo → ${ctx.linkUrl || `${siteUrl}/artistas`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+      withoutArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const photoCredit = ctx.photographer ? `\n📸 ${ctx.photographer}` : "";
+        return [
+          `Sonido Líquido Crew — la familia del hip hop mexicano${photoCredit}`,
+          "",
+          `${siteUrl}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+    },
+  ],
 
-      return [
-        `Sonido Liquido Crew${location}${photoCredit}`,
-        "",
-        `Mas en ${siteUrl}`,
-        "",
-        hashtags,
-      ].join("\n");
-    }
+  spotify_track: [
+    {
+      newRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const typeLabel = ctx.releaseType === "album" ? "el álbum" : ctx.releaseType === "ep" ? "el EP" : ctx.releaseType === "mixtape" ? "la mixtape" : "el sencillo";
+        const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        return [
+          `🔥 Nueva música de ${artistLine}`,
+          `${ctx.releaseTitle || "Nuevo lanzamiento"} — ${typeLabel} ya disponible`,
+          "",
+          `Escucha en Spotify: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+      oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const typeLabel = ctx.releaseType === "album" ? "el álbum" : ctx.releaseType === "ep" ? "el EP" : ctx.releaseType === "mixtape" ? "la mixtape" : "el sencillo";
+        const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        return [
+          `🎶 Música de ${artistLine}`,
+          `${ctx.releaseTitle || "Lanzamiento"} — ${typeLabel}`,
+          "",
+          `Escucha en Spotify: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+    },
+    {
+      newRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        return [
+          `${ctx.releaseTitle || "Nuevo lanzamiento"} — ${artistLine}`,
+          "Acaba de salir. Ya está en Spotify 👊",
+          "",
+          `${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+      oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        return [
+          `${ctx.releaseTitle || "Lanzamiento"} — ${artistLine}`,
+          "Clásico del colectivo, sigue sonando 🔊",
+          "",
+          `${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+    },
+    {
+      newRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const typeLabel = ctx.releaseType === "album" ? "Álbum" : ctx.releaseType === "ep" ? "EP" : ctx.releaseType === "mixtape" ? "Mixtape" : "Sencillo";
+        const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        return [
+          `Nuevo ${typeLabel.toLowerCase()} de ${artistLine}: "${ctx.releaseTitle || "Nuevo lanzamiento"}"`,
+          "Ya disponible en todas las plataformas",
+          "",
+          `▶️ ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+      oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+        const typeLabel = ctx.releaseType === "album" ? "Álbum" : ctx.releaseType === "ep" ? "EP" : ctx.releaseType === "mixtape" ? "Mixtape" : "Sencillo";
+        const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        return [
+          `${typeLabel} de ${artistLine}: "${ctx.releaseTitle || "Lanzamiento"}"`,
+          "Del catálogo de Sonido Líquido, sigue vigente",
+          "",
+          `▶️ ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+          "",
+          hashtags,
+        ].join("\n");
+      },
+    },
+  ],
 
-    case "spotify_track": {
-      const typeLabel = ctx.releaseType === "album" ? "el album" : ctx.releaseType === "ep" ? "el EP" : ctx.releaseType === "mixtape" ? "la mixtape" : "el sencillo";
-      const artistLine = ctx.artistName || "Sonido Liquido Crew";
-
-      return [
-        `Nueva musica de ${artistLine}`,
-        `${ctx.releaseTitle || "Nuevo lanzamiento"} — ${typeLabel} ya disponible`,
-        "",
-        `Escucha en Spotify: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
-        "",
-        hashtags,
-      ].join("\n");
-    }
-
-    case "artist_profile": {
+  artist_profile: [
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
       const roleLabels: Record<string, string> = {
-        mc: "MC",
-        dj: "DJ",
-        producer: "Productor",
-        cantante: "Cantante",
-        divo: "Divo",
-        lado_b: "Lado B",
+        mc: "MC", dj: "DJ", producer: "Productor", cantante: "Cantante", divo: "Divo", lado_b: "Lado B",
       };
       const roleLabel = ctx.artistRole ? roleLabels[ctx.artistRole] || ctx.artistRole : "Artista";
-
       return [
-        `${ctx.artistName} — ${roleLabel} de Sonido Liquido Crew`,
+        `${ctx.artistName} — ${roleLabel} de Sonido Líquido Crew`,
         "",
-        "25 anos de hip hop mexicano, y seguimos rompiendo",
+        "25 años de hip hop mexicano, y seguimos rompiendo",
         "",
-        `Conoce mas: ${ctx.linkUrl || `${siteUrl}/artistas`}`,
+        `Conoce más: ${ctx.linkUrl || `${siteUrl}/artistas`}`,
         "",
         hashtags,
       ].join("\n");
-    }
-
-    case "curated_track": {
-      const artistLine = ctx.artistName || "Sonido Liquido Crew";
-      const trackLine = ctx.trackName ? `"${ctx.trackName}"` : "";
-      const albumLine = ctx.albumName ? `del album "${ctx.albumName}"` : "";
-
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const roleLabels: Record<string, string> = {
+        mc: "MC", dj: "DJ", producer: "Productor", cantante: "Cantante", divo: "Divo", lado_b: "Lado B",
+      };
+      const roleLabel = ctx.artistRole ? roleLabels[ctx.artistRole] || ctx.artistRole : "Artista";
       return [
-        `${artistLine} — ${trackLine} ${albumLine}`.trim(),
+        `El roster de SLC: ${ctx.artistName} (${roleLabel})`,
         "",
-        "Descubre mas musica del roster en nuestra playlist curada",
+        "Más de 25 años haciendo historia en el rap mexicano",
+        "",
+        `${ctx.linkUrl || `${siteUrl}/artistas`}`,
+        "",
+        hashtags,
+      ].join("\n");
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      return [
+        `${ctx.artistName} — pieza clave del colectivo`,
+        "",
+        "Sonido Líquido Crew, la escuela del hip hop nacional",
+        "",
+        `→ ${ctx.linkUrl || `${siteUrl}/artistas`}`,
+        "",
+        hashtags,
+      ].join("\n");
+    },
+  ],
+
+  curated_track: [
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const trackLine = ctx.trackName ? `"${ctx.trackName}"` : "";
+      const albumLine = ctx.albumName ? ` del álbum "${ctx.albumName}"` : "";
+      return [
+        `${artistLine} — ${trackLine}${albumLine}`.trim(),
+        "",
+        "Descubre más música del roster en nuestra playlist curada",
         "",
         `Escucha: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
         "",
         hashtags,
       ].join("\n");
-    }
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const trackLine = ctx.trackName ? `${ctx.trackName}` : "";
+      return [
+        `🎵 ${trackLine} — ${artistLine}`,
+        "",
+        "De la playlist curada del colectivo",
+        "",
+        `${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+        "",
+        hashtags,
+      ].join("\n");
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const trackLine = ctx.trackName ? `"${ctx.trackName}" de ` : "Track de ";
+      return [
+        `${trackLine}${artistLine}`,
+        "",
+        "Cada semana una recomendación del roster 🔥",
+        "",
+        `Escucha ahora: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
+        "",
+        hashtags,
+      ].join("\n");
+    },
+  ],
 
-    case "vertical_video": {
-      const artistLine = ctx.artistName || "Sonido Liquido Crew";
-      const titleLine = ctx.videoTitle ? `${ctx.videoTitle}` : "Video exclusivo";
-      const platformLabel = ctx.videoPlatform === "youtube" ? "YouTube"
-        : ctx.videoPlatform === "instagram" ? "Instagram"
-        : "";
-
+  vertical_video: [
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const titleLine = ctx.videoTitle || "Video exclusivo";
+      const platformLabel = ctx.videoPlatform === "youtube" ? "YouTube" : ctx.videoPlatform === "instagram" ? "Instagram" : "";
       return [
         `${artistLine} — ${titleLine}`,
         "",
         platformLabel ? `Mira el video completo en ${platformLabel}` : "Mira el video completo",
         "",
-        `Mas contenido: ${ctx.linkUrl || `${siteUrl}/reels`}`,
+        `Más contenido: ${ctx.linkUrl || `${siteUrl}/reels`}`,
         "",
         hashtags,
         "#Reels #Shorts #VideoMusical",
       ].join("\n");
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const titleLine = ctx.videoTitle || "Video exclusivo";
+      return [
+        `🎬 ${titleLine} — ${artistLine}`,
+        "",
+        "Contenido visual del colectivo",
+        "",
+        `${ctx.linkUrl || `${siteUrl}/reels`}`,
+        "",
+        hashtags,
+        "#Reels #Shorts",
+      ].join("\n");
+    },
+  ],
+};
+
+/**
+ * Generate a caption for a social media post based on content type and context.
+ * All captions are in Spanish, matching the SLC brand voice.
+ * Uses variation rotation to avoid repetitive captions.
+ *
+ * Key logic:
+ * - Releases ≤90 days old: "Nueva música de..."
+ * - Releases >90 days old: "Música de..." (without "nueva")
+ * - "años" always spelled with ñ (not "anos")
+ */
+export function generateCaption(ctx: CaptionContext, variationIndex?: number): string {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+  const hashtags = "#SonidoLiquido #HipHopMexico #HipHop #CDMX #RapMexicano";
+  const isNew = isNewRelease(ctx.releaseDate);
+
+  switch (ctx.contentType) {
+    case "gallery_photo": {
+      const variations = CAPTION_VARIATIONS.gallery_photo;
+      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const variation = variations[idx];
+      if (ctx.artistName) {
+        return variation.withArtist(ctx, siteUrl, hashtags);
+      }
+      return variation.withoutArtist(ctx, siteUrl, hashtags);
+    }
+
+    case "spotify_track": {
+      const variations = CAPTION_VARIATIONS.spotify_track;
+      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const variation = variations[idx];
+      if (isNew) {
+        return variation.newRelease(ctx, siteUrl, hashtags);
+      }
+      return variation.oldRelease(ctx, siteUrl, hashtags);
+    }
+
+    case "artist_profile": {
+      const variations = CAPTION_VARIATIONS.artist_profile;
+      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      return variations[idx](ctx, siteUrl, hashtags);
+    }
+
+    case "curated_track": {
+      const variations = CAPTION_VARIATIONS.curated_track;
+      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      return variations[idx](ctx, siteUrl, hashtags);
+    }
+
+    case "vertical_video": {
+      const variations = CAPTION_VARIATIONS.vertical_video;
+      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      return variations[idx](ctx, siteUrl, hashtags);
     }
 
     default:
-      return `Sonido Liquido Crew — Hip Hop Mexico desde 1999\n\n${siteUrl}\n\n${hashtags}`;
+      return `Sonido Líquido Crew — Hip Hop México desde 1999\n\n${siteUrl}\n\n${hashtags}`;
   }
 }
 
