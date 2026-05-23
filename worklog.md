@@ -540,3 +540,22 @@ Stage Summary:
 - Template captions serve as fallback if AI fails
 - "años" spelling enforced in all caption paths
 - API endpoint available for testing AI captions
+
+---
+Task ID: 1
+Agent: full-stack-developer
+Task: Simplify Email Studio and fix draft issues
+
+Work Log:
+- Removed Mis Campañas from Email Studio Create tab
+- Added info box directing users to Campaigns for campaign-specific emails
+- Fixed draft refresh with retry pattern
+- Added Save as Draft button to CampaignEmailModal
+- Added Email quick action to campaigns list
+- Added auto-open email modal via #send-email hash
+
+Stage Summary:
+- Email Studio is now simpler - no confusing Mis Campañas pre-fill
+- Drafts now properly appear after saving
+- CampaignEmailModal has Save as Draft button
+- Quick email action available from campaigns list
