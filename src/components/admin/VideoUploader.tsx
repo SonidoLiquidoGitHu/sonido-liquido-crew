@@ -26,24 +26,91 @@ import { uploadToDropboxDirect, type DropboxUploadProgress } from "@/lib/clients
 // Extract a thumbnail frame from a video file using canvas.
 // Uses requestVideoFrameCallback for guaranteed frame-ready detection,
 // with a playback-based fallback when seeking produces only black frames.
-// IMPORTANT: Never saves a black frame — returns null if all positions are black
+// Strategy cascade:
+//   1. Seek-based extraction (strict black-frame detection)
+//   2. Playback-based extraction (strict black-frame detection)
+//   3. Seek-based extraction with RELAXED black-frame detection
+//   4. Playback-based extraction with RELAXED detection
+//   5. Desperate mode: accept ANY frame (even dim) — better than no thumbnail
 async function extractVideoThumbnail(
   file: File,
   initialSeekTime: number = 1.0
 ): Promise<Blob | null> {
-  // Strategy: First try seek-based extraction (fast). If all frames are
-  // black (common when the decoder hasn't caught up), fall back to
-  // playback-based extraction (slower but guaranteed to produce real frames).
-
-  const seekResult = await extractViaSeek(file, initialSeekTime);
+  // Pass 1: Strict seek-based extraction
+  const seekResult = await extractViaSeek(file, initialSeekTime, "strict");
   if (seekResult) return seekResult;
 
-  console.log("[VideoUploader Thumbnail] Seek-based extraction failed, trying playback-based...");
-  return extractViaPlayback(file);
+  // Pass 2: Strict playback-based extraction
+  console.log("[VideoUploader Thumbnail] Strict seek failed, trying strict playback...");
+  const playbackResult = await extractViaPlayback(file, "strict");
+  if (playbackResult) return playbackResult;
+
+  // Pass 3: Relaxed seek-based extraction (allows dim frames)
+  console.log("[VideoUploader Thumbnail] Strict extraction failed, trying relaxed seek...");
+  const relaxedSeekResult = await extractViaSeek(file, initialSeekTime, "relaxed");
+  if (relaxedSeekResult) return relaxedSeekResult;
+
+  // Pass 4: Relaxed playback-based extraction
+  console.log("[VideoUploader Thumbnail] Relaxed seek failed, trying relaxed playback...");
+  const relaxedPlaybackResult = await extractViaPlayback(file, "relaxed");
+  if (relaxedPlaybackResult) return relaxedPlaybackResult;
+
+  // Pass 5: Desperate mode — accept ANY frame that has video dimensions
+  console.log("[VideoUploader Thumbnail] All previous passes failed, trying DESPERATE mode...");
+  const desperateResult = await extractViaPlayback(file, "desperate");
+  if (desperateResult) return desperateResult;
+
+  console.error("[VideoUploader Thumbnail] ALL extraction strategies failed");
+  return null;
+}
+
+// Black-frame detection mode:
+// - "strict": avgBrightness < 25 || darkRatio > 0.9 (original, too strict for mobile)
+// - "relaxed": avgBrightness < 10 || darkRatio > 0.97 (allows dim but visible frames)
+// - "desperate": never returns true (accepts any frame with dimensions)
+type BlackDetectionMode = "strict" | "relaxed" | "desperate";
+
+function isCanvasMostlyBlack(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  mode: BlackDetectionMode = "strict"
+): boolean {
+  if (mode === "desperate") return false; // Accept anything
+  try {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    let totalBrightness = 0;
+    let sampledCount = 0;
+    let darkPixelCount = 0;
+    // Sample every 4th pixel for better coverage
+    for (let i = 0; i < data.length; i += 16) {
+      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      totalBrightness += brightness;
+      if (brightness < 20) darkPixelCount++;
+      sampledCount++;
+    }
+    const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
+    const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
+    if (mode === "relaxed") {
+      // Relaxed: only reject if the frame is extremely dark
+      // avgBrightness < 10 means almost completely black
+      // darkRatio > 0.97 means 97%+ of pixels are very dark
+      return avgBrightness < 10 || darkRatio > 0.97;
+    }
+    // Strict (original): avgBrightness < 25 || darkRatio > 0.9
+    return avgBrightness < 25 || darkRatio > 0.9;
+  } catch {
+    return false;
+  }
 }
 
 // Seek-based extraction: seeks to multiple positions and tries to capture a non-black frame.
-function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob | null> {
+function extractViaSeek(
+  file: File,
+  initialSeekTime: number = 1.0,
+  blackDetectionMode: BlackDetectionMode = "strict"
+): Promise<Blob | null> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
     video.preload = "auto";
@@ -64,36 +131,13 @@ function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob
       URL.revokeObjectURL(objectUrl);
     };
 
-    // Check if a canvas image is mostly black using dual criteria:
-    // average brightness AND percentage of dark pixels.
-    const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
-      try {
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-        let totalBrightness = 0;
-        let sampledCount = 0;
-        let darkPixelCount = 0;
-        // Sample every 4th pixel for better coverage
-        for (let i = 0; i < data.length; i += 16) {
-          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-          totalBrightness += brightness;
-          if (brightness < 20) darkPixelCount++;
-          sampledCount++;
-        }
-        const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
-        const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
-        // Consider it black if average brightness is below 25 OR >90% of pixels are very dark
-        return avgBrightness < 25 || darkRatio > 0.9;
-      } catch {
-        return false;
-      }
-    };
-
     // Wait for a video frame to be truly ready for canvas capture.
     // Uses requestVideoFrameCallback when available (the ONLY reliable method).
+    // On mobile (especially Safari), we need MUCH longer waits because the
+    // H.264 hardware decoder takes time to produce the first composited frame.
     const waitForFrameReady = (): Promise<void> => {
       return new Promise((frameResolve) => {
-        const MAX_WAIT = 8000;
+        const MAX_WAIT = 15000; // 15s — mobile decoders can be very slow
         const startTime = Date.now();
 
         // Method 1: requestVideoFrameCallback (Chrome 83+, Edge 83+)
@@ -107,7 +151,7 @@ function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob
                   if (video.videoWidth > 0 && video.videoHeight > 0) {
                     frameResolve();
                   } else if (Date.now() - startTime < MAX_WAIT) {
-                    setTimeout(pollDimensions, 100);
+                    setTimeout(pollDimensions, 150);
                   } else {
                     frameResolve();
                   }
@@ -119,34 +163,40 @@ function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob
 
           try {
             video.requestVideoFrameCallback(onFrame);
+            // Fallback timeout for requestVideoFrameCallback
             setTimeout(() => {
               if (video.readyState >= 2 && video.videoWidth > 0) {
                 frameResolve();
               }
-            }, 2000);
+            }, 3000); // Longer fallback for mobile
             return;
           } catch {
             // Fall through to poll-based
           }
         }
 
-        // Method 2: Poll-based fallback
+        // Method 2: Poll-based fallback (Firefox, Safari, mobile browsers)
+        // Use a much longer delay after readyState check because mobile H.264
+        // decoders may report readyState >= 2 before the frame is composited.
         const checkReady = () => {
           if (Date.now() - startTime > MAX_WAIT) {
             frameResolve();
             return;
           }
           if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-            setTimeout(() => frameResolve(), 800);
+            // 1500ms delay for mobile — the decoder needs time to actually
+            // produce a composited frame after reporting readyState >= 2.
+            setTimeout(() => frameResolve(), 1500);
             return;
           }
-          setTimeout(checkReady, 100);
+          setTimeout(checkReady, 150);
         };
         checkReady();
       });
     };
 
-    const seekPositions = [initialSeekTime, 0.5, 1.0, 2.0, 3.0];
+    // More seek positions for better coverage, especially for short mobile clips
+    const seekPositions = [initialSeekTime, 0.3, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0];
     let currentSeekIndex = 0;
 
     const tryNextSeek = () => {
@@ -159,7 +209,7 @@ function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob
           return;
         }
       }
-      console.warn("[VideoUploader Thumbnail] All seek positions produced black frames");
+      console.warn(`[VideoUploader Thumbnail] All seek positions produced black frames (${blackDetectionMode} mode)`);
       cleanup();
       resolve(null);
     };
@@ -170,22 +220,31 @@ function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob
     video.addEventListener("loadeddata", () => {
       const duration = video.duration;
       if (isFinite(duration) && duration > 0) {
-        seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
+        // More percentage-based positions for better coverage
+        seekPositions.push(
+          duration * 0.05, duration * 0.1, duration * 0.15,
+          duration * 0.25, duration * 0.35, duration * 0.5
+        );
       }
       const targetTime = Math.min(seekPositions[0], duration * 0.8);
       video.currentTime = targetTime;
     }, { once: true });
 
-    // Safety net: if loadeddata never fires, fall back to loadedmetadata
+    // Safety net: if loadeddata never fires (happens on some mobile browsers),
+    // fall back to loadedmetadata with a longer delay
     video.addEventListener("loadedmetadata", () => {
       if (video.readyState >= 2) return; // loadeddata already fired
       const duration = video.duration;
       if (isFinite(duration) && duration > 0) {
-        seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
+        seekPositions.push(
+          duration * 0.05, duration * 0.1, duration * 0.15,
+          duration * 0.25, duration * 0.35, duration * 0.5
+        );
       }
+      // Longer delay for mobile — the decoder hasn't produced any frames yet
       setTimeout(() => {
         if (!resolved) video.currentTime = Math.min(seekPositions[0], duration * 0.8);
-      }, 500);
+      }, 800);
     }, { once: true });
 
     video.onseeked = async () => {
@@ -213,7 +272,7 @@ function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
+        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackDetectionMode)) {
           canvas.remove();
           tryNextSeek();
           return;
@@ -238,17 +297,21 @@ function extractViaSeek(file: File, initialSeekTime: number = 1.0): Promise<Blob
       resolve(null);
     };
 
+    // 60s overall timeout — mobile uploads of large files need more time
     setTimeout(() => {
       cleanup();
       resolve(null);
-    }, 30000);
+    }, 60000);
   });
 }
 
 // Playback-based extraction: plays the video and captures a frame during playback.
 // This forces the decoder to produce real frames, making canvas capture reliable.
 // Used as a fallback when seek-based extraction produces only black frames.
-function extractViaPlayback(file: File): Promise<Blob | null> {
+function extractViaPlayback(
+  file: File,
+  blackDetectionMode: BlackDetectionMode = "strict"
+): Promise<Blob | null> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
     video.muted = true;
@@ -269,29 +332,10 @@ function extractViaPlayback(file: File): Promise<Blob | null> {
       URL.revokeObjectURL(objectUrl);
     };
 
-    const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
-      try {
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-        let totalBrightness = 0;
-        let sampledCount = 0;
-        let darkPixelCount = 0;
-        for (let i = 0; i < data.length; i += 16) {
-          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-          totalBrightness += brightness;
-          if (brightness < 20) darkPixelCount++;
-          sampledCount++;
-        }
-        const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
-        const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
-        return avgBrightness < 25 || darkRatio > 0.9;
-      } catch {
-        return false;
-      }
-    };
-
     let captureAttempts = 0;
-    const MAX_CAPTURE_ATTEMPTS = 20; // Try for up to ~4 seconds of playback
+    // More attempts for relaxed/desperate modes — mobile needs more time
+    const MAX_CAPTURE_ATTEMPTS = blackDetectionMode === "desperate" ? 50 :
+                                   blackDetectionMode === "relaxed" ? 40 : 30;
 
     const tryCapture = (): Blob | null => {
       try {
@@ -304,7 +348,7 @@ function extractViaPlayback(file: File): Promise<Blob | null> {
         const ctx = canvas.getContext("2d");
         if (!ctx) return null;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
+        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackDetectionMode)) {
           canvas.remove();
           return null;
         }
@@ -326,6 +370,9 @@ function extractViaPlayback(file: File): Promise<Blob | null> {
 
     video.addEventListener("playing", () => {
       // Start capturing after a delay to let the first few real frames render
+      // Longer initial delay for mobile — the H.264 decoder needs time
+      const initialDelay = blackDetectionMode === "desperate" ? 800 :
+                           blackDetectionMode === "relaxed" ? 500 : 400;
       const attemptCapture = () => {
         if (resolved) return;
         captureAttempts++;
@@ -336,13 +383,15 @@ function extractViaPlayback(file: File): Promise<Blob | null> {
           return;
         }
         if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
-          setTimeout(attemptCapture, 200);
+          // Longer interval for mobile — more time for decoder to produce frames
+          const interval = blackDetectionMode === "desperate" ? 400 : 250;
+          setTimeout(attemptCapture, interval);
         } else {
           cleanup();
           resolve(null);
         }
       };
-      setTimeout(attemptCapture, 300);
+      setTimeout(attemptCapture, initialDelay);
     }, { once: true });
 
     video.addEventListener("loadeddata", () => {
@@ -352,15 +401,29 @@ function extractViaPlayback(file: File): Promise<Blob | null> {
       });
     }, { once: true });
 
+    // Safety net for mobile browsers where loadeddata may not fire
+    video.addEventListener("loadedmetadata", () => {
+      if (video.readyState >= 2) return; // loadeddata already fired
+      setTimeout(() => {
+        if (!resolved) {
+          video.play().catch(() => {
+            cleanup();
+            resolve(null);
+          });
+        }
+      }, 1000);
+    }, { once: true });
+
     video.onerror = () => {
       cleanup();
       resolve(null);
     };
 
+    // 60s timeout — mobile needs much more time
     setTimeout(() => {
       cleanup();
       resolve(null);
-    }, 30000);
+    }, 60000);
   });
 }
 

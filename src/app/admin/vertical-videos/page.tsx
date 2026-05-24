@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { SafeImage } from "@/components/ui/safe-image";
 import {
   getYouTubeId,
@@ -136,9 +136,86 @@ export default function AdminVerticalVideosPage() {
     setLoading(false);
   }, []);
 
+  // Auto-regenerate missing thumbnails on page load
+  const autoRegeneratedRef = useRef(false);
   useEffect(() => {
-    fetchData();
+    fetchData().then(() => {
+      // After initial load, auto-regenerate missing thumbnails in the background
+      // Only do this once per page load to avoid infinite loops
+      if (!autoRegeneratedRef.current) {
+        autoRegeneratedRef.current = true;
+        // Small delay to let the UI settle before starting background work
+        setTimeout(() => {
+          autoRegenerateMissing();
+        }, 2000);
+      }
+    });
   }, [fetchData]);
+
+  // Auto-regenerate missing thumbnails (runs silently in background)
+  const autoRegenerateMissing = async () => {
+    // Get latest videos state
+    const res = await fetch("/api/admin/vertical-videos");
+    const data = await res.json();
+    if (!data.success) return;
+
+    const videosWithoutThumbnail = (data.data || []).filter((v: VerticalVideo) => !v.thumbnailUrl);
+    if (videosWithoutThumbnail.length === 0) return;
+
+    console.log(`[Auto-Regen] Found ${videosWithoutThumbnail.length} videos without thumbnails, regenerating...`);
+
+    // Try server-side generation first
+    try {
+      const serverRes = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: false }),
+      });
+      const serverData = await serverRes.json();
+      if (serverData.success && serverData.generated > 0) {
+        console.log(`[Auto-Regen] Server generated ${serverData.generated} thumbnails`);
+        fetchData(); // Refresh the list
+        // Check if there are still missing thumbnails after server-side
+        const stillMissing = videosWithoutThumbnail.length - serverData.generated;
+        if (stillMissing <= 0) return;
+      }
+    } catch {
+      console.log("[Auto-Regen] Server-side failed, trying client-side");
+    }
+
+    // Client-side regeneration for remaining videos
+    const remaining = (data.data || []).filter((v: VerticalVideo) => !v.thumbnailUrl);
+    for (const video of remaining.slice(0, 5)) { // Limit to 5 at a time to avoid overload
+      try {
+        const urlRes = await fetch(`/api/admin/vertical-videos/video-download-url?videoId=${video.id}`);
+        const urlData = await urlRes.json();
+        if (!urlData.success || !urlData.downloadUrl) continue;
+
+        const videoRes = await fetch(urlData.downloadUrl);
+        if (!videoRes.ok) continue;
+        const videoBlob = await videoRes.blob();
+
+        // Try with relaxed detection first, then desperate
+        let thumbnailUrl = await extractThumbnailFromBlobWithMode(videoBlob, "strict");
+        if (!thumbnailUrl) thumbnailUrl = await extractThumbnailFromBlobWithMode(videoBlob, "relaxed");
+        if (!thumbnailUrl) thumbnailUrl = await extractThumbnailFromBlobWithMode(videoBlob, "desperate");
+
+        if (thumbnailUrl) {
+          await fetch("/api/admin/vertical-videos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: video.id, thumbnailUrl }),
+          });
+          console.log(`[Auto-Regen] Generated thumbnail for: ${video.title || video.id}`);
+        }
+      } catch {
+        // Skip this video
+      }
+    }
+
+    // Refresh the list
+    fetchData();
+  };
 
   // Toggle featured
   const toggleFeatured = async (video: VerticalVideo) => {
@@ -400,11 +477,14 @@ export default function AdminVerticalVideosPage() {
   };
 
   // Check if a canvas image is mostly black.
-  // Uses TWO checks: average brightness AND percentage of dark pixels.
-  // A single average check can miss cases where a few bright pixels
-  // (e.g. from codec artifacts) pull the average above the threshold
-  // while the image is visually black.
-  const isCanvasMostlyBlack = (ctx: CanvasRenderingContext2D, width: number, height: number): boolean => {
+  // Supports "strict", "relaxed", and "desperate" modes for mobile compatibility.
+  const isCanvasMostlyBlack = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    mode: "strict" | "relaxed" | "desperate" = "strict"
+  ): boolean => {
+    if (mode === "desperate") return false;
     try {
       const imageData = ctx.getImageData(0, 0, width, height);
       const data = imageData.data;
@@ -424,9 +504,9 @@ export default function AdminVerticalVideosPage() {
       }
       const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
       const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
-      // Consider it black if:
-      // 1. Average brightness is below 25, OR
-      // 2. More than 90% of pixels are very dark (below 20)
+      if (mode === "relaxed") {
+        return avgBrightness < 10 || darkRatio > 0.97;
+      }
       return avgBrightness < 25 || darkRatio > 0.9;
     } catch {
       return false;
@@ -436,9 +516,10 @@ export default function AdminVerticalVideosPage() {
   // Extract a thumbnail from a video blob/object URL using canvas.
   // Uses requestVideoFrameCallback for guaranteed frame-ready detection,
   // with a reliable fallback for browsers that don't support it.
-  // IMPORTANT: Never saves a black frame — returns null if all positions are black
+  // Supports black-frame detection modes: "strict", "relaxed", "desperate"
   const extractThumbnailFromBlob = async (
-    videoBlob: Blob
+    videoBlob: Blob,
+    blackMode: "strict" | "relaxed" | "desperate" = "strict"
   ): Promise<string | null> => {
     return new Promise((resolve) => {
       const video = document.createElement("video");
@@ -565,7 +646,7 @@ export default function AdminVerticalVideosPage() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-          const isBlack = isCanvasMostlyBlack(ctx, canvas.width, canvas.height);
+          const isBlack = isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackMode);
 
           if (!isBlack) {
             // Found a good frame! Convert to blob immediately
@@ -706,7 +787,7 @@ export default function AdminVerticalVideosPage() {
   // Extract a thumbnail by PLAYING the video and capturing a frame during playback.
   // This is a last-resort fallback when seeking produces only black frames.
   // Playing forces the decoder to produce real frames, which canvas can capture.
-  const extractThumbnailViaPlayback = (videoBlob: Blob): Promise<string | null> => {
+  const extractThumbnailViaPlayback = (videoBlob: Blob, blackMode: "strict" | "relaxed" | "desperate" = "strict"): Promise<string | null> => {
     return new Promise((resolve) => {
       const video = document.createElement("video");
       video.muted = true;
@@ -738,7 +819,7 @@ export default function AdminVerticalVideosPage() {
           const ctx = canvas.getContext("2d");
           if (!ctx) return null;
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height)) {
+          if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackMode)) {
             canvas.remove();
             return null;
           }
@@ -753,7 +834,8 @@ export default function AdminVerticalVideosPage() {
 
       // Wait for the video to start playing, then try to capture frames
       let captureAttempts = 0;
-      const MAX_CAPTURE_ATTEMPTS = 15; // Try for up to ~3 seconds of playback
+      const MAX_CAPTURE_ATTEMPTS = blackMode === "desperate" ? 40 :
+                                    blackMode === "relaxed" ? 30 : 20;
 
       video.addEventListener("playing", () => {
         // Try capturing frames at intervals during playback
@@ -780,8 +862,8 @@ export default function AdminVerticalVideosPage() {
           }
 
           if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
-            // Try again in 200ms
-            setTimeout(tryCapture, 200);
+            const interval = blackMode === "desperate" ? 350 : 250;
+            setTimeout(tryCapture, interval);
           } else {
             // Give up
             cleanup();
@@ -789,8 +871,9 @@ export default function AdminVerticalVideosPage() {
           }
         };
 
-        // Start capturing after a short delay to let the first few frames render
-        setTimeout(tryCapture, 300);
+        // Start capturing after a delay to let the first few frames render
+        const initialDelay = blackMode === "desperate" ? 600 : 300;
+        setTimeout(tryCapture, initialDelay);
       }, { once: true });
 
       video.addEventListener("loadeddata", () => {
@@ -814,8 +897,23 @@ export default function AdminVerticalVideosPage() {
     });
   };
 
+  // Wrapper: try extraction with escalating black-frame detection modes
+  // This is the function used by auto-regeneration
+  const extractThumbnailFromBlobWithMode = async (
+    videoBlob: Blob,
+    mode: "strict" | "relaxed" | "desperate" = "strict"
+  ): Promise<string | null> => {
+    // Try seek-based extraction with the given mode
+    let thumbnailUrl = await extractThumbnailFromBlob(videoBlob, mode);
+    if (!thumbnailUrl) {
+      // Try playback-based extraction with the same mode
+      thumbnailUrl = await extractThumbnailViaPlayback(videoBlob, mode);
+    }
+    return thumbnailUrl;
+  };
+
   // Regenerate thumbnail for a single video (downloads full video then extracts frame)
-  // Uses multiple strategies: seek-based extraction, then playback-based as fallback.
+  // Uses escalating strategies: strict → relaxed → desperate
   const regenerateThumbnail = async (videoId: string) => {
     setUpdatingId(videoId);
     setMessage({ type: "success", text: "Descargando video para extraer miniatura..." });
@@ -842,16 +940,26 @@ export default function AdminVerticalVideosPage() {
 
       setMessage({ type: "success", text: "Extrayendo frame del video..." });
 
-      // Step 3: Try seek-based thumbnail extraction
-      let thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
+      // Step 3: Try with escalating black-frame detection modes
+      // strict → relaxed → desperate (a dim thumbnail is better than no thumbnail)
+      let thumbnailUrl: string | null = null;
+      const modes: Array<"strict" | "relaxed" | "desperate"> = ["strict", "relaxed", "desperate"];
 
-      // Step 4: If seek-based failed, try playback-based extraction.
-      // This forces the video to actually play, which guarantees the decoder
-      // produces real frames that canvas can capture.
-      if (!thumbnailUrl) {
-        console.log("[Thumbnail] Seek-based extraction failed, trying playback-based...");
-        setMessage({ type: "success", text: "Reintentando con reproducción..." });
-        thumbnailUrl = await extractThumbnailViaPlayback(videoBlob);
+      for (const mode of modes) {
+        // Try seek-based extraction
+        thumbnailUrl = await extractThumbnailFromBlob(videoBlob, mode);
+        if (thumbnailUrl) {
+          console.log(`[Thumbnail] Seek extraction succeeded in ${mode} mode`);
+          break;
+        }
+
+        // Try playback-based extraction
+        setMessage({ type: "success", text: `Reintentando extracción (modo ${mode})...` });
+        thumbnailUrl = await extractThumbnailViaPlayback(videoBlob, mode);
+        if (thumbnailUrl) {
+          console.log(`[Thumbnail] Playback extraction succeeded in ${mode} mode`);
+          break;
+        }
       }
 
       if (!thumbnailUrl) {
@@ -962,13 +1070,16 @@ export default function AdminVerticalVideosPage() {
         if (!videoRes.ok) continue;
         const videoBlob = await videoRes.blob();
 
-        // Extract thumbnail from the complete video (seek-based first, playback-based fallback)
-        let thumbnailUrl = await extractThumbnailFromBlob(videoBlob);
-
-        // If seek-based extraction failed, try playback-based
-        if (!thumbnailUrl) {
-          console.log(`[Thumbnails] Seek-based failed for ${video.id}, trying playback-based...`);
-          thumbnailUrl = await extractThumbnailViaPlayback(videoBlob);
+        // Extract thumbnail from the complete video with escalating modes
+        // strict → relaxed → desperate (dim thumbnail > no thumbnail)
+        let thumbnailUrl: string | null = null;
+        const modes: Array<"strict" | "relaxed" | "desperate"> = ["strict", "relaxed", "desperate"];
+        for (const mode of modes) {
+          thumbnailUrl = await extractThumbnailFromBlob(videoBlob, mode);
+          if (thumbnailUrl) break;
+          console.log(`[Thumbnails] Seek ${mode} failed for ${video.id}, trying playback...`);
+          thumbnailUrl = await extractThumbnailViaPlayback(videoBlob, mode);
+          if (thumbnailUrl) break;
         }
 
         if (thumbnailUrl) {

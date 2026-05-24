@@ -734,6 +734,63 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Strategy 4 (Netlify fallback): Download first bytes and try Sharp
+        // Sharp can sometimes extract embedded thumbnails from MP4/MOV files.
+        // This works on Netlify where ffmpeg is not available.
+        if (!thumbnailBuffer && !hasFfmpeg) {
+          console.log("[Thumbnail Gen] Trying download + Sharp extraction (Netlify fallback)...");
+          try {
+            let downloadUrl = video.videoUrl;
+            if (downloadUrl.includes("dropbox")) {
+              const filePath = await resolveDropboxFilePath(downloadUrl);
+              if (filePath) {
+                const tempLink = await getDropboxTemporaryLink(filePath);
+                if (tempLink) downloadUrl = tempLink;
+                else {
+                  // Convert to direct download URL
+                  if (downloadUrl.includes("www.dropbox.com")) {
+                    downloadUrl = downloadUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+                    if (!downloadUrl.includes("raw=1")) {
+                      downloadUrl += (downloadUrl.includes("?") ? "&" : "?") + "raw=1";
+                    }
+                  }
+                }
+              }
+            }
+
+            // Download up to 30MB of the video
+            const videoTmpPath = path.join(TMP_DIR, `${video.id}_sharp_video.tmp`);
+            const downloaded = await downloadVideoPartial(downloadUrl, videoTmpPath, 30 * 1024 * 1024);
+            if (downloaded) {
+              try {
+                // Try to use Sharp to read the video file — it may find embedded thumbnails
+                // in some MP4/MOV containers
+                const videoData = await readFile(videoTmpPath);
+                const metadata = await sharp(videoData).metadata();
+
+                // If Sharp detected an image format (some videos have embedded JPEG thumbnails)
+                if (metadata.format && ['jpeg', 'png', 'webp', 'tiff'].includes(metadata.format)) {
+                  console.log("[Thumbnail Gen] Sharp detected embedded image:", metadata.format);
+                  const processedBuffer = await sharp(videoData)
+                    .resize(720, 1280, { fit: 'inside', withoutEnlargement: true })
+                    .jpeg({ quality: 85 })
+                    .toBuffer();
+
+                  if (!isMostlyBlack(processedBuffer)) {
+                    thumbnailBuffer = processedBuffer;
+                  }
+                }
+              } catch (sharpErr) {
+                // Sharp can't process this video format — expected for most MP4 files
+                console.log("[Thumbnail Gen] Sharp couldn't extract thumbnail (expected for most videos):", (sharpErr as Error).message?.substring(0, 80));
+              }
+              await cleanup(videoTmpPath);
+            }
+          } catch (dlErr) {
+            console.warn("[Thumbnail Gen] Download + Sharp extraction failed:", dlErr);
+          }
+        }
+
         if (!thumbnailBuffer) {
           results.push({
             videoId: video.id,
