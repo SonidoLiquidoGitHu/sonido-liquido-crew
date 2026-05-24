@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
+import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
 import {
   getYouTubeId as extractYouTubeId,
@@ -28,6 +29,7 @@ import {
   getVideoPlaceholderSvg,
   getDirectDropboxUrl,
   getProxiedVideoSrc,
+  isDirectVideo as isDirectVideoUtil,
   type VideoLike,
 } from "@/lib/video-utils";
 
@@ -383,8 +385,8 @@ function VideoCard({
       onMouseLeave={handleMouseLeave}
     >
       <Link href={`/reels/${video.id}`} className="block relative aspect-[9/16]">
-        {/* Thumbnail */}
-        {getProxiedThumbnailUrl(video) && (
+        {/* Thumbnail: use VideoThumbnail for reliable display even without explicit thumbnail */}
+        {getProxiedThumbnailUrl(video) ? (
           <SafeImage
             src={getProxiedThumbnailUrl(video)!}
             alt={video.title || "Video"}
@@ -403,13 +405,18 @@ function VideoCard({
               return getVideoPlaceholderSvg("9/16");
             })()}
           />
-        )}
-
-        {/* Fallback placeholder when no thumbnail */}
-        {!getProxiedThumbnailUrl(video) && (
-          <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
-            <Play className="w-10 h-10 text-slc-border" />
-          </div>
+        ) : (
+          <VideoThumbnail
+            video={video}
+            alt={video.title || "Video"}
+            fill
+            className={cn(
+              "transition-opacity duration-300",
+              isPreviewPlaying ? "opacity-0" : "opacity-100"
+            )}
+            sizes={isSpotlight ? "352px" : "176px"}
+            aspectRatio="9/16"
+          />
         )}
 
         {/* Inline video preview (Improvement #1) */}

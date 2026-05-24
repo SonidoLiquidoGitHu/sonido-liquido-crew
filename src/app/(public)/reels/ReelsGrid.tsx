@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
+import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import {
@@ -475,27 +476,14 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
             className="group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
           >
             <div className="relative aspect-[9/16]">
-              {getProxiedThumbnailUrl(video) ? (
-                <SafeImage
-                  src={getProxiedThumbnailUrl(video)!}
-                  alt={video.title || "Video"}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                  fallbackSrc={(() => {
-                    const thumb = getProxiedThumbnailUrl(video)!;
-                    const ytId = getYouTubeId(video);
-                    if (ytId && isYouTubeThumbnailUrl(thumb)) {
-                      return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
-                    }
-                    return getVideoPlaceholderSvg("9/16");
-                  })()}
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
-                  <Play className="w-12 h-12 text-slc-border" />
-                </div>
-              )}
+              <VideoThumbnail
+                video={video}
+                alt={video.title || "Video"}
+                fill
+                className="transition-transform duration-500 group-hover:scale-105"
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                aspectRatio="9/16"
+              />
 
               {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

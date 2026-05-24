@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
+import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
 import {
   getYouTubeId,
@@ -384,28 +385,14 @@ function VideoCard({
         className="group relative block cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
       >
         <div className="relative aspect-[9/16]">
-          {getProxiedThumbnailUrl(video) ? (
-            <SafeImage
-              src={getProxiedThumbnailUrl(video)!}
-              alt={video.title || "Video"}
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 768px) 176px, (max-width: 1024px) 25vw, 20vw"
-              fallbackSrc={(() => {
-                const thumb = getProxiedThumbnailUrl(video)!;
-                const ytId = getYouTubeId(video);
-                // If this is a YouTube thumbnail, try lower tiers before the placeholder
-                if (ytId && isYouTubeThumbnailUrl(thumb)) {
-                  return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
-                }
-                return getVideoPlaceholderSvg("9/16");
-              })()}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
-              <Play className="w-10 h-10 text-slc-border" />
-            </div>
-          )}
+          <VideoThumbnail
+            video={video}
+            alt={video.title || "Video"}
+            fill
+            className="transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 768px) 176px, (max-width: 1024px) 25vw, 20vw"
+            aspectRatio="9/16"
+          />
 
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

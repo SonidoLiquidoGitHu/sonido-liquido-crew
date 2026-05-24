@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropboxUploader } from "@/components/admin/DropboxUploader";
+import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
 import {
   Plus,
   Search,
@@ -249,7 +250,8 @@ export default function AdminGalleryPage() {
     return null;
   };
 
-  // Handle file upload to Dropbox
+  // Handle file upload to Dropbox using BROWSER-DIRECT upload
+  // This bypasses Netlify serverless timeout issues and works for any file size
   const handleFileUpload = async (files: FileList | File[]) => {
     setUploading(true);
     const fileArray = Array.from(files);
@@ -257,28 +259,32 @@ export default function AdminGalleryPage() {
 
     try {
       for (const file of fileArray) {
-        // Create form data
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folder", "/gallery");
-
-        // Upload to Dropbox via API
-        const response = await fetch("/api/admin/dropbox/upload", {
-          method: "POST",
-          body: formData,
+        // Use browser-direct upload to Dropbox (bypasses serverless timeout)
+        const result = await uploadToDropboxDirect(file, "/gallery", (progress) => {
+          console.log(`[Gallery] Uploading ${file.name}: ${progress.percent}%`);
         });
 
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          console.error("Server returned non-JSON response");
-          throw new Error("Error de conexión con Dropbox. Reconecta tu cuenta en Sincronización.");
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.data?.url) {
-          uploadedUrls.push(data.data.url);
+        if (result.success && result.url) {
+          uploadedUrls.push(result.url);
+        } else {
+          console.error(`[Gallery] Upload failed for ${file.name}:`, result.error);
+          // If browser-direct fails, try server-side as fallback
+          console.log(`[Gallery] Trying server-side upload as fallback...`);
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("folder", "/gallery");
+            const response = await fetch("/api/admin/dropbox/upload", {
+              method: "POST",
+              body: formData,
+            });
+            const data = await response.json();
+            if (data.success && data.data?.url) {
+              uploadedUrls.push(data.data.url);
+            }
+          } catch (fallbackError) {
+            console.error(`[Gallery] Server-side fallback also failed:`, fallbackError);
+          }
         }
       }
 
@@ -286,9 +292,20 @@ export default function AdminGalleryPage() {
       if (uploadedUrls.length > 0) {
         await handleUrlUpload(uploadedUrls);
       }
+
+      // If some files failed, show a message
+      if (uploadedUrls.length < fileArray.length) {
+        const failed = fileArray.length - uploadedUrls.length;
+        console.warn(`[Gallery] ${failed} file(s) failed to upload`);
+      }
     } catch (error) {
       console.error("Error uploading files:", error);
-      alert("Error al subir archivos. Verifica que Dropbox esté configurado en Admin > Configuración.");
+      const errorMsg = (error as Error)?.message || "";
+      if (errorMsg.includes("token") || errorMsg.includes("Token") || errorMsg.includes("expirado")) {
+        alert("Token de Dropbox expirado. Ve a Admin > Sincronización > Dropbox y reconecta tu cuenta.");
+      } else {
+        alert("Error al subir archivos. Verifica que Dropbox esté configurado en Admin > Sincronización.");
+      }
     } finally {
       setUploading(false);
       setShowUploader(false);

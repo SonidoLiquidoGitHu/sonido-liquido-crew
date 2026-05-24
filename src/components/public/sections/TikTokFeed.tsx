@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
+import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import {
@@ -710,20 +711,14 @@ function NextVideoPreview({
       >
         {/* Mini thumbnail */}
         <div className="relative w-12 h-[4.5rem] rounded-lg overflow-hidden flex-shrink-0 border border-white/20">
-          {getProxiedThumbnailUrl(nextVideo) ? (
-            <SafeImage
-              src={getProxiedThumbnailUrl(nextVideo)!}
-              alt={nextVideo.title || "Next video"}
-              fill
-              className="object-cover"
-              sizes="48px"
-              fallbackSrc={getVideoPlaceholderSvg("9/16")}
-            />
-          ) : (
-            <div className="w-full h-full bg-white/10 flex items-center justify-center">
-              <Play className="w-4 h-4 text-white/60" fill="white" />
-            </div>
-          )}
+          <VideoThumbnail
+            video={nextVideo}
+            alt={nextVideo.title || "Next video"}
+            fill
+            className="object-cover"
+            sizes="48px"
+            aspectRatio="9/16"
+          />
         </div>
 
         {/* Info */}
