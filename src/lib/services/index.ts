@@ -958,12 +958,25 @@ export const beatsService = {
         return [];
       }
 
+      // First try: get beats explicitly marked as featured
       const featuredBeats = await db
         .select()
         .from(beats)
         .where(and(eq(beats.isActive, true), eq(beats.isFeatured, true)))
         .orderBy(desc(beats.createdAt))
         .limit(limit);
+
+      // Fallback: if no featured beats exist, return the most recent active beats
+      // This ensures the Beats section always shows on the main page when beats exist
+      if (featuredBeats.length === 0) {
+        const activeBeats = await db
+          .select()
+          .from(beats)
+          .where(eq(beats.isActive, true))
+          .orderBy(desc(beats.createdAt))
+          .limit(limit);
+        return activeBeats;
+      }
 
       return featuredBeats;
     } catch (error) {
