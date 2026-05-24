@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Play, Eye } from "lucide-react";
 import { cn, formatNumber, formatDuration } from "@/lib/utils";
 import type { Video } from "@/types";
 import { YouTubeEmbed } from "../embeds/YouTubeEmbed";
+import { SafeImage } from "@/components/ui/safe-image";
+import {
+  getVideoThumbnail,
+  getProxiedThumbnailUrl,
+  getYouTubeId,
+  isYouTubeThumbnailUrl,
+  getYouTubeThumbnailFallback,
+  getVideoPlaceholderSvg,
+} from "@/lib/video-utils";
 
 interface VideoCardProps {
   video: Video;
@@ -23,6 +31,9 @@ export function VideoCard({ video, showEmbed = false }: VideoCardProps) {
     );
   }
 
+  // Use the same robust thumbnail pipeline as VerticalVideoSection
+  const thumbnailUrl = getProxiedThumbnailUrl(video);
+
   return (
     <div
       className="group relative aspect-video rounded-xl overflow-hidden bg-slc-card cursor-pointer"
@@ -30,13 +41,21 @@ export function VideoCard({ video, showEmbed = false }: VideoCardProps) {
     >
       {/* Thumbnail */}
       <div className="absolute inset-0">
-        {video.thumbnailUrl ? (
-          <Image
-            src={video.thumbnailUrl}
+        {thumbnailUrl ? (
+          <SafeImage
+            src={thumbnailUrl}
             alt={video.title}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            fallbackSrc={(() => {
+              const ytId = video.youtubeId || getYouTubeId(video);
+              if (ytId && isYouTubeThumbnailUrl(thumbnailUrl)) {
+                return getYouTubeThumbnailFallback(ytId, thumbnailUrl) || getVideoPlaceholderSvg("16/9");
+              }
+              return getVideoPlaceholderSvg("16/9");
+            })()}
+            retryCount={2}
           />
         ) : (
           <div className="w-full h-full bg-slc-card flex items-center justify-center">

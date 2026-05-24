@@ -7,6 +7,7 @@ import {
   UpcomingReleasesHero,
   ReelsStoriesBar,
 } from "@/components/public";
+import { FeaturedBeats } from "@/components/public/sections/FeaturedBeats";
 import {
   LazySection,
   ReleasesSkeleton,
@@ -280,8 +281,18 @@ export default async function HomePage() {
       </section>
 
       {/* ===========================================
-          5. MÚSICA (tabbed: Artistas / Beats / Playlists)
-          Merged: RandomArtistPlayer + FeaturedBeats + SpotifySection
+          4b. BEATS (standalone section — always visible)
+          =========================================== */}
+      {featuredBeats.length > 0 && (
+        <section id="beats">
+          <LazySection minHeight="300px">
+            <FeaturedBeats beats={featuredBeats} />
+          </LazySection>
+        </section>
+      )}
+
+      {/* ===========================================
+          5. MÚSICA (tabbed: Artistas / Playlists)
           =========================================== */}
       <LazySection minHeight="400px">
         <MusicaSection featuredBeats={featuredBeats} />
