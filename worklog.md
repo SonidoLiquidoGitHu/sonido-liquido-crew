@@ -559,3 +559,33 @@ Stage Summary:
 - Drafts now properly appear after saving
 - CampaignEmailModal has Save as Draft button
 - Quick email action available from campaigns list
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix vertical video thumbnails not showing for mobile uploads + Add Beats section to main page
+
+Work Log:
+- Investigated the complete thumbnail generation pipeline (3 separate systems: client-side VideoUploader, server-side generate-thumbnails, admin page regeneration)
+- Identified root cause: `isCanvasMostlyBlack()` too strict (avgBrightness < 25 || darkRatio > 0.9), timeouts too short for mobile, insufficient seek positions, and no fallback when all strategies fail
+- Rewrote VideoUploader.tsx extractVideoThumbnail with 5-pass strategy: strict seek → strict playback → relaxed seek → relaxed playback → desperate mode
+- Added `BlackDetectionMode` type with "strict", "relaxed", and "desperate" thresholds
+- Increased waitForFrameReady MAX_WAIT from 8s to 15s for mobile decoders
+- Increased poll-based delay from 800ms to 1500ms for mobile H.264 hardware decoder
+- Added more seek positions (0.3, 1.5, 4.0, 5.0, plus more duration percentages)
+- Increased overall timeout from 30s to 60s
+- Added loadedmetadata safety net in extractViaPlayback for mobile browsers where loadeddata doesn't fire
+- Increased MAX_CAPTURE_ATTEMPTS to 30/40/50 depending on mode
+- Updated admin page with auto-regenerate missing thumbnails on page load
+- Updated admin page isCanvasMostlyBlack, extractThumbnailFromBlob, extractThumbnailViaPlayback with mode support
+- Added extractThumbnailFromBlobWithMode wrapper and updated regenerateThumbnail/generateMissingThumbnails with escalating modes
+- Added Strategy 4 in server-side generate-thumbnails route: Sharp extraction fallback for Netlify
+- Fixed Beats section not showing on main page: beatsService.getFeatured() now falls back to active beats when no featured beats exist
+- Added "beats" to SectionNavDots for desktop quick navigation
+
+Stage Summary:
+- VideoUploader.tsx: Complete rewrite of thumbnail extraction with multi-pass strategy and mobile-optimized timeouts
+- Admin page: Auto-regeneration of missing thumbnails + escalated detection modes
+- Server route: Sharp fallback for Netlify serverless
+- beatsService: Fallback to active beats when no featured beats exist
+- SectionNavDots: Added "beats" entry
+- All changes pushed to remote master branch
