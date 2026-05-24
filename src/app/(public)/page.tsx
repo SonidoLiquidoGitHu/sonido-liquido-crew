@@ -283,13 +283,11 @@ export default async function HomePage() {
       {/* ===========================================
           4b. BEATS (standalone section — always visible)
           =========================================== */}
-      {featuredBeats.length > 0 && (
-        <section id="beats">
-          <LazySection minHeight="300px">
-            <FeaturedBeats beats={featuredBeats} />
-          </LazySection>
-        </section>
-      )}
+      <section id="beats">
+        <LazySection minHeight="300px">
+          <FeaturedBeats beats={featuredBeats} />
+        </LazySection>
+      </section>
 
       {/* ===========================================
           5. MÚSICA (tabbed: Artistas / Playlists)

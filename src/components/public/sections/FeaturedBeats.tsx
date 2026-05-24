@@ -114,7 +114,43 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (!beats.length) return null;
+  if (!beats.length) {
+    return (
+      <section className="py-16 md:py-24 bg-slc-darker">
+        <div className="section-container">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-10">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full bg-primary/20 border border-primary/30">
+                  <Music className="w-5 h-5 text-primary" />
+                </div>
+                <h2 className="font-oswald text-3xl md:text-4xl lg:text-5xl uppercase tracking-wide text-white">
+                  Beats
+                </h2>
+              </div>
+              <p className="text-gray-400">
+                Beats exclusivos de nuestros productores
+              </p>
+            </div>
+          </div>
+
+          {/* Empty state */}
+          <div className="text-center py-16 px-4 rounded-xl border border-dashed border-slc-border bg-slc-card/30">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+              <Music className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="font-oswald text-xl uppercase text-white/80 mb-2">
+              Próximamente
+            </h3>
+            <p className="text-sm text-slc-muted max-w-md mx-auto">
+              Estamos preparando beats exclusivos de nuestros productores. ¡Muy pronto podrás escuchar y descargar instrumentales!
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 md:py-24 bg-slc-darker">
