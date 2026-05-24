@@ -589,3 +589,25 @@ Stage Summary:
 - beatsService: Fallback to active beats when no featured beats exist
 - SectionNavDots: Added "beats" entry
 - All changes pushed to remote master branch
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix gallery upload error + vertical video thumbnails + Beats section
+
+Work Log:
+- Investigated "Error al subir archivos" error - root cause was missing /api/admin/dropbox/upload route (404)
+- Created /src/app/api/admin/dropbox/upload/route.ts - server-side upload endpoint
+- Updated gallery page to use browser-direct upload (uploadToDropboxDirect) as primary method with server-side fallback
+- Created /src/components/ui/video-thumbnail.tsx - new VideoThumbnail component
+- VideoThumbnail: uses <video> element to render first frame when no static thumbnail exists
+- Updated VerticalVideoSection, ArtistReelsSection, ReelsGrid, TikTokFeed to use VideoThumbnail
+- Made Beats section always visible on main page (was conditional on featuredBeats.length > 0)
+- Added attractive empty state for FeaturedBeats when no beats exist
+- All changes build successfully and pushed to GitHub
+
+Stage Summary:
+- Gallery image upload now works (was broken due to missing API route)
+- Vertical videos without thumbnails now show the video's first frame instead of a blank placeholder
+- Beats section is always visible on main page with "Próximamente" empty state
+- Two commits pushed: b131fae, ef461af
