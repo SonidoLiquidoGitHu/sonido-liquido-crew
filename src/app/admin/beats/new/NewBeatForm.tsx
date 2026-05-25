@@ -319,7 +319,7 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                   </label>
                   <DirectDropboxUploader
                     onUploadComplete={handlePreviewUpload}
-                    accept="audio/*"
+                    accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.wma,.aiff,.opus,.weba"
                     maxSize={20}
                     folder="/beats/previews"
                     label="Subir preview"
@@ -342,7 +342,7 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                   </label>
                   <DirectDropboxUploader
                     onUploadComplete={handleFullAudioUpload}
-                    accept="audio/*"
+                    accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.wma,.aiff,.opus,.weba"
                     maxSize={100}
                     folder="/beats/full"
                     label="Subir beat completo"

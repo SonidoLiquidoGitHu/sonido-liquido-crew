@@ -513,13 +513,21 @@ export function DirectDropboxUploader({
             ? "border-green-500/50 bg-green-500/5"
             : "border-slc-border hover:border-primary/50"
         }`}
+        onClick={() => {
+          // On mobile, explicitly trigger the file input via click()
+          // This is more reliable than the invisible overlay approach
+          if (!isUploading && dropboxConfigured !== false) {
+            fileInputRef.current?.click();
+          }
+        }}
       >
+        {/* Hidden file input — triggered programmatically for better mobile support */}
         <input
           ref={fileInputRef}
           type="file"
           accept={accept}
           onChange={handleInputChange}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          className="hidden"
           disabled={isUploading || dropboxConfigured === false}
         />
 
