@@ -1268,7 +1268,7 @@ async function getContentCounts() {
 //            AUTOPOST_POSTS_PER_RUN (number of queue items to process per cron run)
 //            AUTOPOST_MAX_POSTS_PER_DAY (maximum posts per day)
 
-const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm Mexico City time
+const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm Mexico City time (CST = UTC-6 permanently)
 const DEFAULT_POSTS_PER_RUN = 1;
 const DEFAULT_MAX_POSTS_PER_DAY = 3;
 

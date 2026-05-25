@@ -902,7 +902,7 @@ export default function AdminSocialPage() {
             </h2>
             <p className="text-sm text-slc-muted mb-6">
               Configura a qué horas se publican los posts automáticamente (hora de Ciudad de México / CST).
-              El sistema revisa la cola cada 2 horas y publica los items pendientes en los horarios seleccionados.
+              El sistema revisa la cola cada hora y publica los items pendientes en los horarios seleccionados.
             </p>
 
             {/* Schedule Hours Grid */}
@@ -934,7 +934,7 @@ export default function AdminSocialPage() {
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2">Posts por ejecución</label>
               <p className="text-xs text-slc-muted mb-3">
-                Cuántos items de la cola se procesan cada vez que el cron corre (cada 2 horas).
+                Cuántos items de la cola se procesan cada vez que el cron corre (cada hora en los horarios seleccionados).
                 Más items = más posts por día.
               </p>
               <div className="flex items-center gap-3">
@@ -952,7 +952,7 @@ export default function AdminSocialPage() {
                   +
                 </button>
                 <span className="text-sm text-slc-muted ml-2">
-                  ({editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} cada 2 horas en horarios seleccionados)
+                  ({editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} por hora en horarios seleccionados)
                 </span>
               </div>
             </div>
@@ -1366,17 +1366,36 @@ export default function AdminSocialPage() {
           <div className="bg-slc-card border border-slc-border rounded-xl p-6">
             <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              Horario de Publicación
+              Horario de Publicación Actual
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <ScheduleCard time="4:00 AM" label="Mañana temprano" tz="CDMX" />
-              <ScheduleCard time="10:00 AM" label="Media mañana" tz="CDMX" />
-              <ScheduleCard time="3:00 PM" label="Tarde" tz="CDMX" />
+              {(scheduleConfig?.scheduleHours || [4, 10, 15]).map((h) => {
+                const labels: Record<number, string> = {
+                  0: "Medianoche", 1: "Madrugada", 2: "Madrugada", 3: "Madrugada",
+                  4: "Mañana temprano", 5: "Mañana temprano", 6: "Mañana", 7: "Mañana",
+                  8: "Mañana", 9: "Media mañana", 10: "Media mañana", 11: "Mediodía",
+                  12: "Mediodía", 13: "Tarde", 14: "Tarde", 15: "Tarde",
+                  16: "Atardecer", 17: "Atardecer", 18: "Anochecer", 19: "Anochecer",
+                  20: "Noche", 21: "Noche", 22: "Noche", 23: "Noche",
+                };
+                const ampm = h < 12 ? "AM" : "PM";
+                const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                return (
+                  <ScheduleCard
+                    key={h}
+                    time={`${displayHour}:00 ${ampm}`}
+                    label={labels[h] || "Horario"}
+                    tz="CDMX"
+                  />
+                );
+              })}
             </div>
             <p className="text-sm text-slc-muted mt-4">
-              La función programada publica 1 item por ejecución. Con 3 ejecuciones/día,
-              se publican 3 items/día. Cada item se publica en todas las plataformas configuradas
-              (FB + IG = hasta 6 posts/día).
+              El sistema revisa la cola cada hora y publica {scheduleConfig?.postsPerRun || 1} item(s) por ejecución en los horarios seleccionados.
+              Con {(scheduleConfig?.scheduleHours?.length || 3)} ejecuciones/día,
+              se publican {(scheduleConfig?.scheduleHours?.length || 3) * (scheduleConfig?.postsPerRun || 1)} items/día (máximo {scheduleConfig?.maxPostsPerDay || 3}).
+              Cada item se publica en todas las plataformas configuradas
+              (FB + IG = hasta {(scheduleConfig?.scheduleHours?.length || 3) * (scheduleConfig?.postsPerRun || 1) * 2} publicaciones totales/día).
             </p>
           </div>
         </div>

@@ -50,12 +50,14 @@
   max_duration = 60
 
 # Scheduled function: social auto-poster
-# Runs every 2 hours. The function itself checks the configured schedule hours
+# Runs every hour. The function itself checks the configured schedule hours
 # (stored in DB) to decide whether to post. This allows the admin to customize
 # posting times and frequency from the UI without redeploying.
+# Running every hour ensures all CST hours are covered (CST = UTC-6,
+# so odd CST hours map to odd UTC hours which a 2-hour cron would miss).
 # Default schedule: 4am, 10am, 3pm Mexico City time (CST = UTC-6)
 [functions."social-auto-post"]
-  schedule = "0 2,4,6,8,10,12,14,16,18,20,22,0 * * *"
+  schedule = "0 * * * *"
   max_duration = 60
 
 [[plugins]]

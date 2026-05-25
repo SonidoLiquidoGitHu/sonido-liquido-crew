@@ -3,14 +3,22 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 // ===========================================
 // NETLIFY SCHEDULED FUNCTION - SOCIAL AUTO-POSTER
 // ===========================================
-// Runs every 2 hours and processes N items per run based on config.
-// Default: 3 posts/day → 1 post every 8 hours → 1 post per run (every 2h × 1 = 12 posts/day)
-// But the actual posting is controlled by AUTOPOST_POSTS_PER_RUN and AUTOPOST_SCHEDULE_HOURS
-// stored in the social_credentials DB table.
+// Runs every hour and processes N items per run based on config.
+// The actual posting is controlled by AUTOPOST_POSTS_PER_RUN and
+// AUTOPOST_SCHEDULE_HOURS stored in the social_credentials DB table.
+//
+// Schedule matching uses a 1-hour window: if the cron runs at an hour
+// that is within ±0 hours of a scheduled hour (in UTC), it posts.
+// This ensures all CST hours are covered even though the cron only
+// fires at the top of each hour.
+//
+// Mexico City is permanently UTC-6 (DST abolished in 2022).
 
 // Default config (used when DB is not accessible)
 const DEFAULT_POSTS_PER_RUN = 1;
 const DEFAULT_MAX_POSTS_PER_DAY = 3;
+const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm CST
+const CST_OFFSET = 6; // Mexico City = UTC-6
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   const startTime = Date.now();
@@ -33,7 +41,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // First, get the schedule config from the API
     const configUrl = `${siteUrl}/api/admin/social?action=schedule-config`;
     let postsPerRun = DEFAULT_POSTS_PER_RUN;
-    let scheduleHours: number[] = [];
+    let scheduleHours: number[] = DEFAULT_SCHEDULE_HOURS;
     let maxPostsPerDay = DEFAULT_MAX_POSTS_PER_DAY;
 
     try {
@@ -47,7 +55,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const configData = await configRes.json();
         if (configData.success && configData.data) {
           postsPerRun = configData.data.postsPerRun || DEFAULT_POSTS_PER_RUN;
-          scheduleHours = configData.data.scheduleHours || [];
+          // Only override default if the DB returned actual schedule hours
+          if (configData.data.scheduleHours && configData.data.scheduleHours.length > 0) {
+            scheduleHours = configData.data.scheduleHours;
+          }
           maxPostsPerDay = configData.data.maxPostsPerDay || DEFAULT_MAX_POSTS_PER_DAY;
         }
       }
@@ -56,32 +67,101 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // Check if we should post at this hour
-    if (scheduleHours.length > 0) {
-      const currentHourUTC = new Date().getUTCHours();
-      // Convert schedule hours (Mexico City = UTC-6) to UTC
-      const utcHours = scheduleHours.map(h => (h + 6) % 24);
-      if (!utcHours.includes(currentHourUTC)) {
-        const nextHour = scheduleHours.find(h => (h + 6) % 24 > currentHourUTC) || scheduleHours[0];
-        console.log(
-          `[Social Auto-Post] Not scheduled for this hour (UTC ${currentHourUTC}). ` +
-          `Scheduled hours (Mexico City): ${scheduleHours.join(", ")}. Next: ${nextHour}:00 CST`
-        );
-        return {
-          statusCode: 200,
-          body: JSON.stringify({
-            success: true,
-            message: `Not scheduled for this hour. Next scheduled: ${nextHour}:00 CST`,
-            skipped: true,
-          }),
-        };
-      }
+    // Convert schedule hours (CST) to UTC and check if the current UTC hour matches
+    const currentHourUTC = new Date().getUTCHours();
+    const utcScheduleHours = scheduleHours.map(h => (h + CST_OFFSET) % 24);
+
+    const shouldPostNow = utcScheduleHours.includes(currentHourUTC);
+
+    // For manual triggers, always allow posting regardless of schedule
+    if (!shouldPostNow && !isManualTrigger) {
+      // Find the next scheduled hour for the log message
+      const nextCstHour = scheduleHours
+        .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
+        .sort((a, b) => a.utc - b.utc)
+        .find(entry => entry.utc > currentHourUTC) || scheduleHours
+        .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
+        .sort((a, b) => a.utc - b.utc)[0];
+
+      console.log(
+        `[Social Auto-Post] Not scheduled for this hour (UTC ${currentHourUTC} = CST ${currentHourUTC - CST_OFFSET >= 0 ? currentHourUTC - CST_OFFSET : currentHourUTC - CST_OFFSET + 24}). ` +
+        `Scheduled hours (Mexico City): ${scheduleHours.join(", ")}. Next: ${nextCstHour?.cst}:00 CST`
+      );
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          message: `Not scheduled for this hour. Next scheduled: ${nextCstHour?.cst}:00 CST`,
+          skipped: true,
+          currentHourUTC,
+          scheduleHours,
+          utcScheduleHours,
+        }),
+      };
     }
+
+    console.log(
+      `[Social Auto-Post] Hour matches schedule! UTC ${currentHourUTC} = CST ${currentHourUTC - CST_OFFSET >= 0 ? currentHourUTC - CST_OFFSET : currentHourUTC - CST_OFFSET + 24}. ` +
+      `Will process up to ${postsPerRun} item(s). Max ${maxPostsPerDay} posts/day.`
+    );
+
+    // Check how many posts were already made today (for maxPostsPerDay enforcement)
+    let postsMadeToday = 0;
+    try {
+      const logUrl = `${siteUrl}/api/admin/social`; // GET returns recentLogs
+      const logRes = await fetch(logUrl, {
+        headers: {
+          ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (logRes.ok) {
+        const logData = await logRes.json();
+        if (logData.success && logData.data?.recentLogs) {
+          const now = new Date();
+          const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+          // Count successful posts from today (using Mexico City day: CST = UTC-6)
+          const startOfDayCST = new Date(startOfDayUTC.getTime() - CST_OFFSET * 60 * 60 * 1000);
+          postsMadeToday = logData.data.recentLogs.filter(
+            (log: any) => log.status === "success" && new Date(log.postedAt) >= startOfDayCST
+          ).length;
+        }
+      }
+    } catch (err) {
+      console.warn("[Social Auto-Post] Could not check today's post count:", err);
+    }
+
+    // Check if we've already hit the daily limit
+    if (postsMadeToday >= maxPostsPerDay) {
+      console.log(
+        `[Social Auto-Post] Daily limit reached: ${postsMadeToday}/${maxPostsPerDay} posts already made today. Skipping.`
+      );
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          message: `Daily limit reached: ${postsMadeToday}/${maxPostsPerDay} posts today. Skipping.`,
+          skipped: true,
+          postsMadeToday,
+          maxPostsPerDay,
+        }),
+      };
+    }
+
+    // Calculate how many items we can still post today
+    const remainingQuota = maxPostsPerDay - postsMadeToday;
+    const itemsToProcess = Math.min(postsPerRun, remainingQuota);
+
+    console.log(
+      `[Social Auto-Post] Posts today: ${postsMadeToday}/${maxPostsPerDay}. ` +
+      `Can process ${itemsToProcess} item(s) this run (requested: ${postsPerRun}).`
+    );
 
     // Process N items per run
     const results: Array<{ success: boolean; message: string }> = [];
     let processedCount = 0;
 
-    for (let i = 0; i < postsPerRun; i++) {
+    for (let i = 0; i < itemsToProcess; i++) {
       const processUrl = `${siteUrl}/api/admin/social`;
 
       try {
@@ -98,7 +178,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const data = await response.json();
 
         if (response.ok && data.success) {
-          console.log(`[Social Auto-Post] Item ${i + 1}/${postsPerRun} posted:`, data.message);
+          console.log(`[Social Auto-Post] Item ${i + 1}/${itemsToProcess} posted:`, data.message);
           results.push({ success: true, message: data.message });
           processedCount++;
         } else if (response.ok && !data.success) {
@@ -134,7 +214,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         message: `Processed ${successCount}/${results.length} items in ${elapsed}s`,
         elapsed: `${elapsed}s`,
         results,
-        config: { postsPerRun, scheduleHours, maxPostsPerDay },
+        config: { postsPerRun, scheduleHours, maxPostsPerDay, itemsToProcess, postsMadeToday },
       }),
     };
   } catch (error) {
