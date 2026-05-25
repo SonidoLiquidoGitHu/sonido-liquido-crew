@@ -1593,7 +1593,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
 // ===========================================
 
 export interface CaptionContext {
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video";
   artistName?: string;
   artistRole?: string;
   releaseTitle?: string;
@@ -1893,6 +1893,51 @@ const CAPTION_VARIATIONS = {
       ].join("\n");
     },
   ],
+
+  youtube_video: [
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const titleLine = ctx.videoTitle || "Video musical";
+      const ytLink = ctx.linkUrl || `${siteUrl}/videos`;
+      return [
+        `${artistLine} — ${titleLine}`,
+        "",
+        "Mira el video completo en YouTube",
+        ytLink,
+        "",
+        hashtags,
+        "#YouTube #VideoMusical #HipHopMexico",
+      ].join("\n");
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const titleLine = ctx.videoTitle || "Video oficial";
+      const ytLink = ctx.linkUrl || `${siteUrl}/videos`;
+      return [
+        `🎬 ${titleLine} — ${artistLine}`,
+        "",
+        "Video oficial del colectivo",
+        ytLink,
+        "",
+        hashtags,
+        "#YouTube #MusicVideo",
+      ].join("\n");
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const artistLine = ctx.artistName || "Sonido Líquido Crew";
+      const titleLine = ctx.videoTitle || "Nuevo video";
+      const ytLink = ctx.linkUrl || `${siteUrl}/videos`;
+      return [
+        `Visualmente poderoso — ${titleLine}`,
+        `${artistLine} en pantalla grande`,
+        "",
+        ytLink,
+        "",
+        hashtags,
+        "#VideoOficial #HipHop",
+      ].join("\n");
+    },
+  ],
 };
 
 /**
@@ -1945,6 +1990,12 @@ export function generateCaption(ctx: CaptionContext, variationIndex?: number): s
 
     case "vertical_video": {
       const variations = CAPTION_VARIATIONS.vertical_video;
+      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      return variations[idx](ctx, siteUrl, hashtags);
+    }
+
+    case "youtube_video": {
+      const variations = CAPTION_VARIATIONS.youtube_video;
       const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
       return variations[idx](ctx, siteUrl, hashtags);
     }
@@ -2064,11 +2115,12 @@ const CONTENT_TYPE_ROTATION = [
   "spotify_track",
   "artist_profile",
   "curated_track",
+  "youtube_video",
 ] as const;
 
 /**
  * Get the next pending item from the queue using round-robin logic.
- * Cycles through content types: gallery_photo → spotify_track → artist_profile → curated_track → repeat
+ * Cycles through content types: gallery_photo → spotify_track → artist_profile → curated_track → youtube_video → repeat
  * This ensures we never post the same content type twice in a row (no duplicates).
  */
 export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null> {
@@ -2122,7 +2174,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
       }
     }
 
-    // Step 4: No pending items in rotation types — try vertical_video or any other type as fallback
+    // Step 4: No pending items in rotation types — try any other type as fallback
     const anyItems = await db
       .select()
       .from(socialPostQueue)

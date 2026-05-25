@@ -16,6 +16,7 @@ import {
   curatedTracks,
   curatedSpotifyChannels,
   verticalVideos,
+  videos,
 } from "@/db/schema";
 import { eq, desc, sql as drizzleSql, and, count, isNotNull } from "drizzle-orm";
 import {
@@ -580,6 +581,7 @@ async function handlePopulate(options: {
   includeArtists?: boolean;
   includeCuratedTracks?: boolean;
   includeVerticalVideos?: boolean;
+  includeYoutubeVideos?: boolean;
   platforms?: string[];
   force?: boolean; // If true, re-add items even if they already exist in the queue
 }) {
@@ -590,6 +592,7 @@ async function handlePopulate(options: {
       includeArtists = true,
       includeCuratedTracks = true,
       includeVerticalVideos = true,
+      includeYoutubeVideos = true,
       platforms,
       force = false,
     } = options;
@@ -614,6 +617,7 @@ async function handlePopulate(options: {
     let artistsCount = 0;
     let curatedCount = 0;
     let reelsCount = 0;
+    let youtubeVideosCount = 0;
 
     // ========================================
     // 1. Gallery Photos
@@ -897,7 +901,8 @@ async function handlePopulate(options: {
             artistProfiles: artistsCount,
             curatedTracks: curatedCount,
             verticalVideos: reelsCount,
-            totalAdded: galleryCount + releasesCount + artistsCount + curatedCount + reelsCount,
+            youtubeVideos: youtubeVideosCount,
+            totalAdded: galleryCount + releasesCount + artistsCount + curatedCount + reelsCount + youtubeVideosCount,
           },
         }, { status: 500 });
       }
@@ -996,9 +1001,84 @@ async function handlePopulate(options: {
     }
 
     // ========================================
+    // 6. YouTube Videos (music videos from the videos table)
+    // ========================================
+    if (includeYoutubeVideos) {
+      console.log("[Social API Populate] Processing YouTube videos...");
+
+      try {
+        const ytVideos = await db
+          .select({
+            id: videos.id,
+            title: videos.title,
+            youtubeId: videos.youtubeId,
+            youtubeUrl: videos.youtubeUrl,
+            thumbnailUrl: videos.thumbnailUrl,
+            artistId: videos.artistId,
+            releaseId: videos.releaseId,
+          })
+          .from(videos)
+          .orderBy(videos.displayOrder);
+
+        // Get artist names
+        const allArtistsYT = await db.select({
+          id: artists.id,
+          name: artists.name,
+          slug: artists.slug,
+          role: artists.role,
+        }).from(artists).where(eq(artists.isActive, true));
+        const artistMapYT = new Map(allArtistsYT.map((a) => [a.id, a]));
+
+        for (const video of ytVideos) {
+          // Generate YouTube thumbnail URL if no explicit thumbnail exists
+          let imageUrl = video.thumbnailUrl;
+          if (!imageUrl && video.youtubeId) {
+            imageUrl = `https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg`;
+          }
+          if (!imageUrl) continue; // Skip videos without any image available
+
+          const key = `youtube_video:${video.id}`;
+          if (existingSourceIds.has(key)) continue;
+
+          const artist = video.artistId ? artistMapYT.get(video.artistId) : null;
+          const caption = generateCaption({
+            contentType: "youtube_video",
+            artistName: artist?.name,
+            videoTitle: video.title || undefined,
+            videoPlatform: "youtube",
+            linkUrl: video.youtubeUrl || (artist ? `${SITE_URL}/artistas/${artist.slug}` : `${SITE_URL}/videos`),
+          });
+
+          await db.insert(socialPostQueue).values({
+            id: crypto.randomUUID(),
+            contentType: "youtube_video",
+            sourceId: video.id,
+            artistId: video.artistId || null,
+            releaseId: video.releaseId || null,
+            imageUrl,
+            caption,
+            linkUrl: video.youtubeUrl || (artist ? `${SITE_URL}/artistas/${artist.slug}` : `${SITE_URL}/videos`),
+            queueOrder: queueOrder++,
+            cycleNumber: 1,
+            status: "pending",
+            platforms: platformsJson,
+            postedPlatforms: "[]",
+          });
+
+          existingSourceIds.add(key);
+          youtubeVideosCount++;
+        }
+
+        console.log(`[Social API Populate] YouTube videos: ${youtubeVideosCount} added`);
+      } catch (err) {
+        console.warn("[Social API Populate] YouTube videos table may not exist yet:", err);
+      }
+    }
+
+    // ========================================
     // Summary
     // ========================================
-    const totalAdded = galleryCount + releasesCount + artistsCount + curatedCount + reelsCount;
+    const totalAdded = galleryCount + releasesCount + artistsCount + curatedCount + reelsCount + youtubeVideosCount;
     console.log(`[Social API Populate] Complete! Added ${totalAdded} new items`);
 
     return NextResponse.json({
@@ -1010,6 +1090,7 @@ async function handlePopulate(options: {
         artistProfiles: artistsCount,
         curatedTracks: curatedCount,
         verticalVideos: reelsCount,
+        youtubeVideos: youtubeVideosCount,
         totalAdded,
         platforms: targetPlatforms,
       },
@@ -1242,12 +1323,23 @@ async function getContentCounts() {
       // Table may not exist yet
     }
 
+    let youtubeVideosCount = 0;
+    try {
+      const ytvCount = await db
+        .select({ count: count() })
+        .from(videos);
+      youtubeVideosCount = ytvCount[0]?.count || 0;
+    } catch {
+      // Table may not exist yet
+    }
+
     return {
       galleryPhotos: galleryCount[0]?.count || 0,
       releases: releasesCount[0]?.count || 0,
       artists: artistsCount[0]?.count || 0,
       curatedTracks: curatedTracksCount,
       verticalVideos: verticalVideosCount,
+      youtubeVideos: youtubeVideosCount,
     };
   } catch (error) {
     console.warn("[Social API] Error getting content counts:", error);
@@ -1257,6 +1349,7 @@ async function getContentCounts() {
       artists: 0,
       curatedTracks: 0,
       verticalVideos: 0,
+      youtubeVideos: 0,
     };
   }
 }
