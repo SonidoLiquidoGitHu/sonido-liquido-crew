@@ -1394,8 +1394,75 @@ async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<st
  * Regenerates the caption at post time with variation to avoid repetition.
  */
 export async function processQueueItem(item: SocialPostQueueWithId): Promise<PostQueueItemResult> {
-  const platforms: string[] = JSON.parse(item.platforms || "[]");
-  const postedPlatforms: string[] = JSON.parse(item.postedPlatforms || "[]");
+  // Filter out removed platforms (e.g. "tiktok" was removed per user request)
+  const SUPPORTED_PLATFORMS = ["facebook", "instagram"];
+  let platforms: string[] = JSON.parse(item.platforms || "[]").filter((p: string) => SUPPORTED_PLATFORMS.includes(p));
+  let postedPlatforms: string[] = JSON.parse(item.postedPlatforms || "[]").filter((p: string) => SUPPORTED_PLATFORMS.includes(p));
+
+  // If the platforms list was modified (e.g. tiktok removed), update it in the DB
+  const originalPlatforms: string[] = JSON.parse(item.platforms || "[]");
+  if (JSON.stringify(platforms) !== JSON.stringify(originalPlatforms)) {
+    console.log(`[Social] Filtering out unsupported platforms from item ${item.id}: ${originalPlatforms.join(",")} → ${platforms.join(",")}`);
+    try {
+      await db
+        .update(socialPostQueue)
+        .set({
+          platforms: JSON.stringify(platforms),
+          postedPlatforms: JSON.stringify(postedPlatforms),
+          updatedAt: new Date(),
+        })
+        .where(eq(socialPostQueue.id, item.id));
+    } catch (err) {
+      console.warn("[Social] Failed to update platforms list:", err);
+    }
+  }
+
+  // Check if all target platforms have already been posted — mark as posted and skip
+  const allTargetPlatformsPosted = platforms.length > 0 && platforms.every((p) => postedPlatforms.includes(p));
+  if (allTargetPlatformsPosted) {
+    console.log(`[Social] Item ${item.id} already posted to all target platforms (${platforms.join(",")}). Marking as posted.`);
+    try {
+      await db
+        .update(socialPostQueue)
+        .set({
+          status: "posted",
+          postedAt: new Date(),
+          updatedAt: new Date(),
+          errorMessage: null,
+        })
+        .where(eq(socialPostQueue.id, item.id));
+    } catch (err) {
+      console.warn("[Social] Failed to mark item as posted:", err);
+    }
+    // Return a success result so the caller knows this item is done
+    return {
+      queueId: item.id,
+      facebook: { success: true, postId: null, postUrl: null, error: "already posted" },
+      instagram: { success: true, mediaId: null, permalink: null, error: "already posted" },
+    };
+  }
+
+  // If no supported platforms remain after filtering, mark as skipped
+  if (platforms.length === 0) {
+    console.log(`[Social] Item ${item.id} has no supported platforms. Marking as skipped.`);
+    try {
+      await db
+        .update(socialPostQueue)
+        .set({
+          status: "skipped",
+          errorMessage: "No supported platforms (tiktok removed)",
+          updatedAt: new Date(),
+        })
+        .where(eq(socialPostQueue.id, item.id));
+    } catch (err) {
+      console.warn("[Social] Failed to mark item as skipped:", err);
+    }
+    return {
+      queueId: item.id,
+      facebook: { success: false, postId: null, postUrl: null, error: "no supported platforms" },
+      instagram: { success: false, mediaId: null, permalink: null, error: "no supported platforms" },
+    };
+  }
 
   // Regenerate caption at post time with variation
   // This ensures: (1) 90-day "nueva" logic is current, (2) captions vary between posts
@@ -1475,7 +1542,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   }
 
   // Update queue item status
-  const allTargetPlatformsPosted = platforms
+  const allPlatformsNowPosted = platforms
     .every((p) => postedPlatforms.includes(p));
   const anyPlatformSucceeded = postedPlatforms.length > 0;
   const anyFailed =
@@ -1483,7 +1550,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     (!igResult.success && platforms.includes("instagram") && !postedPlatforms.includes("instagram"));
 
   let newStatus: "posted" | "failed" | "pending" = "pending";
-  if (allTargetPlatformsPosted) {
+  if (allPlatformsNowPosted) {
     newStatus = "posted";
   } else if (anyFailed && !anyPlatformSucceeded) {
     newStatus = "failed";
@@ -1496,7 +1563,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     updatedAt: new Date(),
   };
 
-  if (allTargetPlatformsPosted) {
+  if (allPlatformsNowPosted) {
     updateData.postedAt = new Date();
   }
 
