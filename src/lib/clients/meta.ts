@@ -1556,6 +1556,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     newStatus = "failed";
   }
   // If some platforms succeeded but not all, keep as "pending" so the cron retries the failed ones
+  // The postedPlatforms tracking prevents re-posting to already-succeeded platforms
 
   const updateData: Record<string, any> = {
     status: newStatus,
@@ -2156,6 +2157,8 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
       const typeIndex = (rotationStartIndex + i) % CONTENT_TYPE_ROTATION.length;
       const nextType = CONTENT_TYPE_ROTATION[typeIndex];
 
+      // Atomically claim the item: fetch pending, then immediately set to "processing"
+      // This prevents the race condition where the cron fires again before the item is marked "posted"
       const items = await db
         .select()
         .from(socialPostQueue)
@@ -2169,8 +2172,82 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
         .limit(1);
 
       if (items.length > 0) {
+        const item = items[0];
+
+        // Check if this image was recently posted (within last 24h) — prevents same-photo duplicates
+        const recentlyPosted = await db
+          .select({ imageUrl: socialPostsLog.imageUrl, postedAt: socialPostsLog.postedAt })
+          .from(socialPostsLog)
+          .where(
+            and(
+              eq(socialPostsLog.status, "success"),
+              eq(socialPostsLog.imageUrl, item.imageUrl!),
+              drizzleSql`${socialPostsLog.postedAt} > datetime('now', '-24 hours')`
+            )
+          )
+          .limit(1);
+
+        if (recentlyPosted.length > 0) {
+          console.log(`[Social] Skipping ${nextType} item ${item.id} — same image was posted in the last 24 hours. Marking as skipped.`);
+          await db
+            .update(socialPostQueue)
+            .set({
+              status: "skipped",
+              errorMessage: "Skipped: same image posted in last 24h (dedup)",
+              updatedAt: new Date(),
+            })
+            .where(eq(socialPostQueue.id, item.id));
+          // Continue to next item in the rotation, don't return
+          continue;
+        }
+
+        // Check if this exact contentType:sourceId was posted recently (within last 24h)
+        const recentlyPostedSource = await db
+          .select({ sourceId: socialPostsLog.sourceId, postedAt: socialPostsLog.postedAt })
+          .from(socialPostsLog)
+          .where(
+            and(
+              eq(socialPostsLog.status, "success"),
+              eq(socialPostsLog.contentType, item.contentType as any),
+              eq(socialPostsLog.sourceId, item.sourceId!),
+              drizzleSql`${socialPostsLog.postedAt} > datetime('now', '-24 hours')`
+            )
+          )
+          .limit(1);
+
+        if (recentlyPostedSource.length > 0) {
+          console.log(`[Social] Skipping ${nextType} item ${item.id} — same content was posted in the last 24 hours. Marking as skipped.`);
+          await db
+            .update(socialPostQueue)
+            .set({
+              status: "skipped",
+              errorMessage: "Skipped: same content posted in last 24h (dedup)",
+              updatedAt: new Date(),
+            })
+            .where(eq(socialPostQueue.id, item.id));
+          continue;
+        }
+
+        // Atomically claim: set status to "processing" so no other run picks this up
+        const claimed = await db
+          .update(socialPostQueue)
+          .set({ status: "processing", updatedAt: new Date() })
+          .where(
+            and(
+              eq(socialPostQueue.id, item.id),
+              eq(socialPostQueue.status, "pending") // Only claim if still pending
+            )
+          )
+          .returning();
+
+        if (claimed.length === 0) {
+          // Another process claimed it first — skip and try next
+          console.log(`[Social] Item ${item.id} was claimed by another process. Skipping.`);
+          continue;
+        }
+
         console.log(`[Social] Round-robin: last was ${lastContentType || "none"}, next is ${nextType}`);
-        return items[0] as unknown as SocialPostQueueWithId;
+        return claimed[0] as unknown as SocialPostQueueWithId;
       }
     }
 
@@ -2183,8 +2260,50 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
       .limit(1);
 
     if (anyItems.length > 0) {
-      console.log(`[Social] Round-robin: no rotation types pending, falling back to ${anyItems[0].contentType}`);
-      return anyItems[0] as unknown as SocialPostQueueWithId;
+      const item = anyItems[0];
+
+      // Same dedup checks for fallback items
+      const recentlyPosted = await db
+        .select({ imageUrl: socialPostsLog.imageUrl })
+        .from(socialPostsLog)
+        .where(
+          and(
+            eq(socialPostsLog.status, "success"),
+            eq(socialPostsLog.imageUrl, item.imageUrl!),
+            drizzleSql`${socialPostsLog.postedAt} > datetime('now', '-24 hours')`
+          )
+        )
+        .limit(1);
+
+      if (recentlyPosted.length > 0) {
+        console.log(`[Social] Skipping fallback item ${item.id} — same image posted in last 24h. Marking as skipped.`);
+        await db
+          .update(socialPostQueue)
+          .set({
+            status: "skipped",
+            errorMessage: "Skipped: same image posted in last 24h (dedup)",
+            updatedAt: new Date(),
+          })
+          .where(eq(socialPostQueue.id, item.id));
+        return null; // Don't try more fallback items this run
+      }
+
+      // Atomic claim
+      const claimed = await db
+        .update(socialPostQueue)
+        .set({ status: "processing", updatedAt: new Date() })
+        .where(
+          and(
+            eq(socialPostQueue.id, item.id),
+            eq(socialPostQueue.status, "pending")
+          )
+        )
+        .returning();
+
+      if (claimed.length > 0) {
+        console.log(`[Social] Round-robin: no rotation types pending, falling back to ${item.contentType}`);
+        return claimed[0] as unknown as SocialPostQueueWithId;
+      }
     }
 
     // Step 5: All items are posted — reset for a new cycle
@@ -2201,6 +2320,23 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
  */
 async function resetCycleIfNeeded(): Promise<void> {
   try {
+    // First, recover any stuck "processing" items (from crashed runs) back to "pending"
+    // If they've been in "processing" for more than 10 minutes, they're likely from a crashed run
+    const staleProcessing = await db
+      .update(socialPostQueue)
+      .set({ status: "pending", updatedAt: new Date() })
+      .where(
+        and(
+          eq(socialPostQueue.status, "processing"),
+          drizzleSql`${socialPostQueue.updatedAt} < datetime('now', '-10 minutes')`
+        )
+      )
+      .returning();
+
+    if (staleProcessing.length > 0) {
+      console.log(`[Social] Recovered ${staleProcessing.length} stuck "processing" items back to "pending"`);
+    }
+
     // Get current max cycle number using raw SQL
     const result = await db
       .select({
@@ -2210,7 +2346,7 @@ async function resetCycleIfNeeded(): Promise<void> {
 
     const currentCycle = Number(result[0]?.maxCycle) || 1;
 
-    // Check if all items in the current cycle are posted
+    // Check if all items in the current cycle are posted or skipped
     const pendingCount = await db
       .select({ count: drizzleSql`COUNT(*)` })
       .from(socialPostQueue)
@@ -2222,9 +2358,9 @@ async function resetCycleIfNeeded(): Promise<void> {
       );
 
     if (Number(pendingCount[0]?.count) === 0) {
-      // All posted! Start a new cycle
+      // All posted or skipped! Start a new cycle
       const nextCycle = currentCycle + 1;
-      console.log(`[Social] All items posted in cycle ${currentCycle}. Starting cycle ${nextCycle}.`);
+      console.log(`[Social] All items posted/skipped in cycle ${currentCycle}. Starting cycle ${nextCycle}.`);
 
       // Reset all items to pending for the new cycle
       await db

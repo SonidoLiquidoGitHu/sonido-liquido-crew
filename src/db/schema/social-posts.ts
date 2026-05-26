@@ -39,7 +39,7 @@ export const socialPostQueue = sqliteTable("social_post_queue", {
   queueOrder: integer("queue_order").notNull().default(0),
   cycleNumber: integer("cycle_number").notNull().default(1),
   status: text("status", {
-    enum: ["pending", "posted", "failed", "skipped"],
+    enum: ["pending", "processing", "posted", "failed", "skipped"],
   })
     .notNull()
     .default("pending"),

@@ -162,6 +162,7 @@ export async function GET(request: NextRequest) {
         queue: {
           total: Object.values(summaryMap).reduce((a, b) => a + b, 0),
           pending: summaryMap["pending"] || 0,
+          processing: summaryMap["processing"] || 0,
           posted: summaryMap["posted"] || 0,
           failed: summaryMap["failed"] || 0,
           skipped: summaryMap["skipped"] || 0,
@@ -1113,9 +1114,19 @@ async function handleResetCycle() {
       .from(socialPostQueue)
       .where(eq(socialPostQueue.status, "posted"));
 
-    const resetCount = postedItems[0]?.count || 0;
+    const skippedItems = await db
+      .select({ count: count() })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "skipped"));
 
-    // Reset all posted items to pending for a new cycle
+    const processingItems = await db
+      .select({ count: count() })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "processing"));
+
+    const resetCount = (postedItems[0]?.count || 0) + (skippedItems[0]?.count || 0) + (processingItems[0]?.count || 0);
+
+    // Reset all posted, skipped, and processing items to pending for a new cycle
     await db
       .update(socialPostQueue)
       .set({
@@ -1125,11 +1136,13 @@ async function handleResetCycle() {
         postedAt: null,
         updatedAt: new Date(),
       })
-      .where(eq(socialPostQueue.status, "posted"));
+      .where(
+        drizzleSql`${socialPostQueue.status} IN ('posted', 'skipped', 'processing')`
+      );
 
     return NextResponse.json({
       success: true,
-      message: `Se reiniciaron ${resetCount} items publicados a pendientes para un nuevo ciclo.`,
+      message: `Se reiniciaron ${resetCount} items a pendientes para un nuevo ciclo.`,
     });
   } catch (error) {
     console.error("[Social API] Reset cycle error:", error);
@@ -1229,6 +1242,14 @@ async function handleRetryFailed() {
 
     const failedCount = failedItems[0]?.count || 0;
 
+    // Also count stuck "processing" items (from crashed runs)
+    const processingItems = await db
+      .select({ count: count() })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "processing"));
+
+    const processingCount = processingItems[0]?.count || 0;
+
     // Reset all failed items to pending
     await db
       .update(socialPostQueue)
@@ -1240,9 +1261,23 @@ async function handleRetryFailed() {
       })
       .where(eq(socialPostQueue.status, "failed"));
 
+    // Also recover stuck "processing" items back to "pending"
+    await db
+      .update(socialPostQueue)
+      .set({
+        status: "pending",
+        updatedAt: new Date(),
+      })
+      .where(eq(socialPostQueue.status, "processing"));
+
+    const totalReset = failedCount + processingCount;
+    const message = processingCount > 0
+      ? `Se reiniciaron ${failedCount} items fallidos y ${processingCount} items atorados a pendientes para reintento.`
+      : `Se reiniciaron ${failedCount} items fallidos a pendientes para reintento.`;
+
     return NextResponse.json({
       success: true,
-      message: `Se reiniciaron ${failedCount} items fallidos a pendientes para reintento.`,
+      message,
     });
   } catch (error) {
     console.error("[Social API] Retry failed error:", error);
