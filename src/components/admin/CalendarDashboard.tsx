@@ -716,7 +716,11 @@ export function CalendarDashboard() {
                           description: `Lanzamiento: ${release.title}`,
                         }), "_blank")}
                       >
-                        <Music className="w-3 h-3 text-green-500 flex-shrink-0" />
+                        {release.coverImageUrl ? (
+                          <img src={release.coverImageUrl} alt="" className="w-3 h-3 rounded flex-shrink-0 object-cover" />
+                        ) : (
+                          <Music className="w-3 h-3 text-green-500 flex-shrink-0" />
+                        )}
                         <span className="text-green-400 truncate">{release.title}</span>
                       </div>
                     ))}
@@ -835,22 +839,31 @@ export function CalendarDashboard() {
               {upcomingReleases.slice(0, 5).map((release) => (
                 <div
                   key={release.id}
-                  className="p-2 bg-slc-dark rounded-lg border border-slc-border/50 group cursor-pointer hover:border-green-500/30"
+                  className="flex items-center gap-3 p-2 bg-slc-dark rounded-lg border border-slc-border/50 group cursor-pointer hover:border-green-500/30"
                   onClick={() => window.open(generateGoogleCalendarUrl({
                     title: release.title,
                     date: release.releaseDate,
                   }), "_blank")}
                 >
-                  <p className="text-sm font-medium truncate">{release.title}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-green-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(release.releaseDate).toLocaleDateString("es-MX", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
-                    <ExternalLink className="w-3 h-3 text-slc-muted opacity-0 group-hover:opacity-100" />
+                  <div className="w-8 h-8 rounded overflow-hidden bg-slc-border flex-shrink-0 flex items-center justify-center">
+                    {release.coverImageUrl ? (
+                      <img src={release.coverImageUrl} alt={release.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <Music className="w-4 h-4 text-slc-muted" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{release.title}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-green-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(release.releaseDate).toLocaleDateString("es-MX", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </p>
+                      <ExternalLink className="w-3 h-3 text-slc-muted opacity-0 group-hover:opacity-100" />
+                    </div>
                   </div>
                 </div>
               ))}

@@ -136,7 +136,7 @@ const defaultSummary = {
   totalReleases: 0,
   totalVideos: 0,
   totalSubscribers: 0,
-  latestReleases: [] as Array<{ id: string; title: string; releaseDate: Date; releaseType: string }>,
+  latestReleases: [] as Array<{ id: string; title: string; releaseDate: Date; releaseType: string; coverImageUrl: string | null }>,
   releasesPerYear: [] as Array<{ year: number; count: number }>,
   upcomingStats: {
     activeReleases: 0,
@@ -347,12 +347,21 @@ export default async function AdminDashboardPage() {
           </div>
           <div className="space-y-3">
             {summary.latestReleases.slice(0, 5).map((release) => (
-              <div
+              <Link
                 key={release.id}
-                className="flex items-center gap-4 p-3 bg-slc-card border border-slc-border rounded-lg"
+                href={`/admin/releases/${release.id}`}
+                className="flex items-center gap-4 p-3 bg-slc-card border border-slc-border rounded-lg hover:border-primary/30 transition-colors"
               >
-                <div className="w-12 h-12 rounded bg-slc-border flex items-center justify-center flex-shrink-0">
-                  <Disc3 className="w-6 h-6 text-slc-muted" />
+                <div className="w-12 h-12 rounded overflow-hidden bg-slc-border flex items-center justify-center flex-shrink-0">
+                  {release.coverImageUrl ? (
+                    <img
+                      src={release.coverImageUrl}
+                      alt={release.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Disc3 className="w-6 h-6 text-slc-muted" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium truncate">{release.title}</h4>
@@ -363,7 +372,7 @@ export default async function AdminDashboardPage() {
                 <span className="text-xs text-primary uppercase">
                   {release.releaseType}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
