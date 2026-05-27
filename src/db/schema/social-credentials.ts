@@ -13,7 +13,7 @@ export const socialCredentials = sqliteTable("social_credentials", {
 
   // Which platform these credentials belong to
   platform: text("platform", {
-    enum: ["meta"],
+    enum: ["meta", "tiktok"],
   }).notNull(),
 
   // The credential key name (e.g., "META_APP_ID")

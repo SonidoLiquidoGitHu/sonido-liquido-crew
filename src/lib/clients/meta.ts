@@ -2174,7 +2174,8 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
       if (items.length > 0) {
         const item = items[0];
 
-        // Check if this image was recently posted (within last 24h) — prevents same-photo duplicates
+        // Check if this image was recently posted (within last 48h) — prevents same-photo duplicates
+        // NOTE: postedAt is stored as integer Unix timestamp, so we compare with unixepoch() not datetime()
         const recentlyPosted = await db
           .select({ imageUrl: socialPostsLog.imageUrl, postedAt: socialPostsLog.postedAt })
           .from(socialPostsLog)
@@ -2182,18 +2183,18 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
             and(
               eq(socialPostsLog.status, "success"),
               eq(socialPostsLog.imageUrl, item.imageUrl!),
-              drizzleSql`${socialPostsLog.postedAt} > datetime('now', '-24 hours')`
+              drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`
             )
           )
           .limit(1);
 
         if (recentlyPosted.length > 0) {
-          console.log(`[Social] Skipping ${nextType} item ${item.id} — same image was posted in the last 24 hours. Marking as skipped.`);
+          console.log(`[Social] Skipping ${nextType} item ${item.id} — same image was posted in the last 48 hours. Marking as skipped.`);
           await db
             .update(socialPostQueue)
             .set({
               status: "skipped",
-              errorMessage: "Skipped: same image posted in last 24h (dedup)",
+              errorMessage: "Skipped: same image posted in last 48h (dedup)",
               updatedAt: new Date(),
             })
             .where(eq(socialPostQueue.id, item.id));
@@ -2201,7 +2202,8 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
           continue;
         }
 
-        // Check if this exact contentType:sourceId was posted recently (within last 24h)
+        // Check if this exact contentType:sourceId was posted recently (within last 48h)
+        // NOTE: postedAt is stored as integer Unix timestamp, so we compare with unixepoch() not datetime()
         const recentlyPostedSource = await db
           .select({ sourceId: socialPostsLog.sourceId, postedAt: socialPostsLog.postedAt })
           .from(socialPostsLog)
@@ -2210,18 +2212,18 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
               eq(socialPostsLog.status, "success"),
               eq(socialPostsLog.contentType, item.contentType as any),
               eq(socialPostsLog.sourceId, item.sourceId!),
-              drizzleSql`${socialPostsLog.postedAt} > datetime('now', '-24 hours')`
+              drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`
             )
           )
           .limit(1);
 
         if (recentlyPostedSource.length > 0) {
-          console.log(`[Social] Skipping ${nextType} item ${item.id} — same content was posted in the last 24 hours. Marking as skipped.`);
+          console.log(`[Social] Skipping ${nextType} item ${item.id} — same content was posted in the last 48 hours. Marking as skipped.`);
           await db
             .update(socialPostQueue)
             .set({
               status: "skipped",
-              errorMessage: "Skipped: same content posted in last 24h (dedup)",
+              errorMessage: "Skipped: same content posted in last 48h (dedup)",
               updatedAt: new Date(),
             })
             .where(eq(socialPostQueue.id, item.id));
@@ -2262,7 +2264,8 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
     if (anyItems.length > 0) {
       const item = anyItems[0];
 
-      // Same dedup checks for fallback items
+      // Same dedup checks for fallback items (48h window)
+      // NOTE: postedAt is stored as integer Unix timestamp, so we compare with unixepoch() not datetime()
       const recentlyPosted = await db
         .select({ imageUrl: socialPostsLog.imageUrl })
         .from(socialPostsLog)
@@ -2270,18 +2273,18 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
           and(
             eq(socialPostsLog.status, "success"),
             eq(socialPostsLog.imageUrl, item.imageUrl!),
-            drizzleSql`${socialPostsLog.postedAt} > datetime('now', '-24 hours')`
+            drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`
           )
         )
         .limit(1);
 
       if (recentlyPosted.length > 0) {
-        console.log(`[Social] Skipping fallback item ${item.id} — same image posted in last 24h. Marking as skipped.`);
+        console.log(`[Social] Skipping fallback item ${item.id} — same image posted in last 48h. Marking as skipped.`);
         await db
           .update(socialPostQueue)
           .set({
             status: "skipped",
-            errorMessage: "Skipped: same image posted in last 24h (dedup)",
+            errorMessage: "Skipped: same image posted in last 48h (dedup)",
             updatedAt: new Date(),
           })
           .where(eq(socialPostQueue.id, item.id));
@@ -2306,8 +2309,14 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
       }
     }
 
-    // Step 5: All items are posted — reset for a new cycle
-    await resetCycleIfNeeded();
+    // Step 5: All items are posted — try to reset for a new cycle
+    // Only resets if the last post was on a previous calendar day (prevents same-day duplicates)
+    const didReset = await resetCycleIfNeeded();
+    if (didReset) {
+      // Cycle was reset — try to pick up a pending item from the new cycle
+      // Use recursive call but with a depth limit to prevent infinite loops
+      return getNextPendingItemRecursive(1);
+    }
     return null;
   } catch (error) {
     console.error("[Social] Error fetching next pending item:", error);
@@ -2316,19 +2325,37 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
 }
 
 /**
- * If all items in the current cycle are posted, increment cycle and reset to pending.
+ * Recursive wrapper for getNextPendingItem with depth limit.
+ * Prevents infinite loops when a cycle reset triggers another search.
  */
-async function resetCycleIfNeeded(): Promise<void> {
+async function getNextPendingItemRecursive(depth: number): Promise<SocialPostQueueWithId | null> {
+  if (depth > 2) {
+    console.log("[Social] Max recursive depth reached in getNextPendingItem. Stopping.");
+    return null;
+  }
+  return getNextPendingItem();
+}
+
+/**
+ * If all items in the current cycle are posted, increment cycle and reset to pending.
+ * IMPORTANT: Only resets if the last post was on a PREVIOUS calendar day (Mexico City time).
+ * This prevents same-day duplicates — each item is posted once per cycle, and cycles
+ * only reset on a new day.
+ *
+ * @returns true if the cycle was reset, false otherwise
+ */
+async function resetCycleIfNeeded(): Promise<boolean> {
   try {
     // First, recover any stuck "processing" items (from crashed runs) back to "pending"
     // If they've been in "processing" for more than 10 minutes, they're likely from a crashed run
+    // NOTE: updatedAt is stored as integer Unix timestamp, so we compare with unixepoch() not datetime()
     const staleProcessing = await db
       .update(socialPostQueue)
       .set({ status: "pending", updatedAt: new Date() })
       .where(
         and(
           eq(socialPostQueue.status, "processing"),
-          drizzleSql`${socialPostQueue.updatedAt} < datetime('now', '-10 minutes')`
+          drizzleSql`${socialPostQueue.updatedAt} < (unixepoch() - 600)`
         )
       )
       .returning();
@@ -2358,9 +2385,39 @@ async function resetCycleIfNeeded(): Promise<void> {
       );
 
     if (Number(pendingCount[0]?.count) === 0) {
-      // All posted or skipped! Start a new cycle
+      // All posted or skipped! Check if we should start a new cycle.
+      // COOLDOWN: Only reset if the last successful post was on a PREVIOUS calendar day
+      // (in Mexico City timezone). This prevents same-day duplicates.
+      const lastPost = await db
+        .select({ postedAt: socialPostsLog.postedAt })
+        .from(socialPostsLog)
+        .where(eq(socialPostsLog.status, "success"))
+        .orderBy(desc(socialPostsLog.postedAt))
+        .limit(1);
+
+      if (lastPost.length > 0 && lastPost[0].postedAt) {
+        const lastPostDate = new Date(lastPost[0].postedAt);
+        // Convert to Mexico City timezone (UTC-6) for date comparison
+        const cstOffset = 6 * 60 * 60 * 1000; // 6 hours in ms
+        const lastPostCST = new Date(lastPostDate.getTime() - cstOffset);
+        const nowCST = new Date(Date.now() - cstOffset);
+
+        const lastPostDay = `${lastPostCST.getUTCFullYear()}-${lastPostCST.getUTCMonth()}-${lastPostCST.getUTCDate()}`;
+        const todayDay = `${nowCST.getUTCFullYear()}-${nowCST.getUTCMonth()}-${nowCST.getUTCDate()}`;
+
+        if (lastPostDay === todayDay) {
+          // Same day — don't reset the cycle yet. Wait for a new day.
+          console.log(
+            `[Social] All items posted/skipped in cycle ${currentCycle}, but last post was today (Mexico City). ` +
+            `Waiting for a new day before resetting cycle to prevent duplicates.`
+          );
+          return false;
+        }
+      }
+
+      // Either no posts exist yet, or the last post was on a previous day — safe to reset
       const nextCycle = currentCycle + 1;
-      console.log(`[Social] All items posted/skipped in cycle ${currentCycle}. Starting cycle ${nextCycle}.`);
+      console.log(`[Social] All items posted/skipped in cycle ${currentCycle}. Last post was on a previous day. Starting cycle ${nextCycle}.`);
 
       // Reset all items to pending for the new cycle
       await db
@@ -2373,9 +2430,14 @@ async function resetCycleIfNeeded(): Promise<void> {
           postedAt: null,
           updatedAt: new Date(),
         });
+
+      return true;
     }
+
+    return false;
   } catch (error) {
     console.error("[Social] Error resetting cycle:", error);
+    return false;
   }
 }
 
