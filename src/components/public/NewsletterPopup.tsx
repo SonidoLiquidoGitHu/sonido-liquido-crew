@@ -559,6 +559,7 @@ export function NewsletterPopup({
                       required
                       disabled={status === "loading"}
                       className="w-full h-12 px-4 bg-slc-dark border-slc-border focus:border-primary text-white placeholder:text-slc-muted rounded-xl"
+                      aria-label="Email"
                     />
                   </div>
 

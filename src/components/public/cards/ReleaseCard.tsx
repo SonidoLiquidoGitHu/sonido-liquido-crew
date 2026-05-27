@@ -51,6 +51,7 @@ export function ReleaseCard({ release, showArtist = true, artistName }: ReleaseC
                 href={release.spotifyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={`Escuchar ${release.title} en Spotify`}
                 className="w-14 h-14 rounded-full bg-spotify flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
                 onClick={(e) => e.stopPropagation()}
               >

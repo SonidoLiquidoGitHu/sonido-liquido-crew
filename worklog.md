@@ -611,3 +611,73 @@ Stage Summary:
 - Vertical videos without thumbnails now show the video's first frame instead of a blank placeholder
 - Beats section is always visible on main page with "Próximamente" empty state
 - Two commits pushed: b131fae, ef461af
+
+---
+Task ID: 2-a
+Agent: accessibility-fixer
+Task: Fix accessibility issues: empty alt texts, missing aria-labels, and iframe titles
+
+Work Log:
+- Fixed 7 images with alt="" across 5 files:
+  1. playlists/[slug]/page.tsx line 175: alt="" → alt="Fondo decorativo"
+  2. prensa/artistas/[slug]/page.tsx line 206: alt="" → alt={`${artist.name} banner`}
+  3. epk/[slug]/page.tsx line 218: alt="" → alt={`${artist.name} banner`}
+  4. prensa/page.tsx line 337: alt="" → alt={`${pressKit.title || "Press kit"} banner`}
+  5. embed/playlist/[slug]/page.tsx line 159: alt="" → alt={currentTrack?.title || "Portada del track"}
+  6. embed/playlist/[slug]/page.tsx line 237: alt="" → alt={playlist.name || "Portada del playlist"}
+  7. embed/playlist/[slug]/page.tsx line 303: alt="" → alt={track.title || "Portada del track"}
+  8. UserPlaylistBuilder.tsx line 489: alt="" → alt="Portada de playlist"
+- Fixed 2 icon-only links missing aria-label:
+  1. ReleaseCard.tsx: Added aria-label={`Escuchar ${release.title} en Spotify`} to Spotify play button <a>
+  2. EventCard.tsx: Added aria-label={`Comprar boletos para ${event.title}`} to ticket icon <a>
+- Fixed 3 iframes without title:
+  1. ArtistDiscography.tsx: Added title={`Spotify discografía de ${artistName}`}
+  2. DiscographyExplorer.tsx: Added title={`Reproductor Spotify de ${selectedArtist.name}`}
+  3. VideoUploader.tsx: Added title="Vista previa del video"
+
+Stage Summary:
+- 8 image alt text fixes across 5 files
+- 2 aria-label additions on icon-only links
+- 3 iframe title additions
+- Total: 13 accessibility fixes applied across 10 files
+
+---
+Task ID: 2-b
+Agent: accessibility-fixer
+Task: Fix accessibility issues: icon-only buttons without aria-label, form inputs without labels, heading hierarchy
+
+Work Log:
+- Fixed icon-only buttons without aria-label in UnlockLanding.tsx (5 buttons):
+  1. Fullscreen button: aria-label={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+  2. Video play/pause (center overlay): aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
+  3. Audio restart button: aria-label="Reiniciar"
+  4. Audio play/pause button: aria-label={isPlaying ? "Pausar audio" : "Reproducir audio"}
+  5. Audio mute button: aria-label={isMuted ? "Activar sonido" : "Silenciar"}
+- Fixed icon-only buttons without aria-label in ReleaseNotifyButton.tsx (3 elements):
+  1. Close form button (X icon): aria-label="Cerrar formulario de notificación"
+  2. Inline variant email Input: aria-label="Email para notificación"
+  3. Default variant email Input: aria-label="Email para notificación"
+- Fixed icon-only buttons without aria-label in BeatCard.tsx (2 buttons):
+  1. Play/pause overlay button: aria-label={isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
+  2. Compact play/pause button: aria-label={isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
+- Fixed icon-only button without aria-label in ArtistYouTubeSection.tsx (1 button):
+  1. Video play button: aria-label={`Reproducir video ${video.title}`}
+- Fixed form inputs without labels in NewsletterForm.tsx (4 inputs):
+  1. Inline variant email Input: aria-label="Email"
+  2. Card variant email Input: aria-label="Email"
+  3. Default variant name Input: aria-label="Nombre"
+  4. Default variant email Input: aria-label="Email"
+- Fixed form input without label in NewsletterPopup.tsx (1 input):
+  1. Email Input: aria-label="Email"
+- Fixed heading hierarchy in Header.tsx:
+  1. Changed <h1> to <div> for logo text "Sonido Líquido" (was creating h1 on every page, conflicting with page-level h1)
+
+Stage Summary:
+- 5 aria-label additions on icon-only buttons in UnlockLanding.tsx
+- 3 aria-label/additions in ReleaseNotifyButton.tsx (1 button + 2 inputs)
+- 2 aria-label additions on play/pause buttons in BeatCard.tsx
+- 1 aria-label addition on video play button in ArtistYouTubeSection.tsx
+- 4 aria-label additions on form inputs in NewsletterForm.tsx
+- 1 aria-label addition on form input in NewsletterPopup.tsx
+- 1 heading hierarchy fix (h1→div) in Header.tsx
+- Total: 17 accessibility fixes applied across 7 files

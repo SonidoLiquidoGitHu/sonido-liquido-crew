@@ -85,6 +85,7 @@ export function BeatCard({
           <button
             onClick={handlePlayPause}
             className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-all duration-300"
+            aria-label={isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
           >
             <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
               isPlaying
@@ -255,6 +256,7 @@ export function BeatCardCompact({
               : "bg-slc-dark hover:bg-primary text-white"
             : "bg-slc-dark text-slc-muted cursor-not-allowed"
         }`}
+        aria-label={isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
       >
         {isPlaying ? (
           <Pause className="w-4 h-4" />

@@ -167,7 +167,7 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
       {/* Ticket Button */}
       {event.ticketUrl && !isPast && (
         <Button size="sm" variant="outline" asChild className="flex-shrink-0">
-          <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer">
+          <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" aria-label={`Comprar boletos para ${event.title}`}>
             <Ticket className="w-4 h-4" />
           </a>
         </Button>

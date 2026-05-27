@@ -156,7 +156,7 @@ export default function PlaylistEmbedPage() {
             {currentTrack?.coverUrl ? (
               <img
                 src={currentTrack.coverUrl}
-                alt=""
+                alt={currentTrack?.title || "Portada del track"}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -234,7 +234,7 @@ export default function PlaylistEmbedPage() {
             {playlist.coverImageUrl ? (
               <img
                 src={playlist.coverImageUrl}
-                alt=""
+                alt={playlist.name || "Portada del playlist"}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -300,7 +300,7 @@ export default function PlaylistEmbedPage() {
             {/* Cover */}
             <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0" style={{ backgroundColor: borderColor }}>
               {track.coverUrl ? (
-                <img src={track.coverUrl} alt="" className="w-full h-full object-cover" />
+                <img src={track.coverUrl} alt={track.title || "Portada del track"} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Music className="w-4 h-4" style={{ color: mutedColor }} />

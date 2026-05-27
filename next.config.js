@@ -149,6 +149,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  eslint: {
+    ignoreDuringBuilds: true, // ESLint 10 + FlatCompat circular JSON issue (known Next.js 16 bug)
+  },
 
   // Enable compression
   compress: true,

@@ -334,7 +334,7 @@ export default function PressPage() {
           <div className="absolute inset-0 opacity-20">
             <Image
               src={pressKit.heroBannerImageUrl}
-              alt=""
+              alt={`${pressKit.heroTitle || "Press kit"} banner`}
               fill
               className="object-cover"
               priority

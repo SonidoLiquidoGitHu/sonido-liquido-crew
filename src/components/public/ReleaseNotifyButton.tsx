@@ -189,6 +189,7 @@ export function ReleaseNotifyButton({
           placeholder="tu@email.com"
           className="flex-1"
           disabled={loading}
+          aria-label="Email para notificación"
         />
         <Button type="submit" disabled={loading} size="sm">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
@@ -243,6 +244,7 @@ export function ReleaseNotifyButton({
             <button
               onClick={() => setShowForm(false)}
               className="text-slc-muted hover:text-white"
+              aria-label="Cerrar formulario de notificación"
             >
               <X className="w-4 h-4" />
             </button>
@@ -266,6 +268,7 @@ export function ReleaseNotifyButton({
                 className="pl-10"
                 disabled={loading}
                 autoFocus
+                aria-label="Email para notificación"
               />
             </div>
 

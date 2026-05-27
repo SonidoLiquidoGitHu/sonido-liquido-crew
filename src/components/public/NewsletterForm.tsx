@@ -68,6 +68,7 @@ export function NewsletterForm({
           onChange={(e) => setEmail(e.target.value)}
           disabled={status === "loading" || status === "success"}
           className="flex-1"
+          aria-label="Email"
         />
         <Button
           type="submit"
@@ -99,6 +100,7 @@ export function NewsletterForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={status === "loading" || status === "success"}
+            aria-label="Email"
           />
           <Button
             type="submit"
@@ -137,6 +139,7 @@ export function NewsletterForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={status === "loading" || status === "success"}
+          aria-label="Nombre"
         />
         <Input
           type="email"
@@ -145,6 +148,7 @@ export function NewsletterForm({
           onChange={(e) => setEmail(e.target.value)}
           disabled={status === "loading" || status === "success"}
           required
+          aria-label="Email"
         />
       </div>
       <Button

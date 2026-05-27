@@ -183,6 +183,7 @@ export function ArtistDiscography({
           {/* Spotify Artist Discography Embed */}
           <iframe
             src={`https://open.spotify.com/embed/artist/${spotifyId}?utm_source=generator&theme=0`}
+            title={`Spotify discografía de ${artistName}`}
             width="100%"
             height="400"
             frameBorder="0"

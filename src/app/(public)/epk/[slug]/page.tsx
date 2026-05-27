@@ -215,7 +215,7 @@ export default async function PublicEpkPage({ params }: PageProps) {
           <div className="absolute inset-0 opacity-15">
             <Image
               src={artist.bannerImageUrl}
-              alt=""
+              alt={`${artist.name} banner`}
               fill
               className="object-cover"
               priority

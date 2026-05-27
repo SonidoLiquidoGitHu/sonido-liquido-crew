@@ -172,7 +172,7 @@ export default function PlaylistPage() {
           <div className="absolute inset-0">
             <SafeImage
               src={playlist.coverImageUrl}
-              alt=""
+              alt="Fondo decorativo"
               fill
               className="object-cover blur-3xl opacity-20 scale-110"
               sizes="100vw"

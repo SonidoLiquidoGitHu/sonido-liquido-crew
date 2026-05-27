@@ -203,7 +203,7 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
           <div className="absolute inset-0 opacity-20">
             <Image
               src={artist.bannerImageUrl}
-              alt=""
+              alt={`${artist.name} banner`}
               fill
               className="object-cover"
               priority

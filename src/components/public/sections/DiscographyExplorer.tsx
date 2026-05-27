@@ -217,6 +217,7 @@ export function DiscographyExplorer() {
               {selectedSpotifyId ? (
                 <iframe
                   src={`https://open.spotify.com/embed/artist/${selectedSpotifyId}?utm_source=generator&theme=0`}
+                  title={`Reproductor Spotify de ${selectedArtist.name}`}
                   width="100%"
                   height="100%"
                   frameBorder="0"

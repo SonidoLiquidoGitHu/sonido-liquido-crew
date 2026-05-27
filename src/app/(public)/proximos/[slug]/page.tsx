@@ -105,7 +105,7 @@ export default async function UpcomingReleasePage({ params }: PageProps) {
         <div className="absolute inset-0 opacity-20">
           <Image
             src={release.bannerImageUrl}
-            alt=""
+            alt={`${release.title} banner`}
             fill
             className="object-cover"
             priority

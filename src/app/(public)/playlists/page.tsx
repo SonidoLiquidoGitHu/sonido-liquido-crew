@@ -240,7 +240,7 @@ function PlaylistsPageContent() {
                                   {index + 1}
                                 </span>
                                 {track.albumImage ? (
-                                  <Image src={track.albumImage} alt="" width={40} height={40} className="rounded" />
+                                  <Image src={track.albumImage} alt={track.name || "Album"} width={40} height={40} className="rounded" />
                                 ) : (
                                   <div className="w-10 h-10 rounded bg-slc-dark flex items-center justify-center">
                                     <Disc3 className="w-5 h-5 text-slc-muted" />

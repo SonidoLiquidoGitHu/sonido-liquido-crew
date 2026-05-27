@@ -331,6 +331,7 @@ export function UnlockLanding({
                   <button
                     onClick={toggleFullscreen}
                     className="p-2 bg-black/50 rounded-lg hover:bg-black/70 transition-colors"
+                    aria-label={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
                   >
                     {isFullscreen ? (
                       <Minimize2 className="w-5 h-5 text-white" />
@@ -345,6 +346,7 @@ export function UnlockLanding({
                   <button
                     onClick={togglePlay}
                     className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary flex items-center justify-center shadow-lg shadow-primary/30 transition-transform hover:scale-105"
+                    aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
                   >
                     {isPlaying ? (
                       <Pause className="w-8 h-8 text-white" />
@@ -544,6 +546,7 @@ export function UnlockLanding({
                   }}
                   className="p-2 text-white/50 hover:text-white transition-colors"
                   disabled={!isLoaded}
+                  aria-label="Reiniciar"
                 >
                   <SkipBack className="w-5 h-5" />
                 </button>
@@ -553,6 +556,7 @@ export function UnlockLanding({
                   onClick={togglePlay}
                   className="w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 transition-transform disabled:opacity-50"
                   disabled={!isLoaded && !audioUrl}
+                  aria-label={isPlaying ? "Pausar audio" : "Reproducir audio"}
                 >
                   {isPlaying ? (
                     <Pause className="w-7 h-7 text-white" />
@@ -565,6 +569,7 @@ export function UnlockLanding({
                 <button
                   onClick={toggleMute}
                   className="p-2 text-white/50 hover:text-white transition-colors"
+                  aria-label={isMuted ? "Activar sonido" : "Silenciar"}
                 >
                   {isMuted ? (
                     <VolumeX className="w-5 h-5" />

@@ -842,6 +842,7 @@ export function VideoUploader({
             {value.source === "youtube" && value.embedUrl ? (
               <iframe
                 src={`${value.embedUrl}?rel=0`}
+                title="Vista previa del video"
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

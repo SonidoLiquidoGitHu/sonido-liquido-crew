@@ -156,6 +156,7 @@ export function ArtistYouTubeSection({
               <button
                 onClick={() => setPlayingVideoId(video.youtubeId)}
                 className="relative aspect-video w-full cursor-pointer"
+                aria-label={`Reproducir video ${video.title}`}
               >
                 {video.thumbnailUrl ? (
                   <img

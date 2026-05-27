@@ -40,9 +40,9 @@ export function Header() {
               </svg>
             </div>
             <div>
-              <h1 className="font-oswald text-lg uppercase tracking-wider leading-tight">
+              <div className="font-oswald text-lg uppercase tracking-wider leading-tight">
                 Sonido Líquido
-              </h1>
+              </div>
               <p className="text-xs text-primary uppercase tracking-widest">
                 Hip Hop México
               </p>

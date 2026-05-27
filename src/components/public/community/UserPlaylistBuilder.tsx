@@ -486,7 +486,7 @@ export function UserPlaylistBuilder({
             {tracks[0]?.coverUrl ? (
               <img
                 src={tracks[0].coverUrl}
-                alt=""
+                alt="Portada de playlist"
                 className="w-full h-full object-cover"
               />
             ) : (
