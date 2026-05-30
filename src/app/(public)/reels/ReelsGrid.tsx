@@ -21,6 +21,9 @@ import {
   Loader2,
   Heart,
   Keyboard,
+  Calendar,
+  MapPin,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -53,6 +56,7 @@ interface ReelVideo {
   platformUrl: string | null;
   embedUrl: string | null;
   artistId: string | null;
+  eventId: string | null;
   isFeatured: boolean;
   shareCount: number;
   viewCount: number;
@@ -63,6 +67,22 @@ interface ReelVideo {
   tags: { id: string; name: string; slug: string }[];
 }
 
+interface VideoEvent {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  artistId: string | null;
+  eventDate: string | null;
+  location: string | null;
+  isPublished: boolean;
+  displayOrder: number;
+  videoCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ReelsGridProps {
   videos: ReelVideo[];
 }
@@ -71,15 +91,12 @@ interface ReelsGridProps {
 // HELPERS (imported from @/lib/video-utils)
 // ===========================================
 
-// getYouTubeId, getVideoThumbnail are now shared utilities
-
 const isDirectVideo = (video: ReelVideo) => {
   return isDirectVideoUtil(video as unknown as VideoLike);
 };
 
 // ===========================================
 // HEART BURST ANIMATION COMPONENT
-// (Feature #4: Double-tap to like)
 // ===========================================
 
 function HeartBurst({ x, y }: { x: number; y: number }) {
@@ -109,7 +126,6 @@ function HeartBurst({ x, y }: { x: number; y: number }) {
           />
         </div>
       ))}
-      {/* Central big heart */}
       <Heart
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-red-500"
         fill="currentColor"
@@ -124,7 +140,6 @@ function HeartBurst({ x, y }: { x: number; y: number }) {
 
 // ===========================================
 // STORY DOTS INDICATOR
-// (Feature #5: Video counter dots)
 // ===========================================
 
 function StoryDots({
@@ -159,7 +174,6 @@ function StoryDots({
 
 // ===========================================
 // KEYBOARD SHORTCUTS TOOLTIP
-// (Feature #6: Keyboard shortcuts tooltip)
 // ===========================================
 
 function KeyboardTooltip({ onClose }: { onClose: () => void }) {
@@ -226,6 +240,33 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const hasShownTooltipRef = useRef(false);
 
+  // Events state
+  const [events, setEvents] = useState<VideoEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventsLoading, setEventsLoading] = useState(true);
+
+  // Fetch events on mount
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch("/api/vertical-videos?includeEvents=true&limit=1");
+        const data = await res.json();
+        if (data.success && data.events) {
+          setEvents(data.events);
+        }
+      } catch {
+        // Events are non-critical, fail silently
+      }
+      setEventsLoading(false);
+    };
+    fetchEvents();
+  }, []);
+
+  // Filtered videos based on selected event
+  const displayVideos = selectedEventId
+    ? videos.filter((v) => v.eventId === selectedEventId)
+    : videos;
+
   if (videos.length === 0) {
     return (
       <div className="text-center py-20">
@@ -282,14 +323,14 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
 
   const nextReel = () => {
     if (activeIndex !== null) {
-      const nextIdx = (activeIndex + 1) % videos.length;
+      const nextIdx = (activeIndex + 1) % displayVideos.length;
       navigateReel(nextIdx, "right");
     }
   };
 
   const prevReel = () => {
     if (activeIndex !== null) {
-      const prevIdx = (activeIndex - 1 + videos.length) % videos.length;
+      const prevIdx = (activeIndex - 1 + displayVideos.length) % displayVideos.length;
       navigateReel(prevIdx, "left");
     }
   };
@@ -467,9 +508,105 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
 
   return (
     <>
+      {/* Events Filter Section */}
+      {events.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <button
+              onClick={() => setSelectedEventId(null)}
+              className={cn(
+                "flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                !selectedEventId
+                  ? "bg-primary text-white"
+                  : "bg-slc-card border border-slc-border text-slc-muted hover:border-primary/50"
+              )}
+            >
+              Todos
+            </button>
+            {events.map((event) => (
+              <button
+                key={event.id}
+                onClick={() => setSelectedEventId(event.id === selectedEventId ? null : event.id)}
+                className={cn(
+                  "flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                  selectedEventId === event.id
+                    ? "bg-primary text-white"
+                    : "bg-slc-card border border-slc-border text-slc-muted hover:border-primary/50"
+                )}
+              >
+                {event.coverImageUrl && (
+                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
+                    <SafeImage
+                      src={event.coverImageUrl}
+                      alt={event.title}
+                      fill
+                      className="object-cover"
+                      sizes="24px"
+                    />
+                  </div>
+                )}
+                <span>{event.title}</span>
+                <span className="text-xs opacity-70">({event.videoCount})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Selected event info */}
+          {selectedEventId && (() => {
+            const selectedEvent = events.find(e => e.id === selectedEventId);
+            if (!selectedEvent) return null;
+            return (
+              <div className="mt-4 p-4 bg-slc-card border border-slc-border rounded-xl">
+                <div className="flex items-start gap-4">
+                  {selectedEvent.coverImageUrl && (
+                    <div className="w-20 h-14 rounded-lg overflow-hidden border border-slc-border shrink-0">
+                      <SafeImage
+                        src={selectedEvent.coverImageUrl}
+                        alt={selectedEvent.title}
+                        fill
+                        className="object-cover"
+                        sizes="80px"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-oswald text-lg uppercase">{selectedEvent.title}</h3>
+                    {selectedEvent.description && (
+                      <p className="text-sm text-slc-muted mt-0.5 line-clamp-2">{selectedEvent.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-1 text-xs text-slc-muted">
+                      {selectedEvent.eventDate && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(selectedEvent.eventDate).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" })}
+                        </span>
+                      )}
+                      {selectedEvent.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> {selectedEvent.location}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Smartphone className="w-3 h-3" /> {selectedEvent.videoCount} videos
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedEventId(null)}
+                    className="text-slc-muted hover:text-white transition-colors shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Grid of phone-shaped cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {videos.map((video, index) => (
+        {displayVideos.map((video, index) => (
           <div
             key={video.id}
             onClick={() => openReel(index)}
@@ -554,8 +691,17 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
         ))}
       </div>
 
+      {/* Empty state when filtering by event */}
+      {displayVideos.length === 0 && selectedEventId && (
+        <div className="text-center py-16">
+          <FolderOpen className="w-16 h-16 text-slc-muted mx-auto mb-4" />
+          <h3 className="font-oswald text-xl uppercase mb-2">No hay videos en este evento</h3>
+          <p className="text-slc-muted">Pronto se agregarán videos a este evento.</p>
+        </div>
+      )}
+
       {/* Full-screen Reel Viewer */}
-      {activeIndex !== null && videos[activeIndex] && (
+      {activeIndex !== null && displayVideos[activeIndex] && (
         <div
           className={cn(
             "fixed inset-0 bg-black/95 z-50 flex items-center justify-center transition-opacity duration-300",
@@ -575,7 +721,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
           <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
             <div className="max-w-sm mx-auto">
               <StoryDots
-                total={videos.length}
+                total={displayVideos.length}
                 activeIndex={activeIndex}
                 progress={videoProgress}
               />
@@ -620,7 +766,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
             }}
           >
             {(() => {
-              const video = videos[activeIndex];
+              const video = displayVideos[activeIndex];
               const ytId = getYouTubeId(video);
               const direct = isDirectVideo(video);
 
@@ -632,7 +778,6 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                 );
               }
               if (direct) {
-                // Handle Dropbox URLs via shared utility — use proxy for mobile compatibility
                 const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
                 const posterUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
                 return (
@@ -710,27 +855,27 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
           {/* Video Info */}
           <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none">
             <div className="max-w-sm mx-auto">
-              {videos[activeIndex].artistName && (
+              {displayVideos[activeIndex].artistName && (
                 <Link
-                  href={`/artistas/${videos[activeIndex].artistSlug}`}
+                  href={`/artistas/${displayVideos[activeIndex].artistSlug}`}
                   className="text-sm text-primary hover:underline pointer-events-auto"
                 >
-                  {videos[activeIndex].artistName}
+                  {displayVideos[activeIndex].artistName}
                 </Link>
               )}
-              {videos[activeIndex].title && (
+              {displayVideos[activeIndex].title && (
                 <h3 className="font-oswald text-lg text-white uppercase">
-                  {videos[activeIndex].title}
+                  {displayVideos[activeIndex].title}
                 </h3>
               )}
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm text-white/60">
-                  {activeIndex + 1} / {videos.length}
+                  {activeIndex + 1} / {displayVideos.length}
                 </span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    nativeShare(videos[activeIndex]);
+                    nativeShare(displayVideos[activeIndex]);
                   }}
                   className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full hover:bg-white/20 text-white text-sm transition-colors pointer-events-auto"
                 >
@@ -749,7 +894,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
       )}
 
       {/* Share Modal */}
-      {shareModalIndex !== null && videos[shareModalIndex] && (
+      {shareModalIndex !== null && displayVideos[shareModalIndex] && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
           onClick={() => { setShareModalIndex(null); setCopiedLink(false); }}
@@ -768,17 +913,17 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
               </button>
             </div>
             <div className="p-5 space-y-3">
-              <p className="text-sm text-slc-muted">{videos[shareModalIndex].title || "Video"}</p>
+              <p className="text-sm text-slc-muted">{displayVideos[shareModalIndex].title || "Video"}</p>
 
               {/* Copy link */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 p-2.5 bg-slc-card border border-slc-border rounded-lg text-xs truncate">
-                  {typeof window !== "undefined" ? `${window.location.origin}/reels/${videos[shareModalIndex].id}` : `/reels/${videos[shareModalIndex].id}`}
+                  {typeof window !== "undefined" ? `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}` : `/reels/${displayVideos[shareModalIndex].id}`}
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => copyLink(videos[shareModalIndex].id)}
+                  onClick={() => copyLink(displayVideos[shareModalIndex].id)}
                 >
                   {copiedLink ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                 </Button>
@@ -790,14 +935,14 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                   variant="outline"
                   className="w-full text-sm"
                   onClick={async () => {
-                    const url = `${window.location.origin}/reels/${videos[shareModalIndex].id}`;
-                    const text = videos[shareModalIndex].title || "Mira este video de Sonido Líquido Crew";
+                    const url = `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}`;
+                    const text = displayVideos[shareModalIndex].title || "Mira este video de Sonido Líquido Crew";
                     if (navigator.share) {
                       try { await navigator.share({ title: text, url }); } catch {}
                     } else {
                       window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`);
                     }
-                    trackShare(videos[shareModalIndex].id, "whatsapp");
+                    trackShare(displayVideos[shareModalIndex].id, "whatsapp");
                   }}
                 >
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -807,10 +952,10 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                   variant="outline"
                   className="w-full text-sm"
                   onClick={() => {
-                    const url = `${window.location.origin}/reels/${videos[shareModalIndex].id}`;
-                    const text = videos[shareModalIndex].title || "Mira este video";
+                    const url = `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}`;
+                    const text = displayVideos[shareModalIndex].title || "Mira este video";
                     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
-                    trackShare(videos[shareModalIndex].id, "twitter");
+                    trackShare(displayVideos[shareModalIndex].id, "twitter");
                   }}
                 >
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
@@ -820,9 +965,9 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                   variant="outline"
                   className="w-full text-sm"
                   onClick={() => {
-                    const url = `${window.location.origin}/reels/${videos[shareModalIndex].id}`;
+                    const url = `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}`;
                     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
-                    trackShare(videos[shareModalIndex].id, "facebook");
+                    trackShare(displayVideos[shareModalIndex].id, "facebook");
                   }}
                 >
                   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
@@ -831,7 +976,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                 <Button
                   variant="outline"
                   className="w-full text-sm"
-                  onClick={() => nativeShare(videos[shareModalIndex])}
+                  onClick={() => nativeShare(displayVideos[shareModalIndex])}
                 >
                   <Share2 className="w-4 h-4 mr-2" />
                   Más

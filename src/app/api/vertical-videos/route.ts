@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { verticalVideos, verticalVideoTags, tags } from "@/db/schema";
+import { verticalVideos, verticalVideoEvents, verticalVideoTags, tags } from "@/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 
 // ===========================================
-// GET - Public: List published vertical videos
+// GET - Public: List published vertical videos + events
 // ===========================================
 export async function GET(request: NextRequest) {
   try {
@@ -13,10 +13,42 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0");
     const featured = searchParams.get("featured") === "true";
     const artistId = searchParams.get("artistId");
+    const eventId = searchParams.get("eventId");
+    const includeEvents = searchParams.get("includeEvents") === "true";
 
+    // Fetch events if requested
+    let eventsData: any[] = [];
+    if (includeEvents) {
+      const allEvents = await db
+        .select()
+        .from(verticalVideoEvents)
+        .where(eq(verticalVideoEvents.isPublished, true))
+        .orderBy(desc(verticalVideoEvents.eventDate));
+
+      // Get video count for each event
+      eventsData = await Promise.all(
+        allEvents.map(async (event) => {
+          const [countResult] = await db
+            .select({ total: sql<number>`count(*)` })
+            .from(verticalVideos)
+            .where(and(
+              eq(verticalVideos.eventId, event.id),
+              eq(verticalVideos.isPublished, true)
+            ));
+
+          return {
+            ...event,
+            videoCount: countResult?.total || 0,
+          };
+        })
+      );
+    }
+
+    // Fetch videos
     const conditions = [eq(verticalVideos.isPublished, true)];
     if (featured) conditions.push(eq(verticalVideos.isFeatured, true));
     if (artistId) conditions.push(eq(verticalVideos.artistId, artistId));
+    if (eventId) conditions.push(eq(verticalVideos.eventId, eventId));
 
     const allVideos = await db
       .select()
@@ -51,6 +83,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: videosWithTags,
+      events: eventsData,
       total: countResult?.total || 0,
     });
   } catch (error) {

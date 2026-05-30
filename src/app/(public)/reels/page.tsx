@@ -30,6 +30,7 @@ async function getReelsData() {
         platformUrl: verticalVideos.platformUrl,
         embedUrl: verticalVideos.embedUrl,
         artistId: verticalVideos.artistId,
+        eventId: verticalVideos.eventId,
         isFeatured: verticalVideos.isFeatured,
         shareCount: verticalVideos.shareCount,
         viewCount: verticalVideos.viewCount,

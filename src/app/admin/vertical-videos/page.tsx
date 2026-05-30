@@ -38,6 +38,9 @@ import {
   Save,
   Link as LinkIcon,
   RefreshCw,
+  Calendar,
+  MapPin,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
@@ -52,6 +55,7 @@ interface VerticalVideo {
   platformUrl: string | null;
   embedUrl: string | null;
   artistId: string | null;
+  eventId: string | null;
   isFeatured: boolean;
   isPublished: boolean;
   displayOrder: number;
@@ -60,6 +64,22 @@ interface VerticalVideo {
   duration: number | null;
   tags: { id: string; name: string; slug: string }[];
   createdAt: string;
+}
+
+interface VideoEvent {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  artistId: string | null;
+  eventDate: string | null;
+  location: string | null;
+  isPublished: boolean;
+  displayOrder: number;
+  videoCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Artist {
@@ -103,6 +123,7 @@ export default function AdminVerticalVideosPage() {
     title: "",
     description: "",
     artistId: "",
+    eventId: "",
     isFeatured: false,
     isPublished: true,
     tagIds: [] as string[],
@@ -113,22 +134,45 @@ export default function AdminVerticalVideosPage() {
   const [shareVideo, setShareVideo] = useState<VerticalVideo | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"videos" | "eventos">("videos");
+
+  // Events state
+  const [events, setEvents] = useState<VideoEvent[]>([]);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<VideoEvent | null>(null);
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    description: "",
+    coverImageUrl: "",
+    artistId: "",
+    eventDate: "",
+    location: "",
+    isPublished: true,
+    videoIds: [] as string[],
+  });
+  const [uploadEventId, setUploadEventId] = useState("");
+  const [uploadingCover, setUploadingCover] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [videosRes, artistsRes, tagsRes] = await Promise.all([
+      const [videosRes, artistsRes, tagsRes, eventsRes] = await Promise.all([
         fetch("/api/admin/vertical-videos"),
         fetch("/api/admin/artists"),
         fetch("/api/admin/gallery/tags"),
+        fetch("/api/admin/vertical-video-events"),
       ]);
 
       const videosData = await videosRes.json();
       const artistsData = await artistsRes.json();
       const tagsData = await tagsRes.json();
 
+      const eventsData = await eventsRes.json();
       if (videosData.success) setVideos(videosData.data || []);
       if (artistsData.success) setArtists(artistsData.data || []);
       if (tagsData.success) setTags(tagsData.data || []);
+      if (eventsData.success) setEvents(eventsData.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       setMessage({ type: "error", text: "Error al cargar los datos" });
@@ -339,6 +383,7 @@ export default function AdminVerticalVideosPage() {
           platformUrl: uploadVideoInfo.url,
           embedUrl: uploadVideoInfo.embedUrl || parsed?.embedUrl || null,
           artistId: uploadArtistId || null,
+          eventId: uploadEventId || null,
           isFeatured: uploadIsFeatured,
           isPublished: true,
           tagIds: uploadTagIds,
@@ -408,6 +453,7 @@ export default function AdminVerticalVideosPage() {
     setUploadTagIds([]);
     setUploadIsFeatured(false);
     setUploadThumbnailUrl("");
+    setUploadEventId("");
   };
 
   // Open edit modal
@@ -417,6 +463,7 @@ export default function AdminVerticalVideosPage() {
       title: video.title || "",
       description: video.description || "",
       artistId: video.artistId || "",
+      eventId: video.eventId || "",
       isFeatured: video.isFeatured,
       isPublished: video.isPublished,
       tagIds: video.tags.map((t) => t.id),
@@ -437,6 +484,7 @@ export default function AdminVerticalVideosPage() {
           title: editForm.title || null,
           description: editForm.description || null,
           artistId: editForm.artistId || null,
+          eventId: editForm.eventId || null,
           isFeatured: editForm.isFeatured,
           isPublished: editForm.isPublished,
           tagIds: editForm.tagIds,
@@ -1158,6 +1206,150 @@ export default function AdminVerticalVideosPage() {
     }
   };
 
+  // ===========================================
+  // EVENT MANAGEMENT FUNCTIONS
+  // ===========================================
+
+  const resetEventForm = () => {
+    setEventForm({
+      title: "",
+      description: "",
+      coverImageUrl: "",
+      artistId: "",
+      eventDate: "",
+      location: "",
+      isPublished: true,
+      videoIds: [],
+    });
+  };
+
+  const openCreateEventModal = () => {
+    setEditingEvent(null);
+    resetEventForm();
+    setShowEventModal(true);
+  };
+
+  const openEditEventModal = (event: VideoEvent) => {
+    setEditingEvent(event);
+    // Get video IDs assigned to this event
+    const eventVideoIds = videos.filter(v => v.eventId === event.id).map(v => v.id);
+    setEventForm({
+      title: event.title,
+      description: event.description || "",
+      coverImageUrl: event.coverImageUrl || "",
+      artistId: event.artistId || "",
+      eventDate: event.eventDate ? new Date(event.eventDate).toISOString().split("T")[0] : "",
+      location: event.location || "",
+      isPublished: event.isPublished,
+      videoIds: eventVideoIds,
+    });
+    setShowEventModal(true);
+  };
+
+  const saveEvent = async () => {
+    if (!eventForm.title) {
+      setMessage({ type: "error", text: "El título es obligatorio" });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    try {
+      if (editingEvent) {
+        // Update existing event
+        const res = await fetch("/api/admin/vertical-video-events", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingEvent.id,
+            title: eventForm.title,
+            description: eventForm.description || null,
+            coverImageUrl: eventForm.coverImageUrl || null,
+            artistId: eventForm.artistId || null,
+            eventDate: eventForm.eventDate || null,
+            location: eventForm.location || null,
+            isPublished: eventForm.isPublished,
+            videoIds: eventForm.videoIds,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMessage({ type: "success", text: "Evento actualizado" });
+          setShowEventModal(false);
+          fetchData();
+        } else {
+          setMessage({ type: "error", text: data.error || "Error al actualizar evento" });
+        }
+      } else {
+        // Create new event
+        const res = await fetch("/api/admin/vertical-video-events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: eventForm.title,
+            description: eventForm.description || null,
+            coverImageUrl: eventForm.coverImageUrl || null,
+            artistId: eventForm.artistId || null,
+            eventDate: eventForm.eventDate || null,
+            location: eventForm.location || null,
+            isPublished: eventForm.isPublished,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMessage({ type: "success", text: "Evento creado" });
+          setShowEventModal(false);
+          fetchData();
+        } else {
+          setMessage({ type: "error", text: data.error || "Error al crear evento" });
+        }
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error de conexión" });
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const deleteEvent = async (event: VideoEvent) => {
+    if (!confirm(`¿Eliminar el evento "${event.title}"? Los videos no se eliminarán.`)) return;
+    try {
+      const res = await fetch(`/api/admin/vertical-video-events?id=${event.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: "success", text: "Evento eliminado" });
+        fetchData();
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error al eliminar evento" });
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const uploadEventCover = async (file: File) => {
+    setUploadingCover(true);
+    try {
+      const result = await uploadToDropboxDirect(file, "/vertical-videos/event-covers");
+      if (result.success && result.url) {
+        setEventForm(prev => ({ ...prev, coverImageUrl: result.url! }));
+      } else {
+        setMessage({ type: "error", text: result.error || "Error al subir portada" });
+        setTimeout(() => setMessage(null), 3000);
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error al subir portada" });
+      setTimeout(() => setMessage(null), 3000);
+    }
+    setUploadingCover(false);
+  };
+
+  const toggleEventVideo = (videoId: string) => {
+    setEventForm(prev => ({
+      ...prev,
+      videoIds: prev.videoIds.includes(videoId)
+        ? prev.videoIds.filter(id => id !== videoId)
+        : [...prev.videoIds, videoId],
+    }));
+  };
+
   // Filtered videos
   const filteredVideos = videos.filter((video) => {
     const matchesSearch = !searchQuery ||
@@ -1173,7 +1365,7 @@ export default function AdminVerticalVideosPage() {
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="font-oswald text-3xl uppercase flex items-center gap-3">
             <Smartphone className="w-8 h-8 text-primary" />
@@ -1183,7 +1375,39 @@ export default function AdminVerticalVideosPage() {
             Videos verticales 9:16 - Reels, TikTok, YouTube Shorts
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+      </div>
+
+      {/* Tab Bar */}
+      <div className="flex items-center gap-1 mb-6 border-b border-slc-border">
+        <button
+          onClick={() => setActiveTab("videos")}
+          className={cn(
+            "px-5 py-2.5 font-oswald uppercase text-sm tracking-wider transition-colors border-b-2 -mb-px",
+            activeTab === "videos"
+              ? "text-primary border-primary"
+              : "text-slc-muted border-transparent hover:text-white"
+          )}
+        >
+          <Video className="w-4 h-4 inline mr-2" />
+          Videos
+        </button>
+        <button
+          onClick={() => setActiveTab("eventos")}
+          className={cn(
+            "px-5 py-2.5 font-oswald uppercase text-sm tracking-wider transition-colors border-b-2 -mb-px",
+            activeTab === "eventos"
+              ? "text-primary border-primary"
+              : "text-slc-muted border-transparent hover:text-white"
+          )}
+        >
+          <FolderOpen className="w-4 h-4 inline mr-2" />
+          Eventos
+        </button>
+      </div>
+
+      {/* Videos Tab Actions */}
+      {activeTab === "videos" && (
+      <div className="flex gap-2 flex-wrap mb-6">
           <Button variant="outline" onClick={fetchData} disabled={loading}>
             Actualizar
           </Button>
@@ -1224,7 +1448,20 @@ export default function AdminVerticalVideosPage() {
             Agregar Video
           </Button>
         </div>
+      )}
+
+      {/* Events Tab Actions */}
+      {activeTab === "eventos" && (
+      <div className="flex gap-2 flex-wrap mb-6">
+        <Button variant="outline" onClick={fetchData} disabled={loading}>
+          Actualizar
+        </Button>
+        <Button onClick={openCreateEventModal}>
+          <Plus className="w-4 h-4 mr-2" />
+          Crear Evento
+        </Button>
       </div>
+      )}
 
       {/* Message */}
       {message && (
@@ -1242,6 +1479,7 @@ export default function AdminVerticalVideosPage() {
       )}
 
       {/* Stats */}
+      {activeTab === "videos" && (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="font-oswald text-2xl text-primary">{videos.length}</div>
@@ -1260,8 +1498,99 @@ export default function AdminVerticalVideosPage() {
           <div className="text-xs text-slc-muted uppercase">Compartidos</div>
         </div>
       </div>
+      )}
 
-      {/* Search & Filters */}
+      {/* Events Tab Content */}
+      {activeTab === "eventos" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {events.map((event) => (
+            <div
+              key={event.id}
+              className="bg-slc-card border border-slc-border rounded-xl overflow-hidden group hover:border-primary/50 transition-all"
+            >
+              {/* Cover Image */}
+              <div className="relative aspect-video bg-black">
+                {event.coverImageUrl ? (
+                  <SafeImage
+                    src={event.coverImageUrl}
+                    alt={event.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slc-card flex items-center justify-center">
+                    <FolderOpen className="w-12 h-12 text-slc-muted" />
+                  </div>
+                )}
+                {/* Video count badge */}
+                <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 rounded text-xs text-white flex items-center gap-1">
+                  <Video className="w-3 h-3" /> {event.videoCount}
+                </div>
+                {/* Published badge */}
+                {!event.isPublished && (
+                  <div className="absolute top-2 left-2 px-2 py-1 bg-red-500 rounded text-xs text-white flex items-center gap-1">
+                    <EyeOff className="w-3 h-3" /> Borrador
+                  </div>
+                )}
+              </div>
+              {/* Info */}
+              <div className="p-4">
+                <h3 className="font-oswald text-lg uppercase line-clamp-1">{event.title}</h3>
+                {event.description && (
+                  <p className="text-sm text-slc-muted mt-1 line-clamp-2">{event.description}</p>
+                )}
+                <div className="flex items-center gap-3 mt-2 text-xs text-slc-muted">
+                  {event.eventDate && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(event.eventDate).toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "numeric" })}
+                    </span>
+                  )}
+                  {event.location && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> {event.location}
+                    </span>
+                  )}
+                </div>
+                {/* Actions */}
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slc-border">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditEventModal(event)}
+                    className="text-slc-muted hover:text-primary"
+                  >
+                    <Pencil className="w-4 h-4 mr-1" /> Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteEvent(event)}
+                    className="text-slc-muted hover:text-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {events.length === 0 && !loading && (
+            <div className="col-span-full text-center py-16">
+              <FolderOpen className="w-16 h-16 text-slc-muted mx-auto mb-4" />
+              <h3 className="font-oswald text-xl uppercase mb-2">No hay eventos</h3>
+              <p className="text-slc-muted mb-6">Crea eventos para agrupar videos verticales.</p>
+              <Button onClick={openCreateEventModal}>
+                <Plus className="w-4 h-4 mr-2" />
+                Crear Evento
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Search & Filters - only in videos tab */}
+      {activeTab === "videos" && (
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
@@ -1283,13 +1612,14 @@ export default function AdminVerticalVideosPage() {
           ))}
         </select>
       </div>
+      )}
 
       {/* Loading */}
-      {loading ? (
+      {loading && activeTab === "videos" ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : (
+      ) : activeTab === "videos" ? (
         <>
           {/* Videos Grid - Phone-shaped cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -1478,7 +1808,7 @@ export default function AdminVerticalVideosPage() {
             </div>
           )}
         </>
-      )}
+      ) : null}
 
       {/* Upload Modal */}
       {showUploader && (
@@ -1536,6 +1866,21 @@ export default function AdminVerticalVideosPage() {
                   <option value="">Sin artista</option>
                   {artists.map((a) => (
                     <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Event */}
+              <div>
+                <label className="block text-sm text-slc-muted mb-1.5">Evento</label>
+                <select
+                  value={uploadEventId}
+                  onChange={(e) => setUploadEventId(e.target.value)}
+                  className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
+                >
+                  <option value="">Sin evento</option>
+                  {events.map((e) => (
+                    <option key={e.id} value={e.id}>{e.title}</option>
                   ))}
                 </select>
               </div>
@@ -1651,6 +1996,19 @@ export default function AdminVerticalVideosPage() {
                 </select>
               </div>
               <div>
+                <label className="block text-sm text-slc-muted mb-1.5">Evento</label>
+                <select
+                  value={editForm.eventId}
+                  onChange={(e) => setEditForm({ ...editForm, eventId: e.target.value })}
+                  className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
+                >
+                  <option value="">Sin evento</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>{ev.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm text-slc-muted mb-1.5">Etiquetas</label>
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
@@ -1732,6 +2090,185 @@ export default function AdminVerticalVideosPage() {
                 <Button onClick={saveEdit}>
                   <Save className="w-4 h-4 mr-2" />
                   Guardar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Event Create/Edit Modal */}
+      {showEventModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slc-dark border border-slc-border rounded-xl w-full max-w-2xl max-h-[85vh] overflow-auto">
+            <div className="flex items-center justify-between p-4 border-b border-slc-border">
+              <h2 className="font-oswald text-xl uppercase flex items-center gap-2">
+                <FolderOpen className="w-5 h-5 text-primary" />
+                {editingEvent ? "Editar Evento" : "Crear Evento"}
+              </h2>
+              <Button variant="ghost" size="icon" onClick={() => { setShowEventModal(false); resetEventForm(); }}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-sm text-slc-muted mb-1.5">Título *</label>
+                <Input
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Concierto CDMX 2025..."
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm text-slc-muted mb-1.5">Descripción</label>
+                <textarea
+                  value={eventForm.description}
+                  onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descripción del evento..."
+                  className="w-full h-20 p-3 bg-slc-card border border-slc-border rounded-lg text-sm resize-none"
+                />
+              </div>
+
+              {/* Date & Location */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-slc-muted mb-1.5 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Fecha del evento
+                  </label>
+                  <Input
+                    type="date"
+                    value={eventForm.eventDate}
+                    onChange={(e) => setEventForm(prev => ({ ...prev, eventDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-slc-muted mb-1.5 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" /> Ubicación
+                  </label>
+                  <Input
+                    value={eventForm.location}
+                    onChange={(e) => setEventForm(prev => ({ ...prev, location: e.target.value }))}
+                    placeholder="Ciudad de México..."
+                  />
+                </div>
+              </div>
+
+              {/* Artist */}
+              <div>
+                <label className="block text-sm text-slc-muted mb-1.5">Artista</label>
+                <select
+                  value={eventForm.artistId}
+                  onChange={(e) => setEventForm(prev => ({ ...prev, artistId: e.target.value }))}
+                  className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
+                >
+                  <option value="">Sin artista</option>
+                  {artists.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Cover Image Upload */}
+              <div>
+                <label className="block text-sm text-slc-muted mb-1.5 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" /> Portada del evento
+                </label>
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadEventCover(file);
+                      }}
+                      className="w-full text-sm text-slc-muted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30"
+                      disabled={uploadingCover}
+                    />
+                    {uploadingCover && (
+                      <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Subiendo portada...
+                      </p>
+                    )}
+                    {eventForm.coverImageUrl && !uploadingCover && (
+                      <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> Portada subida
+                      </p>
+                    )}
+                  </div>
+                  {eventForm.coverImageUrl && (
+                    <div className="w-24 h-16 rounded-lg overflow-hidden border border-slc-border shrink-0">
+                      <SafeImage
+                        src={eventForm.coverImageUrl}
+                        alt="Portada"
+                        fill
+                        className="object-cover"
+                        sizes="96px"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Published toggle */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={eventForm.isPublished}
+                  onChange={(e) => setEventForm(prev => ({ ...prev, isPublished: e.target.checked }))}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm">Publicado</span>
+                {eventForm.isPublished ? (
+                  <Eye className="w-4 h-4 text-green-500" />
+                ) : (
+                  <EyeOff className="w-4 h-4 text-slc-muted" />
+                )}
+              </label>
+
+              {/* Video Assignment (only in edit mode) */}
+              {editingEvent && (
+                <div>
+                  <label className="block text-sm text-slc-muted mb-1.5">
+                    Videos asignados ({eventForm.videoIds.length})
+                  </label>
+                  <div className="max-h-64 overflow-y-auto border border-slc-border rounded-lg bg-slc-card">
+                    {videos.length === 0 ? (
+                      <p className="p-3 text-sm text-slc-muted">No hay videos disponibles</p>
+                    ) : (
+                      videos.map((video) => (
+                        <label
+                          key={video.id}
+                          className="flex items-center gap-3 p-2.5 hover:bg-slc-dark/50 cursor-pointer border-b border-slc-border last:border-0"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={eventForm.videoIds.includes(video.id)}
+                            onChange={() => toggleEventVideo(video.id)}
+                            className="w-4 h-4 rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm truncate">{video.title || "Sin título"}</p>
+                            <p className="text-xs text-slc-muted">{video.platform || "directo"}</p>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Submit */}
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={() => { setShowEventModal(false); resetEventForm(); }}>
+                  Cancelar
+                </Button>
+                <Button onClick={saveEvent}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingEvent ? "Guardar Cambios" : "Crear Evento"}
                 </Button>
               </div>
             </div>

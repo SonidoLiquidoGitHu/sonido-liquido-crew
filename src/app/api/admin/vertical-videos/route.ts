@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       platformUrl,
       embedUrl,
       artistId,
+      eventId,
       isFeatured,
       isPublished,
       tagIds,
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       platformUrl: platformUrl || null,
       embedUrl: embedUrl || null,
       artistId: artistId || null,
+      eventId: eventId || null,
       isFeatured: isFeatured || false,
       isPublished: isPublished !== false,
       displayOrder: 0,
@@ -162,7 +164,7 @@ export async function PATCH(request: NextRequest) {
     const allowedFields = [
       "title", "description", "thumbnailUrl", "duration",
       "width", "height", "isFeatured", "isPublished",
-      "displayOrder", "artistId", "platform", "platformId",
+      "displayOrder", "artistId", "eventId", "platform", "platformId",
       "platformUrl", "embedUrl",
     ];
     const updateData: Record<string, unknown> = {};

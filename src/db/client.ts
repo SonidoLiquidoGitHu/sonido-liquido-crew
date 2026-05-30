@@ -616,6 +616,21 @@ async function runAutoMigration(client: Client): Promise<void> {
         updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_social_credentials_platform_key ON social_credentials(platform, key)`,
+      // Vertical Video Events (Albums/Groupings)
+      `CREATE TABLE IF NOT EXISTS vertical_video_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        description TEXT,
+        cover_image_url TEXT,
+        artist_id TEXT,
+        event_date INTEGER,
+        location TEXT,
+        is_published INTEGER DEFAULT 1 NOT NULL,
+        display_order INTEGER DEFAULT 0 NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
       // Vertical Videos (9:16 Reels / Shorts)
       `CREATE TABLE IF NOT EXISTS vertical_videos (
         id TEXT PRIMARY KEY NOT NULL,
@@ -633,6 +648,7 @@ async function runAutoMigration(client: Client): Promise<void> {
         platform_url TEXT,
         embed_url TEXT,
         artist_id TEXT,
+        event_id TEXT,
         is_featured INTEGER DEFAULT 0 NOT NULL,
         is_published INTEGER DEFAULT 1 NOT NULL,
         display_order INTEGER DEFAULT 0 NOT NULL,
@@ -712,6 +728,9 @@ async function runAutoMigration(client: Client): Promise<void> {
 
       // === VIDEOS TABLE - missing display_order column ===
       `ALTER TABLE videos ADD COLUMN display_order INTEGER DEFAULT 0 NOT NULL`,
+
+      // === VERTICAL VIDEOS - event_id column for event grouping ===
+      `ALTER TABLE vertical_videos ADD COLUMN event_id TEXT`,
     ];
 
     for (const sql of criticalTables) {

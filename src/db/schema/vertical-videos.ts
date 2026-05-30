@@ -4,6 +4,25 @@ import { artists } from "./artists";
 import { tags } from "./tags";
 
 // ===========================================
+// VERTICAL VIDEO EVENTS TABLE (Albums/Groupings)
+// ===========================================
+
+export const verticalVideoEvents = sqliteTable("vertical_video_events", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  coverImageUrl: text("cover_image_url"), // Cover image for the event
+  artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
+  eventDate: integer("event_date", { mode: "timestamp" }), // Date of the event
+  location: text("location"),
+  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+// ===========================================
 // VERTICAL VIDEOS TABLE (9:16 Reels / Shorts)
 // ===========================================
 
@@ -31,6 +50,7 @@ export const verticalVideos = sqliteTable("vertical_videos", {
 
   // Associations
   artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
+  eventId: text("event_id").references(() => verticalVideoEvents.id, { onDelete: "set null" }),
 
   // Display settings
   isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
@@ -60,10 +80,22 @@ export const verticalVideoTags = sqliteTable("vertical_video_tags", {
 // RELATIONS
 // ===========================================
 
+export const verticalVideoEventsRelations = relations(verticalVideoEvents, ({ one, many }) => ({
+  artist: one(artists, {
+    fields: [verticalVideoEvents.artistId],
+    references: [artists.id],
+  }),
+  videos: many(verticalVideos),
+}));
+
 export const verticalVideosRelations = relations(verticalVideos, ({ one, many }) => ({
   artist: one(artists, {
     fields: [verticalVideos.artistId],
     references: [artists.id],
+  }),
+  event: one(verticalVideoEvents, {
+    fields: [verticalVideos.eventId],
+    references: [verticalVideoEvents.id],
   }),
   videoTags: many(verticalVideoTags),
 }));
@@ -83,6 +115,8 @@ export const verticalVideoTagsRelations = relations(verticalVideoTags, ({ one })
 // TYPE EXPORTS
 // ===========================================
 
+export type VerticalVideoEvent = typeof verticalVideoEvents.$inferSelect;
+export type NewVerticalVideoEvent = typeof verticalVideoEvents.$inferInsert;
 export type VerticalVideo = typeof verticalVideos.$inferSelect;
 export type NewVerticalVideo = typeof verticalVideos.$inferInsert;
 export type VerticalVideoTag = typeof verticalVideoTags.$inferSelect;
