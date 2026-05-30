@@ -956,15 +956,23 @@ async function handlePopulate(options: {
           // Don't skip videos without thumbnails — include them in the queue
           // For videos without thumbnails, use the video URL itself as imageUrl
           // The admin UI handles broken images with a fallback icon
-          // When posting to Meta, the ensurePublicImageUrl will try its best
           if (!imageUrl) {
             imageUrl = video.videoUrl || `${SITE_URL}/reels`;
           }
 
+          // For vertical videos, store the video URL in linkUrl so processQueueItem
+          // can use it for Reel posting. Also store the website link separately.
+          // Format: "VIDEO_URL|||WEBSITE_URL" — processQueueItem will parse this.
+          const artist = video.artistId ? artistMapVV.get(video.artistId) : null;
+          const videoUrl = video.videoUrl || video.platformUrl || "";
+          const websiteUrl = artist
+            ? `${SITE_URL}/artistas/${artist.slug}`
+            : video.platformUrl || `${SITE_URL}/reels`;
+          const linkUrlValue = videoUrl ? `${videoUrl}|||${websiteUrl}` : websiteUrl;
+
           const key = `vertical_video:${video.id}`;
           if (existingSourceIds.has(key)) continue;
 
-          const artist = video.artistId ? artistMapVV.get(video.artistId) : null;
           const caption = generateCaption({
             contentType: "vertical_video",
             artistName: artist?.name,
@@ -983,9 +991,7 @@ async function handlePopulate(options: {
             releaseId: null,
             imageUrl,
             caption,
-            linkUrl: artist
-              ? `${SITE_URL}/artistas/${artist.slug}`
-              : video.platformUrl || `${SITE_URL}/reels`,
+            linkUrl: linkUrlValue,
             queueOrder: queueOrder++,
             cycleNumber: 1,
             status: "pending",

@@ -1477,7 +1477,115 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null, error: "not attempted" };
   let igResult: InstagramPostResult = { success: false, mediaId: null, permalink: null, error: "not attempted" };
 
-  // Post to Facebook
+  // Check if this is a vertical video — post as Reels on both FB and IG
+  const isVerticalVideo = item.contentType === "vertical_video";
+  let videoUrl = "";
+  let websiteLink = "";
+
+  if (isVerticalVideo) {
+    // Parse the video URL from linkUrl (format: "VIDEO_URL|||WEBSITE_URL" or just a URL)
+    if (item.linkUrl && item.linkUrl.includes("|||")) {
+      const parts = item.linkUrl.split("|||");
+      videoUrl = parts[0];
+      websiteLink = parts[1];
+    } else if (item.linkUrl) {
+      // Fallback: if no separator, treat linkUrl as video URL if it looks like a video
+      videoUrl = item.linkUrl;
+      websiteLink = item.linkUrl;
+    }
+
+    // If no video URL found, we can't post a Reel — fall back to image post
+    if (!videoUrl || videoUrl.startsWith("/")) {
+      console.warn(`[Social] Vertical video item ${item.id} has no usable video URL. Falling back to image post.`);
+    } else {
+      console.log(`[Social] Posting vertical video as Reel: ${item.sourceId} (video: ${videoUrl.substring(0, 60)}...)`);
+
+      // Post to Facebook as Reel
+      if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
+        console.log(`[Social] Posting to Facebook Reel: ${item.contentType} (${item.sourceId})`);
+        try {
+          const fbReelResult = await postFacebookReel(videoUrl, caption);
+
+          // Map FacebookReelResult to FacebookPostResult
+          fbResult = {
+            success: fbReelResult.success,
+            postId: fbReelResult.reelId,
+            postUrl: fbReelResult.postUrl,
+            error: fbReelResult.error || undefined,
+          };
+
+          // Log the result
+          try {
+            await db.insert(socialPostsLog).values({
+              id: crypto.randomUUID(),
+              queueId: item.id,
+              platform: "facebook_reel",
+              contentType: item.contentType as any,
+              sourceId: item.sourceId,
+              imageUrl: videoUrl,
+              caption: item.caption,
+              linkUrl: websiteLink || null,
+              platformPostId: fbReelResult.reelId,
+              platformPostUrl: fbReelResult.postUrl,
+              metaApiResponse: null,
+              status: fbReelResult.success ? "success" : "failed",
+              errorMessage: fbReelResult.error || null,
+              postedAt: new Date(),
+            });
+          } catch (logError) {
+            console.error("[Social] Failed to log FB Reel result:", logError);
+          }
+
+          if (fbReelResult.success) {
+            postedPlatforms.push("facebook");
+          }
+        } catch (err) {
+          console.error("[Social] FB Reel posting exception:", err);
+          fbResult = { success: false, postId: null, postUrl: null, error: err instanceof Error ? err.message : "FB Reel failed" };
+        }
+      }
+
+      // Post to Instagram as Reel
+      if (platforms.includes("instagram") && !postedPlatforms.includes("instagram")) {
+        console.log(`[Social] Posting to Instagram Reel: ${item.contentType} (${item.sourceId})`);
+        try {
+          igResult = await postInstagramReel(videoUrl, caption, true);
+
+          // Log the result
+          try {
+            await db.insert(socialPostsLog).values({
+              id: crypto.randomUUID(),
+              queueId: item.id,
+              platform: "instagram_reel",
+              contentType: item.contentType as any,
+              sourceId: item.sourceId,
+              imageUrl: videoUrl,
+              caption: item.caption,
+              linkUrl: websiteLink || null,
+              platformPostId: igResult.mediaId,
+              platformPostUrl: igResult.permalink,
+              metaApiResponse: null,
+              status: igResult.success ? "success" : "failed",
+              errorMessage: igResult.error || null,
+              postedAt: new Date(),
+            });
+          } catch (logError) {
+            console.error("[Social] Failed to log IG Reel result:", logError);
+          }
+
+          if (igResult.success) {
+            postedPlatforms.push("instagram");
+          }
+        } catch (err) {
+          console.error("[Social] IG Reel posting exception:", err);
+          igResult = { success: false, mediaId: null, permalink: null, error: err instanceof Error ? err.message : "IG Reel failed" };
+        }
+      }
+    }
+  }
+
+  // Standard image posting (for non-video items, or vertical videos that fell back to image)
+  if (!isVerticalVideo || (!videoUrl && item.linkUrl && item.linkUrl.startsWith("/"))) {
   if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
     console.log(`[Social] Posting to Facebook: ${item.contentType} (${item.sourceId})`);
     fbResult = await postToFacebook(item.imageUrl, caption, item.linkUrl || undefined);
@@ -1540,6 +1648,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
       postedPlatforms.push("instagram");
     }
   }
+  } // End of standard image posting block
 
   // Update queue item status
   const allPlatformsNowPosted = platforms
