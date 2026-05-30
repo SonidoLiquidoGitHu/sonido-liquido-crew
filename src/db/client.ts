@@ -372,6 +372,82 @@ async function migrateArtistColumns(client: Client): Promise<void> {
 }
 
 /**
+ * Migrate old gallery_photos/gallery_albums column names to the new ones expected by Drizzle schema.
+ *
+ * Migration 0003 used different column names:
+ *   is_public     → is_published  (gallery_photos)
+ *   artist_ids    → artist_id     (gallery_photos, text array → single ID)
+ *   is_public     → is_published  (gallery_albums)
+ *
+ * We detect whether the old columns exist by checking PRAGMA table_info,
+ * then copy data from old → new (only when the new column is still NULL/default).
+ */
+async function migrateGalleryColumns(client: Client): Promise<void> {
+  try {
+    // === gallery_photos ===
+    const photosInfo = await client.execute("PRAGMA table_info(gallery_photos)");
+    const photoColumns = new Set(photosInfo.rows.map(r => r.name as string));
+
+    // is_public → is_published
+    if (photoColumns.has("is_public") && photoColumns.has("is_published")) {
+      try {
+        await client.execute(
+          `UPDATE gallery_photos SET is_published = is_public WHERE is_published IS NULL OR is_published = 1`
+        );
+        // Actually set is_published = is_public for all rows (is_public may be 0)
+        await client.execute(
+          `UPDATE gallery_photos SET is_published = is_public`
+        );
+        console.log("[DB] gallery_photos: migrated is_public → is_published");
+      } catch (err) {
+        console.warn("[DB] gallery_photos is_public migration failed:", err);
+      }
+    }
+
+    // artist_ids (JSON text array) → artist_id (single text)
+    if (photoColumns.has("artist_ids") && photoColumns.has("artist_id")) {
+      try {
+        // Parse the JSON array and take the first element
+        await client.execute(
+          `UPDATE gallery_photos SET artist_id = CASE
+            WHEN artist_ids IS NOT NULL AND artist_ids != '[]' AND artist_ids != ''
+            THEN json_extract(artist_ids, '$[0]')
+            ELSE NULL
+          END
+          WHERE artist_id IS NULL AND artist_ids IS NOT NULL`
+        );
+        // Fallback for non-JSON format (just a plain ID string)
+        await client.execute(
+          `UPDATE gallery_photos SET artist_id = artist_ids
+          WHERE artist_id IS NULL AND artist_ids IS NOT NULL AND artist_ids NOT LIKE '[%'`
+        );
+        console.log("[DB] gallery_photos: migrated artist_ids → artist_id");
+      } catch (err) {
+        console.warn("[DB] gallery_photos artist_ids migration failed:", err);
+      }
+    }
+
+    // === gallery_albums ===
+    const albumsInfo = await client.execute("PRAGMA table_info(gallery_albums)");
+    const albumColumns = new Set(albumsInfo.rows.map(r => r.name as string));
+
+    // is_public → is_published
+    if (albumColumns.has("is_public") && albumColumns.has("is_published")) {
+      try {
+        await client.execute(
+          `UPDATE gallery_albums SET is_published = is_public`
+        );
+        console.log("[DB] gallery_albums: migrated is_public → is_published");
+      } catch (err) {
+        console.warn("[DB] gallery_albums is_public migration failed:", err);
+      }
+    }
+  } catch (err) {
+    console.error("[DB] Gallery column migration failed (non-fatal):", err);
+  }
+}
+
+/**
  * Run auto-migration to ensure critical tables exist.
  * This runs once when the database client is first initialized.
  * Uses CREATE TABLE IF NOT EXISTS so it's safe to run repeatedly.
@@ -617,6 +693,25 @@ async function runAutoMigration(client: Client): Promise<void> {
       `ALTER TABLE artists ADD COLUMN followers INTEGER`,
       `ALTER TABLE artists ADD COLUMN location TEXT`,
       `ALTER TABLE artists ADD COLUMN labels TEXT`,
+
+      // === GALLERY PHOTOS - columns expected by Drizzle schema but missing from migration 0003 ===
+      // Migration 0003 used: is_public (not is_published), artist_ids (not artist_id), etc.
+      `ALTER TABLE gallery_photos ADD COLUMN is_published INTEGER DEFAULT 1 NOT NULL`,
+      `ALTER TABLE gallery_photos ADD COLUMN artist_id TEXT`,
+      `ALTER TABLE gallery_photos ADD COLUMN description TEXT`,
+      `ALTER TABLE gallery_photos ADD COLUMN is_featured INTEGER DEFAULT 0 NOT NULL`,
+      `ALTER TABLE gallery_photos ADD COLUMN mime_type TEXT`,
+      `ALTER TABLE gallery_photos ADD COLUMN file_size INTEGER`,
+      `ALTER TABLE gallery_photos ADD COLUMN alt_text TEXT`,
+      `ALTER TABLE gallery_photos ADD COLUMN album_id TEXT`,
+
+      // === GALLERY ALBUMS - columns expected by Drizzle schema ===
+      `ALTER TABLE gallery_albums ADD COLUMN is_published INTEGER DEFAULT 1 NOT NULL`,
+      `ALTER TABLE gallery_albums ADD COLUMN cover_photo_id TEXT`,
+      `ALTER TABLE gallery_albums ADD COLUMN sort_order INTEGER DEFAULT 0 NOT NULL`,
+
+      // === VIDEOS TABLE - missing display_order column ===
+      `ALTER TABLE videos ADD COLUMN display_order INTEGER DEFAULT 0 NOT NULL`,
     ];
 
     for (const sql of criticalTables) {
@@ -640,6 +735,13 @@ async function runAutoMigration(client: Client): Promise<void> {
     // Migration 0002 used different column names. Copy data from old columns
     // to the new ones (if the old columns still exist and have data).
     await migrateArtistColumns(client);
+
+    // ===========================================
+    // MIGRATE GALLERY PHOTOS OLD COLUMNS → NEW COLUMNS
+    // ===========================================
+    // Migration 0003 used: is_public, artist_ids
+    // Drizzle schema expects: is_published, artist_id
+    await migrateGalleryColumns(client);
 
     // ===========================================
     // MIGRATE STALE CHECK CONSTRAINTS
