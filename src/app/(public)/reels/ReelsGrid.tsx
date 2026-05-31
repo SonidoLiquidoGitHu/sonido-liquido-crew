@@ -26,12 +26,15 @@ import {
   FolderOpen,
   ArrowRight,
   Video,
+  Instagram,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
 import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
+import { EventStoryCard } from "./EventStoryCard";
 import {
   getYouTubeId,
   getProxiedThumbnailUrl,
@@ -321,22 +324,27 @@ function EventCard({
   event,
   isActive,
   onClick,
+  onShareStory,
 }: {
   event: VideoEvent;
   isActive: boolean;
   onClick: () => void;
+  onShareStory?: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        "flex-shrink-0 w-56 rounded-xl overflow-hidden border-2 transition-all text-left",
+        "flex-shrink-0 w-56 rounded-xl overflow-hidden border-2 transition-all",
         isActive
           ? "border-primary shadow-lg shadow-primary/20"
           : "border-slc-border hover:border-primary/50"
       )}
     >
-      <div className="relative aspect-video">
+      {/* Cover image section */}
+      <button
+        onClick={onClick}
+        className="relative aspect-video w-full text-left"
+      >
         {event.coverImageUrl ? (
           <SafeImage
             src={event.coverImageUrl}
@@ -350,31 +358,42 @@ function EventCard({
             <FolderOpen className="w-8 h-8 text-slc-muted" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
         {/* Video count badge */}
         <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/60 rounded-full text-xs text-white flex items-center gap-1">
           <Video className="w-3 h-3" /> {event.videoCount}
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-3">
-          <h3 className="font-oswald text-sm text-white uppercase font-bold line-clamp-1">
-            {event.title}
-          </h3>
-          <div className="flex items-center gap-2 mt-1 text-xs text-white/70">
-            {event.eventDate && (
-              <span className="flex items-center gap-0.5">
-                <Calendar className="w-3 h-3" />
-                {new Date(event.eventDate).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}
-              </span>
-            )}
-            {event.location && (
-              <span className="flex items-center gap-0.5">
-                <MapPin className="w-3 h-3" /> {event.location}
-              </span>
-            )}
-          </div>
+      </button>
+
+      {/* Description section - separate from cover image */}
+      <div className="bg-slc-card p-3">
+        <h3 className="font-oswald text-sm text-white uppercase font-bold line-clamp-1">
+          {event.title}
+        </h3>
+        <div className="flex items-center gap-2 mt-1 text-xs text-slc-muted">
+          {event.eventDate && (
+            <span className="flex items-center gap-0.5">
+              <Calendar className="w-3 h-3" />
+              {new Date(event.eventDate).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}
+            </span>
+          )}
+          {event.location && (
+            <span className="flex items-center gap-0.5">
+              <MapPin className="w-3 h-3" /> {event.location}
+            </span>
+          )}
         </div>
+        {/* Share to Stories button */}
+        {onShareStory && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onShareStory(); }}
+            className="mt-2 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+          >
+            <Instagram className="w-3 h-3" />
+            Compartir en Stories
+          </button>
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -414,6 +433,11 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
   // Selected event for viewing
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  // Story card sharing state
+  const [storyCardEvent, setStoryCardEvent] = useState<VideoEvent | null>(null);
+  const [storyCardGenerating, setStoryCardGenerating] = useState(false);
+  const storyCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Separate videos into: event videos and standalone (no event) videos
   const videosWithEvents = videos.filter((v) => v.eventId !== null);
@@ -697,6 +721,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                     event.id === selectedEventId ? null : event.id
                   )
                 }
+                onShareStory={() => setStoryCardEvent(event)}
               />
             ))}
           </div>
@@ -706,24 +731,33 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
             <div className="mt-6">
               {/* Event info header */}
               <div className="p-4 bg-slc-card border border-slc-border rounded-xl mb-4">
-                <div className="flex items-start gap-4">
-                  {selectedEvent.coverImageUrl && (
-                    <div className="w-24 h-16 rounded-lg overflow-hidden border border-slc-border shrink-0">
-                      <SafeImage
-                        src={selectedEvent.coverImageUrl}
-                        alt={selectedEvent.title}
-                        fill
-                        className="object-cover"
-                        sizes="96px"
-                      />
+                {/* Cover image on top, description below */}
+                {selectedEvent.coverImageUrl && (
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-slc-border mb-3">
+                    <SafeImage
+                      src={selectedEvent.coverImageUrl}
+                      alt={selectedEvent.title}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 100vw, 600px"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-2 left-3 right-3">
+                      <h3 className="font-oswald text-xl uppercase text-white font-bold">
+                        {selectedEvent.title}
+                      </h3>
                     </div>
-                  )}
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-oswald text-lg uppercase text-white">
-                      {selectedEvent.title}
-                    </h3>
+                    {!selectedEvent.coverImageUrl && (
+                      <h3 className="font-oswald text-lg uppercase text-white">
+                        {selectedEvent.title}
+                      </h3>
+                    )}
                     {selectedEvent.description && (
-                      <p className="text-sm text-slc-muted mt-0.5 line-clamp-2">
+                      <p className="text-sm text-slc-muted mt-0.5 line-clamp-3">
                         {selectedEvent.description}
                       </p>
                     )}
@@ -748,13 +782,22 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                       </span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedEventId(null)}
-                    className="text-slc-muted hover:text-white transition-colors shrink-0 p-1"
-                    aria-label="Cerrar evento"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <button
+                      onClick={() => setStoryCardEvent(selectedEvent)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-500 rounded-full text-white text-xs font-medium hover:from-purple-500 hover:to-pink-400 transition-all"
+                    >
+                      <Instagram className="w-3.5 h-3.5" />
+                      Story
+                    </button>
+                    <button
+                      onClick={() => setSelectedEventId(null)}
+                      className="text-slc-muted hover:text-white transition-colors p-1 self-end"
+                      aria-label="Cerrar evento"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1097,6 +1140,17 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ============ STORY CARD MODAL (Spotify-style) ============ */}
+      {storyCardEvent && (
+        <EventStoryCard
+          event={storyCardEvent}
+          onClose={() => setStoryCardEvent(null)}
+          canvasRef={storyCanvasRef}
+          generating={storyCardGenerating}
+          setGenerating={setStoryCardGenerating}
+        />
       )}
     </>
   );
