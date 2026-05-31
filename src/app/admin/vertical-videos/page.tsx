@@ -153,6 +153,7 @@ export default function AdminVerticalVideosPage() {
   });
   const [uploadEventId, setUploadEventId] = useState("");
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [isDraggingCover, setIsDraggingCover] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -182,6 +183,21 @@ export default function AdminVerticalVideosPage() {
 
   // Auto-regenerate missing thumbnails on page load
   const autoRegeneratedRef = useRef(false);
+
+  // Prevent browser from opening dragged files (stops navigation away from page)
+  useEffect(() => {
+    const preventDefaults = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener("dragover", preventDefaults);
+    window.addEventListener("drop", preventDefaults);
+    return () => {
+      window.removeEventListener("dragover", preventDefaults);
+      window.removeEventListener("drop", preventDefaults);
+    };
+  }, []);
+
   useEffect(() => {
     fetchData().then(() => {
       // After initial load, auto-regenerate missing thumbnails in the background
@@ -2171,43 +2187,89 @@ export default function AdminVerticalVideosPage() {
                 </select>
               </div>
 
-              {/* Cover Image Upload */}
+              {/* Cover Image Upload with Drag & Drop */}
               <div>
                 <label className="block text-sm text-slc-muted mb-1.5 flex items-center gap-1.5">
                   <ImageIcon className="w-3.5 h-3.5" /> Portada del evento
                 </label>
-                <div className="flex items-start gap-4">
-                  <div className="flex-1">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) uploadEventCover(file);
-                      }}
-                      className="w-full text-sm text-slc-muted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30"
-                      disabled={uploadingCover}
-                    />
-                    {uploadingCover && (
-                      <p className="text-xs text-primary mt-1 flex items-center gap-1">
-                        <Loader2 className="w-3 h-3 animate-spin" /> Subiendo portada...
-                      </p>
-                    )}
-                    {eventForm.coverImageUrl && !uploadingCover && (
-                      <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" /> Portada subida
-                      </p>
-                    )}
-                  </div>
-                  {eventForm.coverImageUrl && (
-                    <div className="w-24 h-16 rounded-lg overflow-hidden border border-slc-border shrink-0">
-                      <SafeImage
-                        src={eventForm.coverImageUrl}
-                        alt="Portada"
-                        fill
-                        className="object-cover"
-                        sizes="96px"
-                      />
+                <div
+                  className={cn(
+                    "relative border-2 border-dashed rounded-lg transition-colors cursor-pointer",
+                    isDraggingCover
+                      ? "border-primary bg-primary/10"
+                      : "border-slc-border hover:border-primary/50",
+                    uploadingCover && "opacity-60 pointer-events-none"
+                  )}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingCover(true);
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingCover(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingCover(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingCover(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file && file.type.startsWith("image/")) {
+                      uploadEventCover(file);
+                    } else if (file) {
+                      setMessage({ type: "error", text: "Solo se permiten imágenes" });
+                      setTimeout(() => setMessage(null), 3000);
+                    }
+                  }}
+                  onClick={() => {
+                    const input = document.getElementById("event-cover-input") as HTMLInputElement;
+                    input?.click();
+                  }}
+                >
+                  <input
+                    id="event-cover-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadEventCover(file);
+                    }}
+                    className="hidden"
+                    disabled={uploadingCover}
+                  />
+                  {uploadingCover ? (
+                    <div className="flex flex-col items-center justify-center py-6">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                      <p className="text-sm text-primary">Subiendo portada...</p>
+                    </div>
+                  ) : eventForm.coverImageUrl ? (
+                    <div className="flex items-center gap-4 p-3">
+                      <div className="w-20 h-14 rounded-lg overflow-hidden border border-slc-border shrink-0">
+                        <SafeImage
+                          src={eventForm.coverImageUrl}
+                          alt="Portada"
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-green-500 flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5" /> Portada subida
+                        </p>
+                        <p className="text-xs text-slc-muted mt-0.5">Arrastra o haz clic para cambiar</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-6">
+                      <Upload className="w-8 h-8 text-slc-muted mb-2" />
+                      <p className="text-sm text-slc-muted">Arrastra una imagen aquí o haz clic para seleccionar</p>
                     </div>
                   )}
                 </div>
