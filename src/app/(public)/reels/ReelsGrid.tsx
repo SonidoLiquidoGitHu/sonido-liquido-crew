@@ -854,7 +854,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
             ref={viewerContentRef}
             key={slideKey}
             className={cn(
-              "relative h-[85vh] w-auto max-h-[85vh] transition-all duration-150 ease-out",
+              "relative max-h-[90vh] max-w-[90vw] transition-all duration-150 ease-out",
               getSlideClass()
             )}
             onClick={(e) => e.stopPropagation()}
@@ -879,7 +879,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
               if (ytId) {
                 return (
-                  <div className="h-full aspect-[9/16] rounded-xl overflow-hidden">
+                  <div className="rounded-xl overflow-hidden" style={{ maxHeight: "90vh" }}>
                     <YouTubeEmbed videoId={ytId} autoplay />
                   </div>
                 );
@@ -888,12 +888,12 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                 const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
                 const posterUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
                 return (
-                  <div className="relative h-full aspect-[9/16] rounded-xl overflow-hidden bg-black">
+                  <div className="relative rounded-xl overflow-hidden bg-black">
                     <video
                       ref={fullscreenVideoRef}
                       src={videoSrc}
                       poster={posterUrl || undefined}
-                      className="w-full h-full object-contain"
+                      className="max-h-[90vh] max-w-[90vw] object-contain"
                       controls
                       autoPlay
                       playsInline
@@ -912,7 +912,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
               }
               // Fallback: show thumbnail with play link
               return (
-                <div className="h-full aspect-[9/16] relative rounded-xl overflow-hidden bg-black flex items-center justify-center">
+                <div className="relative rounded-xl overflow-hidden bg-black flex items-center justify-center" style={{ maxHeight: "90vh" }}>
                   {getProxiedThumbnailUrl(video) && (
                     <SafeImage src={getProxiedThumbnailUrl(video)!} alt={video.title || "Video"} fill className="object-cover" fallbackSrc={getVideoPlaceholderSvg("9/16")} />
                   )}
