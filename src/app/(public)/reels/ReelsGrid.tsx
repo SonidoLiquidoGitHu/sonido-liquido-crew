@@ -24,6 +24,8 @@ import {
   Calendar,
   MapPin,
   FolderOpen,
+  ArrowRight,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -74,17 +76,18 @@ interface VideoEvent {
   description: string | null;
   coverImageUrl: string | null;
   artistId: string | null;
-  eventDate: string | null;
+  eventDate: Date | string | null;
   location: string | null;
   isPublished: boolean;
   displayOrder: number;
   videoCount: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date | string | null;
+  updatedAt: Date | string | null;
 }
 
 interface ReelsGridProps {
   videos: ReelVideo[];
+  events: VideoEvent[];
 }
 
 // ===========================================
@@ -191,8 +194,8 @@ function KeyboardTooltip({ onClose }: { onClose: () => void }) {
         <Keyboard className="w-4 h-4 text-white/60 shrink-0" />
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">←</kbd>
-            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">→</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">&larr;</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">&rarr;</kbd>
             <span className="text-white/60">Navegar</span>
           </span>
           <span className="w-px h-3 bg-white/20" />
@@ -207,10 +210,176 @@ function KeyboardTooltip({ onClose }: { onClose: () => void }) {
 }
 
 // ===========================================
+// VIDEO CARD COMPONENT (reused in grids)
+// ===========================================
+
+function VideoCard({
+  video,
+  index,
+  onOpen,
+  onShare,
+  getPlatformIcon,
+}: {
+  video: ReelVideo;
+  index: number;
+  onOpen: (index: number) => void;
+  onShare: (index: number) => void;
+  getPlatformIcon: (platform: string | null) => React.ReactNode;
+}) {
+  return (
+    <div
+      onClick={() => onOpen(index)}
+      className="group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
+    >
+      <div className="relative aspect-[9/16]">
+        <VideoThumbnail
+          video={video}
+          alt={video.title || "Video"}
+          fill
+          className="transition-transform duration-500 group-hover:scale-105"
+          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+          aspectRatio="9/16"
+        />
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+        {/* Play button */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <Play className="w-7 h-7 text-white ml-0.5" fill="white" />
+          </div>
+        </div>
+
+        {/* Featured badge */}
+        {video.isFeatured && (
+          <div className="absolute top-2 left-2">
+            <span className="px-2 py-1 bg-primary text-white text-xs rounded-full">
+              Destacado
+            </span>
+          </div>
+        )}
+
+        {/* Platform badge */}
+        {video.platform && (
+          <div className="absolute top-2 right-2">
+            <div className="w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white">
+              {getPlatformIcon(video.platform)}
+            </div>
+          </div>
+        )}
+
+        {/* Share button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onShare(index);
+          }}
+          className="absolute bottom-14 right-2 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary"
+        >
+          <Share2 className="w-4 h-4" />
+        </button>
+
+        {/* Title + Artist overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-3">
+          {video.title && (
+            <h3 className="font-oswald text-sm text-white font-bold uppercase line-clamp-1">
+              {video.title}
+            </h3>
+          )}
+          {video.artistName && (
+            <Link
+              href={`/artistas/${video.artistSlug}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs text-gray-400 hover:text-primary hover:underline mt-0.5 block truncate"
+            >
+              {video.artistName}
+            </Link>
+          )}
+          <div className="flex items-center gap-3 mt-1 text-xs text-white/60">
+            <span className="flex items-center gap-0.5">
+              <Eye className="w-3 h-3" /> {video.viewCount}
+            </span>
+            <span className="flex items-center gap-0.5">
+              <Share2 className="w-3 h-3" /> {video.shareCount}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================
+// EVENT CARD COMPONENT (horizontal scroll)
+// ===========================================
+
+function EventCard({
+  event,
+  isActive,
+  onClick,
+}: {
+  event: VideoEvent;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex-shrink-0 w-56 rounded-xl overflow-hidden border-2 transition-all text-left",
+        isActive
+          ? "border-primary shadow-lg shadow-primary/20"
+          : "border-slc-border hover:border-primary/50"
+      )}
+    >
+      <div className="relative aspect-video">
+        {event.coverImageUrl ? (
+          <SafeImage
+            src={event.coverImageUrl}
+            alt={event.title}
+            fill
+            className="object-cover"
+            sizes="224px"
+          />
+        ) : (
+          <div className="w-full h-full bg-slc-card flex items-center justify-center">
+            <FolderOpen className="w-8 h-8 text-slc-muted" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        {/* Video count badge */}
+        <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/60 rounded-full text-xs text-white flex items-center gap-1">
+          <Video className="w-3 h-3" /> {event.videoCount}
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 p-3">
+          <h3 className="font-oswald text-sm text-white uppercase font-bold line-clamp-1">
+            {event.title}
+          </h3>
+          <div className="flex items-center gap-2 mt-1 text-xs text-white/70">
+            {event.eventDate && (
+              <span className="flex items-center gap-0.5">
+                <Calendar className="w-3 h-3" />
+                {new Date(event.eventDate).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}
+              </span>
+            )}
+            {event.location && (
+              <span className="flex items-center gap-0.5">
+                <MapPin className="w-3 h-3" /> {event.location}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ===========================================
 // MAIN COMPONENT
 // ===========================================
 
-export function ReelsGrid({ videos }: ReelsGridProps) {
+export function ReelsGrid({ videos, events }: ReelsGridProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [shareModalIndex, setShareModalIndex] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -240,32 +409,21 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const hasShownTooltipRef = useRef(false);
 
-  // Events state
-  const [events, setEvents] = useState<VideoEvent[]>([]);
+  // Selected event for viewing
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [eventsLoading, setEventsLoading] = useState(true);
 
-  // Fetch events on mount
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("/api/vertical-videos?includeEvents=true&limit=1");
-        const data = await res.json();
-        if (data.success && data.events) {
-          setEvents(data.events);
-        }
-      } catch {
-        // Events are non-critical, fail silently
-      }
-      setEventsLoading(false);
-    };
-    fetchEvents();
-  }, []);
+  // Separate videos into: event videos and standalone (no event) videos
+  const videosWithEvents = videos.filter((v) => v.eventId !== null);
+  const standaloneVideos = videos.filter((v) => v.eventId === null);
 
-  // Filtered videos based on selected event
-  const displayVideos = selectedEventId
+  // When an event is selected, show only that event's videos
+  const eventVideos = selectedEventId
     ? videos.filter((v) => v.eventId === selectedEventId)
-    : videos;
+    : [];
+
+  // The full viewer list depends on context
+  const displayVideos = selectedEventId ? eventVideos : videos;
+  const viewerIndex = activeIndex !== null ? activeIndex : null;
 
   if (videos.length === 0) {
     return (
@@ -506,79 +664,75 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
     return "translate-x-8 opacity-0";
   };
 
+  // Selected event details
+  const selectedEvent = selectedEventId
+    ? events.find((e) => e.id === selectedEventId)
+    : null;
+
   return (
     <>
-      {/* Events Filter Section */}
+      {/* ============ SECTION 1: EVENTS ============ */}
       {events.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            <button
-              onClick={() => setSelectedEventId(null)}
-              className={cn(
-                "flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                !selectedEventId
-                  ? "bg-primary text-white"
-                  : "bg-slc-card border border-slc-border text-slc-muted hover:border-primary/50"
-              )}
-            >
-              Todos
-            </button>
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-4">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            <h2 className="font-oswald text-2xl uppercase tracking-wide text-white">
+              Eventos
+            </h2>
+            <div className="flex-1 h-px bg-slc-border" />
+          </div>
+
+          {/* Horizontal scrollable event cards */}
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
             {events.map((event) => (
-              <button
+              <EventCard
                 key={event.id}
-                onClick={() => setSelectedEventId(event.id === selectedEventId ? null : event.id)}
-                className={cn(
-                  "flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                  selectedEventId === event.id
-                    ? "bg-primary text-white"
-                    : "bg-slc-card border border-slc-border text-slc-muted hover:border-primary/50"
-                )}
-              >
-                {event.coverImageUrl && (
-                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
-                    <SafeImage
-                      src={event.coverImageUrl}
-                      alt={event.title}
-                      fill
-                      className="object-cover"
-                      sizes="24px"
-                    />
-                  </div>
-                )}
-                <span>{event.title}</span>
-                <span className="text-xs opacity-70">({event.videoCount})</span>
-              </button>
+                event={event}
+                isActive={selectedEventId === event.id}
+                onClick={() =>
+                  setSelectedEventId(
+                    event.id === selectedEventId ? null : event.id
+                  )
+                }
+              />
             ))}
           </div>
 
-          {/* Selected event info */}
-          {selectedEventId && (() => {
-            const selectedEvent = events.find(e => e.id === selectedEventId);
-            if (!selectedEvent) return null;
-            return (
-              <div className="mt-4 p-4 bg-slc-card border border-slc-border rounded-xl">
+          {/* Selected event detail + videos */}
+          {selectedEvent && (
+            <div className="mt-6">
+              {/* Event info header */}
+              <div className="p-4 bg-slc-card border border-slc-border rounded-xl mb-4">
                 <div className="flex items-start gap-4">
                   {selectedEvent.coverImageUrl && (
-                    <div className="w-20 h-14 rounded-lg overflow-hidden border border-slc-border shrink-0">
+                    <div className="w-24 h-16 rounded-lg overflow-hidden border border-slc-border shrink-0">
                       <SafeImage
                         src={selectedEvent.coverImageUrl}
                         alt={selectedEvent.title}
                         fill
                         className="object-cover"
-                        sizes="80px"
+                        sizes="96px"
                       />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-oswald text-lg uppercase">{selectedEvent.title}</h3>
+                    <h3 className="font-oswald text-lg uppercase text-white">
+                      {selectedEvent.title}
+                    </h3>
                     {selectedEvent.description && (
-                      <p className="text-sm text-slc-muted mt-0.5 line-clamp-2">{selectedEvent.description}</p>
+                      <p className="text-sm text-slc-muted mt-0.5 line-clamp-2">
+                        {selectedEvent.description}
+                      </p>
                     )}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-slc-muted">
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-slc-muted">
                       {selectedEvent.eventDate && (
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(selectedEvent.eventDate).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" })}
+                          {new Date(selectedEvent.eventDate).toLocaleDateString("es-MX", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
                         </span>
                       )}
                       {selectedEvent.location && (
@@ -593,114 +747,67 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
                   </div>
                   <button
                     onClick={() => setSelectedEventId(null)}
-                    className="text-slc-muted hover:text-white transition-colors shrink-0"
+                    className="text-slc-muted hover:text-white transition-colors shrink-0 p-1"
+                    aria-label="Cerrar evento"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
-            );
-          })()}
-        </div>
-      )}
 
-      {/* Grid of phone-shaped cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {displayVideos.map((video, index) => (
-          <div
-            key={video.id}
-            onClick={() => openReel(index)}
-            className="group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
-          >
-            <div className="relative aspect-[9/16]">
-              <VideoThumbnail
-                video={video}
-                alt={video.title || "Video"}
-                fill
-                className="transition-transform duration-500 group-hover:scale-105"
-                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                aspectRatio="9/16"
-              />
-
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-              {/* Play button */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <Play className="w-7 h-7 text-white ml-0.5" fill="white" />
+              {/* Event videos grid */}
+              {eventVideos.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {eventVideos.map((video, index) => (
+                    <VideoCard
+                      key={video.id}
+                      video={video}
+                      index={index}
+                      onOpen={openReel}
+                      onShare={(i) => setShareModalIndex(i)}
+                      getPlatformIcon={getPlatformIcon}
+                    />
+                  ))}
                 </div>
-              </div>
-
-              {/* Featured badge */}
-              {video.isFeatured && (
-                <div className="absolute top-2 left-2">
-                  <span className="px-2 py-1 bg-primary text-white text-xs rounded-full">
-                    Destacado
-                  </span>
+              ) : (
+                <div className="text-center py-12">
+                  <FolderOpen className="w-12 h-12 text-slc-muted mx-auto mb-3" />
+                  <p className="text-slc-muted">No hay videos en este evento aún.</p>
                 </div>
               )}
-
-              {/* Platform badge */}
-              {video.platform && (
-                <div className="absolute top-2 right-2">
-                  <div className="w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white">
-                    {getPlatformIcon(video.platform)}
-                  </div>
-                </div>
-              )}
-
-              {/* Share button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShareModalIndex(index);
-                }}
-                className="absolute bottom-14 right-2 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
-
-              {/* Title + Artist overlay */}
-              <div className="absolute bottom-0 left-0 right-0 p-3">
-                {video.title && (
-                  <h3 className="font-oswald text-sm text-white font-bold uppercase line-clamp-1">
-                    {video.title}
-                  </h3>
-                )}
-                {video.artistName && (
-                  <Link
-                    href={`/artistas/${video.artistSlug}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-gray-400 hover:text-primary hover:underline mt-0.5 block truncate"
-                  >
-                    {video.artistName}
-                  </Link>
-                )}
-                <div className="flex items-center gap-3 mt-1 text-xs text-white/60">
-                  <span className="flex items-center gap-0.5">
-                    <Eye className="w-3 h-3" /> {video.viewCount}
-                  </span>
-                  <span className="flex items-center gap-0.5">
-                    <Share2 className="w-3 h-3" /> {video.shareCount}
-                  </span>
-                </div>
-              </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Empty state when filtering by event */}
-      {displayVideos.length === 0 && selectedEventId && (
-        <div className="text-center py-16">
-          <FolderOpen className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-          <h3 className="font-oswald text-xl uppercase mb-2">No hay videos en este evento</h3>
-          <p className="text-slc-muted">Pronto se agregarán videos a este evento.</p>
-        </div>
+          )}
+        </section>
       )}
 
-      {/* Full-screen Reel Viewer */}
+      {/* ============ SECTION 2: STANDALONE VIDEOS (no event) ============ */}
+      {standaloneVideos.length > 0 && (
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <Smartphone className="w-5 h-5 text-primary" />
+            <h2 className="font-oswald text-2xl uppercase tracking-wide text-white">
+              {events.length > 0 ? "Videos" : "Todos los Reels"}
+            </h2>
+            <span className="text-sm text-slc-muted">({standaloneVideos.length})</span>
+            <div className="flex-1 h-px bg-slc-border" />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {standaloneVideos.map((video, index) => (
+              <VideoCard
+                key={video.id}
+                video={video}
+                index={index}
+                onOpen={openReel}
+                onShare={(i) => setShareModalIndex(i)}
+                getPlatformIcon={getPlatformIcon}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ============ FULL-SCREEN REEL VIEWER ============ */}
       {activeIndex !== null && displayVideos[activeIndex] && (
         <div
           className={cn(
@@ -893,7 +1000,7 @@ export function ReelsGrid({ videos }: ReelsGridProps) {
         </div>
       )}
 
-      {/* Share Modal */}
+      {/* ============ SHARE MODAL ============ */}
       {shareModalIndex !== null && displayVideos[shareModalIndex] && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"

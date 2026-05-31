@@ -4,8 +4,8 @@ import { Smartphone, PlayCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { verticalVideos, verticalVideoTags, tags, artists } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { verticalVideos, verticalVideoTags, tags, artists, verticalVideoEvents } from "@/db/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { ReelsGrid } from "./ReelsGrid";
 
 export const metadata = {
@@ -15,10 +15,48 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-async function getReelsData() {
-  if (!isDatabaseConfigured()) return [];
+interface ReelVideo {
+  id: string;
+  title: string | null;
+  description: string | null;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  platform: string | null;
+  platformUrl: string | null;
+  embedUrl: string | null;
+  artistId: string | null;
+  eventId: string | null;
+  isFeatured: boolean;
+  shareCount: number;
+  viewCount: number;
+  duration: number | null;
+  createdAt: Date | string | null;
+  artistName: string | null;
+  artistSlug: string | null;
+  tags: { id: string; name: string; slug: string }[];
+}
+
+interface VideoEvent {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  artistId: string | null;
+  eventDate: Date | string | null;
+  location: string | null;
+  isPublished: boolean;
+  displayOrder: number;
+  videoCount: number;
+  createdAt: Date | string | null;
+  updatedAt: Date | string | null;
+}
+
+async function getReelsData(): Promise<{ videos: ReelVideo[]; events: VideoEvent[] }> {
+  if (!isDatabaseConfigured()) return { videos: [], events: [] };
 
   try {
+    // Fetch all published videos
     const allVideos = await db
       .select({
         id: verticalVideos.id,
@@ -60,25 +98,65 @@ async function getReelsData() {
       })
     );
 
-    return videosWithTags;
+    // Fetch all published events with video counts
+    const allEvents = await db
+      .select()
+      .from(verticalVideoEvents)
+      .where(eq(verticalVideoEvents.isPublished, true))
+      .orderBy(verticalVideoEvents.displayOrder, desc(verticalVideoEvents.eventDate));
+
+    const eventsWithCounts = await Promise.all(
+      allEvents.map(async (event) => {
+        const [countResult] = await db
+          .select({ total: sql<number>`count(*)` })
+          .from(verticalVideos)
+          .where(and(
+            eq(verticalVideos.eventId, event.id),
+            eq(verticalVideos.isPublished, true)
+          ));
+
+        return {
+          ...event,
+          videoCount: countResult?.total || 0,
+        };
+      })
+    );
+
+    // Only include events that have at least 1 video
+    const activeEvents = eventsWithCounts.filter(e => e.videoCount > 0);
+
+    return { videos: videosWithTags, events: activeEvents };
   } catch (error) {
     console.error("Error fetching reels:", error);
-    return [];
+    return { videos: [], events: [] };
   }
 }
 
 function ReelsSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <Skeleton key={i} className="aspect-[9/16] rounded-xl" />
-      ))}
+    <div className="space-y-12">
+      <div>
+        <Skeleton className="h-8 w-48 mb-4" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-[16/9] rounded-xl" />
+          ))}
+        </div>
+      </div>
+      <div>
+        <Skeleton className="h-8 w-48 mb-4" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-[9/16] rounded-xl" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 export default async function ReelsPage() {
-  const videos = await getReelsData();
+  const { videos, events } = await getReelsData();
 
   return (
     <div className="py-12">
@@ -112,9 +190,9 @@ export default async function ReelsPage() {
           )}
         </div>
 
-        {/* Videos Grid */}
+        {/* Videos Grid with Events */}
         <Suspense fallback={<ReelsSkeleton />}>
-          <ReelsGrid videos={videos} />
+          <ReelsGrid videos={videos} events={events} />
         </Suspense>
       </div>
     </div>
