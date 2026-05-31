@@ -681,3 +681,29 @@ Stage Summary:
 - 1 aria-label addition on form input in NewsletterPopup.tsx
 - 1 heading hierarchy fix (h1→div) in Header.tsx
 - Total: 17 accessibility fixes applied across 7 files
+
+---
+Task ID: 1
+Agent: Main
+Task: Fix EventCard cover overlapping description + Add Spotify-style story sharing
+
+Work Log:
+- Analyzed the uploaded screenshot to understand the overlap issue
+- Restructured EventCard: separated cover image (top) from description text (bottom bg-slc-card section)
+- Added onShareStory prop to EventCard with Instagram Stories share button
+- Restructured event detail header: cover image on top with gradient, description below, Story button
+- Created EventStoryCard.tsx: Canvas-based 1080x1920 story card generator
+  - Blurred cover background, centered album-art cover with rounded corners
+  - Event title, date, location, video count
+  - Sonido Liquido branding + URL
+  - Download as PNG or share via Web Share API with files
+  - Dropbox URL proxying for cover images
+  - Font loading for Oswald in canvas
+- Fixed letterSpacing (not standard Canvas API) with manual character spacing
+- Fixed TypeScript build error with navigator.canShare check
+- Build verified and pushed to master
+
+Stage Summary:
+- EventCard now has cover image and description as separate sections (no overlap)
+- Story sharing feature added: generates beautiful 9:16 card for IG/FB stories
+- Users can download or share the card directly via Web Share API
