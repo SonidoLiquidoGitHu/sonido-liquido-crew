@@ -219,12 +219,14 @@ function VideoCard({
   onOpen,
   onShare,
   getPlatformIcon,
+  priority = false,
 }: {
   video: ReelVideo;
   index: number;
   onOpen: (index: number) => void;
   onShare: (index: number) => void;
   getPlatformIcon: (platform: string | null) => React.ReactNode;
+  priority?: boolean;
 }) {
   return (
     <div
@@ -236,6 +238,7 @@ function VideoCard({
           video={video}
           alt={video.title || "Video"}
           fill
+          priority={priority}
           className="transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
           aspectRatio="9/16"
@@ -766,6 +769,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                       onOpen={openReel}
                       onShare={(i) => setShareModalIndex(i)}
                       getPlatformIcon={getPlatformIcon}
+                      priority={index < 4}
                     />
                   ))}
                 </div>
@@ -801,6 +805,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                 onOpen={openReel}
                 onShare={(i) => setShareModalIndex(i)}
                 getPlatformIcon={getPlatformIcon}
+                priority={index < 4}
               />
             ))}
           </div>

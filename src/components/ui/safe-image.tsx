@@ -1,7 +1,6 @@
 "use client";
 import Image, { ImageProps } from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
-// NOTE: useMemo intentionally removed — see processedSrc comment below.
 
 interface SafeImageProps extends Omit<ImageProps, "onError" | "src"> {
   src: ImageProps["src"] | null | undefined;
@@ -63,6 +62,7 @@ function proxyUrl(url: string): string {
  * 4. Retries failed images (helpful for flaky mobile connections)
  * 5. Uses an inline SVG placeholder to avoid fallback cascade failures
  * 6. Shows a refresh button when images fail to load (helps with cached errors)
+ * 7. Enables Next.js Image optimization for proxied URLs (WebP/AVIF, CDN caching)
  */
 export function SafeImage({
   src,
@@ -110,12 +110,6 @@ export function SafeImage({
       }
     };
   }, [processedSrc]);
-
-  // Check if original URL is from Dropbox
-  const wasDropboxUrl = typeof src === "string" && isDropboxUrl(src);
-
-  // Use unoptimized for proxied URLs (proxy already serves optimized content)
-  const shouldUnoptimize = wasDropboxUrl || props.unoptimized;
 
   const handleFinalError = useCallback(() => {
     onErrorProp?.();
@@ -189,6 +183,10 @@ export function SafeImage({
 
   // Final URL to render
   const finalSrc = error ? fallbackSrc : imageSrc;
+
+  // Only use unoptimized for data: URIs (fallbacks) — let Next.js optimize
+  // everything else through its image pipeline for WebP/AVIF conversion + CDN caching
+  const shouldUnoptimize = (typeof finalSrc === "string" && finalSrc.startsWith("data:")) || props.unoptimized;
 
   return (
     <div className={fill ? "absolute inset-0" : "relative"} key={retryKey}>

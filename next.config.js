@@ -137,11 +137,13 @@ const nextConfig = {
     ],
     // Image optimization settings
     formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60, // 1 minute cache - reduced to prevent stale image issues
+    minimumCacheTTL: 3600, // 1 hour cache - Next.js Image optimization caches on CDN for fast repeat loads
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    // Disable optimization for external images to prevent caching issues
-    unoptimized: true,
+    // Enable image optimization for better performance (WebP/AVIF conversion, CDN caching)
+    // The image-proxy route now returns proper content-type headers,
+    // so Next.js Image optimization works correctly with proxied URLs.
+    unoptimized: false,
   },
   // Required for @libsql/client in serverless
   serverExternalPackages: ["@libsql/client", "@libsql/client/web"],

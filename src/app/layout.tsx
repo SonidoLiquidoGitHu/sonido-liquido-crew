@@ -78,6 +78,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://open.spotify.com" />
         <link rel="dns-prefetch" href="https://i.ytimg.com" />
         <link rel="dns-prefetch" href="https://www.youtube.com" />
+        <link rel="dns-prefetch" href="https://www.dropbox.com" />
         <link rel="dns-prefetch" href="https://dl.dropboxusercontent.com" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
@@ -85,6 +86,7 @@ export default function RootLayout({
         {/* Preconnect for critical resources */}
         <link rel="preconnect" href="https://i.scdn.co" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.dropbox.com" />
       </head>
       <body className={`${oswald.variable} ${barlow.variable} antialiased`}>
         {children}

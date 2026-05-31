@@ -25,6 +25,8 @@ interface VideoThumbnailProps {
   showPlayOverlay?: boolean;
   /** Additional content to render on top (e.g. title, artist) */
   overlay?: React.ReactNode;
+  /** Priority loading for above-the-fold images */
+  priority?: boolean;
 }
 
 /**
@@ -50,6 +52,7 @@ export function VideoThumbnail({
   aspectRatio = "9/16",
   showPlayOverlay = false,
   overlay,
+  priority = false,
 }: VideoThumbnailProps) {
   const thumbnailUrl = getProxiedThumbnailUrl(video);
   const hasThumbnail = Boolean(thumbnailUrl);
@@ -59,13 +62,14 @@ export function VideoThumbnail({
   // If we have a thumbnail image, use SafeImage
   if (hasThumbnail) {
     return (
-      <div className={`relative ${fill ? "absolute inset-0" : ""} ${className}`}>
+      <div className={`${fill ? "absolute inset-0" : "relative"} ${className}`}>
         <SafeImage
           src={thumbnailUrl!}
           alt={alt}
           fill={fill}
           className="object-cover"
           sizes={sizes}
+          priority={priority}
           fallbackSrc={(() => {
             const ytId = getYouTubeId(video);
             if (ytId && isYouTubeThumbnailUrl(thumbnailUrl!)) {
@@ -98,7 +102,7 @@ export function VideoThumbnail({
 
   // Final fallback: placeholder
   return (
-    <div className={`relative ${fill ? "absolute inset-0" : ""} ${className}`}>
+    <div className={`${fill ? "absolute inset-0" : "relative"} ${className}`}>
       <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
         <svg
           className="w-12 h-12 text-slc-border/50"
@@ -218,7 +222,7 @@ function VideoFrameFallback({
 
   if (videoError) {
     return (
-      <div className={`relative ${fill ? "absolute inset-0" : ""} ${className}`}>
+      <div className={`${fill ? "absolute inset-0" : "relative"} ${className}`}>
         <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
           <svg className="w-12 h-12 text-slc-border/50" viewBox="0 0 24 24" fill="currentColor">
             <path d="M8 5v14l11-7z" />
@@ -231,7 +235,7 @@ function VideoFrameFallback({
   }
 
   return (
-    <div className={`relative ${fill ? "absolute inset-0" : ""} ${className}`}>
+    <div className={`${fill ? "absolute inset-0" : "relative"} ${className}`}>
       {/* Hidden video element for frame extraction */}
       <video
         ref={videoRef}
