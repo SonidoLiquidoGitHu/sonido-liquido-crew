@@ -273,6 +273,16 @@ export const subscribersRepository = {
     }).where(eq(subscribers.email, email.toLowerCase())).returning();
     return subscriber || null;
   },
+
+  async deleteByEmail(email: string) {
+    const result = await db.delete(subscribers).where(eq(subscribers.email, email.toLowerCase()));
+    return (result.rowsAffected ?? 0) > 0;
+  },
+
+  async deleteById(id: string) {
+    const result = await db.delete(subscribers).where(eq(subscribers.id, id));
+    return (result.rowsAffected ?? 0) > 0;
+  },
 };
 
 // ===========================================

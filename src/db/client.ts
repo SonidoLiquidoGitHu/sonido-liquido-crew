@@ -684,6 +684,48 @@ async function runAutoMigration(client: Client): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON analytics(session_id)`,
       `CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at)`,
       `CREATE INDEX IF NOT EXISTS idx_analytics_entity_id ON analytics(entity_id)`,
+      // Subscribers table (newsletter subscribers with source tracking)
+      `CREATE TABLE IF NOT EXISTS subscribers (
+        id TEXT PRIMARY KEY NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT,
+        is_active INTEGER DEFAULT 1 NOT NULL,
+        mailchimp_id TEXT,
+        source TEXT,
+        subscribed_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        unsubscribed_at INTEGER,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      // Segments table (newsletter audience segments)
+      `CREATE TABLE IF NOT EXISTS segments (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        mailchimp_id TEXT,
+        member_count INTEGER DEFAULT 0 NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      // Email Campaigns table
+      `CREATE TABLE IF NOT EXISTS email_campaigns (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        preview_text TEXT,
+        content TEXT,
+        status TEXT NOT NULL DEFAULT 'draft',
+        mailchimp_campaign_id TEXT,
+        segment_id TEXT REFERENCES segments(id) ON DELETE SET NULL,
+        scheduled_at INTEGER,
+        sent_at INTEGER,
+        open_rate INTEGER,
+        click_rate INTEGER,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+        updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email)`,
+      `CREATE INDEX IF NOT EXISTS idx_subscribers_source ON subscribers(source)`,
     ];
 
     // Add missing columns (safe - ignores "duplicate column" errors)
@@ -731,6 +773,10 @@ async function runAutoMigration(client: Client): Promise<void> {
 
       // === VERTICAL VIDEOS - event_id column for event grouping ===
       `ALTER TABLE vertical_videos ADD COLUMN event_id TEXT`,
+
+      // === SUBSCRIBERS - source column for tracking subscription origin ===
+      `ALTER TABLE subscribers ADD COLUMN source TEXT`,
+      `ALTER TABLE subscribers ADD COLUMN mailchimp_id TEXT`,
     ];
 
     for (const sql of criticalTables) {

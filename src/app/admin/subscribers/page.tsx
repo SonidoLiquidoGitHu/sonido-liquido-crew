@@ -67,8 +67,26 @@ export default function AdminSubscribersPage() {
     }
   };
 
+  const handleDelete = async (email: string) => {
+    if (!confirm(`¿Eliminar permanentemente a ${email}?`)) return;
+
+    try {
+      const res = await fetch("/api/admin/subscribers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, permanent: true }),
+      });
+
+      if ((await res.json()).success) {
+        fetchSubscribers();
+      }
+    } catch (error) {
+      console.error("Error deleting subscriber:", error);
+    }
+  };
+
   const handleUnsubscribe = async (email: string) => {
-    if (!confirm(`Are you sure you want to unsubscribe ${email}?`)) return;
+    if (!confirm(`¿Dar de baja a ${email}?`)) return;
 
     try {
       const res = await fetch("/api/admin/subscribers", {
@@ -87,19 +105,44 @@ export default function AdminSubscribersPage() {
 
   const handleBulkUnsubscribe = async () => {
     if (selectedSubscribers.size === 0) return;
-    if (!confirm(`Unsubscribe ${selectedSubscribers.size} subscribers?`)) return;
+    if (!confirm(`¿Dar de baja a ${selectedSubscribers.size} suscriptores?`)) return;
 
+    let done = 0;
     for (const id of selectedSubscribers) {
       const subscriber = subscribers.find((s) => s.id === id);
       if (subscriber) {
-        await fetch("/api/admin/subscribers", {
+        const res = await fetch("/api/admin/subscribers", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: subscriber.email, permanent: false }),
         });
+        if ((await res.json()).success) done++;
       }
     }
 
+    alert(`Se dieron de baja ${done} suscriptores.`);
+    setSelectedSubscribers(new Set());
+    fetchSubscribers();
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedSubscribers.size === 0) return;
+    if (!confirm(`¿ELIMINAR PERMANENTEMENTE a ${selectedSubscribers.size} suscriptores? Esta acción no se puede deshacer.`)) return;
+
+    let done = 0;
+    for (const id of selectedSubscribers) {
+      const subscriber = subscribers.find((s) => s.id === id);
+      if (subscriber) {
+        const res = await fetch("/api/admin/subscribers", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: subscriber.email, permanent: true }),
+        });
+        if ((await res.json()).success) done++;
+      }
+    }
+
+    alert(`Se eliminaron permanentemente ${done} suscriptores.`);
     setSelectedSubscribers(new Set());
     fetchSubscribers();
   };

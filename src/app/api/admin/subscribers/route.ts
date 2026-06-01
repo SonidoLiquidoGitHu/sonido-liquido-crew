@@ -58,9 +58,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (permanent) {
-      // Permanently delete from database (implement if needed)
-      // For now, just unsubscribe
-      const subscriber = await subscribersRepository.unsubscribe(email);
+      // Permanently delete from database
+      const deleted = await subscribersRepository.deleteByEmail(email);
 
       // Also unsubscribe from Mailchimp if configured
       if (mailchimpClient.isConfigured()) {
@@ -73,8 +72,8 @@ export async function DELETE(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "Subscriber removed",
-        data: subscriber,
+        message: "Subscriber permanently deleted",
+        data: { email, deleted },
       });
     } else {
       // Soft unsubscribe
