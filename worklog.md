@@ -707,3 +707,31 @@ Stage Summary:
 - EventCard now has cover image and description as separate sections (no overlap)
 - Story sharing feature added: generates beautiful 9:16 card for IG/FB stories
 - Users can download or share the card directly via Web Share API
+
+---
+Task ID: 1
+Agent: main
+Task: Fix share-to-stories, add Mailchimp share to subscribers, improve exclusive downloads
+
+Work Log:
+- Explored full codebase state to understand current architecture
+- Identified root cause of share-to-stories failure: image proxy missing CORS headers causing canvas to be tainted
+- Added Access-Control-Allow-Origin: * header to image proxy responses
+- Fixed loadCoverImage to only set crossOrigin for external URLs, not same-origin proxy
+- Rewrote shareCard with proper fallback chain and error messages
+- Added Instagram Story direct share button using instagram-stories:// URL scheme
+- Added "Enviar a suscriptores (Mailchimp)" button in EventStoryCard that directly calls share-with-subscribers API
+- Added Reactivate button for inactive subscribers in admin page
+- Added POST /api/admin/subscribers route for resubscribe action
+- Added onSuccess callback to NewsletterForm component
+- Connected descargas page auto-verify after subscription
+- Added musica, contacto, footer to VALID_SUBSCRIPTION_SOURCES
+- Updated admin subscribers page source labels
+- Build passed, committed and pushed to GitHub
+
+Stage Summary:
+- Share-to-stories should now work (CORS headers fix + better error handling)
+- EventStoryCard now has 3 share methods: native share sheet, Instagram Story direct, and Mailchimp subscriber campaign
+- Subscribers can be reactivated from admin
+- Exclusive downloads auto-unlock after subscription
+- Anti-spam sources (newsletter-page, newsletter-cta) still blocked
