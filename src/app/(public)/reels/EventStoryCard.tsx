@@ -13,6 +13,9 @@ import {
   Mail,
   Send,
   AlertCircle,
+  ExternalLink,
+  ClipboardCopy,
+  ImagePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { proxyImageUrl } from "@/hooks/use-proxied-image";
@@ -725,6 +728,12 @@ const FILE_SUFFIX: Record<FormatTab, string> = {
 // EVENT STORY CARD COMPONENT
 // ===========================================
 
+// Detect if user is on a mobile device
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+}
+
 export function EventStoryCard({
   event,
   onClose,
@@ -736,10 +745,12 @@ export function EventStoryCard({
   const [cardGenerated, setCardGenerated] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedImage, setCopiedImage] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [sendingToSubscribers, setSendingToSubscribers] = useState(false);
   const [subscriberResult, setSubscriberResult] = useState<{ success: boolean; message: string } | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isMobile = isMobileDevice();
 
   // Generate the card when format changes or on mount
   useEffect(() => {
@@ -771,7 +782,6 @@ export function EventStoryCard({
         canvas.toBlob(resolve, "image/png", 1.0)
       );
     } catch (err) {
-      // Canvas is tainted — can't extract image data
       console.error("Canvas tainted, cannot extract blob:", err);
       setShareError("No se pudo generar la imagen. Intenta descargarla.");
       return null;
@@ -785,7 +795,6 @@ export function EventStoryCard({
 
     const blob = await getCanvasBlob(canvas);
     if (!blob) {
-      // Fallback: try without cover image (regenerate canvas without image)
       setShareError("No se pudo descargar. La imagen de portada tiene restricciones de seguridad.");
       return;
     }
@@ -800,7 +809,45 @@ export function EventStoryCard({
     URL.revokeObjectURL(url);
   }, [event.slug, event.id, selectedFormat, getCanvasBlob]);
 
-  // Share the card (via Web Share API with file)
+  // Download and open Instagram web
+  const downloadAndOpenInstagram = useCallback(async () => {
+    await downloadCard();
+    window.open("https://www.instagram.com/", "_blank");
+  }, [downloadCard]);
+
+  // Copy image to clipboard (for pasting into Instagram web)
+  const copyImageToClipboard = useCallback(async () => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+
+    setShareError(null);
+
+    try {
+      const blob = await getCanvasBlob(canvas);
+      if (!blob) return;
+
+      // Try the modern Clipboard API with image support
+      if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+        try {
+          const clipboardItem = new ClipboardItem({ "image/png": blob });
+          await navigator.clipboard.write([clipboardItem]);
+          setCopiedImage(true);
+          setTimeout(() => setCopiedImage(false), 3000);
+          return;
+        } catch {
+          // Clipboard API doesn't support images on this browser
+        }
+      }
+
+      // Fallback: copy the link instead
+      setShareError("Tu navegador no soporta copiar imágenes. Descarga la imagen y súbelo manualmente.");
+    } catch (err) {
+      console.error("Copy image failed:", err);
+      setShareError("No se pudo copiar la imagen. Intenta descargarla.");
+    }
+  }, [getCanvasBlob]);
+
+  // Share the card (via Web Share API — only useful on mobile)
   const shareCard = useCallback(async () => {
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
@@ -817,7 +864,7 @@ export function EventStoryCard({
         { type: "image/png" }
       );
 
-      // Try Web Share API with file (shows Instagram Stories, Facebook, etc.)
+      // Try Web Share API with file (shows Instagram Stories, Facebook, etc. on mobile)
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         try {
           await navigator.share({
@@ -830,13 +877,11 @@ export function EventStoryCard({
           setTimeout(() => setShareSuccess(false), 2000);
           return;
         } catch (err: any) {
-          // User cancelled the share dialog — not an error
           if (err?.name === "AbortError") return;
-          // Other error — fall through to text-only share
         }
       }
 
-      // Fallback: try text-only Web Share (still shows share sheet on mobile)
+      // Fallback: try text-only Web Share
       if (navigator.share) {
         try {
           await navigator.share({
@@ -852,7 +897,7 @@ export function EventStoryCard({
         }
       }
 
-      // Final fallback: download the image
+      // Desktop fallback: download the image
       downloadCard();
     } catch (err) {
       console.error("Share failed:", err);
@@ -860,7 +905,7 @@ export function EventStoryCard({
     }
   }, [event, selectedFormat, downloadCard, getCanvasBlob]);
 
-  // Share directly to Instagram Stories using the Instagram Story URL scheme
+  // Share directly to Instagram Stories (mobile only — uses URL scheme)
   const shareToInstagramStory = useCallback(async () => {
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
@@ -871,35 +916,35 @@ export function EventStoryCard({
       const blob = await getCanvasBlob(canvas);
       if (!blob) return;
 
-      // Instagram Story share requires the image as a base64 data URL
-      // Note: This only works on mobile devices with the Instagram app installed
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      // On mobile: use Instagram Story URL scheme
+      if (isMobile) {
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
 
-      // Try using the Instagram Story share URL (iOS only)
-      // On Android, this falls back to the Web Share API
-      const instagramUrl = `instagram-stories://share?background_image=${encodeURIComponent(dataUrl)}`;
+        const instagramUrl = `instagram-stories://share?background_image=${encodeURIComponent(dataUrl)}`;
+        const link = document.createElement("a");
+        link.href = instagramUrl;
+        link.click();
 
-      // Attempt to open Instagram
-      const link = document.createElement("a");
-      link.href = instagramUrl;
-      link.click();
-
-      // Fallback after a short delay if Instagram didn't open
-      setTimeout(() => {
-        if (document.visibilityState === "visible") {
-          setShareError("No se pudo abrir Instagram. Asegúrate de tener la app instalada o usa el botón Descargar.");
-        }
-      }, 1500);
+        setTimeout(() => {
+          if (document.visibilityState === "visible") {
+            setShareError("No se pudo abrir Instagram. Asegúrate de tener la app instalada.");
+          }
+        }, 1500);
+      } else {
+        // On desktop: download and open instagram.com
+        await downloadCard();
+        window.open("https://www.instagram.com/", "_blank");
+      }
     } catch (err) {
       console.error("Instagram Story share failed:", err);
       setShareError("No se pudo compartir en Instagram. Intenta descargar la imagen.");
     }
-  }, [getCanvasBlob]);
+  }, [getCanvasBlob, isMobile, downloadCard]);
 
   // Send event to newsletter subscribers via Mailchimp
   const sendToSubscribers = useCallback(async () => {
@@ -946,7 +991,6 @@ export function EventStoryCard({
   }, [event]);
 
   // Social share helpers
-  const shareUrl = `https://sonidoliquido.com/reels`;
   const eventShareUrl = `https://sonidoliquido.com/reels`;
   const encodedUrl = encodeURIComponent(eventShareUrl);
   const encodedTitle = encodeURIComponent(`Mira "${event.title}" en Sonido Líquido Crew`);
@@ -966,13 +1010,16 @@ export function EventStoryCard({
     ? { aspectRatio: "1/1", maxHeight: "50vh" }
     : { aspectRatio: "9/16", maxHeight: "60vh" };
 
+  // Format-specific labels for instructions
+  const formatLabel = selectedFormat === "post" ? "publicación" : selectedFormat === "reel" ? "reel" : "historia";
+
   return (
     <div
-      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="relative flex flex-col items-center gap-3 max-h-[95vh] w-full max-w-md"
+        className="relative flex flex-col items-center gap-3 max-h-[95vh] w-full max-w-md py-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
@@ -985,7 +1032,7 @@ export function EventStoryCard({
 
         {/* Title */}
         <h2 className="font-oswald text-lg uppercase text-white flex items-center gap-2">
-          <Instagram className="w-5 h-5 text-purple-400" />
+          <Share2 className="w-5 h-5 text-purple-400" />
           Compartir Evento
         </h2>
 
@@ -1023,46 +1070,108 @@ export function EventStoryCard({
           )}
         </div>
 
-        {/* Action buttons: Download + Share + Instagram Story */}
-        <div className="flex items-center gap-2 flex-wrap justify-center">
-          <Button
-            onClick={downloadCard}
-            disabled={generating || !cardGenerated}
-            className="bg-white/10 hover:bg-white/20 text-white gap-2"
-            variant="ghost"
-            size="sm"
-          >
-            <Download className="w-4 h-4" />
-            Descargar
-          </Button>
-          <Button
-            onClick={shareCard}
-            disabled={generating || !cardGenerated}
-            className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white gap-2"
-            size="sm"
-          >
-            {shareSuccess ? (
-              <>
-                <CheckCircle className="w-4 h-4" />
-                Compartido
-              </>
-            ) : (
-              <>
-                <Share2 className="w-4 h-4" />
-                Compartir
-              </>
-            )}
-          </Button>
-          <Button
-            onClick={shareToInstagramStory}
-            disabled={generating || !cardGenerated}
-            className="bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white gap-2"
-            size="sm"
-          >
-            <Instagram className="w-4 h-4" />
-            Story
-          </Button>
-        </div>
+        {/* ============ PRIMARY ACTION BUTTONS ============ */}
+        {/* Desktop: Download + Open Instagram / Copy Image */}
+        {/* Mobile: Share (Web Share API) + Instagram Story deep link */}
+
+        {isMobile ? (
+          /* === MOBILE LAYOUT === */
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <Button
+              onClick={shareCard}
+              disabled={generating || !cardGenerated}
+              className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white gap-2"
+              size="sm"
+            >
+              {shareSuccess ? (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Compartido
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  Compartir
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={shareToInstagramStory}
+              disabled={generating || !cardGenerated}
+              className="bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white gap-2"
+              size="sm"
+            >
+              <Instagram className="w-4 h-4" />
+              Story
+            </Button>
+            <Button
+              onClick={downloadCard}
+              disabled={generating || !cardGenerated}
+              className="bg-white/10 hover:bg-white/20 text-white gap-2"
+              variant="ghost"
+              size="sm"
+            >
+              <Download className="w-4 h-4" />
+              Descargar
+            </Button>
+          </div>
+        ) : (
+          /* === DESKTOP LAYOUT === */
+          <div className="w-full space-y-2">
+            {/* Primary CTA: Download + Open Instagram */}
+            <Button
+              onClick={downloadAndOpenInstagram}
+              disabled={generating || !cardGenerated}
+              className="w-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white gap-2 h-11"
+              size="default"
+            >
+              <Download className="w-4 h-4" />
+              Descargar y Abrir Instagram
+              <ExternalLink className="w-3.5 h-3.5 ml-1" />
+            </Button>
+
+            {/* Secondary: Copy image to clipboard */}
+            <Button
+              onClick={copyImageToClipboard}
+              disabled={generating || !cardGenerated}
+              className="w-full bg-white/10 hover:bg-white/20 text-white gap-2 border border-white/10"
+              variant="ghost"
+              size="default"
+            >
+              {copiedImage ? (
+                <>
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  Imagen Copiada — Pega en Instagram
+                </>
+              ) : (
+                <>
+                  <ClipboardCopy className="w-4 h-4" />
+                  Copiar Imagen al Portapapeles
+                </>
+              )}
+            </Button>
+
+            {/* Desktop step-by-step instructions */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-1.5">
+              <p className="text-xs text-white/60 font-oswald uppercase tracking-wide">Como compartir en {formatLabel}:</p>
+              <div className="flex items-start gap-2 text-xs text-white/50">
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">1</span>
+                <span>Da clic en <strong className="text-white/70">Descargar y Abrir Instagram</strong></span>
+              </div>
+              <div className="flex items-start gap-2 text-xs text-white/50">
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">2</span>
+                <span>En Instagram, crea una nueva {formatLabel} (icone +)</span>
+              </div>
+              <div className="flex items-start gap-2 text-xs text-white/50">
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">3</span>
+                <span>Selecciona la imagen descargada y publicala</span>
+              </div>
+              <p className="text-[10px] text-white/30 pt-1 border-t border-white/5">
+                Tip: Tambien puedes usar <strong className="text-white/50">Copiar Imagen</strong> y pegar directamente con Ctrl+V
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Share error message */}
         {shareError && (
@@ -1072,7 +1181,7 @@ export function EventStoryCard({
           </div>
         )}
 
-        {/* Social share buttons */}
+        {/* ============ SOCIAL SHARE BUTTONS ============ */}
         <div className="flex items-center gap-2">
           <a
             href={`https://api.whatsapp.com/send?text=${encodedTitle}%20${encodedUrl}`}
@@ -1114,7 +1223,7 @@ export function EventStoryCard({
           </button>
         </div>
 
-        {/* Send to subscribers via Mailchimp */}
+        {/* ============ MAILCHIMP SUBSCRIBER SHARE ============ */}
         <div className="w-full max-w-xs">
           <Button
             onClick={sendToSubscribers}
@@ -1146,12 +1255,6 @@ export function EventStoryCard({
             <p className="text-xs text-green-400/70 mt-1 text-center">{subscriberResult.message}</p>
           )}
         </div>
-
-        {/* Instructions */}
-        <p className="text-xs text-white/40 text-center max-w-xs">
-          Descarga la imagen y subela como {selectedFormat === "post" ? "publicación" : selectedFormat === "reel" ? "reel" : "historia"} en Instagram o Facebook.
-          {" Usa Compartir para la hoja de compartir del sistema, o Story para abrir Instagram directamente."}
-        </p>
       </div>
 
       {/* Hidden canvas for full-res generation */}
