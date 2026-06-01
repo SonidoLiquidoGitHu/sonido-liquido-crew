@@ -289,6 +289,7 @@ export function CollaborationStory({
               e.stopPropagation();
               setSelectedMediaIndex(null);
             }}
+            aria-label="Cerrar"
             className="absolute top-4 right-4 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 z-10"
           >
             <X className="w-6 h-6" />
@@ -301,6 +302,7 @@ export function CollaborationStory({
                 e.stopPropagation();
                 navigateMedia("prev");
               }}
+              aria-label="Anterior"
               className="absolute left-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 z-10"
             >
               <ChevronLeft className="w-6 h-6" />
@@ -312,6 +314,7 @@ export function CollaborationStory({
                 e.stopPropagation();
                 navigateMedia("next");
               }}
+              aria-label="Siguiente"
               className="absolute right-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 z-10"
             >
               <ChevronRight className="w-6 h-6" />

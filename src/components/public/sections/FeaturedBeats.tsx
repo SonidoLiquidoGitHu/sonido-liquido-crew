@@ -192,6 +192,7 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
                   {beat.previewAudioUrl ? (
                     <button
                       onClick={() => togglePlay(beat.id)}
+                      aria-label={beatIsPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
                         beatIsPlaying
                           ? "bg-primary text-white"

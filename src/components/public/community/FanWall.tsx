@@ -190,6 +190,7 @@ export function FanWall({
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
+                    aria-label="Cerrar formulario"
                     className="text-slc-muted hover:text-white"
                   >
                     <X className="w-5 h-5" />

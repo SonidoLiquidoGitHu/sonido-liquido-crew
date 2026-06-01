@@ -4,14 +4,14 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 const oswald = Oswald({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-oswald",
   display: "swap",
   preload: true,
 });
 
 const barlow = Barlow({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-barlow",
   display: "swap",
@@ -87,6 +87,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://i.scdn.co" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://www.dropbox.com" />
+        <link rel="preconnect" href="https://open.spotify.com" />
       </head>
       <body className={`${oswald.variable} ${barlow.variable} antialiased`}>
         {children}

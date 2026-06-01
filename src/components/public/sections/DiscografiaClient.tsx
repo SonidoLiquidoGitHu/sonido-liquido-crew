@@ -171,6 +171,7 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
+                aria-label="Limpiar búsqueda"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slc-muted hover:text-white"
               >
                 <X className="w-4 h-4" />

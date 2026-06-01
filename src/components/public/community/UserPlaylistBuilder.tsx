@@ -596,6 +596,7 @@ export function UserPlaylistBuilder({
                     <button
                       onClick={() => playPreview(track)}
                       className="w-6 h-6 mx-auto text-primary"
+                      aria-label="Pausar"
                     >
                       <Pause className="w-5 h-5" />
                     </button>
@@ -603,6 +604,7 @@ export function UserPlaylistBuilder({
                     <button
                       onClick={() => playPreview(track)}
                       className="w-6 h-6 mx-auto text-slc-muted hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Reproducir"
                     >
                       <Play className="w-5 h-5" />
                     </button>
@@ -648,6 +650,7 @@ export function UserPlaylistBuilder({
                     <button
                       onClick={() => moveTrack(index, "up")}
                       disabled={index === 0}
+                      aria-label="Mover arriba"
                       className="p-1 text-slc-muted hover:text-white disabled:opacity-30"
                     >
                       <ChevronUp className="w-4 h-4" />
@@ -655,12 +658,14 @@ export function UserPlaylistBuilder({
                     <button
                       onClick={() => moveTrack(index, "down")}
                       disabled={index === tracks.length - 1}
+                      aria-label="Mover abajo"
                       className="p-1 text-slc-muted hover:text-white disabled:opacity-30"
                     >
                       <ChevronDown className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => removeTrack(track.id)}
+                      aria-label="Eliminar"
                       className="p-1 text-red-500 hover:text-red-400"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -896,6 +901,7 @@ export function UserPlaylistBuilder({
                 </div>
                 <button
                   onClick={() => setShowShareModal(false)}
+                  aria-label="Cerrar"
                   className="p-2 hover:bg-slc-dark rounded-full transition-colors"
                 >
                   <X className="w-5 h-5 text-slc-muted" />

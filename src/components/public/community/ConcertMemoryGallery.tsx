@@ -291,6 +291,7 @@ export function ConcertMemoryGallery({
                     <button
                       type="button"
                       onClick={() => setShowUploadForm(false)}
+                      aria-label="Cerrar formulario"
                       className="text-slc-muted hover:text-white"
                     >
                       <X className="w-6 h-6" />
@@ -327,6 +328,7 @@ export function ConcertMemoryGallery({
                         <button
                           type="button"
                           onClick={clearFile}
+                          aria-label="Limpiar archivo"
                           className="absolute top-2 right-2 w-8 h-8 bg-black/70 rounded-full flex items-center justify-center hover:bg-black"
                         >
                           <X className="w-4 h-4" />
@@ -617,6 +619,7 @@ function GalleryThumbnail({
       <button
         onClick={onClick}
         className="w-full h-full"
+        aria-label={memory.caption || "Ver recuerdo"}
       >
         <img
           src={memory.thumbnailUrl || memory.imageUrl}
@@ -642,7 +645,7 @@ function GalleryThumbnail({
           setShowQuickShare(!showQuickShare);
         }}
         className="absolute top-2 left-2 w-8 h-8 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        title="Compartir"
+        aria-label="Compartir"
       >
         <Share2 className="w-4 h-4 text-white" />
       </button>
@@ -804,6 +807,7 @@ function LightboxWithShare({
           e.stopPropagation();
           onClose();
         }}
+        aria-label="Cerrar"
         className="absolute top-4 right-4 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 z-10"
       >
         <X className="w-6 h-6" />
@@ -816,7 +820,7 @@ function LightboxWithShare({
           nativeShare();
         }}
         className="absolute top-4 right-16 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 z-10"
-        title="Compartir"
+        aria-label="Compartir"
       >
         <Share2 className="w-5 h-5" />
       </button>
@@ -831,6 +835,7 @@ function LightboxWithShare({
             <h4 className="font-oswald text-sm uppercase">Compartir</h4>
             <button
               onClick={() => setShowShareMenu(false)}
+              aria-label="Cerrar menú"
               className="text-slc-muted hover:text-white"
             >
               <X className="w-4 h-4" />
@@ -922,6 +927,7 @@ function LightboxWithShare({
             e.stopPropagation();
             onPrevious();
           }}
+          aria-label="Foto anterior"
           className="absolute left-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 z-10"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -933,6 +939,7 @@ function LightboxWithShare({
             e.stopPropagation();
             onNext();
           }}
+          aria-label="Siguiente foto"
           className="absolute right-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 z-10"
         >
           <ChevronRight className="w-6 h-6" />
@@ -988,18 +995,21 @@ function LightboxWithShare({
           <div className="flex items-center justify-center gap-3 mt-4 md:hidden">
             <button
               onClick={shareToInstagram}
+              aria-label="Instagram"
               className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center"
             >
               <Instagram className="w-5 h-5 text-white" />
             </button>
             <button
               onClick={shareToFacebook}
+              aria-label="Facebook"
               className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center"
             >
               <Facebook className="w-5 h-5 text-white" />
             </button>
             <button
               onClick={shareToTikTok}
+              aria-label="TikTok"
               className="w-10 h-10 rounded-full bg-black border border-white/20 flex items-center justify-center"
             >
               <TikTokIcon className="w-5 h-5 text-white" />
@@ -1007,6 +1017,7 @@ function LightboxWithShare({
             <button
               onClick={downloadImage}
               disabled={downloading}
+              aria-label="Descargar"
               className="w-10 h-10 rounded-full bg-slc-border flex items-center justify-center"
             >
               {downloading ? (

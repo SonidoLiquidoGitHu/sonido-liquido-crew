@@ -234,6 +234,7 @@ export default function BeatsPage() {
               variant={viewMode === "grid" ? "default" : "ghost"}
               size="icon"
               onClick={() => setViewMode("grid")}
+              aria-label="Vista de cuadrícula"
             >
               <Grid3X3 className="w-4 h-4" />
             </Button>
@@ -241,6 +242,7 @@ export default function BeatsPage() {
               variant={viewMode === "list" ? "default" : "ghost"}
               size="icon"
               onClick={() => setViewMode("list")}
+              aria-label="Vista de lista"
             >
               <List className="w-4 h-4" />
             </Button>
@@ -347,6 +349,7 @@ export default function BeatsPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={playPrevious}
+                  aria-label="Pista anterior"
                   className="w-8 h-8 rounded-full flex items-center justify-center text-slc-muted hover:text-white transition-colors"
                 >
                   <SkipBack className="w-4 h-4" />
@@ -354,6 +357,7 @@ export default function BeatsPage() {
 
                 <button
                   onClick={togglePlay}
+                  aria-label={isPlaying ? "Pausar" : "Reproducir"}
                   className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90 transition-colors"
                 >
                   {isPlaying ? (
@@ -365,6 +369,7 @@ export default function BeatsPage() {
 
                 <button
                   onClick={playNext}
+                  aria-label="Siguiente pista"
                   className="w-8 h-8 rounded-full flex items-center justify-center text-slc-muted hover:text-white transition-colors"
                 >
                   <SkipForward className="w-4 h-4" />
@@ -382,6 +387,7 @@ export default function BeatsPage() {
               <div className="hidden md:flex items-center gap-2">
                 <button
                   onClick={toggleMute}
+                  aria-label={isMuted ? "Activar sonido" : "Silenciar"}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-slc-muted hover:text-white transition-colors"
                 >
                   {isMuted ? (
@@ -411,6 +417,7 @@ export default function BeatsPage() {
               {/* Close */}
               <button
                 onClick={closePlayer}
+                aria-label="Cerrar reproductor"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-slc-muted hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />

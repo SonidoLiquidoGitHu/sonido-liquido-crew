@@ -9,6 +9,8 @@ interface LazySectionProps {
   threshold?: number;
   minHeight?: string;
   className?: string;
+  /** When true, all descendant <img> elements will have loading="lazy" set automatically */
+  lazyImages?: boolean;
 }
 
 // Detect if we're in a limited browser (Instagram, Facebook, etc.)
@@ -55,11 +57,21 @@ export function LazySection({
   threshold = 0,
   minHeight = "400px",
   className = "",
+  lazyImages = true, // Default to lazy loading images in below-fold sections
 }: LazySectionProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isLimited, setIsLimited] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Apply loading="lazy" to all descendant images when lazyImages is enabled
+  useEffect(() => {
+    if (!lazyImages || !isVisible || !ref.current) return;
+    const images = ref.current.querySelectorAll("img:not([loading])");
+    images.forEach((img) => {
+      img.setAttribute("loading", "lazy");
+    });
+  }, [lazyImages, isVisible]);
 
   useEffect(() => {
     const element = ref.current;

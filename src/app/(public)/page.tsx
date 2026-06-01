@@ -47,27 +47,27 @@ const VideosSection = dynamic(
 
 const GallerySection = dynamic(
   () => import("@/components/public/sections/GallerySection").then(m => ({ default: m.GallerySection })),
-  { ssr: true }
+  { ssr: false }
 );
 
 const EventsSection = dynamic(
   () => import("@/components/public/sections/EventsSection").then(m => ({ default: m.EventsSection })),
-  { ssr: true }
+  { ssr: false }
 );
 
 const NewsletterSection = dynamic(
   () => import("@/components/public/sections/NewsletterSection").then(m => ({ default: m.NewsletterSection })),
-  { ssr: true }
+  { ssr: false }
 );
 
 const StatsSection = dynamic(
   () => import("@/components/public/sections/StatsSection").then(m => ({ default: m.StatsSection })),
-  { ssr: true }
+  { ssr: false }
 );
 
 const VerticalVideoSection = dynamic(
   () => import("@/components/public/sections/VerticalVideoSection").then(m => ({ default: m.VerticalVideoSection })),
-  { ssr: true }
+  { ssr: false }
 );
 
 // ===========================================
@@ -191,6 +191,10 @@ export default async function HomePage() {
     ),
   ]);
 
+  // PERF: This enrichment adds 2 extra sequential DB round trips after the main parallel batch.
+  // Future optimization: use a JOIN in the initial query or move this into the same parallel batch
+  // to eliminate the sequential dependency. Tracked as performance bottleneck.
+  //
   // Enrich releases with artist info (same pattern as discografia page)
   let latestReleases: (typeof rawLatestReleases[number] & { artistName?: string | null; artistSlug?: string | null })[] = rawLatestReleases;
   try {

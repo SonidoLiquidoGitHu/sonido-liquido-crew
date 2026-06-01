@@ -274,6 +274,7 @@ export function ArtistGallerySection({
           {/* Close button */}
           <button
             onClick={closeLightbox}
+            aria-label="Cerrar galería"
             className="absolute top-4 right-4 z-10 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <X className="w-6 h-6 text-white" />
@@ -285,6 +286,7 @@ export function ArtistGallerySection({
               e.stopPropagation();
               prevPhoto();
             }}
+            aria-label="Foto anterior"
             className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <ChevronLeft className="w-6 h-6 text-white" />
@@ -294,6 +296,7 @@ export function ArtistGallerySection({
               e.stopPropagation();
               nextPhoto();
             }}
+            aria-label="Siguiente foto"
             className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <ChevronRight className="w-6 h-6 text-white" />

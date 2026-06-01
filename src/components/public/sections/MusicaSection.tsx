@@ -64,6 +64,8 @@ export function MusicaSection({ featuredBeats }: MusicaSectionProps) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
                   className={`
                     flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all
                     ${activeTab === tab.id

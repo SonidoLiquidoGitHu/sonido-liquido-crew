@@ -51,6 +51,7 @@ export function LatestReleases({
               size="icon"
               onClick={() => scroll("left")}
               className="hidden sm:flex"
+              aria-label="Desplazar a la izquierda"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -59,6 +60,7 @@ export function LatestReleases({
               size="icon"
               onClick={() => scroll("right")}
               className="hidden sm:flex"
+              aria-label="Desplazar a la derecha"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>

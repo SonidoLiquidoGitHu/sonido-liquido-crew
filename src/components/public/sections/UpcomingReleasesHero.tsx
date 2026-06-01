@@ -410,7 +410,7 @@ function CompactReleaseCard({
           <p className="text-xs text-slc-muted mb-2 line-clamp-1">
             {release.artistName}
             {release.featuredArtists && (
-              <span className="text-slc-muted/70"> ft. {release.featuredArtists}</span>
+              <span className="text-slc-muted"> ft. {release.featuredArtists}</span>
             )}
           </p>
 

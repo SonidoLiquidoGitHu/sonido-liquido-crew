@@ -228,6 +228,7 @@ function ShareModal({
           </h2>
           <button
             onClick={onClose}
+            aria-label="Cerrar"
             className="p-1 rounded-full hover:bg-slc-card transition-colors"
           >
             <X className="w-5 h-5 text-slc-muted" />
@@ -450,7 +451,7 @@ function VideoCard({
               onShare(video);
             }}
             className="absolute bottom-12 right-2 z-20 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:scale-110"
-            title="Compartir"
+            aria-label="Compartir"
           >
             <Share2 className="w-3.5 h-3.5" />
           </button>
