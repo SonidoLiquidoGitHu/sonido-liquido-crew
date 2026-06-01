@@ -41,6 +41,7 @@ import {
   Calendar,
   MapPin,
   FolderOpen,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
@@ -154,6 +155,40 @@ export default function AdminVerticalVideosPage() {
   const [uploadEventId, setUploadEventId] = useState("");
   const [uploadingCover, setUploadingCover] = useState(false);
   const [isDraggingCover, setIsDraggingCover] = useState(false);
+
+  // Send to subscribers state
+  const [sendingToSubscribers, setSendingToSubscribers] = useState<string | null>(null);
+
+  // Send event to newsletter subscribers
+  const sendToSubscribers = async (event: VideoEvent) => {
+    if (!confirm(`¿Enviar "${event.title}" a todos los suscriptores del newsletter?`)) return;
+    setSendingToSubscribers(event.id);
+    try {
+      const res = await fetch("/api/admin/vertical-video-events/share-with-subscribers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          eventTitle: event.title,
+          eventSlug: event.slug,
+          eventDate: event.eventDate,
+          eventLocation: event.location,
+          eventDescription: event.description,
+          coverImageUrl: event.coverImageUrl,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: "success", text: `Campaña enviada: "${event.title}" → suscriptores` });
+      } else {
+        setMessage({ type: "error", text: data.error || "Error al enviar campaña" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error de conexión al enviar campaña" });
+    }
+    setSendingToSubscribers(null);
+    setTimeout(() => setMessage(null), 5000);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -1578,6 +1613,20 @@ export default function AdminVerticalVideosPage() {
                     className="text-slc-muted hover:text-primary"
                   >
                     <Pencil className="w-4 h-4 mr-1" /> Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => sendToSubscribers(event)}
+                    disabled={sendingToSubscribers === event.id}
+                    className="text-slc-muted hover:text-purple-400"
+                  >
+                    {sendingToSubscribers === event.id ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Mail className="w-4 h-4 mr-1" />
+                    )}
+                    Enviar a suscriptores
                   </Button>
                   <Button
                     variant="ghost"

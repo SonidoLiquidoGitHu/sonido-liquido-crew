@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Mail, Check, Loader2 } from "lucide-react";
+import { Mail, Check, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ export function NewsletterForm({
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [downloadFile, setDownloadFile] = useState<{ url: string; name: string; buttonText: string; description: string } | null>(null);
   // Honeypot ref — hidden field that bots fill but real users don't
   const honeypotRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +52,10 @@ export function NewsletterForm({
         setMessage("Te has suscrito exitosamente.");
         setEmail("");
         setName("");
+        // Check for download file in response
+        if (data.data?.downloadFile) {
+          setDownloadFile(data.data.downloadFile);
+        }
       } else {
         setStatus("error");
         setMessage(data.error || "Error al suscribirse.");
@@ -63,7 +68,8 @@ export function NewsletterForm({
     setTimeout(() => {
       setStatus("idle");
       setMessage("");
-    }, 5000);
+      setDownloadFile(null);
+    }, 8000);
   };
 
   // Honeypot field — invisible to real users, bots auto-fill it
@@ -88,32 +94,60 @@ export function NewsletterForm({
     />
   );
 
+  // Download button for successful subscription with file
+  const downloadButton = downloadFile && status === "success" && (
+    <a
+      href={downloadFile.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 px-4 py-2 mt-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white text-sm font-oswald uppercase transition-all"
+    >
+      <Download className="w-4 h-4" />
+      {downloadFile.buttonText || "Descargar"}
+    </a>
+  );
+
+  // Link to exclusive downloads page
+  const downloadsLink = status === "success" && !downloadFile && (
+    <a
+      href="/descargas"
+      className="inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 mt-2"
+    >
+      <Download className="w-4 h-4" />
+      Ver descargas exclusivas
+    </a>
+  );
+
   if (variant === "inline") {
     return (
-      <form onSubmit={handleSubmit} className={cn("relative flex gap-2", className)}>
-        {honeypotField}
-        <Input
-          type="email"
-          placeholder="tu@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={status === "loading" || status === "success"}
-          className="flex-1"
-          aria-label="Email"
-        />
-        <Button
-          type="submit"
-          disabled={status === "loading" || status === "success" || !email}
-        >
-          {status === "loading" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : status === "success" ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <Mail className="w-4 h-4" />
-          )}
-        </Button>
-      </form>
+      <div className={cn("relative", className)}>
+        <form onSubmit={handleSubmit} className="relative flex gap-2">
+          {honeypotField}
+          <Input
+            type="email"
+            placeholder="tu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={status === "loading" || status === "success"}
+            className="flex-1"
+            aria-label="Email"
+          />
+          <Button
+            type="submit"
+            disabled={status === "loading" || status === "success" || !email}
+          >
+            {status === "loading" ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : status === "success" ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Mail className="w-4 h-4" />
+            )}
+          </Button>
+        </form>
+        {downloadButton}
+        {downloadsLink}
+      </div>
     );
   }
 
@@ -157,6 +191,8 @@ export function NewsletterForm({
             {message}
           </p>
         )}
+        {downloadButton}
+        {downloadsLink}
       </div>
     );
   }
@@ -206,6 +242,8 @@ export function NewsletterForm({
           {message}
         </p>
       )}
+      {downloadButton}
+      {downloadsLink}
     </form>
   );
 }
