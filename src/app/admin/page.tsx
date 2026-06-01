@@ -22,6 +22,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { CalendarDashboard } from "@/components/admin/CalendarDashboard";
 import { SpotifySyncButton } from "@/components/admin/SpotifySyncButton";
 import { EnsureTablesButton } from "@/components/admin/EnsureTablesButton";
@@ -354,9 +355,11 @@ export default async function AdminDashboardPage() {
               >
                 <div className="w-12 h-12 rounded overflow-hidden bg-slc-border flex items-center justify-center flex-shrink-0">
                   {release.coverImageUrl ? (
-                    <img
+                    <SafeImage
                       src={release.coverImageUrl}
                       alt={release.title}
+                      width={48}
+                      height={48}
                       className="w-full h-full object-cover"
                     />
                   ) : (

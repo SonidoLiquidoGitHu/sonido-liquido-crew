@@ -343,7 +343,7 @@ function EventCard({
       {/* Cover image section */}
       <button
         onClick={onClick}
-        className="relative aspect-video w-full text-left"
+        className="relative aspect-[9/16] w-full text-left"
       >
         {event.coverImageUrl ? (
           <SafeImage
@@ -733,7 +733,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
               <div className="p-4 bg-slc-card border border-slc-border rounded-xl mb-4">
                 {/* Cover image on top, description below */}
                 {selectedEvent.coverImageUrl && (
-                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-slc-border mb-3">
+                  <div className="relative w-full aspect-[9/16] max-h-[50vh] rounded-lg overflow-hidden border border-slc-border mb-3">
                     <SafeImage
                       src={selectedEvent.coverImageUrl}
                       alt={selectedEvent.title}

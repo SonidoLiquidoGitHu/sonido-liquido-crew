@@ -1524,8 +1524,8 @@ export default function AdminVerticalVideosPage() {
               key={event.id}
               className="bg-slc-card border border-slc-border rounded-xl overflow-hidden group hover:border-primary/50 transition-all"
             >
-              {/* Cover Image */}
-              <div className="relative aspect-video bg-black">
+              {/* Cover Image - 9:16 ratio for vertical video events */}
+              <div className="relative aspect-[9/16] bg-black">
                 {event.coverImageUrl ? (
                   <SafeImage
                     src={event.coverImageUrl}
@@ -2250,7 +2250,7 @@ export default function AdminVerticalVideosPage() {
                     </div>
                   ) : eventForm.coverImageUrl ? (
                     <div className="flex items-center gap-4 p-3">
-                      <div className="w-20 h-14 rounded-lg overflow-hidden border border-slc-border shrink-0">
+                      <div className="w-14 h-24 rounded-lg overflow-hidden border border-slc-border shrink-0">
                         <SafeImage
                           src={eventForm.coverImageUrl}
                           alt="Portada"
