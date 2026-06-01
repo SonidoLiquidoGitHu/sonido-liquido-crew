@@ -735,3 +735,26 @@ Stage Summary:
 - Subscribers can be reactivated from admin
 - Exclusive downloads auto-unlock after subscription
 - Anti-spam sources (newsletter-page, newsletter-cta) still blocked
+---
+Task ID: session-continue
+Agent: Main Agent
+Task: Continue from previous session — push pending changes, fix share-to-stories for desktop
+
+Work Log:
+- Investigated project state: 5 commits on `main` not pushed to `master` (Netlify deploys from master)
+- Previous changes included: bot source blocking, permanent delete, share-to-stories, Mailchimp integration, exclusive downloads
+- Committed uncommitted changes and pushed everything to master (commit 532d8e5)
+- Verified Netlify deployment succeeded (all pages returning 200)
+- Analyzed user screenshot showing Windows share dialog opening instead of Instagram — root cause: Web Share API on desktop opens OS share sheet which doesn't include Instagram
+- Rewrote EventStoryCard component with mobile/desktop detection:
+  - Desktop: "Descargar y Abrir Instagram" button (downloads image + opens instagram.com), "Copiar Imagen al Portapapeles" button (Clipboard API), step-by-step instructions
+  - Mobile: Web Share API + Instagram Story deep link (as before)
+  - Both: WhatsApp, Twitter, Facebook, copy link, Mailchimp subscriber share
+- Verified bot subscribers already cleaned from production (22 remaining, all legitimate sources)
+- Build passed, committed and pushed (commit ed7388a)
+
+Stage Summary:
+- All pending changes deployed to production
+- Share-to-stories now works properly on desktop (download + open Instagram workflow)
+- Copy image to clipboard feature for easy pasting into Instagram web
+- Bot subscribers confirmed cleaned from production DB (0 bot sources remain)
