@@ -153,7 +153,23 @@ export default function DescargasPage() {
                   <p className="text-white/40 text-sm mb-4">
                     Suscríbete al newsletter para obtener acceso inmediato:
                   </p>
-                  <NewsletterForm source="download-gate" variant="inline" />
+                  <NewsletterForm source="download-gate" variant="inline" onSuccess={(subscribedEmail) => {
+                    setEmail(subscribedEmail);
+                    // Auto-verify after successful subscription
+                    fetch("/api/newsletter/verify", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: subscribedEmail }),
+                    })
+                      .then((res) => res.json())
+                      .then((data) => {
+                        if (data.success && data.verified) {
+                          setVerified(true);
+                          setDownloads(data.downloads || []);
+                        }
+                      })
+                      .catch(() => {});
+                  }} />
                 </div>
               )}
             </div>

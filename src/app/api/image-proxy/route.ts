@@ -145,6 +145,8 @@ function imageResponse(body: ArrayBuffer, mimeType: string, cacheControl: string
       "X-Content-Type-Options": "nosniff",
       "Content-Length": body.byteLength.toString(),
       Vary: "Accept-Encoding",
+      // Allow canvas to read this image without tainting (for share-to-stories)
+      "Access-Control-Allow-Origin": "*",
     },
   });
 }

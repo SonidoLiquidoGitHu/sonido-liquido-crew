@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { subscribersRepository } from "@/lib/repositories";
 import { mailchimpClient } from "@/lib/clients";
+import { db } from "@/db/client";
+import { subscribers } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 // GET - List all subscribers
 export async function GET(request: NextRequest) {
@@ -39,6 +42,54 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching subscribers:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch subscribers" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Resubscribe a subscriber
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { email, action } = body;
+
+    if (!email) {
+      return NextResponse.json(
+        { success: false, error: "Email is required" },
+        { status: 400 }
+      );
+    }
+
+    if (action === "resubscribe") {
+      // Reactivate a subscriber
+      await db
+        .update(subscribers)
+        .set({ isActive: true, unsubscribedAt: null })
+        .where(eq(subscribers.email, email.toLowerCase()));
+
+      // Also re-subscribe in Mailchimp if configured
+      if (mailchimpClient.isConfigured()) {
+        try {
+          await mailchimpClient.addSubscriber(email.toLowerCase());
+        } catch (mcError) {
+          console.error("Failed to resubscribe in Mailchimp:", mcError);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Subscriber reactivated",
+      });
+    }
+
+    return NextResponse.json(
+      { success: false, error: "Unknown action" },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error("Error in subscriber POST:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to process request" },
       { status: 500 }
     );
   }

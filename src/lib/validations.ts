@@ -191,6 +191,9 @@ export const VALID_SUBSCRIPTION_SOURCES = [
   "popup_scroll",
   "popup_exit-intent",
   "download-gate",
+  "musica",
+  "contacto",
+  "footer",
 ] as const;
 
 export type SubscriptionSource = (typeof VALID_SUBSCRIPTION_SOURCES)[number];

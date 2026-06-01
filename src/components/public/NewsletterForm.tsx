@@ -10,12 +10,14 @@ interface NewsletterFormProps {
   source?: string;
   variant?: "default" | "inline" | "card";
   className?: string;
+  onSuccess?: (email: string) => void;
 }
 
 export function NewsletterForm({
   source = "newsletter-form",
   variant = "default",
   className,
+  onSuccess,
 }: NewsletterFormProps) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -50,6 +52,10 @@ export function NewsletterForm({
       if (data.success) {
         setStatus("success");
         setMessage("Te has suscrito exitosamente.");
+        // Notify parent of successful subscription with the email
+        if (onSuccess) {
+          onSuccess(email);
+        }
         setEmail("");
         setName("");
         // Check for download file in response

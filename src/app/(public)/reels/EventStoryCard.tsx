@@ -11,6 +11,8 @@ import {
   Copy,
   Check,
   Mail,
+  Send,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { proxyImageUrl } from "@/hooks/use-proxied-image";
@@ -133,9 +135,14 @@ async function loadOswaldFont(): Promise<void> {
 async function loadCoverImage(coverImageUrl: string | null): Promise<HTMLImageElement | null> {
   if (!coverImageUrl) return null;
   try {
-    const proxiedUrl = proxyImageUrl(coverImageUrl).src;
+    const { src: proxiedUrl } = proxyImageUrl(coverImageUrl);
     const coverImg = new Image();
-    coverImg.crossOrigin = "anonymous";
+    // Set crossOrigin for CORS-enabled image loading (needed for canvas toBlob)
+    // Only set if the URL is external (not same-origin proxy)
+    const isSameOrigin = proxiedUrl.startsWith("/");
+    if (!isSameOrigin) {
+      coverImg.crossOrigin = "anonymous";
+    }
     coverImg.src = proxiedUrl;
     await new Promise<void>((resolve, reject) => {
       coverImg.onload = () => resolve();
@@ -729,6 +736,9 @@ export function EventStoryCard({
   const [cardGenerated, setCardGenerated] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [sendingToSubscribers, setSendingToSubscribers] = useState(false);
+  const [subscriberResult, setSubscriberResult] = useState<{ success: boolean; message: string } | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Generate the card when format changes or on mount
@@ -754,37 +764,51 @@ export function EventStoryCard({
       });
   }, [event, selectedFormat, canvasRef, setGenerating]);
 
+  // Helper: safely get canvas blob (handles tainted canvas)
+  const getCanvasBlob = useCallback(async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+    try {
+      return await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png", 1.0)
+      );
+    } catch (err) {
+      // Canvas is tainted — can't extract image data
+      console.error("Canvas tainted, cannot extract blob:", err);
+      setShareError("No se pudo generar la imagen. Intenta descargarla.");
+      return null;
+    }
+  }, []);
+
   // Download the card
-  const downloadCard = useCallback(() => {
+  const downloadCard = useCallback(async () => {
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
 
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${event.slug || event.id}-${FILE_SUFFIX[selectedFormat]}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      },
-      "image/png",
-      1.0
-    );
-  }, [event.slug, event.id, selectedFormat]);
+    const blob = await getCanvasBlob(canvas);
+    if (!blob) {
+      // Fallback: try without cover image (regenerate canvas without image)
+      setShareError("No se pudo descargar. La imagen de portada tiene restricciones de seguridad.");
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${event.slug || event.id}-${FILE_SUFFIX[selectedFormat]}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [event.slug, event.id, selectedFormat, getCanvasBlob]);
 
   // Share the card (via Web Share API with file)
   const shareCard = useCallback(async () => {
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
 
+    setShareError(null);
+
     try {
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/png", 1.0)
-      );
+      const blob = await getCanvasBlob(canvas);
       if (!blob) return;
 
       const file = new File(
@@ -793,31 +817,143 @@ export function EventStoryCard({
         { type: "image/png" }
       );
 
+      // Try Web Share API with file (shows Instagram Stories, Facebook, etc.)
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: event.title,
-          text: `Mira "${event.title}" en Sonido Líquido Crew`,
-          url: "https://sonidoliquido.com/reels",
-          files: [file],
-        });
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-      } else {
-        downloadCard();
+        try {
+          await navigator.share({
+            title: event.title,
+            text: `Mira "${event.title}" en Sonido Líquido Crew`,
+            url: "https://sonidoliquido.com/reels",
+            files: [file],
+          });
+          setShareSuccess(true);
+          setTimeout(() => setShareSuccess(false), 2000);
+          return;
+        } catch (err: any) {
+          // User cancelled the share dialog — not an error
+          if (err?.name === "AbortError") return;
+          // Other error — fall through to text-only share
+        }
       }
-    } catch {
-      // User cancelled share
+
+      // Fallback: try text-only Web Share (still shows share sheet on mobile)
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: event.title,
+            text: `Mira "${event.title}" en Sonido Líquido Crew`,
+            url: "https://sonidoliquido.com/reels",
+          });
+          setShareSuccess(true);
+          setTimeout(() => setShareSuccess(false), 2000);
+          return;
+        } catch (err: any) {
+          if (err?.name === "AbortError") return;
+        }
+      }
+
+      // Final fallback: download the image
+      downloadCard();
+    } catch (err) {
+      console.error("Share failed:", err);
+      setShareError("No se pudo compartir. Intenta descargar la imagen.");
     }
-  }, [event, selectedFormat, downloadCard]);
+  }, [event, selectedFormat, downloadCard, getCanvasBlob]);
+
+  // Share directly to Instagram Stories using the Instagram Story URL scheme
+  const shareToInstagramStory = useCallback(async () => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+
+    setShareError(null);
+
+    try {
+      const blob = await getCanvasBlob(canvas);
+      if (!blob) return;
+
+      // Instagram Story share requires the image as a base64 data URL
+      // Note: This only works on mobile devices with the Instagram app installed
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      // Try using the Instagram Story share URL (iOS only)
+      // On Android, this falls back to the Web Share API
+      const instagramUrl = `instagram-stories://share?background_image=${encodeURIComponent(dataUrl)}`;
+
+      // Attempt to open Instagram
+      const link = document.createElement("a");
+      link.href = instagramUrl;
+      link.click();
+
+      // Fallback after a short delay if Instagram didn't open
+      setTimeout(() => {
+        if (document.visibilityState === "visible") {
+          setShareError("No se pudo abrir Instagram. Asegúrate de tener la app instalada o usa el botón Descargar.");
+        }
+      }, 1500);
+    } catch (err) {
+      console.error("Instagram Story share failed:", err);
+      setShareError("No se pudo compartir en Instagram. Intenta descargar la imagen.");
+    }
+  }, [getCanvasBlob]);
+
+  // Send event to newsletter subscribers via Mailchimp
+  const sendToSubscribers = useCallback(async () => {
+    setSendingToSubscribers(true);
+    setSubscriberResult(null);
+    setShareError(null);
+
+    try {
+      const res = await fetch("/api/admin/vertical-video-events/share-with-subscribers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          eventTitle: event.title,
+          eventSlug: event.slug,
+          eventDate: event.eventDate,
+          eventLocation: event.location,
+          eventDescription: event.description,
+          coverImageUrl: event.coverImageUrl,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setSubscriberResult({
+          success: true,
+          message: `Campaña enviada a todos los suscriptores`,
+        });
+      } else {
+        setSubscriberResult({
+          success: false,
+          message: data.error || "Error al enviar a suscriptores",
+        });
+      }
+    } catch (err) {
+      setSubscriberResult({
+        success: false,
+        message: "Error de conexión. Intenta de nuevo.",
+      });
+    } finally {
+      setSendingToSubscribers(false);
+    }
+  }, [event]);
 
   // Social share helpers
-  const shareUrl = "https://sonidoliquido.com/reels";
-  const encodedUrl = encodeURIComponent(shareUrl);
+  const shareUrl = `https://sonidoliquido.com/reels`;
+  const eventShareUrl = `https://sonidoliquido.com/reels`;
+  const encodedUrl = encodeURIComponent(eventShareUrl);
   const encodedTitle = encodeURIComponent(`Mira "${event.title}" en Sonido Líquido Crew`);
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(eventShareUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     } catch {
@@ -887,13 +1023,14 @@ export function EventStoryCard({
           )}
         </div>
 
-        {/* Action buttons: Download + Share */}
-        <div className="flex items-center gap-3">
+        {/* Action buttons: Download + Share + Instagram Story */}
+        <div className="flex items-center gap-2 flex-wrap justify-center">
           <Button
             onClick={downloadCard}
             disabled={generating || !cardGenerated}
             className="bg-white/10 hover:bg-white/20 text-white gap-2"
             variant="ghost"
+            size="sm"
           >
             <Download className="w-4 h-4" />
             Descargar
@@ -902,6 +1039,7 @@ export function EventStoryCard({
             onClick={shareCard}
             disabled={generating || !cardGenerated}
             className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white gap-2"
+            size="sm"
           >
             {shareSuccess ? (
               <>
@@ -915,7 +1053,24 @@ export function EventStoryCard({
               </>
             )}
           </Button>
+          <Button
+            onClick={shareToInstagramStory}
+            disabled={generating || !cardGenerated}
+            className="bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white gap-2"
+            size="sm"
+          >
+            <Instagram className="w-4 h-4" />
+            Story
+          </Button>
         </div>
+
+        {/* Share error message */}
+        {shareError && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs max-w-xs">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {shareError}
+          </div>
+        )}
 
         {/* Social share buttons */}
         <div className="flex items-center gap-2">
@@ -959,19 +1114,43 @@ export function EventStoryCard({
           </button>
         </div>
 
-        {/* Send to subscribers button */}
-        <a
-          href={`/admin/email-studio?event=${event.slug}`}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-purple-600/20 hover:border-purple-500/50 text-white/70 hover:text-white transition-all text-sm"
-        >
-          <Mail className="w-4 h-4" />
-          Enviar a suscriptores
-        </a>
+        {/* Send to subscribers via Mailchimp */}
+        <div className="w-full max-w-xs">
+          <Button
+            onClick={sendToSubscribers}
+            disabled={sendingToSubscribers || generating}
+            className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-purple-600/20 hover:border-purple-500/50 text-white/70 hover:text-white transition-all text-sm"
+            variant="ghost"
+          >
+            {sendingToSubscribers ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Enviando a suscriptores...
+              </>
+            ) : subscriberResult?.success ? (
+              <>
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                Enviado a suscriptores
+              </>
+            ) : (
+              <>
+                <Mail className="w-4 h-4" />
+                Enviar a suscriptores (Mailchimp)
+              </>
+            )}
+          </Button>
+          {subscriberResult && !subscriberResult.success && (
+            <p className="text-xs text-red-400 mt-1 text-center">{subscriberResult.message}</p>
+          )}
+          {subscriberResult?.success && (
+            <p className="text-xs text-green-400/70 mt-1 text-center">{subscriberResult.message}</p>
+          )}
+        </div>
 
         {/* Instructions */}
         <p className="text-xs text-white/40 text-center max-w-xs">
           Descarga la imagen y subela como {selectedFormat === "post" ? "publicación" : selectedFormat === "reel" ? "reel" : "historia"} en Instagram o Facebook.
-          {" O usa el botón Compartir para enviarla directamente."}
+          {" Usa Compartir para la hoja de compartir del sistema, o Story para abrir Instagram directamente."}
         </p>
       </div>
 

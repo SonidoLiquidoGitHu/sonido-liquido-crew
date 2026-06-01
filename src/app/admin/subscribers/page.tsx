@@ -103,6 +103,24 @@ export default function AdminSubscribersPage() {
     }
   };
 
+  const handleResubscribe = async (email: string) => {
+    if (!confirm(`¿Reactivar a ${email}?`)) return;
+
+    try {
+      const res = await fetch("/api/admin/subscribers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, action: "resubscribe" }),
+      });
+
+      if ((await res.json()).success) {
+        fetchSubscribers();
+      }
+    } catch (error) {
+      console.error("Error resubscribing:", error);
+    }
+  };
+
   const handleBulkUnsubscribe = async () => {
     if (selectedSubscribers.size === 0) return;
     if (!confirm(`¿Dar de baja a ${selectedSubscribers.size} suscriptores?`)) return;
@@ -181,7 +199,7 @@ export default function AdminSubscribersPage() {
   const VALID_SOURCES = [
     "website", "newsletter-form", "homepage",
     "popup_time", "popup_scroll", "popup_exit-intent",
-    "download-gate",
+    "download-gate", "musica", "contacto", "footer",
   ];
 
   // Human-readable source labels
@@ -193,6 +211,9 @@ export default function AdminSubscribersPage() {
     popup_scroll: "Popup (scroll)",
     "popup_exit-intent": "Popup (salida)",
     "download-gate": "Descarga",
+    musica: "Música",
+    contacto: "Contacto",
+    footer: "Footer",
     // Legacy/deprecated sources (still shown with labels for old data)
     "newsletter-page": "Newsletter Page ❌",
     "newsletter-cta": "CTA Newsletter ❌",
@@ -519,7 +540,17 @@ export default function AdminSubscribersPage() {
                           >
                             <UserX className="w-4 h-4" />
                           </Button>
-                        ) : null}
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                            title="Reactivar"
+                            onClick={() => handleResubscribe(subscriber.email)}
+                          >
+                            <UserCheck className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
