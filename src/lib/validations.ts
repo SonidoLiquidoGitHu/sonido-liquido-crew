@@ -182,10 +182,27 @@ export const updateOrderSchema = z.object({
 // SUBSCRIBER SCHEMAS
 // ===========================================
 
+// Valid subscription sources — only these are accepted server-side
+export const VALID_SUBSCRIPTION_SOURCES = [
+  "website",
+  "newsletter-form",
+  "homepage",
+  "newsletter-page",
+  "newsletter-cta",
+  "popup_time",
+  "popup_scroll",
+  "popup_exit-intent",
+  "download-gate",
+] as const;
+
+export type SubscriptionSource = (typeof VALID_SUBSCRIPTION_SOURCES)[number];
+
 export const subscribeSchema = z.object({
   email: emailSchema,
   name: z.string().max(200).nullable().optional(),
   source: z.string().max(100).nullable().optional(),
+  // Honeypot field — must be empty for real users, bots fill it
+  website: z.string().max(0).nullable().optional(),
 });
 
 // ===========================================

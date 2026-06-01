@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Mail, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ export function NewsletterForm({
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  // Honeypot ref — hidden field that bots fill but real users don't
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +35,13 @@ export function NewsletterForm({
       const res = await fetch("/api/newsletter/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name: name || undefined, source }),
+        body: JSON.stringify({
+          email,
+          name: name || undefined,
+          source,
+          // Honeypot — this field is hidden from real users
+          website: honeypotRef.current?.value || "",
+        }),
       });
 
       const data = await res.json();
@@ -58,9 +66,32 @@ export function NewsletterForm({
     }, 5000);
   };
 
+  // Honeypot field — invisible to real users, bots auto-fill it
+  const honeypotField = (
+    <input
+      ref={honeypotRef}
+      type="text"
+      name="website"
+      tabIndex={-1}
+      autoComplete="off"
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        width: "1px",
+        height: "1px",
+        padding: "0",
+        margin: "-1px",
+        overflow: "hidden",
+        clip: "rect(0, 0, 0, 0)",
+        border: "0",
+      }}
+    />
+  );
+
   if (variant === "inline") {
     return (
-      <form onSubmit={handleSubmit} className={cn("flex gap-2", className)}>
+      <form onSubmit={handleSubmit} className={cn("relative flex gap-2", className)}>
+        {honeypotField}
         <Input
           type="email"
           placeholder="tu@email.com"
@@ -93,7 +124,8 @@ export function NewsletterForm({
         <p className="text-slc-muted text-sm mb-4">
           Recibe noticias y lanzamientos exclusivos.
         </p>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="relative space-y-3">
+          {honeypotField}
           <Input
             type="email"
             placeholder="tu@email.com"
@@ -131,7 +163,8 @@ export function NewsletterForm({
 
   // Default variant
   return (
-    <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
+    <form onSubmit={handleSubmit} className={cn("relative space-y-4", className)}>
+      {honeypotField}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input
           type="text"

@@ -70,7 +70,7 @@ export default function NewsletterPopup() {
       const res = await fetch("/api/newsletter/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name }),
+        body: JSON.stringify({ email, name, source: "popup_time" }),
       });
 
       const data = await res.json();

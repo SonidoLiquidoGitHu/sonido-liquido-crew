@@ -18,6 +18,8 @@ import {
   MoreVertical,
   CheckCircle,
   XCircle,
+  Shield,
+  AlertTriangle,
 } from "lucide-react";
 
 interface Subscriber {
@@ -42,7 +44,7 @@ export default function AdminSubscribersPage() {
   const [meta, setMeta] = useState<SubscribersMeta>({ total: 0, active: 0, inactive: 0 });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "suspicious">("all");
   const [selectedSubscribers, setSelectedSubscribers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -125,14 +127,71 @@ export default function AdminSubscribersPage() {
     URL.revokeObjectURL(url);
   };
 
+  // Known spam domains
+  const SPAM_DOMAINS = [
+    "chameleongroup.co", "a7g.ru", "mailinator.com", "guerrillamail.com",
+    "sharklasers.com", "guerrillamailblock.com", "grr.la", "dispostable.com",
+    "trashmail.com", "tempmail.com", "throwaway.email",
+  ];
+
+  // Valid subscription sources on the public site
+  const VALID_SOURCES = [
+    "website", "newsletter-form", "homepage", "newsletter-page",
+    "newsletter-cta", "popup_time", "popup_scroll", "popup_exit-intent",
+    "download-gate",
+  ];
+
+  // Human-readable source labels
+  const SOURCE_LABELS: Record<string, string> = {
+    website: "Sitio web",
+    "newsletter-form": "Formulario",
+    homepage: "Homepage",
+    "newsletter-page": "Página Newsletter",
+    "newsletter-cta": "CTA Newsletter",
+    popup_time: "Popup (tiempo)",
+    popup_scroll: "Popup (scroll)",
+    "popup_exit-intent": "Popup (salida)",
+    "download-gate": "Descarga",
+  };
+
+  const isLikelyBot = (subscriber: Subscriber): boolean => {
+    const email = subscriber.email.toLowerCase();
+    const name = subscriber.name || "";
+    const source = subscriber.source || "website";
+
+    // Check spam domains
+    const domain = email.split("@")[1];
+    if (domain && SPAM_DOMAINS.includes(domain)) return true;
+
+    // Obfuscated email (4+ dots in local part)
+    const localPart = email.split("@")[0];
+    if ((localPart.match(/\./g) || []).length >= 4) return true;
+
+    // Gibberish name (15+ chars, only letters, multiple consonant clusters)
+    if (name.length >= 15 && /^[a-zA-Z]+$/.test(name)) {
+      const clusters = name.match(/[^aeiouAEIOU]{4,}/g);
+      if (clusters && clusters.length >= 2) return true;
+    }
+
+    // Invalid source (doesn't exist on public site)
+    if (!VALID_SOURCES.includes(source) && !source.startsWith("download-gate:") && !source.startsWith("popup_")) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const suspiciousCount = subscribers.filter(isLikelyBot).length;
+
   const filteredSubscribers = subscribers.filter((subscriber) => {
     const matchesSearch =
       subscriber.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (subscriber.name && subscriber.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "active" && subscriber.isActive) ||
-      (statusFilter === "inactive" && !subscriber.isActive);
+      (statusFilter === "active" && subscriber.isActive && !isLikelyBot(subscriber)) ||
+      (statusFilter === "inactive" && !subscriber.isActive) ||
+      (statusFilter === "suspicious" && isLikelyBot(subscriber));
     return matchesSearch && matchesStatus;
   });
 
@@ -162,18 +221,52 @@ export default function AdminSubscribersPage() {
     });
   };
 
-  const getSourceBadge = (source: string | null) => {
+  const handleCleanBots = async () => {
+    const bots = subscribers.filter(isLikelyBot);
+    if (bots.length === 0) return;
+    if (!confirm(`Se eliminarán ${bots.length} suscriptores sospechosos de ser bots. ¿Continuar?`)) return;
+
+    let deleted = 0;
+    for (const bot of bots) {
+      try {
+        const res = await fetch("/api/admin/subscribers", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: bot.email, permanent: true }),
+        });
+        if ((await res.json()).success) deleted++;
+      } catch {}
+    }
+
+    alert(`Se eliminaron ${deleted} suscriptores sospechosos.`);
+    setSelectedSubscribers(new Set());
+    fetchSubscribers();
+  };
+
+  const getSourceBadge = (source: string | null, subscriber: Subscriber) => {
     const colors: Record<string, string> = {
       website: "bg-blue-500/10 text-blue-500",
-      popup: "bg-purple-500/10 text-purple-500",
+      "newsletter-form": "bg-cyan-500/10 text-cyan-500",
+      homepage: "bg-green-500/10 text-green-500",
+      "newsletter-page": "bg-emerald-500/10 text-emerald-500",
+      "newsletter-cta": "bg-teal-500/10 text-teal-500",
+      popup_time: "bg-purple-500/10 text-purple-500",
+      popup_scroll: "bg-violet-500/10 text-violet-500",
+      "popup_exit-intent": "bg-fuchsia-500/10 text-fuchsia-500",
+      "download-gate": "bg-amber-500/10 text-amber-500",
       footer: "bg-green-500/10 text-green-500",
       landing: "bg-orange-500/10 text-orange-500",
       import: "bg-gray-500/10 text-gray-500",
     };
+
     const src = source || "website";
+    const isBot = isLikelyBot(subscriber);
+    const label = SOURCE_LABELS[src] || src;
+
     return (
-      <span className={`px-2 py-0.5 rounded-full text-xs ${colors[src] || colors.website}`}>
-        {src}
+      <span className={`px-2 py-0.5 rounded-full text-xs ${isBot ? "bg-red-500/10 text-red-500" : (colors[src] || "bg-yellow-500/10 text-yellow-500")}`}>
+        {isBot && <AlertTriangle className="w-3 h-3 inline mr-0.5" />}
+        {isBot ? `⚠ ${src}` : label}
       </span>
     );
   };
@@ -188,7 +281,13 @@ export default function AdminSubscribersPage() {
             Gestiona los suscriptores del newsletter
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {suspiciousCount > 0 && (
+            <Button variant="outline" onClick={handleCleanBots} className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+              <Shield className="w-4 h-4 mr-2" />
+              Eliminar {suspiciousCount} bots
+            </Button>
+          )}
           <Button variant="outline" onClick={fetchSubscribers} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Actualizar
@@ -201,7 +300,7 @@ export default function AdminSubscribersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Users className="w-5 h-5 text-slc-muted" />
@@ -223,6 +322,13 @@ export default function AdminSubscribersPage() {
           <div className="font-oswald text-2xl text-red-500">{meta.inactive}</div>
           <div className="text-xs text-slc-muted uppercase">Inactivos</div>
         </div>
+        <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Shield className="w-5 h-5 text-yellow-500" />
+          </div>
+          <div className="font-oswald text-2xl text-yellow-500">{suspiciousCount}</div>
+          <div className="text-xs text-slc-muted uppercase">Sospechosos</div>
+        </div>
       </div>
 
       {/* Search & Filters */}
@@ -239,12 +345,13 @@ export default function AdminSubscribersPage() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive" | "suspicious")}
           className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
         >
           <option value="all">Todos</option>
           <option value="active">Activos</option>
           <option value="inactive">Inactivos</option>
+          <option value="suspicious">⚠ Sospechosos ({suspiciousCount})</option>
         </select>
       </div>
 
@@ -333,7 +440,7 @@ export default function AdminSubscribersPage() {
                       {subscriber.name || "-"}
                     </td>
                     <td className="px-6 py-4">
-                      {getSourceBadge(subscriber.source)}
+                      {getSourceBadge(subscriber.source, subscriber)}
                     </td>
                     <td className="px-6 py-4 text-slc-muted text-sm">
                       {formatDate(subscriber.subscribedAt)}
