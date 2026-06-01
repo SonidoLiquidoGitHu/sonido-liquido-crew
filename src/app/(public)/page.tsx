@@ -47,27 +47,27 @@ const VideosSection = dynamic(
 
 const GallerySection = dynamic(
   () => import("@/components/public/sections/GallerySection").then(m => ({ default: m.GallerySection })),
-  { ssr: false }
+  { ssr: true }
 );
 
 const EventsSection = dynamic(
   () => import("@/components/public/sections/EventsSection").then(m => ({ default: m.EventsSection })),
-  { ssr: false }
+  { ssr: true }
 );
 
 const NewsletterSection = dynamic(
   () => import("@/components/public/sections/NewsletterSection").then(m => ({ default: m.NewsletterSection })),
-  { ssr: false }
+  { ssr: true }
 );
 
 const StatsSection = dynamic(
   () => import("@/components/public/sections/StatsSection").then(m => ({ default: m.StatsSection })),
-  { ssr: false }
+  { ssr: true }
 );
 
 const VerticalVideoSection = dynamic(
   () => import("@/components/public/sections/VerticalVideoSection").then(m => ({ default: m.VerticalVideoSection })),
-  { ssr: false }
+  { ssr: true }
 );
 
 // ===========================================
