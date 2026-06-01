@@ -187,8 +187,6 @@ export const VALID_SUBSCRIPTION_SOURCES = [
   "website",
   "newsletter-form",
   "homepage",
-  "newsletter-page",
-  "newsletter-cta",
   "popup_time",
   "popup_scroll",
   "popup_exit-intent",

@@ -179,8 +179,8 @@ export default function AdminSubscribersPage() {
 
   // Valid subscription sources on the public site
   const VALID_SOURCES = [
-    "website", "newsletter-form", "homepage", "newsletter-page",
-    "newsletter-cta", "popup_time", "popup_scroll", "popup_exit-intent",
+    "website", "newsletter-form", "homepage",
+    "popup_time", "popup_scroll", "popup_exit-intent",
     "download-gate",
   ];
 
@@ -189,12 +189,14 @@ export default function AdminSubscribersPage() {
     website: "Sitio web",
     "newsletter-form": "Formulario",
     homepage: "Homepage",
-    "newsletter-page": "Página Newsletter",
-    "newsletter-cta": "CTA Newsletter",
     popup_time: "Popup (tiempo)",
     popup_scroll: "Popup (scroll)",
     "popup_exit-intent": "Popup (salida)",
     "download-gate": "Descarga",
+    // Legacy/deprecated sources (still shown with labels for old data)
+    "newsletter-page": "Newsletter Page ❌",
+    "newsletter-cta": "CTA Newsletter ❌",
+    "about-page": "About Page ❌",
   };
 
   const isLikelyBot = (subscriber: Subscriber): boolean => {
@@ -405,9 +407,13 @@ export default function AdminSubscribersPage() {
             {selectedSubscribers.size} suscriptor{selectedSubscribers.size !== 1 ? "es" : ""} seleccionado{selectedSubscribers.size !== 1 ? "s" : ""}
           </span>
           <div className="flex-1" />
-          <Button size="sm" variant="destructive" onClick={handleBulkUnsubscribe}>
+          <Button size="sm" variant="outline" onClick={handleBulkUnsubscribe}>
             <UserX className="w-4 h-4 mr-1" />
             Dar de baja
+          </Button>
+          <Button size="sm" variant="destructive" onClick={handleBulkDelete}>
+            <Trash2 className="w-4 h-4 mr-1" />
+            Eliminar
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setSelectedSubscribers(new Set())}>
             Cancelar
@@ -502,16 +508,28 @@ export default function AdminSubscribersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {subscriber.isActive && (
+                      <div className="flex items-center justify-end gap-1">
+                        {subscriber.isActive ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
+                            title="Dar de baja"
+                            onClick={() => handleUnsubscribe(subscriber.email)}
+                          >
+                            <UserX className="w-4 h-4" />
+                          </Button>
+                        ) : null}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-500 hover:text-red-400"
-                          onClick={() => handleUnsubscribe(subscriber.email)}
+                          className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                          title="Eliminar permanentemente"
+                          onClick={() => handleDelete(subscriber.email)}
                         >
-                          <UserX className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
