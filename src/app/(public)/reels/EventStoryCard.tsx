@@ -905,7 +905,7 @@ export function EventStoryCard({
     }
   }, [event, selectedFormat, downloadCard, getCanvasBlob]);
 
-  // Share directly to Instagram Stories (mobile only — uses URL scheme)
+  // Share directly to Instagram Stories (mobile — Web Share API with files)
   const shareToInstagramStory = useCallback(async () => {
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
@@ -916,25 +916,58 @@ export function EventStoryCard({
       const blob = await getCanvasBlob(canvas);
       if (!blob) return;
 
-      // On mobile: use Instagram Story URL scheme
+      const file = new File(
+        [blob],
+        `${event.slug || event.id}-story.png`,
+        { type: "image/png" }
+      );
+
+      // On mobile: use Web Share API with file (works on iOS & Android)
       if (isMobile) {
-        const reader = new FileReader();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-
-        const instagramUrl = `instagram-stories://share?background_image=${encodeURIComponent(dataUrl)}`;
-        const link = document.createElement("a");
-        link.href = instagramUrl;
-        link.click();
-
-        setTimeout(() => {
-          if (document.visibilityState === "visible") {
-            setShareError("No se pudo abrir Instagram. Asegúrate de tener la app instalada.");
+        // Primary: Web Share API with files — shows system share sheet with Instagram option
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({
+              text: `Escucha "${event.title}" en Sonido Líquido Crew`,
+              files: [file],
+            });
+            setShareSuccess(true);
+            setTimeout(() => setShareSuccess(false), 2000);
+            return;
+          } catch (err: any) {
+            if (err?.name === "AbortError") return; // user cancelled
+            // Web Share API failed, fall through to URL scheme
           }
-        }, 1500);
+        }
+
+        // Fallback: try instagram-stories:// URL scheme (only works on some iOS devices)
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isIOS) {
+          try {
+            const reader = new FileReader();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+
+            const instagramUrl = `instagram-stories://share?background_image=${encodeURIComponent(dataUrl)}`;
+            window.location.href = instagramUrl;
+
+            setTimeout(() => {
+              if (document.visibilityState === "visible") {
+                setShareError("No se pudo abrir Instagram. Descarga la imagen y compártela manualmente.");
+              }
+            }, 2000);
+            return;
+          } catch {
+            // URL scheme failed, fall through
+          }
+        }
+
+        // Final fallback on mobile: download the image with instructions
+        await downloadCard();
+        setShareError("Descarga la imagen y ábrela en Instagram para subirla a tu Story.");
       } else {
         // On desktop: download and open instagram.com
         await downloadCard();
@@ -944,7 +977,7 @@ export function EventStoryCard({
       console.error("Instagram Story share failed:", err);
       setShareError("No se pudo compartir en Instagram. Intenta descargar la imagen.");
     }
-  }, [getCanvasBlob, isMobile, downloadCard]);
+  }, [getCanvasBlob, isMobile, downloadCard, event.slug, event.id, event.title]);
 
   // Send event to newsletter subscribers via Mailchimp
   const sendToSubscribers = useCallback(async () => {
