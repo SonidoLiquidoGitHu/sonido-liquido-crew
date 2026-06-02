@@ -17,9 +17,11 @@ import {
   Instagram,
   Facebook,
   User,
+  Share2,
 } from "lucide-react";
 import { UnlockLanding } from "@/components/public/UnlockLanding";
 import { ShareButtons } from "@/components/ui/share-button";
+import { BeatStoryCard } from "./BeatStoryCard";
 
 export interface Beat {
   id: string;
@@ -84,6 +86,7 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
   const [customActionCompleted, setCustomActionCompleted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  const [showStoryCard, setShowStoryCard] = useState(false);
 
   useEffect(() => {
     if (!initialBeat) {
@@ -256,23 +259,56 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
     if (beat.duration) tags.push({ label: "Duración", value: formatDuration(beat.duration) });
 
     return (
-      <UnlockLanding
-        title={beat.title}
-        subtitle={unlocked ? "Beat desbloqueado" : "Descarga gratis"}
-        coverImageUrl={beat.coverImageUrl}
-        audioUrl={beat.previewAudioUrl || beat.fullAudioUrl}
-        videoUrl={beat.previewVideoUrl}
-        youtubeVideoId={beat.youtubeVideoId}
-        videoIsVertical={beat.videoIsVertical}
-        downloadUrl={beat.fullAudioUrl}
-        downloadFileName={`${beat.slug}.mp3`}
-        artistName={beat.producerName || undefined}
-        description={beat.description}
-        variant="beat"
-        tags={tags}
-        contentId={beat.id}
-        contentType="beat"
-      />
+      <>
+        <UnlockLanding
+          title={beat.title}
+          subtitle={unlocked ? "Beat desbloqueado" : "Descarga gratis"}
+          coverImageUrl={beat.coverImageUrl}
+          audioUrl={beat.previewAudioUrl || beat.fullAudioUrl}
+          videoUrl={beat.previewVideoUrl}
+          youtubeVideoId={beat.youtubeVideoId}
+          videoIsVertical={beat.videoIsVertical}
+          downloadUrl={beat.fullAudioUrl}
+          downloadFileName={`${beat.slug}.mp3`}
+          artistName={beat.producerName || undefined}
+          description={beat.description}
+          variant="beat"
+          tags={tags}
+          contentId={beat.id}
+          contentType="beat"
+        />
+
+        {/* Floating Share Button (visible in unlocked view) */}
+        <button
+          onClick={() => setShowStoryCard(true)}
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white shadow-lg shadow-purple-500/30 hover:scale-110 transition-all flex items-center justify-center"
+          title="Compartir en Stories"
+        >
+          <Share2 className="w-6 h-6" />
+        </button>
+
+        {/* Story Card Share Modal */}
+        {showStoryCard && (
+          <BeatStoryCard
+            beat={{
+              id: beat.id,
+              title: beat.title,
+              slug: beat.slug,
+              description: beat.description,
+              producerName: beat.producerName,
+              bpm: beat.bpm,
+              key: beat.key,
+              genre: beat.genre,
+              tags: beat.tags,
+              duration: beat.duration,
+              coverImageUrl: beat.coverImageUrl,
+              isFree: beat.isFree,
+              price: beat.price,
+            }}
+            onClose={() => setShowStoryCard(false)}
+          />
+        )}
+      </>
     );
   }
 
@@ -345,7 +381,15 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
         </div>
 
         {/* Share Buttons */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-6 gap-3">
+          <Button
+            onClick={() => setShowStoryCard(true)}
+            className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white gap-2"
+            size="default"
+          >
+            <Share2 className="w-4 h-4" />
+            Compartir en Stories
+          </Button>
           <ShareButtons
             title={`${beat.title}${beat.producerName ? ` - ${beat.producerName}` : ""} | Sonido Líquido`}
           />
@@ -479,6 +523,28 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
           {submitting ? "Procesando..." : "Desbloquear Descarga"}
         </Button>
       </div>
+
+      {/* Story Card Share Modal */}
+      {showStoryCard && (
+        <BeatStoryCard
+          beat={{
+            id: beat.id,
+            title: beat.title,
+            slug: beat.slug,
+            description: beat.description,
+            producerName: beat.producerName,
+            bpm: beat.bpm,
+            key: beat.key,
+            genre: beat.genre,
+            tags: beat.tags,
+            duration: beat.duration,
+            coverImageUrl: beat.coverImageUrl,
+            isFree: beat.isFree,
+            price: beat.price,
+          }}
+          onClose={() => setShowStoryCard(false)}
+        />
+      )}
     </div>
   );
 }
