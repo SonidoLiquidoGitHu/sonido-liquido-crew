@@ -250,7 +250,7 @@ export default function EditBeatPage({ params }: { params: Promise<{ id: string 
         bpm: formData.bpm ? parseInt(formData.bpm) : null,
         duration: formData.duration ? parseInt(formData.duration) : null,
         price: formData.price ? parseFloat(formData.price) : null,
-        tags: formData.tags ? JSON.stringify(formData.tags.split(",").map(t => t.trim())) : null,
+        tags: formData.tags ? formData.tags.split(",").map(t => t.trim()).filter(Boolean) : null,
         styleSettings: formData.styleSettings || null,
       };
 
@@ -260,7 +260,18 @@ export default function EditBeatPage({ params }: { params: Promise<{ id: string 
         body: JSON.stringify(submitData),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        showMessage("error", `Error del servidor (${response.status}). Intenta de nuevo.`);
+        return;
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        showMessage("error", "Error al procesar la respuesta del servidor");
+        return;
+      }
 
       if (data.success) {
         showMessage("success", "Beat actualizado exitosamente");
@@ -271,7 +282,7 @@ export default function EditBeatPage({ params }: { params: Promise<{ id: string 
         showMessage("error", data.error || "Error al actualizar beat");
       }
     } catch (error) {
-      showMessage("error", "Error de conexión");
+      showMessage("error", "Error de conexión. Verifica tu internet e intenta de nuevo.");
     } finally {
       setIsLoading(false);
     }

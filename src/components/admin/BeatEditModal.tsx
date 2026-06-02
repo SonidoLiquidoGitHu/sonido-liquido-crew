@@ -138,29 +138,44 @@ export default function BeatEditModal({ beatId, isOpen, onClose, onSave }: Props
     if (!beatId) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/beats/${beatId}`);
+      const res = await fetch(`/api/admin/beats/${beatId}`);
+      if (!res.ok) {
+        console.error("Failed to fetch beat:", res.status, res.statusText);
+        return;
+      }
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.data) {
+        const b = data.data;
+        // Parse tags if they're a JSON array
+        let tagsString = "";
+        if (b.tags) {
+          try {
+            const tagsArray = JSON.parse(b.tags);
+            tagsString = Array.isArray(tagsArray) ? tagsArray.join(", ") : b.tags;
+          } catch {
+            tagsString = b.tags;
+          }
+        }
         setFormData({
-          title: data.beat.title || "",
-          producerName: data.beat.producerName || "",
-          releaseDate: data.beat.releaseDate || new Date().toISOString().split("T")[0],
-          bpm: data.beat.bpm?.toString() || "90",
-          keySignature: data.beat.keySignature || "Am",
-          tags: data.beat.tags || "",
-          coverImageUrl: data.beat.coverImageUrl || "",
-          audioFileUrl: data.beat.audioFileUrl || "",
-          audioPreviewUrl: data.beat.audioPreviewUrl || "",
-          hypedditUrl: data.beat.hypedditUrl || "",
-          spotifyTrackId: data.beat.spotifyTrackId || "",
-          youtubeVideoId: data.beat.youtubeVideoId || "",
-          onerpmUrl: data.beat.onerpmUrl || "",
-          distrokidUrl: data.beat.distrokidUrl || "",
-          bandcampUrl: data.beat.bandcampUrl || "",
-          downloadGateEnabled: data.beat.downloadGateEnabled || false,
-          downloadGateActions: data.beat.downloadGateActions || [],
-          isAvailable: data.beat.isAvailable ?? true,
-          isFeatured: data.beat.isFeatured || false,
+          title: b.title || "",
+          producerName: b.producerName || "",
+          releaseDate: b.releaseDate || new Date().toISOString().split("T")[0],
+          bpm: b.bpm?.toString() || "90",
+          keySignature: b.key || "Am",
+          tags: tagsString,
+          coverImageUrl: b.coverImageUrl || "",
+          audioFileUrl: b.fullAudioUrl || "",
+          audioPreviewUrl: b.previewAudioUrl || "",
+          hypedditUrl: b.hyperfollowUrl || "",
+          spotifyTrackId: b.spotifySongId || "",
+          youtubeVideoId: b.youtubeVideoId || "",
+          onerpmUrl: b.onerpmUrl || "",
+          distrokidUrl: b.distrokidUrl || "",
+          bandcampUrl: b.bandcampUrl || "",
+          downloadGateEnabled: b.gateEnabled || false,
+          downloadGateActions: b.downloadGateActions || [],
+          isAvailable: b.isActive ?? true,
+          isFeatured: b.isFeatured || false,
         });
       }
     } catch (err) {
@@ -173,12 +188,28 @@ export default function BeatEditModal({ beatId, isOpen, onClose, onSave }: Props
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const url = beatId ? `/api/beats/${beatId}` : "/api/beats";
-      const method = beatId ? "PUT" : "POST";
+      const isUpdate = !!beatId;
+      const url = "/api/admin/beats";
+      const method = isUpdate ? "PUT" : "POST";
 
       const payload = {
-        ...formData,
+        ...(isUpdate ? { id: beatId } : {}),
+        title: formData.title,
+        producerName: formData.producerName || null,
         bpm: formData.bpm ? parseInt(formData.bpm) : null,
+        key: formData.keySignature || null,
+        tags: formData.tags ? formData.tags.split(",").map(t => t.trim()).filter(Boolean) : null,
+        coverImageUrl: formData.coverImageUrl || null,
+        previewAudioUrl: formData.audioPreviewUrl || null,
+        fullAudioUrl: formData.audioFileUrl || null,
+        hyperfollowUrl: formData.hypedditUrl || null,
+        spotifySongId: formData.spotifyTrackId || null,
+        youtubeVideoId: formData.youtubeVideoId || null,
+        gateEnabled: formData.downloadGateEnabled,
+        isActive: formData.isAvailable,
+        isFeatured: formData.isFeatured,
+        isFree: true,
+        requireEmail: formData.downloadGateEnabled,
       };
 
       const res = await fetch(url, {
@@ -187,9 +218,16 @@ export default function BeatEditModal({ beatId, isOpen, onClose, onSave }: Props
         body: JSON.stringify(payload),
       });
 
+      if (!res.ok) {
+        console.error("Failed to save beat:", res.status, res.statusText);
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
         onSave();
+      } else {
+        console.error("Error saving beat:", data.error);
       }
     } catch (err) {
       console.error("Error saving beat:", err);

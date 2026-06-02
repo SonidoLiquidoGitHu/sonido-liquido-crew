@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { beats, fileAssets } from "@/db/schema";
-import { eq, desc, and, or, like } from "drizzle-orm";
+import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 
 // Track file asset for a URL if it's from Dropbox
@@ -258,7 +258,7 @@ export async function PUT(request: NextRequest) {
         isActive: body.isActive !== false,
         isFeatured: body.isFeatured || false,
         styleSettings: body.styleSettings || null,
-        updatedAt: new Date(),
+        updatedAt: sql`(unixepoch())`,
       })
       .where(eq(beats.id, body.id))
       .returning();
@@ -285,10 +285,14 @@ export async function PUT(request: NextRequest) {
       success: true,
       data: beat,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("[API] Error updating beat:", error);
+    console.error("[API] Error details:", {
+      message: error?.message,
+      code: error?.code,
+    });
     return NextResponse.json(
-      { success: false, error: "Failed to update beat" },
+      { success: false, error: `Failed to update beat: ${error?.message || "Unknown error"}` },
       { status: 500 }
     );
   }
@@ -315,7 +319,7 @@ export async function PATCH(request: NextRequest) {
 
     // Build updates object with only the fields provided
     const updates: Record<string, unknown> = {
-      updatedAt: new Date(),
+      updatedAt: sql`(unixepoch())`,
     };
 
     if (body.isActive !== undefined) updates.isActive = body.isActive;
