@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
+import { ArtistSelector } from "@/components/admin/ArtistSelector";
 import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
 import { type StyleSettings } from "@/lib/style-config";
 import {
@@ -151,14 +152,19 @@ export default function EditBeatPage({ params }: { params: Promise<{ id: string 
         const b = data.data as Beat;
         setBeat(b);
 
-        // Parse tags if they're a JSON string
+        // Parse tags - Drizzle mode:json may return array or string
         let tagsString = "";
         if (b.tags) {
-          try {
-            const tagsArray = JSON.parse(b.tags);
-            tagsString = Array.isArray(tagsArray) ? tagsArray.join(", ") : b.tags;
-          } catch {
-            tagsString = b.tags;
+          if (Array.isArray(b.tags)) {
+            // Drizzle already parsed JSON into array
+            tagsString = b.tags.join(", ");
+          } else if (typeof b.tags === "string") {
+            try {
+              const tagsArray = JSON.parse(b.tags);
+              tagsString = Array.isArray(tagsArray) ? tagsArray.join(", ") : b.tags;
+            } catch {
+              tagsString = b.tags;
+            }
           }
         }
 
@@ -244,14 +250,24 @@ export default function EditBeatPage({ params }: { params: Promise<{ id: string 
 
     setIsLoading(true);
     try {
+      // Safely convert tags string to array
+      let tagsArray: string[] | null = null;
+      if (formData.tags) {
+        if (Array.isArray(formData.tags)) {
+          tagsArray = formData.tags.filter(Boolean);
+        } else if (typeof formData.tags === "string") {
+          tagsArray = formData.tags.split(",").map(t => t.trim()).filter(Boolean);
+        }
+      }
+
       const submitData = {
         id: resolvedParams.id,
         ...formData,
         bpm: formData.bpm ? parseInt(formData.bpm) : null,
         duration: formData.duration ? parseInt(formData.duration) : null,
         price: formData.price ? parseFloat(formData.price) : null,
-        tags: formData.tags ? formData.tags.split(",").map(t => t.trim()).filter(Boolean) : null,
-        styleSettings: formData.styleSettings || null,
+        tags: tagsArray,
+        styleSettings: formData.styleSettings && Object.keys(formData.styleSettings).length > 0 ? formData.styleSettings : null,
       };
 
       const response = await fetch("/api/admin/beats", {
@@ -437,11 +453,23 @@ export default function EditBeatPage({ params }: { params: Promise<{ id: string 
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Nombre del Productor</label>
+                  <ArtistSelector
+                    value={formData.producerId}
+                    onChange={(v) => {
+                      const producerId = Array.isArray(v) ? v[0] || "" : v;
+                      setFormData(prev => ({ ...prev, producerId }));
+                    }}
+                    label="Productor"
+                    placeholder="Seleccionar productor del crew..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slc-muted mb-2">O nombre manual</label>
                   <Input
                     value={formData.producerName}
                     onChange={(e) => setFormData(prev => ({ ...prev, producerName: e.target.value }))}
-                    placeholder="Nombre del productor"
+                    placeholder="Nombre del productor (si no está en lista)"
                   />
                 </div>
 

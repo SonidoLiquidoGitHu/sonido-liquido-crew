@@ -272,14 +272,14 @@ export async function PUT(request: NextRequest) {
 
     console.log(`[API] Updated beat: ${beat.title}`);
 
-    // Track Dropbox files for persistence
-    await Promise.all([
+    // Track Dropbox files for persistence (non-blocking — same as POST)
+    Promise.all([
       trackDropboxFile(beat.coverImageUrl, beat.id, "coverImageUrl"),
       trackDropboxFile(beat.previewAudioUrl, beat.id, "previewAudioUrl"),
       trackDropboxFile(beat.fullAudioUrl, beat.id, "fullAudioUrl"),
       trackDropboxFile(beat.stemPackUrl, beat.id, "stemPackUrl"),
       trackDropboxFile(beat.waveformImageUrl, beat.id, "waveformImageUrl"),
-    ]);
+    ]).catch(err => console.warn("[API] Failed to track some files:", err));
 
     return NextResponse.json({
       success: true,
