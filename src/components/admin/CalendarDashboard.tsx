@@ -28,6 +28,7 @@ import {
   Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Img } from "@/components/ui/img";
 import Link from "next/link";
 
 interface Release {
@@ -717,7 +718,7 @@ export function CalendarDashboard() {
                         }), "_blank")}
                       >
                         {release.coverImageUrl ? (
-                          <img src={release.coverImageUrl} alt="" className="w-3 h-3 rounded flex-shrink-0 object-cover" />
+                          <Img src={release.coverImageUrl} alt="" className="w-3 h-3 rounded flex-shrink-0 object-cover" />
                         ) : (
                           <Music className="w-3 h-3 text-green-500 flex-shrink-0" />
                         )}
@@ -845,9 +846,9 @@ export function CalendarDashboard() {
                     date: release.releaseDate,
                   }), "_blank")}
                 >
-                  <div className="w-8 h-8 rounded overflow-hidden bg-slc-border flex-shrink-0 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded overflow-hidden bg-slc-border flex-shrink-0 flex items-center justify-center relative">
                     {release.coverImageUrl ? (
-                      <img src={release.coverImageUrl} alt={release.title} className="w-full h-full object-cover" />
+                      <Img src={release.coverImageUrl} alt={release.title} className="w-full h-full object-cover" />
                     ) : (
                       <Music className="w-4 h-4 text-slc-muted" />
                     )}
