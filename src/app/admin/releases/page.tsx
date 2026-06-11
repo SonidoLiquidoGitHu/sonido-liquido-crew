@@ -4,11 +4,11 @@ import { releasesService } from "@/lib/services";
 import { formatDate, getReleaseTypeDisplay } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DeduplicateButton } from "@/components/admin/DeduplicateButton";
+import { ReleaseDeleteButton } from "@/components/admin/ReleaseDeleteButton";
 import {
   Plus,
   Search,
   Edit,
-  Trash2,
   ExternalLink,
   Disc3,
   Calendar,
@@ -223,9 +223,10 @@ export default async function AdminReleasesPage() {
                           <Edit className="w-4 h-4" />
                         </Link>
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-400">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <ReleaseDeleteButton
+                        releaseId={release.id}
+                        releaseTitle={release.title}
+                      />
                     </div>
                   </td>
                 </tr>
