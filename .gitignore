@@ -69,3 +69,38 @@ temp/
 
 # Uploaded files (temporary)
 upload/
+
+# Skills (development only)
+skills/
+
+# Agent context
+agent-ctx/
+
+# Worklog
+worklog.md
+
+# Auth
+auth
+auth-wal
+
+# Backup repo
+slc-repo/
+
+# Local DB
+db/
+
+# Local scripts
+inspect-db.mjs
+inspect-subscribers.mjs
+delete-bot-subscribers.mjs
+
+# Reports
+lighthouse-report.json
+lighthouse-perf.json
+psi-report.json
+
+# Data
+data/
+
+# Custom DB
+custom.db
