@@ -34,19 +34,6 @@ const artistsData = [
     instagram: "https://www.instagram.com/zakeuno",
   },
   {
-    name: "Doctor Destino",
-    role: "mc" as const,
-    bio: "MC y productor. Uno de los artistas más prolíficos del crew con múltiples lanzamientos cada año.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5eb5f2b5e4b3c5d6a7b8c9d0e1f",
-    tintColor: "green",
-    isFeatured: true,
-    sortOrder: 2,
-    spotifyId: "5urer15JPbCELf17LVia7w",
-    spotify: "https://open.spotify.com/artist/5urer15JPbCELf17LVia7w",
-    youtube: "https://www.youtube.com/@doctordestinohiphop",
-    instagram: "https://www.instagram.com/doctordestinohh",
-  },
-  {
     name: "Brez",
     role: "mc" as const,
     bio: "MC con un estilo lírico distintivo. Sus álbumes conceptuales destacan por su profundidad.",
@@ -302,7 +289,7 @@ const eventsData = [
   },
   {
     title: "Lanzamiento 'Nuevo Amanecer'",
-    description: "Evento de lanzamiento del nuevo álbum de Doctor Destino.",
+    description: "Evento de lanzamiento del nuevo álbum del crew.",
     venue: "Caradura",
     city: "Ciudad de México",
     country: "México",

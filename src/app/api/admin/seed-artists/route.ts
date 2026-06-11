@@ -32,28 +32,6 @@ const slcArtists = [
     },
   },
   {
-    name: "Doctor Destino",
-    slug: "doctor-destino",
-    role: "mc" as const,
-    bio: "MC veterano con más de dos décadas de trayectoria en la escena del Hip Hop mexicano. Doctor Destino es conocido por su flow técnico y letras profundas que abordan temas de la vida cotidiana, reflexiones personales y crítica social. Su estilo único combina influencias del boom bap clásico con sonidos contemporáneos. Ha lanzado múltiples proyectos en solitario y colaboraciones que han marcado la historia del rap en español.",
-    shortBio: "MC con 20+ años de trayectoria. Flow técnico y letras profundas.",
-    isActive: true,
-    isFeatured: true,
-    sortOrder: 2,
-    spotify: {
-      id: "5urer15JPbCELf17LVia7w",
-      url: "https://open.spotify.com/artist/5urer15JPbCELf17LVia7w",
-    },
-    instagram: {
-      handle: "estoesdoctordestino",
-      url: "https://www.instagram.com/estoesdoctordestino",
-    },
-    youtube: {
-      handle: "doctordestinohiphop",
-      url: "https://youtube.com/@doctordestinohiphop",
-    },
-  },
-  {
     name: "Brez",
     slug: "brez",
     role: "mc" as const,

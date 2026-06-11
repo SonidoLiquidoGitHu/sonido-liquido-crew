@@ -116,12 +116,7 @@ const sampleVideos = [
     description: "Video oficial de Zaque con el Matapuercos.",
     isFeatured: true,
   },
-  {
-    title: "Doctor Destino - Freestyle Session 2024",
-    youtubeId: "9bZkp7q19f0",
-    description: "Sesión de freestyle en vivo con Doctor Destino.",
-    isFeatured: true,
-  },
+
   {
     title: "Bruno Grasso ft. Dilema - Calles de México",
     youtubeId: "JGwWNGJdvx8",
@@ -237,15 +232,7 @@ const samplePhotos = [
     isFeatured: false,
     tags: ["fans", "firma", "evento"],
   },
-  {
-    title: "Rehearsal - Doctor Destino",
-    imageUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400",
-    photographer: "Crew",
-    location: "Sala de Ensayo",
-    isFeatured: true,
-    tags: ["ensayo", "doctor destino", "música"],
-  },
+
   {
     title: "Hip Hop al Parque 2023",
     imageUrl: "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800",

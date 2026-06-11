@@ -549,7 +549,6 @@ export async function POST() {
           "chas-7p": { channelUrl: "https://youtube.com/@chas7p347", channelHandle: "@chas7p347" },
           "codak": { channelUrl: "https://youtube.com/@codak", channelHandle: "@codak" },
           "dilema": { channelUrl: "https://youtube.com/@dilema999", channelHandle: "@dilema999" },
-          "doctor-destino": { channelUrl: "https://youtube.com/@doctordestinohiphop", channelHandle: "@doctordestinohiphop" },
           "fancy-freak": { channelUrl: "https://youtube.com/@fancyfreakdj", channelHandle: "@fancyfreakdj" },
           "hassyel": { channelUrl: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A", channelHandle: "Hassyel" },
           "kev-cabrone": { channelUrl: "https://youtube.com/@kevcabrone", channelHandle: "@kevcabrone" },
@@ -563,7 +562,6 @@ export async function POST() {
 
         // Mixcloud data from RosterSocials.tsx
         const mixcloudData: Record<string, { url: string; handle: string }> = {
-          "doctor-destino": { url: "https://www.mixcloud.com/doctinho/", handle: "doctinho" },
           "fancy-freak": { url: "https://www.mixcloud.com/fancyfreak1/", handle: "fancyfreak1" },
           "q-master-weed": { url: "https://www.mixcloud.com/q-masterw/", handle: "q-masterw" },
           "reick-one": { url: "https://www.mixcloud.com/reickuno/", handle: "reickuno" },
@@ -661,6 +659,43 @@ export async function POST() {
     } catch (settingsError) {
       const msg = settingsError instanceof Error ? settingsError.message : String(settingsError);
       results.push({ table: "crew_social_settings", status: "error", error: msg });
+    }
+
+    // === CLEANUP: Remove Doctor Destino from database ===
+    try {
+      const doctorDestinoSlug = "doctor-destino";
+      const doctorDestinoSpotifyId = "5urer15JPbCELf17LVia7w";
+
+      // Find the artist by slug or Spotify ID in external profiles
+      const [existingBySlug] = await db
+        .select({ id: artists.id, name: artists.name })
+        .from(artists)
+        .where(eq(artists.slug, doctorDestinoSlug))
+        .limit(1);
+
+      let artistId = existingBySlug?.id;
+
+      // Also check by Spotify ID in external profiles
+      if (!artistId) {
+        const [existingBySpotify] = await db
+          .select({ artistId: artistExternalProfiles.artistId })
+          .from(artistExternalProfiles)
+          .where(eq(artistExternalProfiles.externalId, doctorDestinoSpotifyId))
+          .limit(1);
+        artistId = existingBySpotify?.artistId;
+      }
+
+      if (artistId) {
+        // Delete the artist (cascade will handle profiles, gallery, relations, EPK, release_artists)
+        await db.delete(artists).where(eq(artists.id, artistId));
+        console.log(`[Ensure Tables] Removed Doctor Destino (id: ${artistId})`);
+        results.push({ table: "cleanup_doctor_destino", status: "removed", error: `Deleted artist ${existingBySlug?.name || artistId}` });
+      } else {
+        results.push({ table: "cleanup_doctor_destino", status: "skipped", error: "Artist not found in database" });
+      }
+    } catch (cleanupError) {
+      const msg = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      results.push({ table: "cleanup_doctor_destino", status: "error", error: msg });
     }
 
     const hasErrors = results.some((r) => r.status === "error");

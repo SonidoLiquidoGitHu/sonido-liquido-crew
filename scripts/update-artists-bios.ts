@@ -33,7 +33,7 @@ El primer acercamiento que Hazel tuvo con el hip hop y el rap ocurrió durante s
 
 En el álbum De la noche y sus efectos logró ir un paso adelante y cristalizar su voz como rapero, desarrollando un estilo propio en el que reluce su pasión por los trabajos de ficción relacionados con la mafia italoamericana. "Para mí las cosas más importantes que me formaron ocurrían de noche. Sonido Líquido ensayaba de noche, las fiestas también ocurrían de noche y de ahí surgió la idea para el título, porque de noche aprendí cosas de la vida y el hip hop y sus efectos, son lo que yo soy ahora".
 
-Bruno se ha tomado esto como un aliciente, ha colaborado con Doctor Destino en De patios vacíos y corazones rotos (2020), con No siempre. Ha lanzado Médium (2020) y Tumbao (2022). Grasso continúa caracterizándose por buscar rapear cada vez mejor, seguir buscando rimas que sorprendan y maneras cada vez más naturales de decirlas. "Hip hop es mi pasión. Si no lo hago, tiendo a ver la vida más negra y andar de mal humor. Hip hop ha influenciado todo, mi vida, mi forma de ser y mis decisiones".
+Bruno se ha tomado esto como un aliciente, ha colaborado con varios artistas del crew en De patios vacíos y corazones rotos (2020), con No siempre. Ha lanzado Médium (2020) y Tumbao (2022). Grasso continúa caracterizándose por buscar rapear cada vez mejor, seguir buscando rimas que sorprendan y maneras cada vez más naturales de decirlas. "Hip hop es mi pasión. Si no lo hago, tiendo a ver la vida más negra y andar de mal humor. Hip hop ha influenciado todo, mi vida, mi forma de ser y mis decisiones".
 
 Escrita por: Edmeé García t.c.c. Diosaloca MX`,
     pressQuotes: [
@@ -170,44 +170,6 @@ Para Ilse, el hip hop no es únicamente música: es una filosofía de vida. Es l
   },
 
   // ===============================================
-  // DOCTOR DESTINO
-  // ===============================================
-  {
-    slug: "doctor-destino",
-    shortBio: "Productor, beatmaker y rapero mexicano. Uno de los alquimistas del hip hop mexicano, miembro de Sonido Líquido Crew desde 2006.",
-    bio: `Si Sonido Líquido Crew es un ágora del hip hop mexicano, entonces Doctor Destino es uno de sus mejores alquimistas. Doctor Destino t.c.c. Rodrigo Tovar es un productor, beatmaker y rapero mexicano, que pese a buscar la ecuanimidad, es un apasionado de lo que hace y un poco compulsivo. "Soy una persona que se puede volver adicta a cualquier cosa, si algo me gusta no paro de hacerlo". También es alguien que tiende más a la reclusión que la exposición y es por eso que ha permanecido como uno de los secretos mejor guardados del hip hop en México, al menos hasta ahora.
-
-Pese a preferir mantenerse lejos de los reflectores, ha sido parte de SLC desde 2006 y estuvo a cargo de la mezcla, la masterización y los beats de Aquí somos lo que hacemos (2010) de Tino el Pingüino. También ha sido generoso con sus beats con Nayasuza y Bruno Grasso. Es posible que hayas escuchado su colaboración en Flow de lujo (2017). Y también puedes escuchar a Zaque en varios tracks de la discografía de Doctor Destino. Puede ser que lo conozcas por DNA, un proyecto que realizó junto con Alonnso.
-
-Se dice que infancia es destino y esto ciertamente podría aplicarse a Tovar, ya que pese a llevar muchos años confeccionando tracks, fue en su infancia que tuvo su primer contacto con el hip hop. "Lo primero que recuerdo de hip hop es un video de Run DMC que vi en MTV cuando estaba en quinto de primaria y me gustó. En mi escuela sólo escuchaban la radio comercial y nunca me identifiqué con eso". El detonador definitivo fue la escucha de un LP de ToteKing & Shotta titulado Tu madre es una foca. "Tenía un amigo, Alfredo Genel, conocido como A.A.G.G. Demente. En ese tiempo nos juntábamos en su casa, fumábamos, rapeábamos y así seguíamos hasta el infinito".
-
-Tres años después conoció a Led Serrano, t.c.c. Zaque. "Un día fui a casa de Led, que ya tenía tarjetas de sonido y monitores. Ahí empecé a aprender un buen, conocí Reason y lo sigo utilizando hasta la fecha".
-
-Discografía: Sin retorno al principio vol. 1 (2009), Luz y calles (2010) de DNA, 23 (2012), Uno doble (2012) de DNA, El frío de la primavera (2018), De patios vacíos y corazones rotos (2020), B(u)da (2021), Gospel (2022), Oasis (2022), Nocturno (2023), Euterpe (2023), Cuando Miras al Abismo (2024) y Nudos (2026).
-
-Sus discos no carecen de groove, pero son menos agresivos, las progresiones armónicas están más cuidadas, sus tracks se sienten más nítidos y espaciosos. Sus rimas van con fluidez de lo trascendental a lo prosaico y han ganado la sensibilidad sincera que sólo se obtiene al dejar atrás las pretensiones.
-
-Escrita por: Edmeé García t.c.c. Diosaloca MX`,
-    pressQuotes: [
-      {
-        quote: "Doctor Destino produce hip hop con maestría. Cada álbum nuevo es simultáneamente una extensión y una transformación del anterior.",
-        source: "Diosaloca MX",
-        sourceUrl: "https://diosalocamx.com/el-frio-de-la-primavera-de-doctor-destino/"
-      },
-      {
-        quote: "Doctor Destino puede ir de lo prosaico a lo profundo, de lo banal a lo trascendente sin necesidad de engrandecerse a través de la promoción del propio ego.",
-        source: "Diosaloca MX",
-        sourceUrl: "https://diosalocamx.com/el-frio-de-la-primavera-de-doctor-destino/"
-      },
-      {
-        quote: "Nos encontramos en una de las etapas más creativas de Doctinho... su genio no para.",
-        source: "Entre Beats y Barras",
-        sourceUrl: "https://entrebeatsybarras.wordpress.com/2022/10/01/doctor-destino-oasis-nuevo-album-2022-hip-hop-mexicano/"
-      }
-    ]
-  },
-
-  // ===============================================
   // FANCY FREAK
   // ===============================================
   {
@@ -281,7 +243,7 @@ Varios años antes de que su nombre estuviese en el roster, Kevin fungió como d
 
 Kevin también ha aprendido a diseñar beats. Estuvo a cargo de los beats del primer maxi sencillo de Bruno Grasso, titulado 2 gramos (2018). "No me gustaba la idea de rapear sobre beats que alguien ya hubiera usado, no me parecía original. Así que descargué Reason y empecé a aprender yo sólo". Con el tiempo cambió a Maschine.
 
-Adoptó el nombre de Kev Cabrone, inspirado en el apellido Corleone y alineándose con la influencia italiana del nombre de Bruno Grasso. En 2020 logró cristalizar otro de sus sueños: presentarse al mundo con el EP Octubre 31 (2020), producido por Zaque, con participación de Doctor Destino, Reick Uno, X Santa-Ana y Fancy Freak.
+Adoptó el nombre de Kev Cabrone, inspirado en el apellido Corleone y alineándose con la influencia italiana del nombre de Bruno Grasso. En 2020 logró cristalizar otro de sus sueños: presentarse al mundo con el EP Octubre 31 (2020), producido por Zaque, con participación de Reick Uno, X Santa-Ana y Fancy Freak.
 
 "Mi acercamiento con Kevin fue a través de Grasso", dice Zaque. "Al principio sus raps eran versiones asimétricas de lo que ya había escuchado de otra gente. Pero ya estaba haciendo beats y eso es más raro. Hace como seis meses me mostró lo nuevo que había hecho y vi que había elevado su nivel tanto en rapeos como en beats."
 
@@ -311,7 +273,7 @@ Sin estudios formales, pero con un instinto agudo por la gran variedad de géner
 
 Su debut en plataformas digitales comenzó con el sencillo 'Fuego' (2020), que le abrió las puertas de la industria informal, permitiéndole colaborar con sellos como Imperial Glory y productoras visuales como Memoria Cine, logrando amplificar su nombre y estética visual a nivel nacional.
 
-Tras un periodo de búsqueda y diferencias creativas, Geisha decidió trazar un camino independiente que la llevó a unir fuerzas con el respetado colectivo Sonido Líquido Crew. Esta alianza se consolidó con el estreno de 'Póker' (2022) junto a Doctor Destino, Zaque y Reick Uno. Posteriormente gracias a este sencillo fue invitada a ser parte del crew, lo que la llevó a hacer un disco en conjunto con Zaque llamado Flavor Love (2024), además de colaborar en proyectos como Ella (2023), El regreso de Pepe Levine (2023), Letras vacías (2023), Corazón de Cristal (2023), Piel (2023), Ni hace tanto frío ni la vida es tanto (2024), entre otros.
+Tras un periodo de búsqueda y diferencias creativas, Geisha decidió trazar un camino independiente que la llevó a unir fuerzas con el respetado colectivo Sonido Líquido Crew. Esta alianza se consolidó con el estreno de 'Póker' (2022) junto a Zaque y Reick Uno. Posteriormente gracias a este sencillo fue invitada a ser parte del crew, lo que la llevó a hacer un disco en conjunto con Zaque llamado Flavor Love (2024), además de colaborar en proyectos como Ella (2023), El regreso de Pepe Levine (2023), Letras vacías (2023), Corazón de Cristal (2023), Piel (2023), Ni hace tanto frío ni la vida es tanto (2024), entre otros.
 
 En 2025 comienza a trabajar en un nuevo proyecto: Latin Drive-In, del que se han desprendido los sencillos Interceptor Vtr (2025) y Cavalier (2025).
 
@@ -351,7 +313,7 @@ Tiempo después recuerda sus orígenes y va a probar suerte a Milán Italia, dic
 
 A principios del 2019, ya instalado en la Ciudad de México, José el Divino quiere tomar un segundo aire y empieza a hacer beats, teniendo en mente realizar una presentación para el año siguiente. Esto nunca pasa porque el día que anuncia la fecha el Covid-19 atacó al mundo.
 
-Un año después, en el 2021, Pepe recuerda a su amiga Edmeé García t.c.c. Diosaloca, hablan por varios días sobre música y en una de esas pláticas Pepe le pregunta si conoce a alguien que haga beats. Ella le presenta a Rodrigo Tovar t.c.c. Doctor Destino y Led Serrano t.c.c. Zaque. La relación de amistad crece a tal punto que Doctor, Zaque y Pepe comienzan a trabajar en un proyecto llamado El Veraneo Houseabundo (2022), esperando que Pepe Levine tenga el mismo éxito que en sus años mozos.
+Un año después, en el 2021, Pepe recuerda a su amiga Edmeé García t.c.c. Diosaloca, hablan por varios días sobre música y en una de esas pláticas Pepe le pregunta si conoce a alguien que haga beats. Ella le presenta a Led Serrano t.c.c. Zaque. La relación de amistad crece a tal punto que Zaque y Pepe comienzan a trabajar en un proyecto llamado El Veraneo Houseabundo (2022), esperando que Pepe Levine tenga el mismo éxito que en sus años mozos.
 
 Escrita por: César Yáñez t.c.c. Don Drama`,
     pressQuotes: [
@@ -455,7 +417,7 @@ A partir del año siguiente Zaque entró en una etapa muy productiva. Todo empez
 
 Luego Led decidió unir lo nuevo con lo viejo para realizar Aza: Intimidación (2020). A continuación Zaque también hizo público Aza: Intimidación (Instrumental) (2021). A continuación realizó Canción de amor (2021), "la única canción de amor que tengo que se la dedico a hip hop, por ser el amor de mi vida."
 
-La colaboración de Zaque y Doctor Destino dio fruto en B(u)da (2021) y El Veraneo Houseabundo de Pepe Levine (2022). También salió Crónicas de un agarraculos (2021) de Codak, y Sonido de Lujo (2022) con Brez.
+Otras colaboraciones notables incluyen B(u)da (2021) y El Veraneo Houseabundo de Pepe Levine (2022). También salió Crónicas de un agarraculos (2021) de Codak, y Sonido de Lujo (2022) con Brez.
 
 Escape al purgatorio (2023) es la segunda parte de una trilogía que empieza con El día y la noche en el infierno (2006) y termina con El Séptimo cielo. "Se parece a El día y la noche porque tiene karatazos, pero también cuestiones autobiográficas y reflexiones. Hay una evolución, que va del sufrimiento sin sentido en el infierno al sufrimiento con sentido que es el purgatorio."
 

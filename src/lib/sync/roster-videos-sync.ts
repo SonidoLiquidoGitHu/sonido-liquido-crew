@@ -14,11 +14,6 @@ const rosterYoutubeChannels = [
     youtube: "https://youtube.com/@zakeuno",
   },
   {
-    name: "Doctor Destino",
-    slug: "doctor-destino",
-    youtube: "https://youtube.com/@doctordestinohiphop",
-  },
-  {
     name: "Brez",
     slug: "brez",
     youtube: "https://youtube.com/@brezhiphopmexicoslc25",

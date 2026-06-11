@@ -5,7 +5,6 @@ export const ROSTER_ARTIST_IDS = [
   "3RAg8fPmZ8RnacJO8MhLP1", // Chas 7P
   "2zrv1oduhIYh29vvQZwI5r", // Codak
   "3eCEorgAoZkvnAQLdy4x38", // Dilema
-  "5urer15JPbCELf17LVia7w", // Doctor Destino
   "5TMoczTLclVyzzDY5qf3Yb", // Fancy Freak
   "6AN9ek9RwrLbSp9rT2lcDG", // Hassyel
   "0QdRhOmiqAcV1dPCoiSIQJ", // Kev Cabrone
@@ -38,10 +37,6 @@ export const ARTIST_SOCIAL_LINKS: Record<string, { instagram?: string; youtube?:
   "3eCEorgAoZkvnAQLdy4x38": { // Dilema
     instagram: "https://www.instagram.com/dilema_ladee",
     youtube: "https://youtube.com/@dilema999",
-  },
-  "5urer15JPbCELf17LVia7w": { // Doctor Destino
-    instagram: "https://www.instagram.com/estoesdoctordestino",
-    youtube: "https://youtube.com/@doctordestinohiphop",
   },
   "5TMoczTLclVyzzDY5qf3Yb": { // Fancy Freak
     instagram: "https://www.instagram.com/fancyfreakcorp",

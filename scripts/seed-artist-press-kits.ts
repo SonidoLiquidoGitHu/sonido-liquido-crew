@@ -50,13 +50,6 @@ async function seedArtistPressKits() {
       fileSize: 32 * 1024 * 1024, // 32 MB
     },
     {
-      artistSlug: "doctor-destino",
-      title: "Doctor Destino - Press Kit",
-      description: "Press kit completo de Doctor Destino con material gráfico y biográfico.",
-      downloadUrl: "https://dl.dropboxusercontent.com/s/sample/doctor-destino-press-kit.zip",
-      fileSize: 28 * 1024 * 1024, // 28 MB
-    },
-    {
       artistSlug: "patto",
       title: "Patto - EPK 2024",
       description: "Electronic Press Kit de Patto. Videos, fotos y contacto de booking.",

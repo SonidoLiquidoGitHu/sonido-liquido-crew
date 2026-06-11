@@ -9,7 +9,6 @@ const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae71
 // All Sonido Líquido Crew artists with their Spotify IDs
 const ARTISTS = [
   { name: "Zaque", spotifyId: "4WQmw3fIx9F7iPKL5v8SCN", role: "mc", tintColor: "cyan", isFeatured: true, sortOrder: 1 },
-  { name: "Doctor Destino", spotifyId: "5urer15JPbCELf17LVia7w", role: "mc", tintColor: "green", isFeatured: true, sortOrder: 2 },
   { name: "Brez", spotifyId: "2jJmTEMkGQfH3BxoG3MQvF", role: "mc", tintColor: "pink", isFeatured: true, sortOrder: 3 },
   { name: "Bruno Grasso", spotifyId: "4fNQqyvcM71IyF2EitEtCj", role: "mc", tintColor: "purple", isFeatured: false, sortOrder: 4 },
   { name: "Dilema", spotifyId: "3eCEorgAoZkvnAQLdy4x38", role: "mc", tintColor: "orange", isFeatured: false, sortOrder: 5 },

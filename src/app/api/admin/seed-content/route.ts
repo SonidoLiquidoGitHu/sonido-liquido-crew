@@ -97,12 +97,6 @@ const sampleVideos = [
     isFeatured: true,
   },
   {
-    title: "Doctor Destino - Vida Real",
-    youtubeId: "YZ3j1qNmPqI",
-    description: "Video oficial de Doctor Destino.",
-    isFeatured: true,
-  },
-  {
     title: "Bruno Grasso - A Ella",
     youtubeId: "Lj5Yh8rCFvU",
     description: "Single de Bruno Grasso.",
@@ -156,18 +150,6 @@ const sampleCampaigns = [
     requireEmail: true,
     isActive: true,
     isFeatured: true,
-  },
-  {
-    title: "Hyperfollow: Doctor Destino",
-    description: "Sigue a Doctor Destino en todas las plataformas y recibe notificaciones de nuevos lanzamientos.",
-    campaignType: "hyperfollow" as const,
-    coverImageUrl: "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=600",
-    smartLinkUrl: "https://onerpm.link/doctordestino",
-    requireSpotifyFollow: true,
-    spotifyArtistUrl: "https://open.spotify.com/artist/5urer15JPbCELf17LVia7w",
-    requireEmail: true,
-    isActive: true,
-    isFeatured: false,
   },
   {
     title: "Smart Link: SLC Gran Reserva",
@@ -404,7 +386,7 @@ const sampleEvents = [
   },
   {
     title: "Festival Coordenada 2026",
-    description: "Doctor Destino y Brez representan al crew en el escenario Hip Hop del festival.",
+    description: "Brez representa al crew en el escenario Hip Hop del festival.",
     venue: "Explanada del Estadio Jalisco",
     city: "Guadalajara",
     country: "México",

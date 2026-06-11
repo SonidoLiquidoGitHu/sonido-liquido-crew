@@ -11,7 +11,6 @@ const SLC_ARTISTS = [
   { name: "Chas 7P", spotifyId: "3RAg8fPmZ8RnacJO8MhLP1" },
   { name: "Codak", spotifyId: "2zrv1oduhIYh29vvQZwI5r" },
   { name: "Dilema", spotifyId: "3eCEorgAoZkvnAQLdy4x38" },
-  { name: "Doctor Destino", spotifyId: "5urer15JPbCELf17LVia7w" },
   { name: "Fancy Freak", spotifyId: "5TMoczTLclVyzzDY5qf3Yb" },
   { name: "Hassyel", spotifyId: "6AN9ek9RwrLbSp9rT2lcDG" },
   { name: "Kev Cabrone", spotifyId: "0QdRhOmiqAcV1dPCoiSIQJ" },

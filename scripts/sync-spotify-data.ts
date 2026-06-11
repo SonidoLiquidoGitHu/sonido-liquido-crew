@@ -19,13 +19,6 @@ const artistsRealData = [
     youtube: "https://youtube.com/@zakeuno",
   },
   {
-    name: "Doctor Destino",
-    spotifyId: "5urer15JPbCELf17LVia7w",
-    spotify: "https://open.spotify.com/artist/5urer15JPbCELf17LVia7w",
-    instagram: "https://www.instagram.com/estoesdoctordestino",
-    youtube: "https://youtube.com/@doctordestinohiphop",
-  },
-  {
     name: "Brez",
     spotifyId: "2jJmTEMkGQfH3BxoG3MQvF",
     spotify: "https://open.spotify.com/artist/2jJmTEMkGQfH3BxoG3MQvF",

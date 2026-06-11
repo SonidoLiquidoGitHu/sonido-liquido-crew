@@ -18,7 +18,6 @@ interface Album {
 // Artist info with spotify ID
 const SLC_ARTISTS = [
   { name: "Zaque", spotifyId: "4WQmw3fIx9F7iPKL5v8SCN" },
-  { name: "Doctor Destino", spotifyId: "5urer15JPbCELf17LVia7w" },
   { name: "Brez", spotifyId: "2jJmTEMkGQfH3BxoG3MQvF" },
   { name: "Bruno Grasso", spotifyId: "4fNQqyvcM71IyF2EitEtCj" },
   { name: "Dilema", spotifyId: "3eCEorgAoZkvnAQLdy4x38" },

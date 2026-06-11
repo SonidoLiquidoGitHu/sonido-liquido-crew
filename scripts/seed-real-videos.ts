@@ -38,9 +38,9 @@ const realVideos = [
   {
     title: "Directo de la X, Freestyle Session 21 | DDC, Bruno Grasso, Peón MC y QMW",
     youtubeId: "__fHyJCu7kk",
-    description: "Mega sesión con Doctor Destino, Bruno Grasso, Peón MC y Q Master Weed. 433K+ views.",
+    description: "Mega sesión con Bruno Grasso, Peón MC y Q Master Weed. 433K+ views.",
     isFeatured: true,
-    artist: "Doctor Destino",
+    artist: "Bruno Grasso",
   },
   {
     title: "Directo de la X, Freestyle Session 20 | Latin Geisha - Cavalier Latin Drive In",
@@ -121,13 +121,7 @@ const realVideos = [
     isFeatured: false,
     artist: "Bruno Grasso",
   },
-  {
-    title: "Bruno Grasso - Tumbao (Doctor Destino Remix)",
-    youtubeId: "cZuVRKzhTLM",
-    description: "Remix de Tumbao por Doctor Destino. 1.6K views.",
-    isFeatured: false,
-    artist: "Doctor Destino",
-  },
+
   {
     title: "Bruno Grasso (Ft. Trafikante de Almas, X Santa-Ana y Zaque) - Tumbao",
     youtubeId: "zmW_geR6ToI",

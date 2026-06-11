@@ -33,10 +33,6 @@ const artistChannels: Record<string, { handle?: string; channelId?: string; chan
     handle: "dilema999",
     channelUrl: "https://youtube.com/@dilema999"
   },
-  "doctor-destino": {
-    handle: "doctordestinohiphop",
-    channelUrl: "https://youtube.com/@doctordestinohiphop"
-  },
   "fancy-freak": {
     handle: "fancyfreakdj",
     channelUrl: "https://youtube.com/@fancyfreakdj"

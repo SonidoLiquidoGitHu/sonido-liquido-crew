@@ -105,17 +105,6 @@ export const artistsRoster: ArtistRosterData[] = [
     role: "mc",
   },
   {
-    name: "Doctor Destino",
-    slug: "doctor-destino",
-    spotifyUrl: "https://open.spotify.com/artist/5urer15JPbCELf17LVia7w",
-    spotifyId: "5urer15JPbCELf17LVia7w",
-    instagramUrl: "https://www.instagram.com/estoesdoctordestino",
-    instagramHandle: "@estoesdoctordestino",
-    youtubeUrl: "https://youtube.com/@doctordestinohiphop",
-    youtubeHandle: "@doctordestinohiphop",
-    role: "mc",
-  },
-  {
     name: "Fancy Freak",
     slug: "fancy-freak",
     spotifyUrl: "https://open.spotify.com/artist/5TMoczTLclVyzzDY5qf3Yb",

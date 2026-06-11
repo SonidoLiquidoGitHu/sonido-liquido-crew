@@ -13,12 +13,6 @@ const sampleVideos = [
     isFeatured: true,
   },
   {
-    title: "Doctor Destino - Vida Real",
-    youtubeId: "YZ3j1qNmPqI",
-    description: "Video oficial de Doctor Destino.",
-    isFeatured: true,
-  },
-  {
     title: "Bruno Grasso - A Ella",
     youtubeId: "Lj5Yh8rCFvU",
     description: "Single de Bruno Grasso.",
