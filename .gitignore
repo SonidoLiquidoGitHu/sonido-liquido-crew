@@ -67,8 +67,8 @@ temp/
 # Build cache clear Mon May  4 01:43:10 UTC 2026
 .env
 
-# Uploaded files (temporary)
-upload/
+# Uploaded files (temporary) - only the root upload/ directory
+/upload/
 
 # Skills (development only)
 skills/
