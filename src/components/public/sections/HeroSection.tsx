@@ -14,8 +14,8 @@ interface Stats {
 // Default fallback stats
 const defaultStats: Stats = {
   artists: 15,
-  releases: 160,
-  yearsOfHistory: 26,
+  releases: 170,
+  yearsOfHistory: 27,
 };
 
 export function HeroSection() {

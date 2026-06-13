@@ -22,8 +22,8 @@ interface ApiStats {
 // Default fallback values
 const defaultApiStats: ApiStats = {
   artists: 15,
-  releases: 195,
-  videos: 800,
+  releases: 170,
+  videos: 245,
   yearsOfHistory: 27,
 };
 
