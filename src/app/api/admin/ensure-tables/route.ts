@@ -661,10 +661,11 @@ export async function POST() {
       results.push({ table: "crew_social_settings", status: "error", error: msg });
     }
 
-    // === CLEANUP: Remove Doctor Destino from database ===
+    // === CLEANUP: Remove Doctor Destino from ALL database tables ===
     try {
       const doctorDestinoSlug = "doctor-destino";
       const doctorDestinoSpotifyId = "5urer15JPbCELf17LVia7w";
+      const cleanupResults: string[] = [];
 
       // Find the artist by slug or Spotify ID in external profiles
       const [existingBySlug] = await db
@@ -685,14 +686,146 @@ export async function POST() {
         artistId = existingBySpotify?.artistId;
       }
 
+      // 1. Delete the artist row (cascade handles: profiles, gallery assets, relations, EPK, release_artists)
       if (artistId) {
-        // Delete the artist (cascade will handle profiles, gallery, relations, EPK, release_artists)
         await db.delete(artists).where(eq(artists.id, artistId));
-        console.log(`[Ensure Tables] Removed Doctor Destino (id: ${artistId})`);
-        results.push({ table: "cleanup_doctor_destino", status: "removed", error: `Deleted artist ${existingBySlug?.name || artistId}` });
-      } else {
-        results.push({ table: "cleanup_doctor_destino", status: "skipped", error: "Artist not found in database" });
+        cleanupResults.push(`Deleted artist row (${existingBySlug?.name || artistId})`);
       }
+
+      // 2. Social post queue — no FK cascade, must delete manually
+      if (artistId) {
+        const queueResult = await executeRaw(
+          `DELETE FROM social_post_queue WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted social_post_queue items`);
+      }
+      // Also try by Spotify ID in link_url or caption
+      await executeRaw(
+        `DELETE FROM social_post_queue WHERE link_url LIKE '%doctor-destino%' OR caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%'`
+      );
+
+      // 3. Social posts log — no artist_id column, match by source_id from queue
+      // Delete log entries where source_id matches any Doctor Destino related IDs
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM social_posts_log WHERE source_id = '${artistId}'`
+        );
+      }
+      await executeRaw(
+        `DELETE FROM social_posts_log WHERE caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%'`
+      );
+
+      // 4. Gallery photos — artist_id is SET NULL, but we want to DELETE them
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM gallery_photos WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted gallery_photos`);
+      }
+
+      // 5. Vertical videos — artist_id is SET NULL, delete them
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM vertical_videos WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted vertical_videos`);
+      }
+
+      // 6. Vertical video events
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM vertical_video_events WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted vertical_video_events`);
+      }
+
+      // 7. Videos (YouTube)
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM videos WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted videos`);
+      }
+
+      // 8. YouTube channels
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM youtube_channels WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted youtube_channels`);
+      }
+
+      // 9. Media releases
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM media_releases WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted media_releases`);
+      }
+
+      // 10. Campaigns
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM campaigns WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted campaigns`);
+      }
+
+      // 11. Fan wall messages
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM fan_wall_messages WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted fan_wall_messages`);
+      }
+
+      // 12. Curated Spotify channels — match by Spotify artist ID
+      await executeRaw(
+        `DELETE FROM curated_spotify_channels WHERE spotify_artist_id = '${doctorDestinoSpotifyId}'`
+      );
+      cleanupResults.push(`Deleted curated_spotify_channels`);
+
+      // 13. Curated tracks — match by artist_name text field or artist_ids JSON containing Spotify ID
+      await executeRaw(
+        `DELETE FROM curated_tracks WHERE artist_name LIKE '%Doctor Destino%' OR artist_name LIKE '%doctor destino%' OR artist_ids LIKE '%${doctorDestinoSpotifyId}%'`
+      );
+      cleanupResults.push(`Deleted curated_tracks`);
+
+      // 14. Releases that only belong to Doctor Destino (no other artists)
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM releases WHERE id IN (SELECT r.id FROM releases r LEFT JOIN release_artists ra ON r.id = ra.release_id WHERE ra.artist_id = '${artistId}' AND r.id NOT IN (SELECT DISTINCT release_id FROM release_artists WHERE artist_id != '${artistId}'))`
+        );
+        cleanupResults.push(`Deleted releases (solo Doctor Destino)`);
+        // Delete remaining release_artists associations
+        await executeRaw(
+          `DELETE FROM release_artists WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted release_artists`);
+      }
+
+      // 15. Concert memories — tagged_artists is a text field
+      await executeRaw(
+        `DELETE FROM concert_memories WHERE tagged_artists LIKE '%Doctor Destino%' OR tagged_artists LIKE '%doctor destino%'`
+      );
+
+      // 16. Upcoming releases subscribers — if any upcoming releases were Doctor Destino's
+      if (artistId) {
+        await executeRaw(
+          `DELETE FROM upcoming_release_subscribers WHERE release_id IN (SELECT id FROM upcoming_releases WHERE artist_id = '${artistId}')`
+        );
+        await executeRaw(
+          `DELETE FROM upcoming_releases WHERE artist_id = '${artistId}'`
+        );
+        cleanupResults.push(`Deleted upcoming_releases + subscribers`);
+      }
+
+      console.log(`[Ensure Tables] Doctor Destino cleanup: ${cleanupResults.join(', ')}`);
+      results.push({
+        table: "cleanup_doctor_destino",
+        status: cleanupResults.length > 0 ? "removed" : "skipped",
+        error: cleanupResults.length > 0 ? cleanupResults.join('; ') : "No Doctor Destino data found",
+      });
     } catch (cleanupError) {
       const msg = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
       results.push({ table: "cleanup_doctor_destino", status: "error", error: msg });
