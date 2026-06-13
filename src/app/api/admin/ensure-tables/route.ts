@@ -744,8 +744,12 @@ export async function POST() {
         await executeRaw(
           `DELETE FROM gallery_photos WHERE artist_id = '${artistId}'`
         );
-        cleanupResults.push(`Deleted gallery_photos`);
       }
+      // Also delete by caption/alt text
+      await executeRaw(
+        `DELETE FROM gallery_photos WHERE alt_text LIKE '%Doctor Destino%' OR alt_text LIKE '%doctor destino%'`
+      );
+      cleanupResults.push(`Deleted gallery_photos`);
 
       // 5. Vertical videos — artist_id is SET NULL, delete them
       if (artistId) {
@@ -820,13 +824,22 @@ export async function POST() {
         await executeRaw(
           `DELETE FROM releases WHERE id IN (SELECT r.id FROM releases r LEFT JOIN release_artists ra ON r.id = ra.release_id WHERE ra.artist_id = '${artistId}' AND r.id NOT IN (SELECT DISTINCT release_id FROM release_artists WHERE artist_id != '${artistId}'))`
         );
-        cleanupResults.push(`Deleted releases (solo Doctor Destino)`);
+        cleanupResults.push(`Deleted releases (solo Doctor Destino by artistId)`);
         // Delete remaining release_artists associations
         await executeRaw(
           `DELETE FROM release_artists WHERE artist_id = '${artistId}'`
         );
         cleanupResults.push(`Deleted release_artists`);
       }
+
+      // 14b. Also delete releases by slug pattern (catches orphaned releases without release_artists)
+      await executeRaw(
+        `DELETE FROM release_artists WHERE release_id IN (SELECT id FROM releases WHERE slug LIKE '%doctor-destino%')`
+      );
+      await executeRaw(
+        `DELETE FROM releases WHERE slug LIKE '%doctor-destino%'`
+      );
+      cleanupResults.push(`Deleted releases (by slug pattern)`);
 
       // 15. Concert memories — tagged_artists is a text field
       await executeRaw(
