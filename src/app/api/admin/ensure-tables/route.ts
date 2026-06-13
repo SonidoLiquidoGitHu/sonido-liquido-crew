@@ -686,6 +686,30 @@ export async function POST() {
         artistId = existingBySpotify?.artistId;
       }
 
+      // Also check social_post_queue for orphaned items with Doctor Destino captions
+      if (!artistId) {
+        try {
+          const queueRows = await executeRaw(
+            `SELECT DISTINCT artist_id FROM social_post_queue WHERE caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%' OR link_url LIKE '%doctor-destino%' LIMIT 1`
+          ) as unknown as Array<{ artist_id: string }>;
+          if (queueRows && queueRows.length > 0 && queueRows[0].artist_id) {
+            artistId = queueRows[0].artist_id;
+          }
+        } catch { /* ignore */ }
+      }
+
+      // Also check release_artists for releases with Doctor Destino slug
+      if (!artistId) {
+        try {
+          const releaseRows = await executeRaw(
+            `SELECT DISTINCT ra.artist_id FROM release_artists ra JOIN releases r ON ra.release_id = r.id WHERE r.slug LIKE '%doctor-destino%' LIMIT 1`
+          ) as unknown as Array<{ artist_id: string }>;
+          if (releaseRows && releaseRows.length > 0 && releaseRows[0].artist_id) {
+            artistId = releaseRows[0].artist_id;
+          }
+        } catch { /* ignore */ }
+      }
+
       // 1. Delete the artist row (cascade handles: profiles, gallery assets, relations, EPK, release_artists)
       if (artistId) {
         await db.delete(artists).where(eq(artists.id, artistId));
