@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { dropboxClient } from "@/lib/clients/dropbox";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 55; // Stay under Netlify's 60s serverless function timeout
 
 /**
  * POST - Upload a file to Dropbox and return a shared link
