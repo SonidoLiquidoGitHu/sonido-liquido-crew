@@ -15,6 +15,7 @@ const SLC_ARTISTS = [
   { name: "Hassyel", spotifyId: "6AN9ek9RwrLbSp9rT2lcDG" },
   { name: "Kev Cabrone", spotifyId: "0QdRhOmiqAcV1dPCoiSIQJ" },
   { name: "Latin Geisha", spotifyId: "16YScXC67nAnFDcA2LGdY0" },
+  { name: "Peon MC", spotifyId: "1SIBJEB7cX3QRhAVTqNc5N" },
   { name: "Pepe Levine", spotifyId: "5HrBwfVDf0HXzGDrJ6Znqc" },
   { name: "Q Master Weed", spotifyId: "4T4Z7jvUcMV16VsslRRuC5" },
   { name: "Reick One", spotifyId: "4UqFXhJVb9zy2SbNx4ycJQ" },

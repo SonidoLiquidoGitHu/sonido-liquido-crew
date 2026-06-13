@@ -9,6 +9,7 @@ export const ROSTER_ARTIST_IDS = [
   "6AN9ek9RwrLbSp9rT2lcDG", // Hassyel
   "0QdRhOmiqAcV1dPCoiSIQJ", // Kev Cabrone
   "16YScXC67nAnFDcA2LGdY0", // Latin Geisha
+  "1SIBJEB7cX3QRhAVTqNc5N", // Peon MC
   "5HrBwfVDf0HXzGDrJ6Znqc", // Pepe Levine
   "4T4Z7jvUcMV16VsslRRuC5", // Q Master Weed
   "4UqFXhJVb9zy2SbNx4ycJQ", // Reick One
@@ -53,6 +54,10 @@ export const ARTIST_SOCIAL_LINKS: Record<string, { instagram?: string; youtube?:
   "16YScXC67nAnFDcA2LGdY0": { // Latin Geisha
     instagram: "https://www.instagram.com/latingeishamx",
     youtube: "https://youtube.com/@latingeishamx",
+  },
+  "1SIBJEB7cX3QRhAVTqNc5N": { // Peon MC
+    instagram: "https://www.instagram.com/peonmc",
+    youtube: "https://youtube.com/@peonmc",
   },
   "5HrBwfVDf0HXzGDrJ6Znqc": { // Pepe Levine
     instagram: "https://www.instagram.com/pepelevineonline",
