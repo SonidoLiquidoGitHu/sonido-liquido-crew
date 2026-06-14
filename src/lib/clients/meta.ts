@@ -1611,7 +1611,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
           platforms: JSON.stringify(platforms),
           postedPlatforms: JSON.stringify(postedPlatforms),
           updatedAt: new Date(),
-        })
+        } as any)
         .where(eq(socialPostQueue.id, item.id));
     } catch (err) {
       console.warn("[Social] Failed to update platforms list:", err);
@@ -1630,7 +1630,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
           postedAt: new Date(),
           updatedAt: new Date(),
           errorMessage: null,
-        })
+        } as any)
         .where(eq(socialPostQueue.id, item.id));
     } catch (err) {
       console.warn("[Social] Failed to mark item as posted:", err);
@@ -1653,7 +1653,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
           status: "skipped",
           errorMessage: "No supported platforms (tiktok removed)",
           updatedAt: new Date(),
-        })
+        } as any)
         .where(eq(socialPostQueue.id, item.id));
     } catch (err) {
       console.warn("[Social] Failed to mark item as skipped:", err);
@@ -1732,7 +1732,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
               status: fbReelResult.success ? "success" : "failed",
               errorMessage: fbReelResult.error || null,
               postedAt: new Date(),
-            });
+            } as any);
           } catch (logError) {
             console.error("[Social] Failed to log FB Reel result:", logError);
           }
@@ -1769,7 +1769,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
               status: igResult.success ? "success" : "failed",
               errorMessage: igResult.error || null,
               postedAt: new Date(),
-            });
+            } as any);
           } catch (logError) {
             console.error("[Social] Failed to log IG Reel result:", logError);
           }
@@ -1808,7 +1808,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
         status: fbResult.success ? "success" : "failed",
         errorMessage: fbResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social] Failed to log FB result:", logError);
     }
@@ -1840,7 +1840,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
         status: igResult.success ? "success" : "failed",
         errorMessage: igResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social] Failed to log IG result:", logError);
     }
@@ -2608,7 +2608,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
               status: "skipped",
               errorMessage: "Skipped: same image posted in last 48h (dedup)",
               updatedAt: new Date(),
-            })
+            } as any)
             .where(eq(socialPostQueue.id, item.id));
           // Continue to next item in the rotation, don't return
           continue;
@@ -2637,7 +2637,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
               status: "skipped",
               errorMessage: "Skipped: same content posted in last 48h (dedup)",
               updatedAt: new Date(),
-            })
+            } as any)
             .where(eq(socialPostQueue.id, item.id));
           continue;
         }
@@ -2645,7 +2645,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
         // Atomically claim: set status to "processing" so no other run picks this up
         const claimed = await db
           .update(socialPostQueue)
-          .set({ status: "processing", updatedAt: new Date() })
+          .set({ status: "processing", updatedAt: new Date() } as any)
           .where(
             and(
               eq(socialPostQueue.id, item.id),
@@ -2698,7 +2698,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
             status: "skipped",
             errorMessage: "Skipped: same image posted in last 48h (dedup)",
             updatedAt: new Date(),
-          })
+          } as any)
           .where(eq(socialPostQueue.id, item.id));
         return null; // Don't try more fallback items this run
       }
@@ -2706,7 +2706,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
       // Atomic claim
       const claimed = await db
         .update(socialPostQueue)
-        .set({ status: "processing", updatedAt: new Date() })
+        .set({ status: "processing", updatedAt: new Date() } as any)
         .where(
           and(
             eq(socialPostQueue.id, item.id),
@@ -2763,7 +2763,7 @@ async function resetCycleIfNeeded(): Promise<boolean> {
     // NOTE: updatedAt is stored as integer Unix timestamp, so we compare with unixepoch() not datetime()
     const staleProcessing = await db
       .update(socialPostQueue)
-      .set({ status: "pending", updatedAt: new Date() })
+      .set({ status: "pending", updatedAt: new Date() } as any)
       .where(
         and(
           eq(socialPostQueue.status, "processing"),
@@ -2841,7 +2841,7 @@ async function resetCycleIfNeeded(): Promise<boolean> {
           errorMessage: null,
           postedAt: null,
           updatedAt: new Date(),
-        });
+        } as any);
 
       return true;
     }

@@ -385,7 +385,7 @@ async function handlePostUpcomingRelease(body: {
         status: fbResult.success ? "success" : "failed",
         errorMessage: fbResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log FB result:", logError);
     }
@@ -418,7 +418,7 @@ async function handlePostUpcomingRelease(body: {
         status: igResult.success ? "success" : "failed",
         errorMessage: igResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log IG result:", logError);
     }
@@ -522,7 +522,7 @@ async function handlePostReel(body: {
         status: igResult.success ? "success" : "failed",
         errorMessage: igResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log IG Reel result:", logError);
     }
@@ -555,7 +555,7 @@ async function handlePostReel(body: {
         status: fbResult.success ? "success" : "failed",
         errorMessage: fbResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log FB Reel result:", logError);
     }
@@ -688,7 +688,7 @@ async function handlePopulate(options: {
           status: "pending",
           platforms: platformsJson,
           postedPlatforms: "[]",
-        });
+        } as any);
 
         existingSourceIds.add(key);
         galleryCount++;
@@ -767,7 +767,7 @@ async function handlePopulate(options: {
           status: "pending",
           platforms: platformsJson,
           postedPlatforms: "[]",
-        });
+        } as any);
 
         existingSourceIds.add(key);
         releasesCount++;
@@ -817,7 +817,7 @@ async function handlePopulate(options: {
           status: "pending",
           platforms: platformsJson,
           postedPlatforms: "[]",
-        });
+        } as any);
 
         existingSourceIds.add(key);
         artistsCount++;
@@ -891,7 +891,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
-          });
+          } as any);
 
           existingSourceIds.add(key);
           curatedCount++;
@@ -1008,7 +1008,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
-          });
+          } as any);
 
           existingSourceIds.add(key);
           reelsCount++;
@@ -1081,7 +1081,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
-          });
+          } as any);
 
           existingSourceIds.add(key);
           youtubeVideosCount++;
@@ -1170,7 +1170,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
-          });
+          } as any);
 
           existingSourceIds.add(key);
           queueOrder++;
@@ -1335,7 +1335,7 @@ async function handlePostUpcomingEvent(body: {
         status: fbResult.success ? "success" : "failed",
         errorMessage: fbResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log FB event result:", logError);
     }
@@ -1368,7 +1368,7 @@ async function handlePostUpcomingEvent(body: {
         status: igResult.success ? "success" : "failed",
         errorMessage: igResult.error || null,
         postedAt: new Date(),
-      });
+      } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log IG Story event result:", logError);
     }
@@ -1728,7 +1728,7 @@ async function handleAutopostUpcomingEvent() {
           status: fbResult.success ? "success" : "failed",
           errorMessage: fbResult.error || null,
           postedAt: new Date(),
-        });
+        } as any);
       } catch (logError) {
         console.error("[Social API] Failed to log autopost FB event result:", logError);
       }
@@ -1762,7 +1762,7 @@ async function handleAutopostUpcomingEvent() {
           status: igResult.success ? "success" : "failed",
           errorMessage: igResult.error || null,
           postedAt: new Date(),
-        });
+        } as any);
       } catch (logError) {
         console.error("[Social API] Failed to log autopost IG Story event result:", logError);
       }
@@ -1826,7 +1826,7 @@ async function handleResetCycle() {
         errorMessage: null,
         postedAt: null,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(
         drizzleSql`${socialPostQueue.status} IN ('posted', 'skipped', 'processing')`
       );
@@ -1854,7 +1854,7 @@ async function handleSkipItem(queueId: string) {
 
   await db
     .update(socialPostQueue)
-    .set({ status: "skipped", updatedAt: new Date() })
+    .set({ status: "skipped", updatedAt: new Date() } as any)
     .where(eq(socialPostQueue.id, queueId));
 
   return NextResponse.json({
@@ -1949,7 +1949,7 @@ async function handleRetryFailed() {
         postedPlatforms: "[]",
         errorMessage: null,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(socialPostQueue.status, "failed"));
 
     // Also recover stuck "processing" items back to "pending"
@@ -1958,7 +1958,7 @@ async function handleRetryFailed() {
       .set({
         status: "pending",
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(socialPostQueue.status, "processing"));
 
     const totalReset = failedCount + processingCount;
@@ -2201,7 +2201,7 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
       if (existing.length > 0) {
         await db
           .update(socialCredentials)
-          .set({ value: config.value, updatedAt: new Date() })
+          .set({ value: config.value, updatedAt: new Date() } as any)
           .where(
             and(
               eq(socialCredentials.platform, "meta"),
@@ -2215,7 +2215,7 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
           key: config.key,
           value: config.value,
           isFromUi: true,
-        });
+        } as any);
       }
     }
 

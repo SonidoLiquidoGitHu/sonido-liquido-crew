@@ -187,13 +187,13 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
       // Update access token
       await db
         .update(siteSettings)
-        .set({ value: newAccessToken, updatedAt: new Date() })
+        .set({ value: newAccessToken, updatedAt: new Date() } as any)
         .where(eq(siteSettings.key, "dropbox_access_token"));
 
       // Update expiry time
       await db
         .update(siteSettings)
-        .set({ value: expiryTime.toString(), updatedAt: new Date() })
+        .set({ value: expiryTime.toString(), updatedAt: new Date() } as any)
         .where(eq(siteSettings.key, "dropbox_token_expiry"));
 
       // Update cache
@@ -272,7 +272,7 @@ export async function saveDropboxToken(token: string): Promise<boolean> {
       console.log("[Dropbox] Updating existing token...");
       await db
         .update(siteSettings)
-        .set({ value: token, updatedAt: new Date() })
+        .set({ value: token, updatedAt: new Date() } as any)
         .where(eq(siteSettings.key, "dropbox_access_token"));
       console.log("[Dropbox] Token updated successfully");
     } else {
@@ -284,7 +284,7 @@ export async function saveDropboxToken(token: string): Promise<boolean> {
         value: token,
         type: "string",
         description: "Dropbox API access token",
-      });
+      } as any);
       console.log("[Dropbox] Token inserted with id:", newId);
     }
 
