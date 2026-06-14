@@ -1391,7 +1391,9 @@ async function handlePostUpcomingEvent(body: {
 // This handler is called by the social-auto-post cron function 3 times/day.
 // It posts the nearest upcoming event to FB+IG independently of the regular
 // queue rotation. Event posts do NOT count against the queue's daily limit.
-// Dedup: skips if the same event was posted in the last 24 hours.
+// Dedup is tiered based on event proximity:
+//   - More than 1 week away: 2x/day (12-hour dedup window)
+//   - Within 1 week of the event: 3x/day (8-hour dedup window)
 
 async function handleAutopostUpcomingEvent() {
   if (!(await isMetaConfiguredAsync())) {
@@ -1436,11 +1438,21 @@ async function handleAutopostUpcomingEvent() {
       });
     }
 
-    // Find the nearest event that hasn't been posted in the last 24 hours
-    // postedAt is stored as integer Unix timestamp, so we compare with unixepoch()
+    // Tiered event posting frequency based on proximity:
+    // - More than 1 week away: 2 times/day → 12-hour dedup window (43200s)
+    // - Within 1 week of the event: 3 times/day → 8-hour dedup window (28800s)
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const DEDUP_FAR_MS = 12 * 60 * 60;  // 12 hours in seconds (events >1 week away)
+    const DEDUP_NEAR_MS = 8 * 60 * 60;   // 8 hours in seconds (events within 1 week)
+
     let selectedEvent: typeof upcomingEvents[0] | null = null;
+    let selectedDedupWindow = DEDUP_FAR_MS;
 
     for (const event of upcomingEvents) {
+      // Determine dedup window based on how close the event is
+      const timeUntilEvent = new Date(event.eventDate).getTime() - now.getTime();
+      const dedupWindow = timeUntilEvent <= ONE_WEEK_MS ? DEDUP_NEAR_MS : DEDUP_FAR_MS;
+
       const recentlyPosted = await db
         .select({ id: socialPostsLog.id })
         .from(socialPostsLog)
@@ -1449,23 +1461,25 @@ async function handleAutopostUpcomingEvent() {
             eq(socialPostsLog.contentType, "event"),
             eq(socialPostsLog.sourceId, event.id),
             eq(socialPostsLog.status, "success"),
-            drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 86400)`
+            drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - ${dedupWindow})`
           )
         )
         .limit(1);
 
       if (recentlyPosted.length === 0) {
         selectedEvent = event;
+        selectedDedupWindow = dedupWindow;
         break;
       }
 
-      console.log(`[Social API] Event "${event.title}" was posted in last 24h, skipping.`);
+      const dedupHours = dedupWindow / 3600;
+      console.log(`[Social API] Event "${event.title}" was posted in last ${dedupHours}h, skipping.`);
     }
 
     if (!selectedEvent) {
       return NextResponse.json({
         success: false,
-        message: "All upcoming events were already posted in the last 24 hours.",
+        message: "All upcoming events were already posted recently.",
         alreadyPosted: true,
       });
     }

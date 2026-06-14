@@ -12,6 +12,10 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 // post limit. The regular queue continues its round-robin rotation
 // as always.
 //
+// Event autopost frequency is tiered based on proximity:
+//   - More than 1 week before the event: 2x/day (12-hour dedup)
+//   - Within 1 week of the event: 3x/day (8-hour dedup)
+//
 // Schedule matching uses a 1-hour window: if the cron runs at an hour
 // that is within ±0 hours of a scheduled hour (in UTC), it posts.
 // This ensures all CST hours are covered even though the cron only
@@ -117,7 +121,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // STEP 1: AUTOPOST UPCOMING EVENT (independent of queue)
     // ===========================================
     // This runs first and does NOT count against the queue's daily limit.
-    // If there's an upcoming event that hasn't been posted in the last 24h,
+    // If there's an upcoming event that hasn't been posted within its
+    // dedup window (12h if >1 week away, 8h if within 1 week),
     // it gets posted to FB+IG before we touch the regular queue.
     let eventAutopostResult: { success: boolean; message: string; event?: any } | null = null;
 
@@ -143,8 +148,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         console.log("[Social Auto-Post] No upcoming events to autopost.");
         eventAutopostResult = { success: false, message: "No upcoming events" };
       } else if (eventData.alreadyPosted) {
-        console.log("[Social Auto-Post] Upcoming event already posted in last 24h, skipping.");
-        eventAutopostResult = { success: false, message: "Event already posted in last 24h" };
+        console.log("[Social Auto-Post] Upcoming event already posted recently, skipping.");
+        eventAutopostResult = { success: false, message: "Event already posted recently" };
       } else {
         console.warn(`[Social Auto-Post] Event autopost failed: ${eventData.message || eventData.error}`);
         eventAutopostResult = { success: false, message: eventData.message || eventData.error || "Unknown error" };
@@ -280,7 +285,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   } catch (error) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const errMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error(`[Social Auto-Post] Exception after ${elapsed}s:`, errMsg}`);
+    console.error(`[Social Auto-Post] Exception after ${elapsed}s:`, errMsg);
 
     return {
       statusCode: 500,

@@ -555,6 +555,7 @@ export default function AdminSocialPage() {
           </h1>
           <p className="text-slc-muted mt-1">
             Publicación automática a Facebook e Instagram — {scheduleConfig?.scheduleHours?.length || 3}x al día
+            <span className="text-slc-muted/60 ml-2">(Eventos: 2x/día, 3x/día la semana del evento)</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -1015,6 +1016,25 @@ export default function AdminSocialPage() {
                   {editScheduleHours.length > 0 ? editScheduleHours.length : 3} horarios × {editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} ={" "}
                   {(editScheduleHours.length || 3) * editPostsPerRun} posts/día (×2 plataformas ={" "}
                   {(editScheduleHours.length || 3) * editPostsPerRun * 2} publicaciones totales)
+                </p>
+              </div>
+            </div>
+
+            {/* Event Autopost Info */}
+            <div className="p-4 bg-slc-dark rounded-lg border border-primary/20 mb-6">
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                Autopost de Eventos
+              </h3>
+              <div className="space-y-1 text-sm text-slc-muted">
+                <p>
+                  <span className="text-white font-medium">Más de 1 semana antes:</span> 2 publicaciones/día (cada 12 horas)
+                </p>
+                <p>
+                  <span className="text-white font-medium">La semana del evento:</span> 3 publicaciones/día (cada 8 horas)
+                </p>
+                <p className="text-xs mt-2">
+                  Los posts de eventos son independientes y no cuentan contra el límite diario de la cola regular.
                 </p>
               </div>
             </div>
