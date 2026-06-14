@@ -242,6 +242,8 @@ export async function POST(request: NextRequest) {
         return await handleSaveScheduleConfig(body);
       case "generate-ai-caption":
         return await handleGenerateAICaption(body);
+      case "debug-autopost":
+        return await handleDebugAutopost();
       default:
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },
@@ -1383,6 +1385,193 @@ async function handlePostUpcomingEvent(body: {
       ? `Evento publicado exitosamente en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram_story?.success ? " e " : ""}${results.instagram_story?.success ? "Instagram Story" : ""}`
       : `Error al publicar evento: ${errorMessages.join(", ")}`,
     results,
+  });
+}
+
+// ===========================================
+// DEBUG AUTOPOST — Diagnostic endpoint for troubleshooting why posts aren't going out
+// ===========================================
+
+async function handleDebugAutopost() {
+  const now = new Date();
+  const diagnostics: Record<string, unknown> = {
+    timestamp: now.toISOString(),
+    timestampUTC: now.toUTCString(),
+  };
+
+  // 1. Check Meta API configuration
+  const metaConfigured = await isMetaConfiguredAsync();
+  diagnostics.metaConfigured = metaConfigured;
+
+  if (metaConfigured) {
+    try {
+      const tokenInfo = await validateToken();
+      diagnostics.tokenValid = tokenInfo.isValid;
+      diagnostics.tokenError = tokenInfo.isValid ? null : (tokenInfo.raw?.message || "Invalid token");
+    } catch (err) {
+      diagnostics.tokenValid = false;
+      diagnostics.tokenError = err instanceof Error ? err.message : "Token validation failed";
+    }
+  }
+
+  // 2. Check schedule config
+  try {
+    const config = await getScheduleConfig();
+    diagnostics.scheduleConfig = config;
+
+    // Calculate UTC schedule hours
+    const CST_OFFSET = 6;
+    const utcScheduleHours = config.scheduleHours.map(h => (h + CST_OFFSET) % 24);
+    const currentHourUTC = now.getUTCHours();
+    const currentHourCST = (currentHourUTC - CST_OFFSET + 24) % 24;
+
+    diagnostics.currentTimeUTC = currentHourUTC;
+    diagnostics.currentTimeCST = currentHourCST;
+    diagnostics.utcScheduleHours = utcScheduleHours;
+    diagnostics.shouldPostNow = utcScheduleHours.includes(currentHourUTC);
+    diagnostics.nextScheduledCST = config.scheduleHours
+      .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
+      .sort((a, b) => a.utc - b.utc)
+      .find(entry => entry.utc > currentHourUTC)?.cst || config.scheduleHours[0];
+  } catch (err) {
+    diagnostics.scheduleConfigError = err instanceof Error ? err.message : "Failed to read schedule config";
+  }
+
+  // 3. Check queue status
+  try {
+    const pendingCount = await db
+      .select({ count: count() })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "pending"));
+
+    const processingCount = await db
+      .select({ count: count() })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "processing"));
+
+    diagnostics.queuePending = pendingCount[0]?.count || 0;
+    diagnostics.queueProcessing = processingCount[0]?.count || 0;
+
+    // Stuck processing items (processing for > 10 minutes)
+    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+    const stuckItems = await db
+      .select({ id: socialPostQueue.id, contentType: socialPostQueue.contentType, updatedAt: socialPostQueue.updatedAt })
+      .from(socialPostQueue)
+      .where(eq(socialPostQueue.status, "processing"))
+      .limit(10);
+
+    diagnostics.stuckProcessingItems = stuckItems.filter(item => {
+      const updated = item.updatedAt ? new Date(item.updatedAt) : null;
+      return updated && updated < tenMinutesAgo;
+    }).length;
+  } catch (err) {
+    diagnostics.queueError = err instanceof Error ? err.message : "Failed to read queue";
+  }
+
+  // 4. Check upcoming events
+  try {
+    const upcomingEvents = await db
+      .select({
+        id: events.id,
+        title: events.title,
+        eventDate: events.eventDate,
+        imageUrl: events.imageUrl,
+        isCancelled: events.isCancelled,
+      })
+      .from(events)
+      .where(eq(events.isCancelled, false))
+      .orderBy(events.eventDate)
+      .limit(5);
+
+    diagnostics.upcomingEvents = upcomingEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      eventDate: e.eventDate,
+      hasImage: !!e.imageUrl,
+      isPast: new Date(e.eventDate) < now,
+    }));
+  } catch (err) {
+    diagnostics.eventsError = err instanceof Error ? err.message : "Failed to read events";
+  }
+
+  // 5. Check recent post log
+  try {
+    const recentLogs = await db
+      .select({
+        id: socialPostsLog.id,
+        platform: socialPostsLog.platform,
+        contentType: socialPostsLog.contentType,
+        status: socialPostsLog.status,
+        errorMessage: socialPostsLog.errorMessage,
+        postedAt: socialPostsLog.postedAt,
+        queueId: socialPostsLog.queueId,
+      })
+      .from(socialPostsLog)
+      .orderBy(desc(socialPostsLog.postedAt))
+      .limit(10);
+
+    diagnostics.recentLogs = recentLogs.map(l => ({
+      platform: l.platform,
+      contentType: l.contentType,
+      status: l.status,
+      errorMessage: l.errorMessage,
+      postedAt: l.postedAt ? new Date(l.postedAt).toISOString() : null,
+      queueId: l.queueId,
+    }));
+
+    // Check if any posts were made today (CST day)
+    const startOfDayCST = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 6 * 60 * 60 * 1000);
+    const todayPosts = recentLogs.filter(l =>
+      l.status === "success" &&
+      l.postedAt &&
+      new Date(l.postedAt) >= startOfDayCST
+    );
+    diagnostics.todayPostsCount = todayPosts.length;
+    diagnostics.todayPosts = todayPosts.map(l => ({
+      platform: l.platform,
+      contentType: l.contentType,
+      queueId: l.queueId,
+      postedAt: l.postedAt ? new Date(l.postedAt).toISOString() : null,
+    }));
+  } catch (err) {
+    diagnostics.logsError = err instanceof Error ? err.message : "Failed to read logs";
+  }
+
+  // 6. Check DB credentials (schedule config stored in DB)
+  try {
+    const creds = await db
+      .select({ key: socialCredentials.key, value: socialCredentials.value })
+      .from(socialCredentials)
+      .where(eq(socialCredentials.platform, "meta"));
+
+    const credKeys = creds.map(c => c.key);
+    diagnostics.dbCredentialKeys = credKeys;
+    diagnostics.hasAutopostScheduleHours = credKeys.includes("AUTOPOST_SCHEDULE_HOURS");
+    diagnostics.hasAutopostPostsPerRun = credKeys.includes("AUTOPOST_POSTS_PER_RUN");
+    diagnostics.hasAutopostMaxPostsPerDay = credKeys.includes("AUTOPOST_MAX_POSTS_PER_DAY");
+
+    // Show the actual schedule hours value (don't expose secrets)
+    const scheduleHoursCred = creds.find(c => c.key === "AUTOPOST_SCHEDULE_HOURS");
+    diagnostics.autopostScheduleHoursValue = scheduleHoursCred?.value || null;
+  } catch (err) {
+    diagnostics.credentialsError = err instanceof Error ? err.message : "Failed to read credentials";
+  }
+
+  // 7. Identify likely issues
+  const issues: string[] = [];
+  if (!metaConfigured) issues.push("Meta API is not configured — META_SYSTEM_USER_TOKEN and/or FACEBOOK_PAGE_ID are missing");
+  if (diagnostics.tokenValid === false) issues.push(`Meta API token is invalid: ${diagnostics.tokenError}`);
+  if ((diagnostics.queuePending as number) === 0) issues.push("Queue has no pending items — populate the queue first");
+  if ((diagnostics.stuckProcessingItems as number) > 0) issues.push(`${diagnostics.stuckProcessingItems} items stuck in 'processing' status — they may need to be reset`);
+  if (!diagnostics.hasAutopostScheduleHours) issues.push("AUTOPOST_SCHEDULE_HOURS not found in DB — schedule config may not have been saved (cron will use defaults: 4am, 10am, 3pm CST)");
+  if ((diagnostics.upcomingEvents as unknown[])?.length === 0) issues.push("No upcoming events found in the database");
+  if ((diagnostics.todayPostsCount as number) === 0) issues.push("No successful posts today — the cron may not be running or may be skipping this hour");
+
+  diagnostics.likelyIssues = issues.length > 0 ? issues : ["No obvious issues found — check Netlify function logs for the social-auto-post cron"];
+
+  return NextResponse.json({
+    success: true,
+    diagnostics,
   });
 }
 

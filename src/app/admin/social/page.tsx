@@ -29,6 +29,7 @@ import {
   Video,
   Youtube,
   Calendar,
+  Activity,
 } from "lucide-react";
 
 // ===========================================
@@ -248,6 +249,8 @@ export default function AdminSocialPage() {
   const [editMaxPostsPerDay, setEditMaxPostsPerDay] = useState(3);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleSaveResult, setScheduleSaveResult] = useState<string | null>(null);
+  const [debugResult, setDebugResult] = useState<Record<string, unknown> | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
 
   // Credentials state
   const [credentialInfo, setCredentialInfo] = useState<Record<string, CredentialInfo> | null>(null);
@@ -448,6 +451,28 @@ export default function AdminSocialPage() {
         ? prev.filter((h) => h !== hour)
         : [...prev, hour].sort((a, b) => a - b)
     );
+  };
+
+  const runDiagnostics = async () => {
+    setDebugLoading(true);
+    setDebugResult(null);
+    try {
+      const res = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "debug-autopost" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDebugResult(data.diagnostics);
+      } else {
+        setDebugResult({ error: data.error || "Unknown error" });
+      }
+    } catch (err) {
+      setDebugResult({ error: err instanceof Error ? err.message : "Request failed" });
+    } finally {
+      setDebugLoading(false);
+    }
   };
 
   const validateToken = async () => {
@@ -1072,6 +1097,99 @@ export default function AdminSocialPage() {
             </div>
           </div>
 
+          {/* Diagnostics Panel */}
+          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+            <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />
+              Diagnóstico de Autopost
+            </h2>
+            <p className="text-sm text-slc-muted mb-4">
+              Verifica por qué no se están publicando los posts automáticos. Revisa configuración, cola, token y horarios.
+            </p>
+            <Button
+              onClick={runDiagnostics}
+              disabled={debugLoading}
+              variant="outline"
+              className="mb-4"
+            >
+              {debugLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Activity className="w-4 h-4 mr-2" />
+              )}
+              Ejecutar Diagnóstico
+            </Button>
+
+            {debugResult && (
+              <div className="space-y-4">
+                {/* Likely Issues */}
+                {((debugResult.likelyIssues as string[]) || []).length > 0 && (
+                  <div className={`p-4 rounded-lg border ${
+                    (debugResult.likelyIssues as string[]).some(i => i.includes("No obvious"))
+                      ? "bg-green-500/10 border-green-500/20"
+                      : "bg-red-500/10 border-red-500/20"
+                  }`}>
+                    <h3 className="text-sm font-medium mb-2">Problemas encontrados:</h3>
+                    <ul className="space-y-1">
+                      {(debugResult.likelyIssues as string[]).map((issue, i) => (
+                        <li key={i} className="text-sm text-slc-muted flex items-start gap-2">
+                          <span className="text-red-400 mt-0.5">•</span>
+                          {issue}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Key Status Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatusBadge
+                    label="Meta API"
+                    ok={debugResult.metaConfigured as boolean}
+                    okText="Configurada"
+                    failText="No configurada"
+                  />
+                  <StatusBadge
+                    label="Token"
+                    ok={debugResult.tokenValid as boolean}
+                    okText="Válido"
+                    failText={debugResult.tokenError as string || "Inválido"}
+                  />
+                  <StatusBadge
+                    label="Cola pendiente"
+                    ok={(debugResult.queuePending as number) > 0}
+                    okText={`${debugResult.queuePending} items`}
+                    failText="Vacía"
+                  />
+                  <StatusBadge
+                    label="Horario en DB"
+                    ok={debugResult.hasAutopostScheduleHours as boolean}
+                    okText={debugResult.autopostScheduleHoursValue as string || "Guardado"}
+                    failText="No guardado"
+                  />
+                </div>
+
+                {/* Schedule Debug */}
+                <div className="p-3 bg-slc-dark rounded-lg text-sm space-y-1">
+                  <p><span className="text-slc-muted">Hora actual (CST):</span> <span className="text-white font-mono">{debugResult.currentTimeCST}:00</span></p>
+                  <p><span className="text-slc-muted">Hora actual (UTC):</span> <span className="text-white font-mono">{debugResult.currentTimeUTC}:00</span></p>
+                  <p><span className="text-slc-muted">Horarios CST:</span> <span className="text-white font-mono">{(debugResult.scheduleConfig as any)?.scheduleHours?.join(", ") || "N/A"}</span></p>
+                  <p><span className="text-slc-muted">Horarios UTC:</span> <span className="text-white font-mono">{(debugResult.utcScheduleHours as number[])?.join(", ") || "N/A"}</span></p>
+                  <p><span className="text-slc-muted">¿Debería publicar ahora?</span> <span className={debugResult.shouldPostNow ? "text-green-400" : "text-red-400"}>{debugResult.shouldPostNow ? "Sí" : "No"}</span></p>
+                  <p><span className="text-slc-muted">Próximo horario (CST):</span> <span className="text-white font-mono">{debugResult.nextScheduledCST}:00</span></p>
+                  <p><span className="text-slc-muted">Posts hoy:</span> <span className="text-white font-mono">{debugResult.todayPostsCount as number}</span></p>
+                </div>
+
+                {/* Stuck items warning */}
+                {(debugResult.stuckProcessingItems as number) > 0 && (
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-300">
+                    <span className="font-medium">Atención:</span> {debugResult.stuckProcessingItems} items están atascados en estado "processing". Prueba "Reiniciar Ciclo" para resetearlos.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Last Post Info */}
           {recentLogs.length > 0 && (
             <div className="bg-slc-card border border-slc-border rounded-xl p-6">
@@ -1622,6 +1740,15 @@ function ScheduleCard({ time, label, tz }: { time: string; label: string; tz: st
       <p className="font-oswald text-2xl text-primary">{time}</p>
       <p className="text-sm text-slc-muted">{label}</p>
       <p className="text-xs text-slc-muted">({tz})</p>
+    </div>
+  );
+}
+
+function StatusBadge({ label, ok, okText, failText }: { label: string; ok: boolean; okText: string; failText: string }) {
+  return (
+    <div className={`p-3 rounded-lg border ${ok ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20"}`}>
+      <p className="text-xs text-slc-muted">{label}</p>
+      <p className={`text-sm font-medium ${ok ? "text-green-400" : "text-red-400"}`}>{ok ? okText : failText}</p>
     </div>
   );
 }
