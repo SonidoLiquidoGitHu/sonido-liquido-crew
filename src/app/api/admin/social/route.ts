@@ -17,8 +17,9 @@ import {
   curatedSpotifyChannels,
   verticalVideos,
   videos,
+  events,
 } from "@/db/schema";
-import { eq, desc, sql as drizzleSql, and, count, isNotNull } from "drizzle-orm";
+import { eq, desc, sql as drizzleSql, and, count, isNotNull, gt } from "drizzle-orm";
 import {
   isMetaConfiguredAsync,
   validateToken,
@@ -220,6 +221,8 @@ export async function POST(request: NextRequest) {
         return await handlePostUpcomingRelease(body as Parameters<typeof handlePostUpcomingRelease>[0]);
       case "post-reel":
         return await handlePostReel(body as Parameters<typeof handlePostReel>[0]);
+      case "post-upcoming-event":
+        return await handlePostUpcomingEvent(body as Parameters<typeof handlePostUpcomingEvent>[0]);
       case "reset-cycle":
         return await handleResetCycle();
       case "skip-item":
@@ -583,6 +586,7 @@ async function handlePopulate(options: {
   includeCuratedTracks?: boolean;
   includeVerticalVideos?: boolean;
   includeYoutubeVideos?: boolean;
+  includeEvents?: boolean;
   platforms?: string[];
   force?: boolean; // If true, re-add items even if they already exist in the queue
 }) {
@@ -594,6 +598,7 @@ async function handlePopulate(options: {
       includeCuratedTracks = true,
       includeVerticalVideos = true,
       includeYoutubeVideos = true,
+      includeEvents = true,
       platforms,
       force = false,
     } = options;
@@ -619,6 +624,7 @@ async function handlePopulate(options: {
     let curatedCount = 0;
     let reelsCount = 0;
     let youtubeVideosCount = 0;
+    let eventsCount = 0;
 
     // ========================================
     // 1. Gallery Photos
@@ -1083,9 +1089,101 @@ async function handlePopulate(options: {
     }
 
     // ========================================
+    // 7. Upcoming Events
+    // ========================================
+    if (includeEvents) {
+      console.log("[Social API Populate] Processing upcoming events...");
+
+      try {
+        // Only include future events (not past or cancelled)
+        const now = new Date();
+        const upcomingEvents = await db
+          .select({
+            id: events.id,
+            title: events.title,
+            venue: events.venue,
+            city: events.city,
+            country: events.country,
+            eventDate: events.eventDate,
+            eventTime: events.eventTime,
+            ticketUrl: events.ticketUrl,
+            imageUrl: events.imageUrl,
+            isFeatured: events.isFeatured,
+          })
+          .from(events)
+          .where(
+            and(
+              gt(events.eventDate, now),
+              eq(events.isCancelled, false)
+            )
+          )
+          .orderBy(events.eventDate);
+
+        console.log(`[Social API Populate] Found ${upcomingEvents.length} upcoming events`);
+
+        let skippedNoImage = 0;
+
+        for (const event of upcomingEvents) {
+          if (!event.imageUrl) {
+            skippedNoImage++;
+            continue;
+          }
+
+          const key = `event:${event.id}`;
+          if (existingSourceIds.has(key)) continue;
+
+          // Build the event page link
+          // Events use /proximos/[slug] or /proximos depending on URL structure
+          const eventLinkUrl = `${SITE_URL}/proximos`;
+
+          const caption = generateCaption({
+            contentType: "event",
+            eventTitle: event.title,
+            eventVenue: event.venue,
+            eventCity: event.city,
+            eventDate: event.eventDate,
+            eventTime: event.eventTime || undefined,
+            ticketUrl: event.ticketUrl || undefined,
+            linkUrl: eventLinkUrl,
+          });
+
+          // Prioritize featured events by giving them lower queue order
+          // (they'll be posted sooner in the rotation)
+          const priorityOrder = event.isFeatured ? 0 : queueOrder;
+
+          await db.insert(socialPostQueue).values({
+            id: crypto.randomUUID(),
+            contentType: "event",
+            sourceId: event.id,
+            artistId: null,
+            releaseId: null,
+            imageUrl: event.imageUrl,
+            caption,
+            linkUrl: eventLinkUrl,
+            queueOrder: event.isFeatured ? priorityOrder : queueOrder,
+            cycleNumber: 1,
+            status: "pending",
+            platforms: platformsJson,
+            postedPlatforms: "[]",
+          });
+
+          existingSourceIds.add(key);
+          queueOrder++;
+          eventsCount++;
+        }
+
+        console.log(
+          `[Social API Populate] Events: ${eventsCount} added, ${skippedNoImage} skipped (no image)`
+        );
+      } catch (err) {
+        console.warn("[Social API Populate] Events table may not exist yet:", err);
+      }
+    }
+
+    // ========================================
     // Summary
     // ========================================
-    const totalAdded = galleryCount + releasesCount + artistsCount + curatedCount + reelsCount + youtubeVideosCount;
+    const totalAdded = galleryCount + releasesCount + artistsCount + curatedCount + reelsCount + youtubeVideosCount + eventsCount;
     console.log(`[Social API Populate] Complete! Added ${totalAdded} new items`);
 
     return NextResponse.json({
@@ -1098,6 +1196,7 @@ async function handlePopulate(options: {
         curatedTracks: curatedCount,
         verticalVideos: reelsCount,
         youtubeVideos: youtubeVideosCount,
+        events: eventsCount,
         totalAdded,
         platforms: targetPlatforms,
       },
@@ -1110,6 +1209,178 @@ async function handlePopulate(options: {
       error: error instanceof Error ? error.message : String(error),
     }, { status: 500 });
   }
+}
+
+// ===========================================
+// POST UPCOMING EVENT — Direct post for events from admin
+// ===========================================
+
+async function handlePostUpcomingEvent(body: {
+  eventId?: string;
+  imageUrl?: string;
+  caption?: string;
+  linkUrl?: string;
+  platforms?: string[];
+}) {
+  const { eventId, imageUrl, caption, linkUrl, platforms = ["facebook", "instagram"] } = body;
+
+  // If eventId is provided, fetch event details from DB
+  let finalImageUrl = imageUrl;
+  let finalCaption = caption;
+  let finalLinkUrl = linkUrl;
+
+  if (eventId) {
+    const eventRows = await db
+      .select()
+      .from(events)
+      .where(eq(events.id, eventId))
+      .limit(1);
+
+    const event = eventRows[0];
+    if (event) {
+      finalImageUrl = finalImageUrl || event.imageUrl || undefined;
+      finalLinkUrl = finalLinkUrl || `${SITE_URL}/proximos`;
+
+      if (!finalCaption) {
+        finalCaption = generateCaption({
+          contentType: "event",
+          eventTitle: event.title,
+          eventVenue: event.venue,
+          eventCity: event.city,
+          eventDate: event.eventDate,
+          eventTime: event.eventTime || undefined,
+          ticketUrl: event.ticketUrl || undefined,
+          linkUrl: finalLinkUrl,
+        });
+      }
+    }
+  }
+
+  if (!finalImageUrl) {
+    return NextResponse.json({
+      success: false,
+      message: "Se requiere una imagen (portada del evento) para publicar",
+    });
+  }
+
+  if (!finalCaption) {
+    return NextResponse.json({
+      success: false,
+      message: "Se requiere un caption para publicar",
+    });
+  }
+
+  if (!(await isMetaConfiguredAsync())) {
+    return NextResponse.json({
+      success: false,
+      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
+    });
+  }
+
+  // Pre-validate the token before attempting the post
+  const tokenInfo = await validateToken();
+  if (!tokenInfo.isValid) {
+    const errorDetail = tokenInfo.raw?.message || "Token inválido";
+    const errorCode = tokenInfo.raw?.code || "";
+    let guidance = "";
+    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
+      guidance = " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    }
+    return NextResponse.json({
+      success: false,
+      message: `Token de Meta API inválido: ${errorDetail}.${guidance}`,
+      tokenError: { code: errorCode, message: errorDetail, type: tokenInfo.raw?.type },
+    });
+  }
+
+  // Ensure image URL is publicly accessible for Meta API
+  const publicImageUrl = ensurePublicImageUrl(finalImageUrl);
+
+  console.log(`[Social API] Direct post for upcoming event: ${eventId || "unknown"}`);
+
+  const results: {
+    facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
+    instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+  } = {};
+
+  // Post to Facebook
+  if (platforms.includes("facebook")) {
+    const fbResult = await postToFacebook(publicImageUrl, finalCaption, finalLinkUrl);
+    results.facebook = {
+      success: fbResult.success,
+      postId: fbResult.postId || undefined,
+      postUrl: fbResult.postUrl || undefined,
+      error: fbResult.error || undefined,
+    };
+
+    // Log the result
+    try {
+      await db.insert(socialPostsLog).values({
+        id: crypto.randomUUID(),
+        queueId: `event-${eventId || crypto.randomUUID()}`,
+        platform: "facebook",
+        contentType: "event",
+        sourceId: eventId || "event-direct",
+        imageUrl: publicImageUrl,
+        caption: finalCaption,
+        linkUrl: finalLinkUrl || null,
+        platformPostId: fbResult.postId,
+        platformPostUrl: fbResult.postUrl,
+        metaApiResponse: null,
+        status: fbResult.success ? "success" : "failed",
+        errorMessage: fbResult.error || null,
+        postedAt: new Date(),
+      });
+    } catch (logError) {
+      console.error("[Social API] Failed to log FB event result:", logError);
+    }
+  }
+
+  // Post to Instagram
+  if (platforms.includes("instagram")) {
+    const igResult = await postToInstagram(publicImageUrl, finalCaption);
+    results.instagram = {
+      success: igResult.success,
+      mediaId: igResult.mediaId || undefined,
+      permalink: igResult.permalink || undefined,
+      error: igResult.error || undefined,
+    };
+
+    // Log the result
+    try {
+      await db.insert(socialPostsLog).values({
+        id: crypto.randomUUID(),
+        queueId: `event-${eventId || crypto.randomUUID()}`,
+        platform: "instagram",
+        contentType: "event",
+        sourceId: eventId || "event-direct",
+        imageUrl: publicImageUrl,
+        caption: finalCaption,
+        linkUrl: finalLinkUrl || null,
+        platformPostId: igResult.mediaId,
+        platformPostUrl: igResult.permalink,
+        metaApiResponse: null,
+        status: igResult.success ? "success" : "failed",
+        errorMessage: igResult.error || null,
+        postedAt: new Date(),
+      });
+    } catch (logError) {
+      console.error("[Social API] Failed to log IG event result:", logError);
+    }
+  }
+
+  const anySuccess = results.facebook?.success || results.instagram?.success;
+  const errorMessages: string[] = [];
+  if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
+  if (results.instagram && !results.instagram.success) errorMessages.push(`IG: ${results.instagram.error}`);
+
+  return NextResponse.json({
+    success: anySuccess,
+    message: anySuccess
+      ? `Evento publicado exitosamente en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram?.success ? " e " : ""}${results.instagram?.success ? "Instagram" : ""}`
+      : `Error al publicar evento: ${errorMessages.join(", ")}`,
+    results,
+  });
 }
 
 async function handleResetCycle() {
@@ -1374,6 +1645,23 @@ async function getContentCounts() {
       // Table may not exist yet
     }
 
+    let eventsCount = 0;
+    try {
+      const now = new Date();
+      const evtCount = await db
+        .select({ count: count() })
+        .from(events)
+        .where(
+          and(
+            gt(events.eventDate, now),
+            eq(events.isCancelled, false)
+          )
+        );
+      eventsCount = evtCount[0]?.count || 0;
+    } catch {
+      // Table may not exist yet
+    }
+
     return {
       galleryPhotos: galleryCount[0]?.count || 0,
       releases: releasesCount[0]?.count || 0,
@@ -1381,6 +1669,7 @@ async function getContentCounts() {
       curatedTracks: curatedTracksCount,
       verticalVideos: verticalVideosCount,
       youtubeVideos: youtubeVideosCount,
+      events: eventsCount,
     };
   } catch (error) {
     console.warn("[Social API] Error getting content counts:", error);
@@ -1391,6 +1680,7 @@ async function getContentCounts() {
       curatedTracks: 0,
       verticalVideos: 0,
       youtubeVideos: 0,
+      events: 0,
     };
   }
 }
@@ -1546,7 +1836,7 @@ async function handleGenerateAICaption(body: Record<string, unknown>) {
     }
 
     const ctx = {
-      contentType: contentType as "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video",
+      contentType: contentType as "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event",
       artistName: body.artistName as string | undefined,
       artistRole: body.artistRole as string | undefined,
       releaseTitle: body.releaseTitle as string | undefined,
@@ -1560,6 +1850,12 @@ async function handleGenerateAICaption(body: Record<string, unknown>) {
       videoPlatform: body.videoPlatform as string | undefined,
       linkUrl: body.linkUrl as string | undefined,
       spotifyUrl: body.spotifyUrl as string | undefined,
+      eventTitle: body.eventTitle as string | undefined,
+      eventVenue: body.eventVenue as string | undefined,
+      eventCity: body.eventCity as string | undefined,
+      eventDate: body.eventDate ? new Date(body.eventDate as string) : undefined,
+      eventTime: body.eventTime as string | undefined,
+      ticketUrl: body.ticketUrl as string | undefined,
     };
 
     // Generate both AI and template captions for comparison

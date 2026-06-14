@@ -28,6 +28,7 @@ import {
   EyeOff,
   Video,
   Youtube,
+  Calendar,
 } from "lucide-react";
 
 // ===========================================
@@ -46,7 +47,7 @@ interface QueueSummary {
 
 interface QueueItem {
   id: string;
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event";
   sourceId: string;
   artistId: string | null;
   releaseId: string | null;
@@ -67,7 +68,7 @@ interface PostLog {
   id: string;
   queueId: string;
   platform: "facebook" | "instagram";
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event";
   sourceId: string;
   imageUrl: string;
   caption: string | null;
@@ -100,6 +101,7 @@ interface ContentCounts {
   curatedTracks: number;
   verticalVideos: number;
   youtubeVideos: number;
+  events: number;
 }
 
 interface ScheduleConfig {
@@ -159,6 +161,7 @@ const contentTypeLabels: Record<string, string> = {
   curated_track: "Track Curado",
   vertical_video: "Reel / Video",
   youtube_video: "Video YouTube",
+  event: "Evento",
 };
 
 const contentTypeIcons: Record<string, typeof ImageIcon> = {
@@ -168,6 +171,7 @@ const contentTypeIcons: Record<string, typeof ImageIcon> = {
   curated_track: Disc3,
   vertical_video: Video,
   youtube_video: Youtube,
+  event: Calendar,
 };
 
 const platformLabels: Record<string, string> = {
@@ -254,6 +258,7 @@ export default function AdminSocialPage() {
     includeCuratedTracks: true,
     includeVerticalVideos: true,
     includeYoutubeVideos: true,
+    includeEvents: true,
     platforms: ["facebook", "instagram"],
     force: false,
   });
@@ -322,6 +327,7 @@ export default function AdminSocialPage() {
             includeArtists: populateOptions.includeArtists,
             includeCuratedTracks: populateOptions.includeCuratedTracks,
             includeVerticalVideos: populateOptions.includeVerticalVideos,
+            includeEvents: populateOptions.includeEvents,
             platforms: populateOptions.platforms,
             force: populateOptions.force,
           },
@@ -1094,7 +1100,7 @@ export default function AdminSocialPage() {
             </p>
 
             {/* Content Sources */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-4">
               <label className="flex items-center gap-2 p-3 bg-slc-dark rounded-lg cursor-pointer hover:bg-slc-dark/80 transition-colors">
                 <input
                   type="checkbox"
@@ -1176,6 +1182,20 @@ export default function AdminSocialPage() {
                 <div>
                   <p className="text-sm font-medium">Videos YouTube</p>
                   <p className="text-xs text-slc-muted">{contentCounts?.youtubeVideos || 0} videos</p>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2 p-3 bg-slc-dark rounded-lg cursor-pointer hover:bg-slc-dark/80 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={populateOptions.includeEvents}
+                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeEvents: e.target.checked }))}
+                  className="rounded border-slc-border"
+                />
+                <Calendar className="w-4 h-4 text-amber-400" />
+                <div>
+                  <p className="text-sm font-medium">Eventos</p>
+                  <p className="text-xs text-slc-muted">{contentCounts?.events || 0} próximos</p>
                 </div>
               </label>
             </div>

@@ -1374,6 +1374,29 @@ async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<st
     }
   }
 
+  // For events, fetch full event details from DB for richer captions
+  if (item.contentType === "event") {
+    try {
+      const { events } = await import("@/db/schema");
+      const eventRows = await db
+        .select()
+        .from(events)
+        .where(eq(events.id, item.sourceId))
+        .limit(1);
+      const event = eventRows[0];
+      if (event) {
+        ctx.eventTitle = event.title;
+        ctx.eventVenue = event.venue;
+        ctx.eventCity = event.city;
+        ctx.eventDate = event.eventDate;
+        ctx.eventTime = event.eventTime || undefined;
+        ctx.ticketUrl = event.ticketUrl || undefined;
+      }
+    } catch (err) {
+      console.warn("[Social] Could not fetch event details for caption:", err);
+    }
+  }
+
   // Try AI caption if enabled, fall back to template-based
   const useAI = await isAICaptionEnabled();
   if (useAI) {
@@ -1703,7 +1726,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
 // ===========================================
 
 export interface CaptionContext {
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video";
+  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event";
   artistName?: string;
   artistRole?: string;
   releaseTitle?: string;
@@ -1718,6 +1741,13 @@ export interface CaptionContext {
   albumName?: string;
   videoTitle?: string;
   videoPlatform?: string;
+  // Event-specific fields
+  eventTitle?: string;
+  eventVenue?: string;
+  eventCity?: string;
+  eventDate?: Date | null;
+  eventTime?: string;
+  ticketUrl?: string;
 }
 
 /**
@@ -2048,7 +2078,89 @@ const CAPTION_VARIATIONS = {
       ].join("\n");
     },
   ],
+
+  // ========================================
+  // Event captions
+  // ========================================
+  event: [
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const title = ctx.eventTitle || "Evento Sonido Líquido";
+      const venue = ctx.eventVenue || "";
+      const city = ctx.eventCity || "";
+      const dateStr = ctx.eventDate ? formatDateEs(ctx.eventDate) : "";
+      const timeStr = ctx.eventTime || "";
+      const location = [venue, city].filter(Boolean).join(", ");
+      const dateTime = [dateStr, timeStr].filter(Boolean).join(" — ");
+      const ticketLine = ctx.ticketUrl ? `\nBoletos: ${ctx.ticketUrl}` : "";
+      return [
+        `📍 ${title}`,
+        location ? ` ${location}` : "",
+        dateTime ? ` ${dateTime}` : "",
+        ticketLine,
+        "",
+        `Más info: ${ctx.linkUrl || `${siteUrl}/proximos`}`,
+        "",
+        hashtags,
+        "#Evento #EnVivo #HipHopMexico",
+      ].filter(Boolean).join("\n");
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const title = ctx.eventTitle || "Próximo evento";
+      const venue = ctx.eventVenue || "";
+      const city = ctx.eventCity || "";
+      const dateStr = ctx.eventDate ? formatDateEs(ctx.eventDate) : "";
+      const timeStr = ctx.eventTime || "";
+      const location = [venue, city].filter(Boolean).join(", ");
+      const dateTime = [dateStr, timeStr].filter(Boolean).join(" | ");
+      const ticketLine = ctx.ticketUrl ? `\nCompra tu boleto: ${ctx.ticketUrl}` : "";
+      return [
+        `Se viene ${title}`,
+        location ? ` ${location}` : "",
+        dateTime ? ` ${dateTime}` : "",
+        ticketLine,
+        "",
+        `No te lo pierdas → ${ctx.linkUrl || `${siteUrl}/proximos`}`,
+        "",
+        hashtags,
+        "#EnVivo #Concierto #RapMexicano",
+      ].filter(Boolean).join("\n");
+    },
+    (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      const title = ctx.eventTitle || "Evento";
+      const venue = ctx.eventVenue || "";
+      const city = ctx.eventCity || "";
+      const dateStr = ctx.eventDate ? formatDateEs(ctx.eventDate) : "";
+      const timeStr = ctx.eventTime || "";
+      const location = [venue, city].filter(Boolean).join(", ");
+      const dateTime = [dateStr, timeStr].filter(Boolean).join(" — ");
+      const ticketLine = ctx.ticketUrl ? `\nEntradas: ${ctx.ticketUrl}` : "";
+      return [
+        `El hip hop en vivo — ${title}`,
+        location ? ` ${location}` : "",
+        dateTime ? ` ${dateTime}` : "",
+        ticketLine,
+        "",
+        "Sonido Líquido Crew presente",
+        ctx.linkUrl || `${siteUrl}/proximos`,
+        "",
+        hashtags,
+        "#EnVivo #HipHop #Evento",
+      ].filter(Boolean).join("\n");
+    },
+  ],
 };
+
+/**
+ * Format a Date in Spanish locale string (e.g. "15 de julio de 2025").
+ */
+function formatDateEs(date: Date): string {
+  const months = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+  ];
+  const d = new Date(date);
+  return `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
+}
 
 /**
  * Generate a caption for a social media post based on content type and context.
@@ -2110,6 +2222,12 @@ export function generateCaption(ctx: CaptionContext, variationIndex?: number): s
       return variations[idx](ctx, siteUrl, hashtags);
     }
 
+    case "event": {
+      const variations = CAPTION_VARIATIONS.event;
+      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      return variations[idx](ctx, siteUrl, hashtags);
+    }
+
     default:
       return `Sonido Líquido Crew — Hip Hop México desde 1999\n\n${siteUrl}\n\n${hashtags}`;
   }
@@ -2164,6 +2282,11 @@ export async function generateAICaption(ctx: CaptionContext, variationIndex?: nu
     if (ctx.photographer) contextParts.push(`Fotógrafo: ${ctx.photographer}`);
     if (ctx.videoTitle) contextParts.push(`Video: ${ctx.videoTitle}`);
     if (ctx.videoPlatform) contextParts.push(`Plataforma video: ${ctx.videoPlatform}`);
+    if (ctx.eventTitle) contextParts.push(`Evento: ${ctx.eventTitle}`);
+    if (ctx.eventVenue) contextParts.push(`Lugar: ${ctx.eventVenue}`);
+    if (ctx.eventCity) contextParts.push(`Ciudad: ${ctx.eventCity}`);
+    if (ctx.eventDate) contextParts.push(`Fecha del evento: ${formatDateEs(ctx.eventDate)}${ctx.eventTime ? ` a las ${ctx.eventTime}` : ""}`);
+    if (ctx.ticketUrl) contextParts.push(`Boletos: ${ctx.ticketUrl}`);
     if (ctx.linkUrl) contextParts.push(`Link: ${ctx.linkUrl}`);
     if (ctx.spotifyUrl) contextParts.push(`Spotify: ${ctx.spotifyUrl}`);
 
@@ -2181,7 +2304,8 @@ REGLAS ESTRICTAS:
 7. Sé creativo y variado — no repitas frases. Cambia el tono, las frases, el estilo.
 8. Mantén el caption conciso (3-5 líneas + hashtags).
 9. NO uses emojis excesivos (máximo 2-3 por caption).
-10. Cada caption debe ser diferente. Variación #${variationSeed}.`;
+10. Cada caption debe ser diferente. Variación #${variationSeed}.
+11. Para eventos: SIEMPRE incluye lugar, fecha y link a boletos si hay. Agrega #Evento #EnVivo a los hashtags.`;
 
     const userPrompt = `Genera un caption para este post de redes sociales:
 
@@ -2226,6 +2350,7 @@ const CONTENT_TYPE_ROTATION = [
   "artist_profile",
   "curated_track",
   "youtube_video",
+  "event",
 ] as const;
 
 /**

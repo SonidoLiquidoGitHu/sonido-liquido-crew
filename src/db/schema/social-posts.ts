@@ -14,10 +14,10 @@ export const socialPostQueue = sqliteTable("social_post_queue", {
 
   // Content source — which entity this post promotes
   contentType: text("content_type", {
-    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track", "vertical_video", "youtube_video"],
+    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track", "vertical_video", "youtube_video", "event"],
   }).notNull(),
 
-  // Reference to the source entity (gallery_photo_id, release_id, artist_id, or video_id)
+  // Reference to the source entity (gallery_photo_id, release_id, artist_id, video_id, or event_id)
   sourceId: text("source_id").notNull(),
 
   // Optional artist reference (for caption enrichment)
@@ -83,7 +83,7 @@ export const socialPostsLog = sqliteTable("social_posts_log", {
 
   // The content type that was posted
   contentType: text("content_type", {
-    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track", "vertical_video", "youtube_video"],
+    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track", "vertical_video", "youtube_video", "event"],
   }).notNull(),
 
   sourceId: text("source_id").notNull(),
