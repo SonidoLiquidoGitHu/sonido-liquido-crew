@@ -177,11 +177,17 @@ const contentTypeIcons: Record<string, typeof ImageIcon> = {
 const platformLabels: Record<string, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
+  instagram_story: "IG Story",
+  instagram_reel: "IG Reel",
+  facebook_reel: "FB Reel",
 };
 
 const platformIcons: Record<string, typeof Facebook> = {
   facebook: Facebook,
   instagram: Instagram,
+  instagram_story: Instagram,
+  instagram_reel: Instagram,
+  facebook_reel: Facebook,
 };
 
 const statusColors: Record<string, string> = {
@@ -555,7 +561,7 @@ export default function AdminSocialPage() {
           </h1>
           <p className="text-slc-muted mt-1">
             Publicación automática a Facebook e Instagram — {scheduleConfig?.scheduleHours?.length || 3}x al día
-            <span className="text-slc-muted/60 ml-2">(Eventos: 2x/día, 3x/día la semana del evento)</span>
+            <span className="text-slc-muted/60 ml-2">(Eventos: FB feed + IG Story, 2x/día, 3x/día la semana del evento)</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -847,11 +853,10 @@ export default function AdminSocialPage() {
               >
                 {/* Platform icon */}
                 <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slc-dark flex-shrink-0">
-                  {log.platform === "facebook" ? (
-                    <Facebook className="w-4 h-4 text-blue-400" />
-                  ) : (
-                    <Instagram className="w-4 h-4 text-pink-400" />
-                  )}
+                  {(() => {
+                    const Icon = platformIcons[log.platform] || (log.platform.startsWith("facebook") ? Facebook : Instagram);
+                    return <Icon className={`w-4 h-4 ${log.platform.startsWith("facebook") ? "text-blue-400" : "text-pink-400"}`} />;
+                  })()}
                 </div>
 
                 {/* Info */}
@@ -1027,6 +1032,12 @@ export default function AdminSocialPage() {
                 Autopost de Eventos
               </h3>
               <div className="space-y-1 text-sm text-slc-muted">
+                <p>
+                  <span className="text-white font-medium">Facebook:</span> Post en el muro (feed)
+                </p>
+                <p>
+                  <span className="text-white font-medium">Instagram:</span> Story (no feed, no Reel) — desaparece en 24h
+                </p>
                 <p>
                   <span className="text-white font-medium">Más de 1 semana antes:</span> 2 publicaciones/día (cada 12 horas)
                 </p>

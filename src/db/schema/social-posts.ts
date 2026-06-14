@@ -78,7 +78,7 @@ export const socialPostsLog = sqliteTable("social_posts_log", {
 
   // Which platform this log entry is for
   platform: text("platform", {
-    enum: ["facebook", "instagram", "tiktok", "instagram_reel", "facebook_reel"],
+    enum: ["facebook", "instagram", "instagram_story", "tiktok", "instagram_reel", "facebook_reel"],
   }).notNull(),
 
   // The content type that was posted

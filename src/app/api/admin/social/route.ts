@@ -30,6 +30,7 @@ import {
   generateAICaption,
   postToFacebook,
   postToInstagram,
+  postToInstagramStory,
   postInstagramReel,
   postFacebookReel,
   type PostQueueItemResult,
@@ -1302,10 +1303,10 @@ async function handlePostUpcomingEvent(body: {
 
   const results: {
     facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
-    instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+    instagram_story?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
   } = {};
 
-  // Post to Facebook
+  // Post to Facebook (feed post)
   if (platforms.includes("facebook")) {
     const fbResult = await postToFacebook(publicImageUrl, finalCaption, finalLinkUrl);
     results.facebook = {
@@ -1338,10 +1339,10 @@ async function handlePostUpcomingEvent(body: {
     }
   }
 
-  // Post to Instagram
+  // Post to Instagram as a Story (events always go to Stories on IG)
   if (platforms.includes("instagram")) {
-    const igResult = await postToInstagram(publicImageUrl, finalCaption);
-    results.instagram = {
+    const igResult = await postToInstagramStory(publicImageUrl, finalCaption, finalLinkUrl);
+    results.instagram_story = {
       success: igResult.success,
       mediaId: igResult.mediaId || undefined,
       permalink: igResult.permalink || undefined,
@@ -1353,7 +1354,7 @@ async function handlePostUpcomingEvent(body: {
       await db.insert(socialPostsLog).values({
         id: crypto.randomUUID(),
         queueId: `event-${eventId || crypto.randomUUID()}`,
-        platform: "instagram",
+        platform: "instagram_story",
         contentType: "event",
         sourceId: eventId || "event-direct",
         imageUrl: publicImageUrl,
@@ -1367,19 +1368,19 @@ async function handlePostUpcomingEvent(body: {
         postedAt: new Date(),
       });
     } catch (logError) {
-      console.error("[Social API] Failed to log IG event result:", logError);
+      console.error("[Social API] Failed to log IG Story event result:", logError);
     }
   }
 
-  const anySuccess = results.facebook?.success || results.instagram?.success;
+  const anySuccess = results.facebook?.success || results.instagram_story?.success;
   const errorMessages: string[] = [];
   if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
-  if (results.instagram && !results.instagram.success) errorMessages.push(`IG: ${results.instagram.error}`);
+  if (results.instagram_story && !results.instagram_story.success) errorMessages.push(`IG Story: ${results.instagram_story.error}`);
 
   return NextResponse.json({
     success: anySuccess,
     message: anySuccess
-      ? `Evento publicado exitosamente en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram?.success ? " e " : ""}${results.instagram?.success ? "Instagram" : ""}`
+      ? `Evento publicado exitosamente en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram_story?.success ? " e " : ""}${results.instagram_story?.success ? "Instagram Story" : ""}`
       : `Error al publicar evento: ${errorMessages.join(", ")}`,
     results,
   });
@@ -1389,11 +1390,14 @@ async function handlePostUpcomingEvent(body: {
 // AUTOPOST UPCOMING EVENT — Independent event posting for the cron job
 // ===========================================
 // This handler is called by the social-auto-post cron function 3 times/day.
-// It posts the nearest upcoming event to FB+IG independently of the regular
-// queue rotation. Event posts do NOT count against the queue's daily limit.
+// It posts the nearest upcoming event to FB (feed post) + IG (Story) independently
+// of the regular queue rotation. Event posts do NOT count against the queue's daily limit.
 // Dedup is tiered based on event proximity:
 //   - More than 1 week away: 2x/day (12-hour dedup window)
 //   - Within 1 week of the event: 3x/day (8-hour dedup window)
+//
+// Instagram uses Stories (not feed posts or Reels) for events — Stories create
+// urgency and match the time-sensitive nature of upcoming events.
 
 async function handleAutopostUpcomingEvent() {
   if (!(await isMetaConfiguredAsync())) {
@@ -1503,12 +1507,12 @@ async function handleAutopostUpcomingEvent() {
 
     const results: {
       facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
-      instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+      instagram_story?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
     } = {};
 
-    const platforms = ["facebook", "instagram"];
+    const platforms = ["facebook", "instagram_story"];
 
-    // Post to Facebook
+    // Post to Facebook (regular feed post)
     if (platforms.includes("facebook")) {
       const fbResult = await postToFacebook(publicImageUrl, caption, eventLinkUrl);
       results.facebook = {
@@ -1541,10 +1545,12 @@ async function handleAutopostUpcomingEvent() {
       }
     }
 
-    // Post to Instagram
-    if (platforms.includes("instagram")) {
-      const igResult = await postToInstagram(publicImageUrl, caption);
-      results.instagram = {
+    // Post to Instagram as a Story (not feed post, not Reel)
+    // Events go to Stories for more visibility and urgency — they disappear after 24h,
+    // which matches the time-sensitive nature of upcoming events.
+    if (platforms.includes("instagram_story")) {
+      const igResult = await postToInstagramStory(publicImageUrl, caption, eventLinkUrl);
+      results.instagram_story = {
         success: igResult.success,
         mediaId: igResult.mediaId || undefined,
         permalink: igResult.permalink || undefined,
@@ -1555,7 +1561,7 @@ async function handleAutopostUpcomingEvent() {
         await db.insert(socialPostsLog).values({
           id: crypto.randomUUID(),
           queueId: `autopost-event-${selectedEvent.id}`,
-          platform: "instagram",
+          platform: "instagram_story",
           contentType: "event",
           sourceId: selectedEvent.id,
           imageUrl: publicImageUrl,
@@ -1569,19 +1575,19 @@ async function handleAutopostUpcomingEvent() {
           postedAt: new Date(),
         });
       } catch (logError) {
-        console.error("[Social API] Failed to log autopost IG event result:", logError);
+        console.error("[Social API] Failed to log autopost IG Story event result:", logError);
       }
     }
 
-    const anySuccess = results.facebook?.success || results.instagram?.success;
+    const anySuccess = results.facebook?.success || results.instagram_story?.success;
     const errorMessages: string[] = [];
     if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
-    if (results.instagram && !results.instagram.success) errorMessages.push(`IG: ${results.instagram.error}`);
+    if (results.instagram_story && !results.instagram_story.success) errorMessages.push(`IG Story: ${results.instagram_story.error}`);
 
     return NextResponse.json({
       success: anySuccess,
       message: anySuccess
-        ? `Evento autoposteado: "${selectedEvent.title}" en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram?.success ? " e " : ""}${results.instagram?.success ? "Instagram" : ""}`
+        ? `Evento autoposteado: "${selectedEvent.title}" en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram_story?.success ? " e " : ""}${results.instagram_story?.success ? "Instagram Story" : ""}`
         : `Error al autopostear evento "${selectedEvent.title}": ${errorMessages.join(", ")}`,
       event: {
         id: selectedEvent.id,

@@ -15,6 +15,7 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 // Event autopost frequency is tiered based on proximity:
 //   - More than 1 week before the event: 2x/day (12-hour dedup)
 //   - Within 1 week of the event: 3x/day (8-hour dedup)
+// Events post to Facebook (feed) + Instagram (Story, not feed/Reel).
 //
 // Schedule matching uses a 1-hour window: if the cron runs at an hour
 // that is within ±0 hours of a scheduled hour (in UTC), it posts.

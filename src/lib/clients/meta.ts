@@ -602,6 +602,184 @@ export async function postToInstagram(
 }
 
 // ===========================================
+// INSTAGRAM STORIES POSTING
+// ===========================================
+
+/**
+ * Post a photo to Instagram as a Story (not feed post, not Reel).
+ *
+ * IG Stories use the same container + poll + publish pattern as feed posts,
+ * but with media_type: "STORIES" in the container creation.
+ * Stories appear at the top of followers' feeds and disappear after 24 hours.
+ *
+ * Key differences from feed posts:
+ * - Uses media_type: "STORIES" in the container
+ * - No permalink (Stories don't have public URLs)
+ * - Recommended image aspect ratio: 9:16 (1080x1920) for full-screen stories
+ * - Stories support images only (not videos — for video stories use Reels with STORIES placement)
+ *
+ * IMPORTANT: image_url must point to a publicly accessible image.
+ * The caption is included but may not be visible on the Story itself —
+ * it's stored as metadata and can include a link sticker if linkUrl is provided.
+ */
+export async function postToInstagramStory(
+  imageUrl: string,
+  caption: string,
+  linkUrl?: string
+): Promise<InstagramPostResult> {
+  if (!(await isMetaConfiguredAsync())) {
+    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
+  }
+
+  const igAccountId = await getInstagramBusinessAccountId();
+  if (!igAccountId) {
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error: "Instagram Business Account not found — make sure your FB Page is connected to an IG Business Account in Meta Business Settings",
+    };
+  }
+
+  if (!imageUrl) {
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error: "No image URL provided — Instagram Stories requires a publicly accessible image URL",
+    };
+  }
+
+  // Use system user token for IG operations
+  const token = await getSystemUserToken();
+
+  try {
+    // Step 1: Create Story container
+    console.log("[Meta] Creating IG Story container with image:", imageUrl.substring(0, 80));
+
+    const containerBody: Record<string, string | boolean> = {
+      media_type: "STORIES",
+      image_url: imageUrl,
+      access_token: token,
+    };
+
+    // Add caption if provided (visible as text overlay on some story formats)
+    if (caption) {
+      containerBody.caption = caption;
+    }
+
+    // If a link URL is provided, attach it as a link sticker
+    // This requires instagram_content_publish + instagram_manage_comments permissions
+    if (linkUrl) {
+      // Link stickers on Stories via API: attach the URL to the story
+      // The IG Graph API supports link stickers via the "link" parameter on story containers
+      containerBody.link = linkUrl;
+    }
+
+    const containerResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(containerBody),
+    });
+
+    const containerData = await containerResponse.json();
+
+    if (containerData.error) {
+      console.error("[Meta] IG Story container creation error:", JSON.stringify(containerData.error));
+      const igErrorMsg = containerData.error.message || containerData.error.type || `Error code ${containerData.error.code || "unknown"}`;
+      let guidance = "";
+      if (igErrorMsg.includes("could not download") || igErrorMsg.includes("could not retrieve")) {
+        guidance = " — The image URL is not publicly accessible. Make sure it's a direct URL (not Dropbox/Google Drive).";
+      } else if (igErrorMsg.includes("OAuth") || igErrorMsg.includes("permission")) {
+        guidance = " — Check that your System User Token has instagram_basic and instagram_content_publish permissions.";
+      } else if (igErrorMsg.includes("link")) {
+        guidance = " — IG Story link stickers require instagram_content_publish permission and a verified account.";
+      }
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `${igErrorMsg}${guidance}`,
+      };
+    }
+
+    const containerId = containerData.id;
+    console.log("[Meta] IG Story container created:", containerId);
+
+    // Step 2: Poll container status until FINISHED or ERROR
+    let statusCode = "IN_PROGRESS";
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (statusCode === "IN_PROGRESS" && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s between polls
+      attempts++;
+
+      const statusResponse = await fetch(
+        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`
+      );
+      const statusData = await statusResponse.json();
+      statusCode = statusData.status_code || "IN_PROGRESS";
+
+      if (statusCode === "FINISHED") {
+        break;
+      }
+
+      if (statusCode === "ERROR") {
+        console.error("[Meta] IG Story container processing error:", statusData);
+        return {
+          success: false,
+          mediaId: null,
+          permalink: null,
+          error: `Story container processing failed after ${attempts} polls`,
+        };
+      }
+    }
+
+    if (statusCode !== "FINISHED") {
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: `Story container still processing after ${maxAttempts * 2}s timeout`,
+      };
+    }
+
+    // Step 3: Publish the Story container
+    const publishResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        creation_id: containerId,
+        access_token: token,
+      }),
+    });
+
+    const publishData = await publishResponse.json();
+
+    if (publishData.error) {
+      console.error("[Meta] IG Story publish error:", publishData.error);
+      return {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: publishData.error.message || publishData.error.type || `IG Story Publish Error ${publishData.error.code || 'unknown'}`,
+      };
+    }
+
+    const mediaId = publishData.id;
+
+    // Note: Stories don't have public permalinks like feed posts
+    console.log("[Meta] Instagram Story published successfully:", mediaId);
+    return { success: true, mediaId, permalink: null };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Meta] Instagram Story post exception:", errMsg);
+    return { success: false, mediaId: null, permalink: null, error: errMsg };
+  }
+}
+
+// ===========================================
 // INSTAGRAM REELS POSTING
 // ===========================================
 
