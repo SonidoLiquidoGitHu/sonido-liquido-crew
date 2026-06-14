@@ -223,6 +223,8 @@ export async function POST(request: NextRequest) {
         return await handlePostReel(body as Parameters<typeof handlePostReel>[0]);
       case "post-upcoming-event":
         return await handlePostUpcomingEvent(body as Parameters<typeof handlePostUpcomingEvent>[0]);
+      case "autopost-upcoming-event":
+        return await handleAutopostUpcomingEvent();
       case "reset-cycle":
         return await handleResetCycle();
       case "skip-item":
@@ -1381,6 +1383,209 @@ async function handlePostUpcomingEvent(body: {
       : `Error al publicar evento: ${errorMessages.join(", ")}`,
     results,
   });
+}
+
+// ===========================================
+// AUTOPOST UPCOMING EVENT — Independent event posting for the cron job
+// ===========================================
+// This handler is called by the social-auto-post cron function 3 times/day.
+// It posts the nearest upcoming event to FB+IG independently of the regular
+// queue rotation. Event posts do NOT count against the queue's daily limit.
+// Dedup: skips if the same event was posted in the last 24 hours.
+
+async function handleAutopostUpcomingEvent() {
+  if (!(await isMetaConfiguredAsync())) {
+    return NextResponse.json({
+      success: false,
+      message: "Meta API not configured. Cannot autopost events.",
+    });
+  }
+
+  try {
+    // Find the nearest upcoming event (future date, not cancelled, has image)
+    const now = new Date();
+    const upcomingEvents = await db
+      .select({
+        id: events.id,
+        title: events.title,
+        venue: events.venue,
+        city: events.city,
+        country: events.country,
+        eventDate: events.eventDate,
+        eventTime: events.eventTime,
+        ticketUrl: events.ticketUrl,
+        imageUrl: events.imageUrl,
+        isFeatured: events.isFeatured,
+      })
+      .from(events)
+      .where(
+        and(
+          gt(events.eventDate, now),
+          eq(events.isCancelled, false),
+          isNotNull(events.imageUrl)
+        )
+      )
+      .orderBy(events.eventDate)
+      .limit(5); // Check top 5 in case the nearest was recently posted
+
+    if (upcomingEvents.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: "No upcoming events with images to autopost.",
+        noEvents: true,
+      });
+    }
+
+    // Find the nearest event that hasn't been posted in the last 24 hours
+    // postedAt is stored as integer Unix timestamp, so we compare with unixepoch()
+    let selectedEvent: typeof upcomingEvents[0] | null = null;
+
+    for (const event of upcomingEvents) {
+      const recentlyPosted = await db
+        .select({ id: socialPostsLog.id })
+        .from(socialPostsLog)
+        .where(
+          and(
+            eq(socialPostsLog.contentType, "event"),
+            eq(socialPostsLog.sourceId, event.id),
+            eq(socialPostsLog.status, "success"),
+            drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 86400)`
+          )
+        )
+        .limit(1);
+
+      if (recentlyPosted.length === 0) {
+        selectedEvent = event;
+        break;
+      }
+
+      console.log(`[Social API] Event "${event.title}" was posted in last 24h, skipping.`);
+    }
+
+    if (!selectedEvent) {
+      return NextResponse.json({
+        success: false,
+        message: "All upcoming events were already posted in the last 24 hours.",
+        alreadyPosted: true,
+      });
+    }
+
+    // Generate caption and post
+    const eventLinkUrl = `${SITE_URL}/proximos`;
+    const caption = generateCaption({
+      contentType: "event",
+      eventTitle: selectedEvent.title,
+      eventVenue: selectedEvent.venue,
+      eventCity: selectedEvent.city,
+      eventDate: selectedEvent.eventDate,
+      eventTime: selectedEvent.eventTime || undefined,
+      ticketUrl: selectedEvent.ticketUrl || undefined,
+      linkUrl: eventLinkUrl,
+    });
+
+    const publicImageUrl = ensurePublicImageUrl(selectedEvent.imageUrl!);
+
+    console.log(`[Social API] Autoposting upcoming event: ${selectedEvent.title} (${selectedEvent.id})`);
+
+    const results: {
+      facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
+      instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+    } = {};
+
+    const platforms = ["facebook", "instagram"];
+
+    // Post to Facebook
+    if (platforms.includes("facebook")) {
+      const fbResult = await postToFacebook(publicImageUrl, caption, eventLinkUrl);
+      results.facebook = {
+        success: fbResult.success,
+        postId: fbResult.postId || undefined,
+        postUrl: fbResult.postUrl || undefined,
+        error: fbResult.error || undefined,
+      };
+
+      // Log with queueId prefix "autopost-event" so we can distinguish these from manual posts
+      try {
+        await db.insert(socialPostsLog).values({
+          id: crypto.randomUUID(),
+          queueId: `autopost-event-${selectedEvent.id}`,
+          platform: "facebook",
+          contentType: "event",
+          sourceId: selectedEvent.id,
+          imageUrl: publicImageUrl,
+          caption,
+          linkUrl: eventLinkUrl,
+          platformPostId: fbResult.postId,
+          platformPostUrl: fbResult.postUrl,
+          metaApiResponse: null,
+          status: fbResult.success ? "success" : "failed",
+          errorMessage: fbResult.error || null,
+          postedAt: new Date(),
+        });
+      } catch (logError) {
+        console.error("[Social API] Failed to log autopost FB event result:", logError);
+      }
+    }
+
+    // Post to Instagram
+    if (platforms.includes("instagram")) {
+      const igResult = await postToInstagram(publicImageUrl, caption);
+      results.instagram = {
+        success: igResult.success,
+        mediaId: igResult.mediaId || undefined,
+        permalink: igResult.permalink || undefined,
+        error: igResult.error || undefined,
+      };
+
+      try {
+        await db.insert(socialPostsLog).values({
+          id: crypto.randomUUID(),
+          queueId: `autopost-event-${selectedEvent.id}`,
+          platform: "instagram",
+          contentType: "event",
+          sourceId: selectedEvent.id,
+          imageUrl: publicImageUrl,
+          caption,
+          linkUrl: eventLinkUrl,
+          platformPostId: igResult.mediaId,
+          platformPostUrl: igResult.permalink,
+          metaApiResponse: null,
+          status: igResult.success ? "success" : "failed",
+          errorMessage: igResult.error || null,
+          postedAt: new Date(),
+        });
+      } catch (logError) {
+        console.error("[Social API] Failed to log autopost IG event result:", logError);
+      }
+    }
+
+    const anySuccess = results.facebook?.success || results.instagram?.success;
+    const errorMessages: string[] = [];
+    if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
+    if (results.instagram && !results.instagram.success) errorMessages.push(`IG: ${results.instagram.error}`);
+
+    return NextResponse.json({
+      success: anySuccess,
+      message: anySuccess
+        ? `Evento autoposteado: "${selectedEvent.title}" en ${results.facebook?.success ? "Facebook" : ""}${results.facebook?.success && results.instagram?.success ? " e " : ""}${results.instagram?.success ? "Instagram" : ""}`
+        : `Error al autopostear evento "${selectedEvent.title}": ${errorMessages.join(", ")}`,
+      event: {
+        id: selectedEvent.id,
+        title: selectedEvent.title,
+        venue: selectedEvent.venue,
+        city: selectedEvent.city,
+        eventDate: selectedEvent.eventDate,
+      },
+      results,
+    });
+  } catch (error) {
+    console.error("[Social API] Autopost upcoming event error:", error);
+    return NextResponse.json({
+      success: false,
+      message: "Error al autopostear evento próximo",
+      error: error instanceof Error ? error.message : String(error),
+    }, { status: 500 });
+  }
 }
 
 async function handleResetCycle() {

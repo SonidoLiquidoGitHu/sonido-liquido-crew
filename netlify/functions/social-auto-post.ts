@@ -7,6 +7,11 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 // The actual posting is controlled by AUTOPOST_POSTS_PER_RUN and
 // AUTOPOST_SCHEDULE_HOURS stored in the social_credentials DB table.
 //
+// IMPORTANT: Upcoming events are autoposted INDEPENDENTLY at each
+// scheduled time — they do NOT consume the regular queue's daily
+// post limit. The regular queue continues its round-robin rotation
+// as always.
+//
 // Schedule matching uses a 1-hour window: if the cron runs at an hour
 // that is within ±0 hours of a scheduled hour (in UTC), it posts.
 // This ensures all CST hours are covered even though the cron only
@@ -37,6 +42,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     };
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
+  };
+
   try {
     // First, get the schedule config from the API
     const configUrl = `${siteUrl}/api/admin/social?action=schedule-config`;
@@ -46,9 +56,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     try {
       const configRes = await fetch(configUrl, {
-        headers: {
-          ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
-        },
+        headers,
         signal: AbortSignal.timeout(10_000),
       });
       if (configRes.ok) {
@@ -105,14 +113,61 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       `Will process up to ${postsPerRun} item(s). Max ${maxPostsPerDay} posts/day.`
     );
 
+    // ===========================================
+    // STEP 1: AUTOPOST UPCOMING EVENT (independent of queue)
+    // ===========================================
+    // This runs first and does NOT count against the queue's daily limit.
+    // If there's an upcoming event that hasn't been posted in the last 24h,
+    // it gets posted to FB+IG before we touch the regular queue.
+    let eventAutopostResult: { success: boolean; message: string; event?: any } | null = null;
+
+    try {
+      console.log("[Social Auto-Post] Step 1: Checking for upcoming events to autopost...");
+      const eventResponse = await fetch(`${siteUrl}/api/admin/social`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "autopost-upcoming-event" }),
+        signal: AbortSignal.timeout(50_000),
+      });
+
+      const eventData = await eventResponse.json();
+
+      if (eventData.success) {
+        console.log(`[Social Auto-Post] Event autoposted: ${eventData.message}`);
+        eventAutopostResult = {
+          success: true,
+          message: eventData.message,
+          event: eventData.event,
+        };
+      } else if (eventData.noEvents) {
+        console.log("[Social Auto-Post] No upcoming events to autopost.");
+        eventAutopostResult = { success: false, message: "No upcoming events" };
+      } else if (eventData.alreadyPosted) {
+        console.log("[Social Auto-Post] Upcoming event already posted in last 24h, skipping.");
+        eventAutopostResult = { success: false, message: "Event already posted in last 24h" };
+      } else {
+        console.warn(`[Social Auto-Post] Event autopost failed: ${eventData.message || eventData.error}`);
+        eventAutopostResult = { success: false, message: eventData.message || eventData.error || "Unknown error" };
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      console.warn(`[Social Auto-Post] Event autopost exception: ${errMsg}`);
+      eventAutopostResult = { success: false, message: errMsg };
+    }
+
+    // ===========================================
+    // STEP 2: PROCESS REGULAR QUEUE (as always)
+    // ===========================================
+    // The regular queue runs independently of the event autopost.
+    // Daily limits only apply to the regular queue, NOT the event autopost.
+
     // Check how many posts were already made today (for maxPostsPerDay enforcement)
+    // Only count regular queue posts (not autopost-event-* entries)
     let postsMadeToday = 0;
     try {
       const logUrl = `${siteUrl}/api/admin/social`; // GET returns recentLogs
       const logRes = await fetch(logUrl, {
-        headers: {
-          ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
-        },
+        headers,
         signal: AbortSignal.timeout(10_000),
       });
       if (logRes.ok) {
@@ -122,8 +177,13 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
           // Count successful posts from today (using Mexico City day: CST = UTC-6)
           const startOfDayCST = new Date(startOfDayUTC.getTime() - CST_OFFSET * 60 * 60 * 1000);
+          // Only count regular queue posts — exclude autopost-event-* entries
+          // since those are independent and don't consume the daily limit
           postsMadeToday = logData.data.recentLogs.filter(
-            (log: any) => log.status === "success" && new Date(log.postedAt) >= startOfDayCST
+            (log: any) =>
+              log.status === "success" &&
+              new Date(log.postedAt) >= startOfDayCST &&
+              !log.queueId?.startsWith("autopost-event-")
           ).length;
         }
       }
@@ -134,16 +194,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // Check if we've already hit the daily limit
     if (postsMadeToday >= maxPostsPerDay) {
       console.log(
-        `[Social Auto-Post] Daily limit reached: ${postsMadeToday}/${maxPostsPerDay} posts already made today. Skipping.`
+        `[Social Auto-Post] Daily limit reached: ${postsMadeToday}/${maxPostsPerDay} queue posts already made today. Skipping regular queue.`
       );
+      // Still return success if the event was posted
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       return {
         statusCode: 200,
         body: JSON.stringify({
-          success: true,
-          message: `Daily limit reached: ${postsMadeToday}/${maxPostsPerDay} posts today. Skipping.`,
-          skipped: true,
-          postsMadeToday,
-          maxPostsPerDay,
+          success: !!eventAutopostResult?.success,
+          message: `Daily queue limit reached (${postsMadeToday}/${maxPostsPerDay}). Event autopost: ${eventAutopostResult?.message || "N/A"}`,
+          elapsed: `${elapsed}s`,
+          eventAutopost: eventAutopostResult,
+          queueResult: { skipped: true, reason: "daily_limit_reached", postsMadeToday, maxPostsPerDay },
         }),
       };
     }
@@ -153,7 +215,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const itemsToProcess = Math.min(postsPerRun, remainingQuota);
 
     console.log(
-      `[Social Auto-Post] Posts today: ${postsMadeToday}/${maxPostsPerDay}. ` +
+      `[Social Auto-Post] Queue posts today: ${postsMadeToday}/${maxPostsPerDay}. ` +
       `Can process ${itemsToProcess} item(s) this run (requested: ${postsPerRun}).`
     );
 
@@ -167,10 +229,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       try {
         const response = await fetch(processUrl, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
-          },
+          headers,
           body: JSON.stringify({ action: "process-next" }),
           signal: AbortSignal.timeout(50_000), // 50 second timeout per item
         });
@@ -178,7 +237,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const data = await response.json();
 
         if (response.ok && data.success) {
-          console.log(`[Social Auto-Post] Item ${i + 1}/${itemsToProcess} posted:`, data.message);
+          console.log(`[Social Auto-Post] Queue item ${i + 1}/${itemsToProcess} posted:`, data.message);
           results.push({ success: true, message: data.message });
           processedCount++;
         } else if (response.ok && !data.success) {
@@ -204,23 +263,24 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const successCount = results.filter(r => r.success).length;
 
     console.log(
-      `[Social Auto-Post] Run complete in ${elapsed}s: ${successCount}/${results.length} items posted`
+      `[Social Auto-Post] Run complete in ${elapsed}s: Event autopost=${eventAutopostResult?.success ? "yes" : "no"}, Queue: ${successCount}/${results.length} items posted`
     );
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        success: successCount > 0,
-        message: `Processed ${successCount}/${results.length} items in ${elapsed}s`,
+        success: eventAutopostResult?.success || successCount > 0,
+        message: `Event autopost: ${eventAutopostResult?.message || "N/A"} | Queue: ${successCount}/${results.length} items in ${elapsed}s`,
         elapsed: `${elapsed}s`,
-        results,
+        eventAutopost: eventAutopostResult,
+        queueResults: results,
         config: { postsPerRun, scheduleHours, maxPostsPerDay, itemsToProcess, postsMadeToday },
       }),
     };
   } catch (error) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const errMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error(`[Social Auto-Post] Exception after ${elapsed}s:`, errMsg);
+    console.error(`[Social Auto-Post] Exception after ${elapsed}s:`, errMsg}`);
 
     return {
       statusCode: 500,
