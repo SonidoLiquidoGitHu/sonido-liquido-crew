@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "process-next":
-        return await handleProcessNext();
+        return await handleProcessNext(body as { alsoPostStory?: boolean });
       case "populate":
         return await handlePopulate(body.options as Record<string, unknown> || {});
       case "post-upcoming-release":
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
 // ACTION HANDLERS
 // ===========================================
 
-async function handleProcessNext() {
+async function handleProcessNext(options?: { alsoPostStory?: boolean }) {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
@@ -284,16 +284,23 @@ async function handleProcessNext() {
   // Ensure image URL is publicly accessible for Meta API
   nextItem.imageUrl = ensurePublicImageUrl(nextItem.imageUrl);
 
-  console.log(`[Social API] Processing queue item: ${nextItem.contentType} (${nextItem.sourceId})`);
+  const alsoPostStory = !!options?.alsoPostStory;
+  console.log(
+    `[Social API] Processing queue item: ${nextItem.contentType} (${nextItem.sourceId})` +
+    (alsoPostStory ? " [also-post-story]" : "")
+  );
 
-  const result = await processQueueItem(nextItem);
+  const result = await processQueueItem(nextItem, { alsoPostStory });
 
   const fbStatus = result.facebook.success ? "success" : `failed: ${result.facebook.error || "unknown error"}`;
   const igStatus = result.instagram.success ? "success" : `failed: ${result.instagram.error || "unknown error"}`;
+  const storyStatus = result.instagramStory
+    ? (result.instagramStory.success ? "success" : `failed: ${result.instagramStory.error || "unknown error"}`)
+    : "skipped";
 
   return NextResponse.json({
     success: result.facebook.success || result.instagram.success,
-    message: `Posted to FB: ${fbStatus}, IG: ${igStatus}`,
+    message: `Posted to FB: ${fbStatus}, IG: ${igStatus}, IG Story: ${storyStatus}`,
     result,
   });
 }

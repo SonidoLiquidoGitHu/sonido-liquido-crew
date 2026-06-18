@@ -1439,6 +1439,17 @@ export interface PostQueueItemResult {
   queueId: string;
   facebook: FacebookPostResult;
   instagram: InstagramPostResult;
+  instagramStory?: InstagramPostResult;
+}
+
+export interface ProcessQueueItemOptions {
+  /**
+   * If true, also post the queue item to Instagram as a Story (in addition to
+   * the regular FB feed + IG feed posts). Used by the autopost cron so that
+   * each scheduled run produces a "throwback Story" alongside the event Story.
+   * Vertical videos are excluded — they post as Reels, not Stories.
+   */
+  alsoPostStory?: boolean;
 }
 
 // Type helper — the queue item as returned from DB
@@ -1594,7 +1605,10 @@ async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<st
  * Process a single queue item: post to FB and/or IG, log results, update queue status.
  * Regenerates the caption at post time with variation to avoid repetition.
  */
-export async function processQueueItem(item: SocialPostQueueWithId): Promise<PostQueueItemResult> {
+export async function processQueueItem(
+  item: SocialPostQueueWithId,
+  options?: ProcessQueueItemOptions
+): Promise<PostQueueItemResult> {
   // Filter out removed platforms (e.g. "tiktok" was removed per user request)
   const SUPPORTED_PLATFORMS = ["facebook", "instagram"];
   let platforms: string[] = JSON.parse(item.platforms || "[]").filter((p: string) => SUPPORTED_PLATFORMS.includes(p));
@@ -1677,6 +1691,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   // Default results with explicit error field so we never get "undefined" in messages
   let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null, error: "not attempted" };
   let igResult: InstagramPostResult = { success: false, mediaId: null, permalink: null, error: "not attempted" };
+  let igStoryResult: InstagramPostResult | undefined = undefined;
 
   // Check if this is a vertical video — post as Reels on both FB and IG
   const isVerticalVideo = item.contentType === "vertical_video";
@@ -1851,6 +1866,60 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
   }
   } // End of standard image posting block
 
+  // ===========================================
+  // OPTIONAL: ALSO POST TO INSTAGRAM STORY (throwback Story)
+  // ===========================================
+  // Triggered by the autopost cron (alsoPostStory: true) so that each
+  // scheduled run produces an IG Story from queue content alongside the
+  // event Story. Vertical videos are excluded because they already post
+  // as Reels. The Story post is best-effort: a failure here does NOT
+  // fail the overall queue item — the item is still considered posted
+  // if FB + IG feed succeeded.
+  if (options?.alsoPostStory && !isVerticalVideo && item.imageUrl) {
+    console.log(`[Social] Also posting to Instagram Story: ${item.contentType} (${item.sourceId})`);
+    try {
+      igStoryResult = await postToInstagramStory(
+        item.imageUrl,
+        caption,
+        item.linkUrl || undefined
+      );
+
+      // Log the Story result separately so it shows up in admin history
+      try {
+        await db.insert(socialPostsLog).values({
+          id: crypto.randomUUID(),
+          queueId: item.id,
+          platform: "instagram_story",
+          contentType: item.contentType as any,
+          sourceId: item.sourceId,
+          imageUrl: item.imageUrl,
+          caption: item.caption,
+          linkUrl: item.linkUrl,
+          platformPostId: igStoryResult.mediaId,
+          platformPostUrl: igStoryResult.permalink,
+          metaApiResponse: null,
+          status: igStoryResult.success ? "success" : "failed",
+          errorMessage: igStoryResult.error || null,
+          postedAt: new Date(),
+        } as any);
+      } catch (logError) {
+        console.error("[Social] Failed to log IG Story result:", logError);
+      }
+
+      if (!igStoryResult.success) {
+        console.warn(`[Social] IG Story post failed (non-blocking): ${igStoryResult.error}`);
+      }
+    } catch (err) {
+      console.error("[Social] IG Story posting exception (non-blocking):", err);
+      igStoryResult = {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: err instanceof Error ? err.message : "IG Story failed",
+      };
+    }
+  }
+
   // Update queue item status
   const allPlatformsNowPosted = platforms
     .every((p) => postedPlatforms.includes(p));
@@ -1896,7 +1965,7 @@ export async function processQueueItem(item: SocialPostQueueWithId): Promise<Pos
     console.error("[Social] Failed to update queue item:", updateError);
   }
 
-  return { queueId: item.id, facebook: fbResult, instagram: igResult };
+  return { queueId: item.id, facebook: fbResult, instagram: igResult, instagramStory: igStoryResult };
 }
 
 // ===========================================

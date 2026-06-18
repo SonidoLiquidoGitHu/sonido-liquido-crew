@@ -17,6 +17,13 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 //   - Within 1 week of the event: 3x/day (8-hour dedup)
 // Events post to Facebook (feed) + Instagram (Story, not feed/Reel).
 //
+// THROWBACK STORIES: Each scheduled run also posts the queue item to
+// Instagram as a Story (in addition to the regular FB feed + IG feed
+// post). This means at every scheduled hour, IG gets TWO stories:
+//   1. Event Story (from autopost-upcoming-event)
+//   2. Throwback Story (from process-next with alsoPostStory: true)
+// Vertical videos are excluded — they already post as Reels.
+//
 // Schedule matching uses a 1-hour window: if the cron runs at an hour
 // that is within ±0 hours of a scheduled hour (in UTC), it posts.
 // This ensures all CST hours are covered even though the cron only
@@ -236,7 +243,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const response = await fetch(processUrl, {
           method: "POST",
           headers,
-          body: JSON.stringify({ action: "process-next" }),
+          body: JSON.stringify({ action: "process-next", alsoPostStory: true }),
           signal: AbortSignal.timeout(50_000), // 50 second timeout per item
         });
 
