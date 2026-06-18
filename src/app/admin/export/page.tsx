@@ -619,6 +619,63 @@ export default function ExportPage() {
     else handleExportJSON();
   };
 
+  // One-click safe export: all sections, JSON, sanitized (no PII / no keys)
+  const handleQuickExport = async () => {
+    setSelectedSections(["all"]);
+    setFormat("json");
+    setSanitize(true);
+    // Defer to next tick so state propagates before the request fires
+    setExporting(true);
+    setExportResult(null);
+    try {
+      const url = `/api/admin/export?sections=all&format=json&sanitize=true`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.success) {
+        const jsonString = JSON.stringify(data.data, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url2 = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url2;
+        const date = new Date().toISOString().split("T")[0];
+        a.download = `sonido-liquido-export-${date}.json`;
+        a.click();
+        URL.revokeObjectURL(url2);
+
+        const sizeKB = Math.round(blob.size / 1024);
+        const sizeStr =
+          sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
+
+        const last: LastExport = {
+          timestamp: new Date().toISOString(),
+          format: "json",
+          sections: ["all"],
+          size: sizeStr,
+        };
+        try {
+          localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify(last));
+          setLastExport(last);
+        } catch {
+          // ignore
+        }
+
+        setExportResult({
+          success: true,
+          message: `Exportación rápida completa (${sizeStr}). JSON · todas las secciones · saneado.`,
+        });
+      } else {
+        setExportResult({
+          success: false,
+          message: data.error || "Error al exportar",
+        });
+      }
+    } catch {
+      setExportResult({ success: false, message: "Error de conexión" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Estimate total rows from live counts
   const estimatedTotalRows = (() => {
     if (!counts) return null;
@@ -824,6 +881,42 @@ netlify deploy --prod
 
           {expandedSections.includes("data") && (
             <div className="space-y-5">
+              {/* ====== QUICK EXPORT — one click, safe defaults ====== */}
+              <div className="bg-gradient-to-r from-green-500/15 to-emerald-500/10 border border-green-500/30 rounded-xl p-5">
+                <div className="flex items-start gap-4 flex-wrap">
+                  <div className="w-11 h-11 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <h3 className="font-oswald text-lg uppercase mb-1">
+                      Exportación Rápida
+                    </h3>
+                    <p className="text-sm text-slc-muted mb-3">
+                      Un clic. Todo el sitio en JSON, con datos sensibles
+                      saneados (sin PII, sin llaves criptográficas). Seguro
+                      para compartir o respaldar.
+                    </p>
+                    <Button
+                      onClick={handleQuickExport}
+                      disabled={exporting}
+                      className="bg-green-500 hover:bg-green-400 text-black font-semibold gap-2"
+                    >
+                      {exporting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Exportando...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          Exportar todo (JSON saneado)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               {/* Last export info + refresh */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 text-xs text-slc-muted">
