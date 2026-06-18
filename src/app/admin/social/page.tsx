@@ -107,6 +107,7 @@ interface ContentCounts {
 
 interface ScheduleConfig {
   scheduleHours: number[];
+  storyScheduleHours: number[];
   postsPerRun: number;
   maxPostsPerDay: number;
 }
@@ -245,6 +246,7 @@ export default function AdminSocialPage() {
   // Schedule config state
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
   const [editScheduleHours, setEditScheduleHours] = useState<number[]>([]);
+  const [editStoryScheduleHours, setEditStoryScheduleHours] = useState<number[]>([]);
   const [editPostsPerRun, setEditPostsPerRun] = useState(1);
   const [editMaxPostsPerDay, setEditMaxPostsPerDay] = useState(3);
   const [savingSchedule, setSavingSchedule] = useState(false);
@@ -287,6 +289,7 @@ export default function AdminSocialPage() {
         if (data.data.scheduleConfig) {
           setScheduleConfig(data.data.scheduleConfig);
           setEditScheduleHours(data.data.scheduleConfig.scheduleHours);
+          setEditStoryScheduleHours(data.data.scheduleConfig.storyScheduleHours || data.data.scheduleConfig.scheduleHours);
           setEditPostsPerRun(data.data.scheduleConfig.postsPerRun);
           setEditMaxPostsPerDay(data.data.scheduleConfig.maxPostsPerDay);
         }
@@ -427,6 +430,7 @@ export default function AdminSocialPage() {
         body: JSON.stringify({
           action: "save-schedule-config",
           scheduleHours: editScheduleHours,
+          storyScheduleHours: editStoryScheduleHours,
           postsPerRun: editPostsPerRun,
           maxPostsPerDay: editMaxPostsPerDay,
         }),
@@ -451,6 +455,19 @@ export default function AdminSocialPage() {
         ? prev.filter((h) => h !== hour)
         : [...prev, hour].sort((a, b) => a - b)
     );
+  };
+
+  const toggleStoryScheduleHour = (hour: number) => {
+    setEditStoryScheduleHours((prev) =>
+      prev.includes(hour)
+        ? prev.filter((h) => h !== hour)
+        : [...prev, hour].sort((a, b) => a - b)
+    );
+  };
+
+  // Convenience: copy feed-post schedule to story schedule (one-click mirror)
+  const copyFeedScheduleToStories = () => {
+    setEditStoryScheduleHours([...editScheduleHours].sort((a, b) => a - b));
   };
 
   const runDiagnostics = async () => {
@@ -970,6 +987,55 @@ export default function AdminSocialPage() {
                   ? editScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
                   : "Ninguna — se usarán las horas por defecto (04:00, 10:00, 15:00)"}
               </p>
+              <p className="text-xs text-slc-muted mt-1">
+                <span className="text-white font-medium">Posts en feed:</span> Facebook (muro) + Instagram (feed). No incluye Stories.
+              </p>
+            </div>
+
+            {/* Story Schedule Hours Grid */}
+            <div className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium flex items-center gap-2">
+                  <Instagram className="w-4 h-4 text-primary" />
+                  Horas de Stories (hora México)
+                </label>
+                <button
+                  onClick={copyFeedScheduleToStories}
+                  className="text-xs px-2 py-1 rounded border border-slc-border bg-slc-dark hover:border-primary/50 text-slc-muted hover:text-white transition"
+                  title="Copiar las mismas horas seleccionadas arriba"
+                >
+                  Copiar de feed
+                </button>
+              </div>
+              <p className="text-xs text-slc-muted mb-3">
+                En estas horas, el item de la cola también se publica como <span className="text-white font-medium">Story de Instagram</span> (además del feed).
+                Las Stories desaparecen en 24h — ideal para contenido "throwback" sin saturar el feed.
+              </p>
+              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2">
+                {Array.from({ length: 24 }, (_, h) => (
+                  <button
+                    key={h}
+                    onClick={() => toggleStoryScheduleHour(h)}
+                    className={`px-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                      editStoryScheduleHours.includes(h)
+                        ? "bg-pink-600 text-white border border-pink-500"
+                        : "bg-slc-dark text-slc-muted border border-slc-border hover:border-pink-500/50"
+                    }`}
+                  >
+                    {h.toString().padStart(2, "0")}:00
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slc-muted mt-2">
+                Seleccionadas: {editStoryScheduleHours.length > 0
+                  ? editStoryScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
+                  : "Ninguna — se usarán las mismas horas que el feed"}
+              </p>
+              <p className="text-xs text-slc-muted mt-1">
+                <span className="text-white font-medium">Stories/día:</span> {editStoryScheduleHours.length} de throwback
+                <span className="text-slc-muted"> + </span>
+                <span className="text-white font-medium">2–3</span> de evento (autopost independiente)
+              </p>
             </div>
 
             {/* Posts Per Run */}
@@ -1030,10 +1096,16 @@ export default function AdminSocialPage() {
               <h3 className="text-sm font-medium mb-2">Resumen de tu configuración</h3>
               <div className="space-y-1 text-sm text-slc-muted">
                 <p>
-                  <span className="text-white font-medium">Horarios:</span>{" "}
+                  <span className="text-white font-medium">Horarios (feed):</span>{" "}
                   {editScheduleHours.length > 0
                     ? editScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
                     : "04:00, 10:00, 15:00 (por defecto)"} (hora México)
+                </p>
+                <p>
+                  <span className="text-white font-medium">Horarios (Stories):</span>{" "}
+                  {editStoryScheduleHours.length > 0
+                    ? editStoryScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
+                    : "Iguales que el feed"} (hora México)
                 </p>
                 <p>
                   <span className="text-white font-medium">Posts por ejecución:</span> {editPostsPerRun}
@@ -1042,10 +1114,13 @@ export default function AdminSocialPage() {
                   <span className="text-white font-medium">Máximo diario:</span> {editMaxPostsPerDay} posts
                 </p>
                 <p>
-                  <span className="text-white font-medium">Estimado real:</span>{" "}
-                  {editScheduleHours.length > 0 ? editScheduleHours.length : 3} horarios × {editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} ={" "}
-                  {(editScheduleHours.length || 3) * editPostsPerRun} posts/día (×2 plataformas ={" "}
-                  {(editScheduleHours.length || 3) * editPostsPerRun * 2} publicaciones totales)
+                  <span className="text-white font-medium">Feed/día:</span>{" "}
+                  {(editScheduleHours.length || 3) * editPostsPerRun} posts × 2 plataformas ={" "}
+                  {(editScheduleHours.length || 3) * editPostsPerRun * 2} publicaciones
+                </p>
+                <p>
+                  <span className="text-white font-medium">Stories throwback/día:</span>{" "}
+                  {editStoryScheduleHours.length || editScheduleHours.length || 3} Stories
                 </p>
               </div>
             </div>
@@ -1585,6 +1660,25 @@ export default function AdminSocialPage() {
               Cada item se publica en todas las plataformas configuradas
               (FB + IG = hasta {(scheduleConfig?.scheduleHours?.length || 3) * (scheduleConfig?.postsPerRun || 1) * 2} publicaciones totales/día).
             </p>
+            <div className="mt-4 p-3 rounded-lg border border-pink-500/20 bg-pink-500/5">
+              <p className="text-sm text-slc-muted">
+                <span className="text-white font-medium flex items-center gap-2 mb-1">
+                  <Instagram className="w-4 h-4 text-pink-500" />
+                  Horario de Stories:
+                </span>
+                {scheduleConfig?.storyScheduleHours && scheduleConfig.storyScheduleHours.length > 0 ? (
+                  <>
+                    {scheduleConfig.storyScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")} (hora México)
+                    {" — "}
+                    {scheduleConfig.storyScheduleHours.length} Stories throwback/día + 2–3 de evento
+                  </>
+                ) : (
+                  <>
+                    Iguales que el feed ({(scheduleConfig?.scheduleHours || [4, 10, 15]).map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")})
+                  </>
+                )}
+              </p>
+            </div>
           </div>
         </div>
       )}

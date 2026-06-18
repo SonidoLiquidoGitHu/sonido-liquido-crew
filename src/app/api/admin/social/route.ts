@@ -1554,12 +1554,15 @@ async function handleDebugAutopost() {
     const credKeys = creds.map(c => c.key);
     diagnostics.dbCredentialKeys = credKeys;
     diagnostics.hasAutopostScheduleHours = credKeys.includes("AUTOPOST_SCHEDULE_HOURS");
+    diagnostics.hasAutopostStoryScheduleHours = credKeys.includes("AUTOPOST_STORY_SCHEDULE_HOURS");
     diagnostics.hasAutopostPostsPerRun = credKeys.includes("AUTOPOST_POSTS_PER_RUN");
     diagnostics.hasAutopostMaxPostsPerDay = credKeys.includes("AUTOPOST_MAX_POSTS_PER_DAY");
 
     // Show the actual schedule hours value (don't expose secrets)
     const scheduleHoursCred = creds.find(c => c.key === "AUTOPOST_SCHEDULE_HOURS");
     diagnostics.autopostScheduleHoursValue = scheduleHoursCred?.value || null;
+    const storyScheduleHoursCred = creds.find(c => c.key === "AUTOPOST_STORY_SCHEDULE_HOURS");
+    diagnostics.autopostStoryScheduleHoursValue = storyScheduleHoursCred?.value || null;
   } catch (err) {
     diagnostics.credentialsError = err instanceof Error ? err.message : "Failed to read credentials";
   }
@@ -2112,13 +2115,18 @@ async function getContentCounts() {
 // Keys used: AUTOPOST_SCHEDULE_HOURS (comma-separated hours in Mexico City time, e.g. "4,10,15")
 //            AUTOPOST_POSTS_PER_RUN (number of queue items to process per cron run)
 //            AUTOPOST_MAX_POSTS_PER_DAY (maximum posts per day)
+//            AUTOPOST_STORY_SCHEDULE_HOURS (comma-separated hours for throwback IG Stories)
 
 const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm Mexico City time (CST = UTC-6 permanently)
 const DEFAULT_POSTS_PER_RUN = 1;
 const DEFAULT_MAX_POSTS_PER_DAY = 3;
+// Default story schedule = same as regular schedule (back-compat: if not set, stories
+// post at the same hours as regular feed posts, matching the original Option C behavior)
+const DEFAULT_STORY_SCHEDULE_HOURS = [4, 10, 15];
 
 async function getScheduleConfig(): Promise<{
   scheduleHours: number[];
+  storyScheduleHours: number[];
   postsPerRun: number;
   maxPostsPerDay: number;
 }> {
@@ -2131,6 +2139,7 @@ async function getScheduleConfig(): Promise<{
     const credMap = new Map(creds.map(c => [c.key, c.value]));
 
     const scheduleHoursStr = credMap.get("AUTOPOST_SCHEDULE_HOURS");
+    const storyScheduleHoursStr = credMap.get("AUTOPOST_STORY_SCHEDULE_HOURS");
     const postsPerRunStr = credMap.get("AUTOPOST_POSTS_PER_RUN");
     const maxPostsPerDayStr = credMap.get("AUTOPOST_MAX_POSTS_PER_DAY");
 
@@ -2138,6 +2147,15 @@ async function getScheduleConfig(): Promise<{
     if (scheduleHoursStr) {
       const parsed = scheduleHoursStr.split(",").map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 23);
       if (parsed.length > 0) scheduleHours = parsed.sort((a, b) => a - b);
+    }
+
+    let storyScheduleHours = DEFAULT_STORY_SCHEDULE_HOURS;
+    if (storyScheduleHoursStr) {
+      const parsed = storyScheduleHoursStr
+        .split(",")
+        .map(Number)
+        .filter(n => !isNaN(n) && n >= 0 && n <= 23);
+      if (parsed.length > 0) storyScheduleHours = parsed.sort((a, b) => a - b);
     }
 
     let postsPerRun = DEFAULT_POSTS_PER_RUN;
@@ -2152,11 +2170,12 @@ async function getScheduleConfig(): Promise<{
       if (!isNaN(parsed) && parsed >= 1 && parsed <= 24) maxPostsPerDay = parsed;
     }
 
-    return { scheduleHours, postsPerRun, maxPostsPerDay };
+    return { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay };
   } catch (error) {
     console.warn("[Social API] Error reading schedule config:", error);
     return {
       scheduleHours: DEFAULT_SCHEDULE_HOURS,
+      storyScheduleHours: DEFAULT_STORY_SCHEDULE_HOURS,
       postsPerRun: DEFAULT_POSTS_PER_RUN,
       maxPostsPerDay: DEFAULT_MAX_POSTS_PER_DAY,
     };
@@ -2165,7 +2184,7 @@ async function getScheduleConfig(): Promise<{
 
 async function handleSaveScheduleConfig(body: Record<string, unknown>) {
   try {
-    const { scheduleHours, postsPerRun, maxPostsPerDay } = body;
+    const { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay } = body;
 
     const configToSave: Array<{ key: string; value: string }> = [];
 
@@ -2176,6 +2195,16 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
         .sort((a: number, b: number) => a - b);
       if (validHours.length > 0) {
         configToSave.push({ key: "AUTOPOST_SCHEDULE_HOURS", value: validHours.join(",") });
+      }
+    }
+
+    if (Array.isArray(storyScheduleHours)) {
+      const validHours = storyScheduleHours
+        .map(Number)
+        .filter((n: number) => !isNaN(n) && n >= 0 && n <= 23)
+        .sort((a: number, b: number) => a - b);
+      if (validHours.length > 0) {
+        configToSave.push({ key: "AUTOPOST_STORY_SCHEDULE_HOURS", value: validHours.join(",") });
       }
     }
 

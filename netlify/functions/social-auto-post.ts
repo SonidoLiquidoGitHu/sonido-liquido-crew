@@ -17,12 +17,15 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 //   - Within 1 week of the event: 3x/day (8-hour dedup)
 // Events post to Facebook (feed) + Instagram (Story, not feed/Reel).
 //
-// THROWBACK STORIES: Each scheduled run also posts the queue item to
-// Instagram as a Story (in addition to the regular FB feed + IG feed
-// post). This means at every scheduled hour, IG gets TWO stories:
-//   1. Event Story (from autopost-upcoming-event)
-//   2. Throwback Story (from process-next with alsoPostStory: true)
-// Vertical videos are excluded — they already post as Reels.
+// THROWBACK STORIES: A separate schedule (AUTOPOST_STORY_SCHEDULE_HOURS in
+// the social_credentials DB table) controls when queue items ALSO get posted
+// to Instagram as a Story. At "story hours" the cron calls process-next with
+// alsoPostStory: true, which produces a throwback IG Story alongside the
+// regular FB feed + IG feed posts. At "feed-only hours" (in feed schedule
+// but not story schedule), only the feed posts happen — no throwback Story.
+// If story schedule is empty or not set, it mirrors the feed schedule
+// (back-compat with the original Option C behavior).
+// Vertical videos are excluded from Story posting — they post as Reels.
 //
 // Schedule matching uses a 1-hour window: if the cron runs at an hour
 // that is within ±0 hours of a scheduled hour (in UTC), it posts.
@@ -35,6 +38,7 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 const DEFAULT_POSTS_PER_RUN = 1;
 const DEFAULT_MAX_POSTS_PER_DAY = 3;
 const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm CST
+const DEFAULT_STORY_SCHEDULE_HOURS = [4, 10, 15]; // Default: same as feed
 const CST_OFFSET = 6; // Mexico City = UTC-6
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
@@ -64,6 +68,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const configUrl = `${siteUrl}/api/admin/social?action=schedule-config`;
     let postsPerRun = DEFAULT_POSTS_PER_RUN;
     let scheduleHours: number[] = DEFAULT_SCHEDULE_HOURS;
+    let storyScheduleHours: number[] = DEFAULT_STORY_SCHEDULE_HOURS;
     let maxPostsPerDay = DEFAULT_MAX_POSTS_PER_DAY;
 
     try {
@@ -79,6 +84,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           if (configData.data.scheduleHours && configData.data.scheduleHours.length > 0) {
             scheduleHours = configData.data.scheduleHours;
           }
+          if (configData.data.storyScheduleHours && configData.data.storyScheduleHours.length > 0) {
+            storyScheduleHours = configData.data.storyScheduleHours;
+          } else {
+            // Back-compat: if story schedule not set, mirror the feed schedule
+            storyScheduleHours = scheduleHours;
+          }
           maxPostsPerDay = configData.data.maxPostsPerDay || DEFAULT_MAX_POSTS_PER_DAY;
         }
       }
@@ -90,38 +101,54 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // Convert schedule hours (CST) to UTC and check if the current UTC hour matches
     const currentHourUTC = new Date().getUTCHours();
     const utcScheduleHours = scheduleHours.map(h => (h + CST_OFFSET) % 24);
+    const utcStoryScheduleHours = storyScheduleHours.map(h => (h + CST_OFFSET) % 24);
 
-    const shouldPostNow = utcScheduleHours.includes(currentHourUTC);
+    const shouldPostFeed = utcScheduleHours.includes(currentHourUTC);
+    const shouldPostStory = utcStoryScheduleHours.includes(currentHourUTC);
+    const shouldRunAnything = shouldPostFeed || shouldPostStory;
 
-    // For manual triggers, always allow posting regardless of schedule
-    if (!shouldPostNow && !isManualTrigger) {
-      // Find the next scheduled hour for the log message
-      const nextCstHour = scheduleHours
+    // For manual triggers, always run both feed and story
+    const effectiveShouldPostStory = isManualTrigger || shouldPostStory;
+
+    if (!shouldRunAnything && !isManualTrigger) {
+      // Build a list of upcoming hours for both schedules for the log message
+      const nextFeedHour = scheduleHours
         .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
         .sort((a, b) => a.utc - b.utc)
         .find(entry => entry.utc > currentHourUTC) || scheduleHours
         .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
         .sort((a, b) => a.utc - b.utc)[0];
 
+      const nextStoryHour = storyScheduleHours
+        .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
+        .sort((a, b) => a.utc - b.utc)
+        .find(entry => entry.utc > currentHourUTC) || storyScheduleHours
+        .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
+        .sort((a, b) => a.utc - b.utc)[0];
+
       console.log(
         `[Social Auto-Post] Not scheduled for this hour (UTC ${currentHourUTC} = CST ${currentHourUTC - CST_OFFSET >= 0 ? currentHourUTC - CST_OFFSET : currentHourUTC - CST_OFFSET + 24}). ` +
-        `Scheduled hours (Mexico City): ${scheduleHours.join(", ")}. Next: ${nextCstHour?.cst}:00 CST`
+        `Feed hours (Mexico City): ${scheduleHours.join(", ")}. Next feed: ${nextFeedHour?.cst}:00 CST. ` +
+        `Story hours (Mexico City): ${storyScheduleHours.join(", ")}. Next story: ${nextStoryHour?.cst}:00 CST.`
       );
       return {
         statusCode: 200,
         body: JSON.stringify({
           success: true,
-          message: `Not scheduled for this hour. Next scheduled: ${nextCstHour?.cst}:00 CST`,
+          message: `Not scheduled for this hour. Next feed: ${nextFeedHour?.cst}:00 CST. Next story: ${nextStoryHour?.cst}:00 CST`,
           skipped: true,
           currentHourUTC,
           scheduleHours,
+          storyScheduleHours,
           utcScheduleHours,
+          utcStoryScheduleHours,
         }),
       };
     }
 
     console.log(
       `[Social Auto-Post] Hour matches schedule! UTC ${currentHourUTC} = CST ${currentHourUTC - CST_OFFSET >= 0 ? currentHourUTC - CST_OFFSET : currentHourUTC - CST_OFFSET + 24}. ` +
+      `Feed: ${shouldPostFeed ? "YES" : "no"}. Story: ${effectiveShouldPostStory ? "YES" : "no"}. ` +
       `Will process up to ${postsPerRun} item(s). Max ${maxPostsPerDay} posts/day.`
     );
 
@@ -240,10 +267,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       const processUrl = `${siteUrl}/api/admin/social`;
 
       try {
+        // Only attach alsoPostStory when this hour is in the story schedule
+        // (or for manual triggers, where we always do both)
+        const bodyPayload: Record<string, unknown> = { action: "process-next" };
+        if (effectiveShouldPostStory) {
+          bodyPayload.alsoPostStory = true;
+        }
+
         const response = await fetch(processUrl, {
           method: "POST",
           headers,
-          body: JSON.stringify({ action: "process-next", alsoPostStory: true }),
+          body: JSON.stringify(bodyPayload),
           signal: AbortSignal.timeout(50_000), // 50 second timeout per item
         });
 
@@ -287,7 +321,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         elapsed: `${elapsed}s`,
         eventAutopost: eventAutopostResult,
         queueResults: results,
-        config: { postsPerRun, scheduleHours, maxPostsPerDay, itemsToProcess, postsMadeToday },
+        config: { postsPerRun, scheduleHours, storyScheduleHours, maxPostsPerDay, itemsToProcess, postsMadeToday, postedStory: effectiveShouldPostStory },
       }),
     };
   } catch (error) {
