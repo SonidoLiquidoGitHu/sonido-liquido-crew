@@ -249,7 +249,7 @@ export default function AdminSocialPage() {
   const [editMaxPostsPerDay, setEditMaxPostsPerDay] = useState(3);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleSaveResult, setScheduleSaveResult] = useState<string | null>(null);
-  const [debugResult, setDebugResult] = useState<Record<string, unknown> | null>(null);
+  const [debugResult, setDebugResult] = useState<Record<string, any> | null>(null);
   const [debugLoading, setDebugLoading] = useState(false);
 
   // Credentials state
