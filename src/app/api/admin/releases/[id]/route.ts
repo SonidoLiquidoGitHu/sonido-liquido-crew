@@ -1,8 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { releases, releaseArtists } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { slugify } from "@/lib/utils";
+
+/**
+ * Revalidate every public page that renders releases.
+ * Called after any mutation (create / update / delete) so the homepage,
+ * discography, the release's own page, upcoming releases, and each
+ * artist's profile/discography pages all pick up the change immediately.
+ *
+ * Without this, pages stay stale until their ISR timer expires (5 min on
+ * the homepage) or until the next deploy — which is why deleted releases
+ * kept showing up on the public site.
+ */
+function revalidateReleasePaths(slug?: string | null, artistSlugs: string[] = []) {
+  try {
+    // Homepage — uses ISR with revalidate=300, needs explicit purge
+    revalidatePath("/", "layout");
+
+    // Discography listing (force-dynamic but Netlify CDN may cache the HTML)
+    revalidatePath("/discografia");
+
+    // All release detail pages (catch dynamic route)
+    revalidatePath("/lanzamientos", "layout");
+    if (slug) {
+      revalidatePath(`/lanzamientos/${slug}`);
+    }
+
+    // Upcoming releases page (releases often convert from upcoming)
+    revalidatePath("/proximos");
+    revalidatePath("/proximos", "layout");
+
+    // Artist pages — both the profile and per-artist discography
+    revalidatePath("/artistas");
+    for (const artistSlug of artistSlugs) {
+      if (artistSlug) {
+        revalidatePath(`/artistas/${artistSlug}`);
+        revalidatePath(`/artistas/${artistSlug}/discografia`);
+      }
+    }
+  } catch (err) {
+    // revalidatePath can throw in edge runtimes or during build — never let
+    // a cache-invalidation failure break the actual mutation.
+    console.warn("[releases API] revalidatePath failed (non-fatal):", err);
+  }
+}
 
 /**
  * Auto-fetch cover image from Spotify when a spotifyUrl or spotifyId is provided
@@ -169,6 +213,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       });
     }
 
+    // Fetch the (possibly updated) artist associations so we can revalidate
+    // each artist's profile and discography pages too.
+    const updatedArtistLinks = await db.query.releaseArtists.findMany({
+      where: (ra, { eq }) => eq(ra.releaseId, id),
+      with: { artist: true },
+    });
+    const updatedArtistSlugs = (updatedArtistLinks ?? [])
+      .map((ra) => ra.artist?.slug)
+      .filter((s): s is string => Boolean(s));
+
+    revalidateReleasePaths(slug, updatedArtistSlugs);
+
     return NextResponse.json({
       success: true,
       data: { id, slug },
@@ -187,11 +243,33 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
 
+    // Fetch the release (slug) and its artist associations BEFORE deleting
+    // so we know which public pages to revalidate. After the delete, those
+    // rows are gone and we'd lose the slugs.
+    const existing = await db.query.releases.findFirst({
+      where: (r, { eq }) => eq(r.id, id),
+      with: {
+        releaseArtists: {
+          with: { artist: true },
+        },
+      },
+    });
+
+    const slugToDelete = existing?.slug ?? null;
+    const artistSlugsToDelete = (existing?.releaseArtists ?? [])
+      .map((ra) => ra.artist?.slug)
+      .filter((s): s is string => Boolean(s));
+
     // Delete release artists first (foreign key constraint)
     await db.delete(releaseArtists).where(eq(releaseArtists.releaseId, id));
 
     // Delete release
     await db.delete(releases).where(eq(releases.id, id));
+
+    // Invalidate all pages that may have been rendering this release.
+    // Without this, the homepage (ISR 5min) and discography page would
+    // continue serving the deleted release until the cache expires.
+    revalidateReleasePaths(slugToDelete, artistSlugsToDelete);
 
     return NextResponse.json({ success: true });
   } catch (error) {

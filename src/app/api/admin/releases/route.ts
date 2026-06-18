@@ -1,8 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { releases, releaseArtists } from "@/db/schema";
+import { releases, releaseArtists, artists } from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
 import { eq } from "drizzle-orm";
+
+/**
+ * Revalidate every public page that renders releases.
+ * Mirrors the helper in /api/admin/releases/[id]/route.ts — kept local
+ * because Next.js API routes don't share modules across route files
+ * cleanly without an extra import alias.
+ *
+ * Without this, newly created releases won't appear on the public site
+ * until the homepage ISR (5 min) or the discography cache expires.
+ */
+function revalidateReleasePaths(slug?: string | null, artistSlugs: string[] = []) {
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/discografia");
+    revalidatePath("/lanzamientos", "layout");
+    if (slug) {
+      revalidatePath(`/lanzamientos/${slug}`);
+    }
+    revalidatePath("/proximos");
+    revalidatePath("/proximos", "layout");
+    revalidatePath("/artistas");
+    for (const artistSlug of artistSlugs) {
+      if (artistSlug) {
+        revalidatePath(`/artistas/${artistSlug}`);
+        revalidatePath(`/artistas/${artistSlug}/discografia`);
+      }
+    }
+  } catch (err) {
+    console.warn("[releases API] revalidatePath failed (non-fatal):", err);
+  }
+}
 
 /**
  * Auto-fetch cover image from Spotify when a spotifyUrl or spotifyId is provided
@@ -121,6 +153,21 @@ export async function POST(request: NextRequest) {
       isPrimary: true,
     });
 
+    // Look up the artist's slug so we can revalidate their pages too.
+    let artistSlug: string | null = null;
+    try {
+      const [artistRow] = await db
+        .select({ slug: artists.slug })
+        .from(artists)
+        .where(eq(artists.id, artistId))
+        .limit(1);
+      artistSlug = artistRow?.slug ?? null;
+    } catch {
+      // Non-fatal — the revalidate for the main listing still runs below.
+    }
+
+    revalidateReleasePaths(finalSlug, artistSlug ? [artistSlug] : []);
+
     return NextResponse.json({
       success: true,
       data: { id: releaseId, slug: finalSlug },
@@ -146,11 +193,29 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Fetch slug + artist slugs BEFORE deleting so we can revalidate the
+    // right public pages afterward.
+    const existing = await db.query.releases.findFirst({
+      where: (r, { eq }) => eq(r.id, id),
+      with: {
+        releaseArtists: {
+          with: { artist: true },
+        },
+      },
+    });
+
+    const slugToDelete = existing?.slug ?? null;
+    const artistSlugsToDelete = (existing?.releaseArtists ?? [])
+      .map((ra) => ra.artist?.slug)
+      .filter((s): s is string => Boolean(s));
+
     // Delete release artists first (foreign key constraint)
     await db.delete(releaseArtists).where(eq(releaseArtists.releaseId, id));
 
     // Delete release
     await db.delete(releases).where(eq(releases.id, id));
+
+    revalidateReleasePaths(slugToDelete, artistSlugsToDelete);
 
     return NextResponse.json({ success: true });
   } catch (error) {

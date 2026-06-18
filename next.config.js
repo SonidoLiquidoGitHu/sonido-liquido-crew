@@ -237,11 +237,29 @@ const nextConfig = {
       {
         // API routes - no CDN caching to prevent stale data
         // NOTE: Specific proxy routes above must be listed BEFORE this catch-all
+        // Without this, videos are never cached and must be re-fetched every time,
+        // causing slow loading and failed playback on mobile.
         source: "/api/:path*",
         headers: [
           {
             key: "Cache-Control",
             value: "no-store, no-cache, must-revalidate",
+          },
+        ],
+      },
+      {
+        // HTML pages — never let the browser or Netlify's edge CDN serve a
+        // stale copy of a page after an admin mutation.
+        // We pair this with revalidatePath() calls in the admin API routes so
+        // that deletes / edits / creations instantly propagate to the public
+        // site instead of waiting for the ISR timer (5 min on the homepage).
+        // The rule comes BEFORE the /:path* security catch-all so it wins
+        // for HTML pages, but /api/:path* above still wins for API routes.
+        source: "/((?!api|_next|images|fonts|icons|favicon).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
           },
         ],
       },
