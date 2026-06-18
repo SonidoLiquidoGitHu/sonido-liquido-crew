@@ -1642,20 +1642,57 @@ async function handleAutopostUpcomingEvent() {
     }
 
     // Tiered event posting frequency based on proximity:
-    // - More than 1 week away: 2 times/day → 12-hour dedup window (43200s)
-    // - Within 1 week of the event: 3 times/day → 8-hour dedup window (28800s)
+    // - More than 1 week away: 2 times/day → 12-hour dedup window
+    // - Within 1 week of the event: 3 times/day → 8-hour dedup window
+    // HARD BACKSTOP: Never more than 3 successful event Story posts in 24h,
+    // regardless of how many upcoming events exist or what the dedup window is.
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-    const DEDUP_FAR_MS = 12 * 60 * 60;  // 12 hours in seconds (events >1 week away)
-    const DEDUP_NEAR_MS = 8 * 60 * 60;   // 8 hours in seconds (events within 1 week)
+    const DEDUP_FAR_HOURS = 12;   // events >1 week away → 2x/day
+    const DEDUP_NEAR_HOURS = 8;   // events within 1 week → 3x/day
+    const HARD_24H_CAP = 3;       // absolute max event posts per 24h
+
+    // === HARD BACKSTOP: count all successful event posts in the last 24h ===
+    // This is independent of which event was posted — it caps the TOTAL event
+    // posting volume per day. If we already hit the cap, refuse to post.
+    const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const recent24hPosts = await db
+      .select({ id: socialPostsLog.id })
+      .from(socialPostsLog)
+      .where(
+        and(
+          eq(socialPostsLog.contentType, "event"),
+          eq(socialPostsLog.status, "success"),
+          gt(socialPostsLog.postedAt, cutoff24h)
+        )
+      );
+    const postsInLast24h = recent24hPosts.length;
+
+    if (postsInLast24h >= HARD_24H_CAP) {
+      console.log(
+        `[Social API] Hard 24h cap reached: ${postsInLast24h}/${HARD_24H_CAP} event posts in the last 24h. Refusing to post again.`
+      );
+      return NextResponse.json({
+        success: false,
+        message: `Hard daily cap reached: ${postsInLast24h} event posts in the last 24h (max ${HARD_24H_CAP}). Skipping.`,
+        alreadyPosted: true,
+        postsInLast24h,
+      });
+    }
 
     let selectedEvent: typeof upcomingEvents[0] | null = null;
-    let selectedDedupWindow = DEDUP_FAR_MS;
+    let selectedDedupHours = DEDUP_FAR_HOURS;
 
     for (const event of upcomingEvents) {
       // Determine dedup window based on how close the event is
       const timeUntilEvent = new Date(event.eventDate).getTime() - now.getTime();
-      const dedupWindow = timeUntilEvent <= ONE_WEEK_MS ? DEDUP_NEAR_MS : DEDUP_FAR_MS;
+      const dedupHours = timeUntilEvent <= ONE_WEEK_MS ? DEDUP_NEAR_HOURS : DEDUP_FAR_HOURS;
+      const cutoff = new Date(now.getTime() - dedupHours * 60 * 60 * 1000);
 
+      // Use Drizzle's gt() with a JS Date so the timestamp comparison works
+      // regardless of whether Drizzle stores timestamps as seconds or ms
+      // internally. The previous raw SQL `postedAt > unixepoch() - N` was
+      // unreliable in Turso and caused the same event to be re-posted
+      // every cron run.
       const recentlyPosted = await db
         .select({ id: socialPostsLog.id })
         .from(socialPostsLog)
@@ -1664,18 +1701,17 @@ async function handleAutopostUpcomingEvent() {
             eq(socialPostsLog.contentType, "event"),
             eq(socialPostsLog.sourceId, event.id),
             eq(socialPostsLog.status, "success"),
-            drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - ${dedupWindow})`
+            gt(socialPostsLog.postedAt, cutoff)
           )
         )
         .limit(1);
 
       if (recentlyPosted.length === 0) {
         selectedEvent = event;
-        selectedDedupWindow = dedupWindow;
+        selectedDedupHours = dedupHours;
         break;
       }
 
-      const dedupHours = dedupWindow / 3600;
       console.log(`[Social API] Event "${event.title}" was posted in last ${dedupHours}h, skipping.`);
     }
 
@@ -1702,7 +1738,7 @@ async function handleAutopostUpcomingEvent() {
 
     const publicImageUrl = ensurePublicImageUrl(selectedEvent.imageUrl!);
 
-    console.log(`[Social API] Autoposting upcoming event: ${selectedEvent.title} (${selectedEvent.id})`);
+    console.log(`[Social API] Autoposting upcoming event: ${selectedEvent.title} (${selectedEvent.id}) [dedup window: ${selectedDedupHours}h, posts in last 24h: ${postsInLast24h}/${HARD_24H_CAP}]`);
 
     const results: {
       facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };

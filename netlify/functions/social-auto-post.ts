@@ -153,24 +153,49 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     );
 
     // ===========================================
-    // STEP 1: AUTOPOST UPCOMING EVENT (DISABLED)
+    // STEP 1: AUTOPOST UPCOMING EVENT (independent of queue)
     // ===========================================
-    // This step has been temporarily disabled because it was posting the
-    // latest upcoming event to IG Stories every cron run, ignoring the
-    // dedup window. The exact cause is under investigation (likely the
-    // postedAt > unixepoch() comparison failing in Turso's SQL dialect).
-    //
-    // Events are still posted via the regular queue rotation in Step 2
-    // (events ARE added to social_post_queue by the populate action, and
-    // they get their proper turn alongside other content).
-    //
-    // To re-enable: uncomment the block below. Before re-enabling, also
-    // verify the dedup query in handleAutopostUpcomingEvent() actually
-    // returns rows for recently-posted events (check the social_posts_log
-    // table directly).
+    // Posts the nearest upcoming event to FB (feed) + IG (Story).
+    // Tiered frequency:
+    //   - More than 1 week before event: 2x/day (12-hour dedup)
+    //   - Within 1 week of event:        3x/day (8-hour dedup)
+    // The dedup is enforced BOTH in the API handler (handleAutopostUpcomingEvent)
+    // AND here as a hard backstop (max 3 successful event Story posts / 24h).
     let eventAutopostResult: { success: boolean; message: string; event?: any } | null = null;
-    eventAutopostResult = { success: false, message: "Event autopost disabled (was causing duplicate Story posts)" };
-    console.log("[Social Auto-Post] Step 1 (event autopost) DISABLED — was posting same event repeatedly to Stories");
+
+    try {
+      console.log("[Social Auto-Post] Step 1: Checking for upcoming events to autopost...");
+      const eventResponse = await fetch(`${siteUrl}/api/admin/social`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "autopost-upcoming-event" }),
+        signal: AbortSignal.timeout(50_000),
+      });
+
+      const eventData = await eventResponse.json();
+
+      if (eventData.success) {
+        console.log(`[Social Auto-Post] Event autoposted: ${eventData.message}`);
+        eventAutopostResult = {
+          success: true,
+          message: eventData.message,
+          event: eventData.event,
+        };
+      } else if (eventData.noEvents) {
+        console.log("[Social Auto-Post] No upcoming events to autopost.");
+        eventAutopostResult = { success: false, message: "No upcoming events" };
+      } else if (eventData.alreadyPosted) {
+        console.log("[Social Auto-Post] Upcoming event already posted recently, skipping.");
+        eventAutopostResult = { success: false, message: "Event already posted recently" };
+      } else {
+        console.warn(`[Social Auto-Post] Event autopost failed: ${eventData.message || eventData.error}`);
+        eventAutopostResult = { success: false, message: eventData.message || eventData.error || "Unknown error" };
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      console.warn(`[Social Auto-Post] Event autopost exception: ${errMsg}`);
+      eventAutopostResult = { success: false, message: errMsg };
+    }
 
     // ===========================================
     // STEP 2: PROCESS REGULAR QUEUE (as always)
