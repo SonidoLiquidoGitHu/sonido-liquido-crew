@@ -1875,7 +1875,18 @@ export async function processQueueItem(
   // as Reels. The Story post is best-effort: a failure here does NOT
   // fail the overall queue item — the item is still considered posted
   // if FB + IG feed succeeded.
-  if (options?.alsoPostStory && !isVerticalVideo && item.imageUrl) {
+  //
+  // EVENTS are excluded from this throwback Story path because they
+  // were causing duplicate Story spam (the autopost-upcoming-event
+  // handler was also posting events to Stories, and its dedup was
+  // unreliable). Events now go to FB + IG feed only via the queue.
+  // If you want events on Stories, post them manually via the admin UI.
+  if (
+    options?.alsoPostStory &&
+    !isVerticalVideo &&
+    item.imageUrl &&
+    item.contentType !== "event"
+  ) {
     console.log(`[Social] Also posting to Instagram Story: ${item.contentType} (${item.sourceId})`);
     try {
       igStoryResult = await postToInstagramStory(
