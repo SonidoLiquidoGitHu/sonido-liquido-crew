@@ -7,30 +7,28 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 // The actual posting is controlled by AUTOPOST_POSTS_PER_RUN and
 // AUTOPOST_SCHEDULE_HOURS stored in the social_credentials DB table.
 //
-// IMPORTANT: Upcoming events are autoposted INDEPENDENTLY at each
-// scheduled time — they do NOT consume the regular queue's daily
-// post limit. The regular queue continues its round-robin rotation
-// as always.
+// FEED HOURS (AUTOPOST_SCHEDULE_HOURS, Mexico City time):
+//   At each feed hour, the cron calls process-next, which picks the next
+//   pending item from the queue and posts it to FB (wall) + IG (feed).
+//   These calls are capped by AUTOPOST_MAX_POSTS_PER_DAY.
 //
-// Event autopost frequency is tiered based on proximity:
-//   - More than 1 week before the event: 2x/day (12-hour dedup)
-//   - Within 1 week of the event: 3x/day (8-hour dedup)
-// Events post to Facebook (feed) + Instagram (Story, not feed/Reel).
+// STORY HOURS (AUTOPOST_STORY_SCHEDULE_HOURS, Mexico City time):
+//   At each story hour, the cron calls process-next-story-only, which
+//   picks a recently-posted queue item as throwback content and posts
+//   it as an Instagram Story ONLY (no FB wall, no IG feed, no queue
+//   advancement). Story-only calls do NOT count against
+//   AUTOPOST_MAX_POSTS_PER_DAY.
 //
-// THROWBACK STORIES: A separate schedule (AUTOPOST_STORY_SCHEDULE_HOURS in
-// the social_credentials DB table) controls when queue items ALSO get posted
-// to Instagram as a Story. At "story hours" the cron calls process-next with
-// alsoPostStory: true, which produces a throwback IG Story alongside the
-// regular FB feed + IG feed posts. At "feed-only hours" (in feed schedule
-// but not story schedule), only the feed posts happen — no throwback Story.
-// If story schedule is empty or not set, it mirrors the feed schedule
-// (back-compat with the original Option C behavior).
-// Vertical videos are excluded from Story posting — they post as Reels.
+// If a given hour is in BOTH schedules (overlapping), both calls fire
+// in that order: feed first, then throwback story.
 //
-// Schedule matching uses a 1-hour window: if the cron runs at an hour
-// that is within ±0 hours of a scheduled hour (in UTC), it posts.
-// This ensures all CST hours are covered even though the cron only
-// fires at the top of each hour.
+// MANUAL TRIGGER (POST with Bearer CRON_SECRET):
+//   Bypasses the hour-matching check. Runs both feed and story paths
+//   so admins can verify both work. The feed path still respects
+//   maxPostsPerDay; the story path always fires once.
+//
+// Schedule matching uses hour-granularity: if the cron runs at an hour
+// that matches a scheduled hour (in UTC), it posts.
 //
 // Mexico City is permanently UTC-6 (DST abolished in 2022).
 
@@ -108,6 +106,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const shouldRunAnything = shouldPostFeed || shouldPostStory;
 
     // For manual triggers, always run both feed and story
+    const effectiveShouldPostFeed = isManualTrigger || shouldPostFeed;
     const effectiveShouldPostStory = isManualTrigger || shouldPostStory;
 
     if (!shouldRunAnything && !isManualTrigger) {
@@ -148,8 +147,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     console.log(
       `[Social Auto-Post] Hour matches schedule! UTC ${currentHourUTC} = CST ${currentHourUTC - CST_OFFSET >= 0 ? currentHourUTC - CST_OFFSET : currentHourUTC - CST_OFFSET + 24}. ` +
-      `Feed: ${shouldPostFeed ? "YES" : "no"}. Story: ${effectiveShouldPostStory ? "YES" : "no"}. ` +
-      `Will process up to ${postsPerRun} item(s). Max ${maxPostsPerDay} posts/day.`
+      `Feed: ${effectiveShouldPostFeed ? "YES" : "no"}. Story: ${effectiveShouldPostStory ? "YES" : "no"}. ` +
+      `Feed cap: ${maxPostsPerDay} posts/day.`
     );
 
     // ===========================================
@@ -162,11 +161,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     //
     // Events will still appear in the regular queue rotation (Step 2) and
     // post to FB + IG feed (NOT Stories) in their proper turn.
-    //
-    // To re-enable: replace this block with the original fetch call to
-    // /api/admin/social with action=autopost-upcoming-event. But BEFORE
-    // re-enabling, run a manual test and check the social_posts_log table
-    // to confirm the cap is actually firing.
     let eventAutopostResult: { success: boolean; message: string; event?: any } | null = null;
     eventAutopostResult = {
       success: false,
@@ -175,132 +169,188 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     console.log("[Social Auto-Post] Step 1 (event autopost) DISABLED");
 
     // ===========================================
-    // STEP 2: PROCESS REGULAR QUEUE (as always)
+    // STEP 2: PROCESS REGULAR FEED QUEUE (with daily cap)
     // ===========================================
-    // The regular queue runs independently of the event autopost.
-    // Daily limits only apply to the regular queue, NOT the event autopost.
+    // Only runs when this hour is a feed hour (or manual trigger).
+    // The daily cap (maxPostsPerDay) ONLY applies to feed posts —
+    // throwback stories in Step 3 do NOT consume this quota.
+    let feedResult: { success: boolean; message: string; processedCount: number; skipped: boolean; reason?: string } = {
+      success: false,
+      message: "Feed path not run",
+      processedCount: 0,
+      skipped: true,
+      reason: "not_triggered",
+    };
 
-    // Check how many posts were already made today (for maxPostsPerDay enforcement)
-    // Only count regular queue posts (not autopost-event-* entries)
-    let postsMadeToday = 0;
-    try {
-      const logUrl = `${siteUrl}/api/admin/social`; // GET returns recentLogs
-      const logRes = await fetch(logUrl, {
-        headers,
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (logRes.ok) {
-        const logData = await logRes.json();
-        if (logData.success && logData.data?.recentLogs) {
-          const now = new Date();
-          const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-          // Count successful posts from today (using Mexico City day: CST = UTC-6)
-          const startOfDayCST = new Date(startOfDayUTC.getTime() - CST_OFFSET * 60 * 60 * 1000);
-          // Only count regular queue posts — exclude autopost-event-* entries
-          // since those are independent and don't consume the daily limit
-          postsMadeToday = logData.data.recentLogs.filter(
-            (log: any) =>
-              log.status === "success" &&
-              new Date(log.postedAt) >= startOfDayCST &&
-              !log.queueId?.startsWith("autopost-event-")
-          ).length;
-        }
-      }
-    } catch (err) {
-      console.warn("[Social Auto-Post] Could not check today's post count:", err);
-    }
-
-    // Check if we've already hit the daily limit
-    if (postsMadeToday >= maxPostsPerDay) {
-      console.log(
-        `[Social Auto-Post] Daily limit reached: ${postsMadeToday}/${maxPostsPerDay} queue posts already made today. Skipping regular queue.`
-      );
-      // Still return success if the event was posted
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: !!eventAutopostResult?.success,
-          message: `Daily queue limit reached (${postsMadeToday}/${maxPostsPerDay}). Event autopost: ${eventAutopostResult?.message || "N/A"}`,
-          elapsed: `${elapsed}s`,
-          eventAutopost: eventAutopostResult,
-          queueResult: { skipped: true, reason: "daily_limit_reached", postsMadeToday, maxPostsPerDay },
-        }),
-      };
-    }
-
-    // Calculate how many items we can still post today
-    const remainingQuota = maxPostsPerDay - postsMadeToday;
-    const itemsToProcess = Math.min(postsPerRun, remainingQuota);
-
-    console.log(
-      `[Social Auto-Post] Queue posts today: ${postsMadeToday}/${maxPostsPerDay}. ` +
-      `Can process ${itemsToProcess} item(s) this run (requested: ${postsPerRun}).`
-    );
-
-    // Process N items per run
-    const results: Array<{ success: boolean; message: string }> = [];
-    let processedCount = 0;
-
-    for (let i = 0; i < itemsToProcess; i++) {
-      const processUrl = `${siteUrl}/api/admin/social`;
-
+    if (effectiveShouldPostFeed) {
+      // Check how many feed posts were already made today
+      // (excludes throwback-* and autopost-event-* entries from social_posts_log)
+      let postsMadeToday = 0;
       try {
-        // Only attach alsoPostStory when this hour is in the story schedule
-        // (or for manual triggers, where we always do both)
-        const bodyPayload: Record<string, unknown> = { action: "process-next" };
-        if (effectiveShouldPostStory) {
-          bodyPayload.alsoPostStory = true;
+        const logUrl = `${siteUrl}/api/admin/social`; // GET returns recentLogs
+        const logRes = await fetch(logUrl, {
+          headers,
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (logRes.ok) {
+          const logData = await logRes.json();
+          if (logData.success && logData.data?.recentLogs) {
+            const now = new Date();
+            const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+            // Count successful posts from today (using Mexico City day: CST = UTC-6)
+            const startOfDayCST = new Date(startOfDayUTC.getTime() - CST_OFFSET * 60 * 60 * 1000);
+            // Only count regular feed queue posts — exclude throwback-* and autopost-event-*
+            postsMadeToday = logData.data.recentLogs.filter(
+              (log: any) =>
+                log.status === "success" &&
+                new Date(log.postedAt) >= startOfDayCST &&
+                !log.queueId?.startsWith("autopost-event-") &&
+                !log.queueId?.startsWith("throwback-")
+            ).length;
+          }
+        }
+      } catch (err) {
+        console.warn("[Social Auto-Post] Could not check today's feed post count:", err);
+      }
+
+      if (postsMadeToday >= maxPostsPerDay) {
+        console.log(
+          `[Social Auto-Post] Feed daily limit reached: ${postsMadeToday}/${maxPostsPerDay} feed posts already made today. Skipping feed path.`
+        );
+        feedResult = {
+          success: false,
+          message: `Daily feed limit reached (${postsMadeToday}/${maxPostsPerDay})`,
+          processedCount: 0,
+          skipped: true,
+          reason: "daily_limit_reached",
+        };
+      } else {
+        const remainingQuota = maxPostsPerDay - postsMadeToday;
+        const itemsToProcess = Math.min(postsPerRun, remainingQuota);
+
+        console.log(
+          `[Social Auto-Post] Feed posts today: ${postsMadeToday}/${maxPostsPerDay}. ` +
+          `Can process ${itemsToProcess} item(s) this run (requested: ${postsPerRun}).`
+        );
+
+        const feedResults: Array<{ success: boolean; message: string }> = [];
+        let processedCount = 0;
+
+        for (let i = 0; i < itemsToProcess; i++) {
+          const processUrl = `${siteUrl}/api/admin/social`;
+
+          try {
+            // Feed path: process-next WITHOUT alsoPostStory. Stories are
+            // handled separately in Step 3 via process-next-story-only.
+            const bodyPayload: Record<string, unknown> = { action: "process-next" };
+
+            const response = await fetch(processUrl, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(bodyPayload),
+              signal: AbortSignal.timeout(50_000),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+              console.log(`[Social Auto-Post] Feed item ${i + 1}/${itemsToProcess} posted:`, data.message);
+              feedResults.push({ success: true, message: data.message });
+              processedCount++;
+            } else if (response.ok && !data.success) {
+              console.log(`[Social Auto-Post] No more feed items after ${processedCount} items:`, data.message);
+              feedResults.push({ success: false, message: data.message });
+              break;
+            } else {
+              console.error(`[Social Auto-Post] API error on feed item ${i + 1}:`, data);
+              feedResults.push({ success: false, message: data.error || data.message || "API error" });
+            }
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : "Unknown error";
+            console.error(`[Social Auto-Post] Exception on feed item ${i + 1}:`, errMsg);
+            feedResults.push({ success: false, message: errMsg });
+          }
         }
 
-        const response = await fetch(processUrl, {
+        const successCount = feedResults.filter(r => r.success).length;
+        feedResult = {
+          success: successCount > 0,
+          message: `Feed: ${successCount}/${feedResults.length} items posted`,
+          processedCount,
+          skipped: false,
+        };
+      }
+    }
+
+    // ===========================================
+    // STEP 3: THROWBACK IG STORY (separate from feed cap)
+    // ===========================================
+    // Only runs when this hour is a story hour (or manual trigger).
+    // Calls process-next-story-only which picks a recently-posted item
+    // and posts ONLY an IG Story (no FB wall, no IG feed). Does NOT
+    // count against maxPostsPerDay.
+    let storyResult: { success: boolean; message: string; throwback?: boolean } = {
+      success: false,
+      message: "Story path not run",
+    };
+
+    if (effectiveShouldPostStory) {
+      const storyUrl = `${siteUrl}/api/admin/social`;
+      try {
+        const response = await fetch(storyUrl, {
           method: "POST",
           headers,
-          body: JSON.stringify(bodyPayload),
-          signal: AbortSignal.timeout(50_000), // 50 second timeout per item
+          body: JSON.stringify({ action: "process-next-story-only" }),
+          signal: AbortSignal.timeout(50_000),
         });
 
         const data = await response.json();
 
         if (response.ok && data.success) {
-          console.log(`[Social Auto-Post] Queue item ${i + 1}/${itemsToProcess} posted:`, data.message);
-          results.push({ success: true, message: data.message });
-          processedCount++;
-        } else if (response.ok && !data.success) {
-          // No more items to post — stop processing
-          console.log(`[Social Auto-Post] No more items to post after ${processedCount} items:`, data.message);
-          results.push({ success: false, message: data.message });
-          break;
+          console.log("[Social Auto-Post] Throwback IG Story posted:", data.message);
+          storyResult = {
+            success: true,
+            message: data.message,
+            throwback: !!data.throwback,
+          };
         } else {
-          // API error
-          console.error(`[Social Auto-Post] API error on item ${i + 1}:`, data);
-          results.push({ success: false, message: data.error || data.message || "API error" });
-          // Continue to next item instead of stopping entirely
+          console.warn("[Social Auto-Post] Throwback IG Story did not post:", data.message || data.error);
+          storyResult = {
+            success: false,
+            message: data.message || data.error || "Story post failed",
+          };
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error";
-        console.error(`[Social Auto-Post] Exception on item ${i + 1}:`, errMsg);
-        results.push({ success: false, message: errMsg });
-        // Continue to next item
+        console.error("[Social Auto-Post] Exception on throwback story:", errMsg);
+        storyResult = { success: false, message: errMsg };
       }
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    const successCount = results.filter(r => r.success).length;
 
     console.log(
-      `[Social Auto-Post] Run complete in ${elapsed}s: Event autopost=${eventAutopostResult?.success ? "yes" : "no"}, Queue: ${successCount}/${results.length} items posted`
+      `[Social Auto-Post] Run complete in ${elapsed}s: ` +
+      `Feed=${feedResult.message}, Story=${storyResult.success ? "yes" : "no"}`
     );
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        success: eventAutopostResult?.success || successCount > 0,
-        message: `Event autopost: ${eventAutopostResult?.message || "N/A"} | Queue: ${successCount}/${results.length} items in ${elapsed}s`,
+        success: feedResult.success || storyResult.success,
+        message: `Feed: ${feedResult.message} | Story: ${storyResult.message} | in ${elapsed}s`,
         elapsed: `${elapsed}s`,
         eventAutopost: eventAutopostResult,
-        queueResults: results,
-        config: { postsPerRun, scheduleHours, storyScheduleHours, maxPostsPerDay, itemsToProcess, postsMadeToday, postedStory: effectiveShouldPostStory },
+        feedResult,
+        storyResult,
+        config: {
+          postsPerRun,
+          scheduleHours,
+          storyScheduleHours,
+          maxPostsPerDay,
+          shouldPostFeed: effectiveShouldPostFeed,
+          shouldPostStory: effectiveShouldPostStory,
+        },
       }),
     };
   } catch (error) {

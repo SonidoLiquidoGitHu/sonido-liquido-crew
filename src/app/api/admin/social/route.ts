@@ -216,6 +216,8 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case "process-next":
         return await handleProcessNext(body as { alsoPostStory?: boolean });
+      case "process-next-story-only":
+        return await handleProcessNextStoryOnly();
       case "populate":
         return await handlePopulate(body.options as Record<string, unknown> || {});
       case "post-upcoming-release":
@@ -303,6 +305,181 @@ async function handleProcessNext(options?: { alsoPostStory?: boolean }) {
     message: `Posted to FB: ${fbStatus}, IG: ${igStatus}, IG Story: ${storyStatus}`,
     result,
   });
+}
+
+// ===========================================
+// PROCESS-NEXT-STORY-ONLY — Throwback IG Story that does NOT consume a feed slot
+// ===========================================
+//
+// This handler is called by the cron function at "story hours" (when the hour
+// is in AUTOPOST_STORY_SCHEDULE_HOURS but NOT in AUTOPOST_SCHEDULE_HOURS).
+// It posts an Instagram Story ONLY — no FB wall, no IG feed — using a
+// previously-posted queue item as throwback content.
+//
+// Key properties:
+//   - Does NOT advance the regular feed queue's round-robin pointer.
+//   - Does NOT count against maxPostsPerDay (the daily cap is for feed posts).
+//   - Picks a "throwback" item: queue items with status='posted' (excluding
+//     vertical_videos, which post as Reels not Stories), preferring items
+//     posted more recently, but skipping any item that has been used as a
+//     Story in the last 7 days (deduplication).
+//   - Logs to social_posts_log with platform='instagram_story' and queueId
+//     prefixed with 'throwback-' so the cron's daily-count filter excludes it.
+
+async function handleProcessNextStoryOnly() {
+  if (!(await isMetaConfiguredAsync())) {
+    return NextResponse.json({
+      success: false,
+      message: "Meta API not configured. Set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID in the credentials section below, or as Netlify env vars.",
+    });
+  }
+
+  try {
+    // Pre-validate the token before attempting the post
+    const tokenInfo = await validateToken();
+    if (!tokenInfo.isValid) {
+      const errorDetail = tokenInfo.raw?.message || "Token inválido";
+      return NextResponse.json({
+        success: false,
+        message: `Token de Meta API inválido: ${errorDetail}`,
+      });
+    }
+
+    // Find items posted as feed in the last 30 days, excluding vertical videos
+    // (those post as Reels, not Stories). Pick the most recently posted one
+    // that has NOT been used as a Story in the last 7 days.
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Get recently-posted queue items (exclude vertical_video — those are Reels)
+    const recentPostedItems = await db
+      .select({
+        id: socialPostQueue.id,
+        contentType: socialPostQueue.contentType,
+        sourceId: socialPostQueue.sourceId,
+        imageUrl: socialPostQueue.imageUrl,
+        caption: socialPostQueue.caption,
+        linkUrl: socialPostQueue.linkUrl,
+        postedAt: socialPostQueue.postedAt,
+        artistId: socialPostQueue.artistId,
+        releaseId: socialPostQueue.releaseId,
+      })
+      .from(socialPostQueue)
+      .where(
+        and(
+          eq(socialPostQueue.status, "posted"),
+          isNotNull(socialPostQueue.postedAt),
+          gt(socialPostQueue.postedAt, thirtyDaysAgo)
+        )
+      )
+      .orderBy(desc(socialPostQueue.postedAt))
+      .limit(50);
+
+    // Filter out vertical videos
+    const eligibleItems = recentPostedItems.filter(
+      (item) => item.contentType !== "vertical_video"
+    );
+
+    if (eligibleItems.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: "No throwback items available for Story posting. Post items to the feed first.",
+      });
+    }
+
+    // Get recent story logs (last 7 days) for deduplication
+    const recentStoryLogs = await db
+      .select({
+        imageUrl: socialPostsLog.imageUrl,
+        sourceId: socialPostsLog.sourceId,
+      })
+      .from(socialPostsLog)
+      .where(
+        and(
+          eq(socialPostsLog.platform, "instagram_story"),
+          eq(socialPostsLog.status, "success"),
+          gt(socialPostsLog.postedAt, sevenDaysAgo)
+        )
+      );
+
+    // Build a dedup set keyed by (sourceId + imageUrl) so the same content
+    // doesn't repeat as a Story within 7 days
+    const recentStoryKeys = new Set(
+      recentStoryLogs.map((log) => `${log.sourceId}::${log.imageUrl}`)
+    );
+
+    // Pick the first eligible item not in the recent-story dedup set
+    const throwbackItem = eligibleItems.find(
+      (item) => !recentStoryKeys.has(`${item.sourceId}::${item.imageUrl}`)
+    ) || eligibleItems[0]; // fallback to most recent if all have been used recently
+
+    if (!throwbackItem || !throwbackItem.imageUrl) {
+      return NextResponse.json({
+        success: false,
+        message: "No throwback item with a usable image was found.",
+      });
+    }
+
+    // Ensure image URL is publicly accessible for Meta API
+    const publicImageUrl = ensurePublicImageUrl(throwbackItem.imageUrl);
+
+    console.log(
+      `[Social API] Story-only throwback: ${throwbackItem.contentType} (${throwbackItem.sourceId}) ` +
+      `originally posted ${throwbackItem.postedAt?.toISOString()}`
+    );
+
+    // Post ONLY as Instagram Story (no FB wall, no IG feed)
+    const storyResult = await postToInstagramStory(
+      publicImageUrl,
+      throwbackItem.caption || "",
+      throwbackItem.linkUrl || undefined,
+      { composeForStory: true }
+    );
+
+    // Log to social_posts_log with queueId prefixed 'throwback-' so the
+    // cron's daily-count filter excludes it from maxPostsPerDay
+    try {
+      await db.insert(socialPostsLog).values({
+        id: crypto.randomUUID(),
+        queueId: `throwback-${throwbackItem.id}`,
+        platform: "instagram_story",
+        contentType: throwbackItem.contentType as any,
+        sourceId: throwbackItem.sourceId,
+        imageUrl: publicImageUrl,
+        caption: throwbackItem.caption || null,
+        linkUrl: throwbackItem.linkUrl || null,
+        platformPostId: storyResult.mediaId || null,
+        platformPostUrl: storyResult.permalink || null,
+        metaApiResponse: null,
+        status: storyResult.success ? "success" : "failed",
+        errorMessage: storyResult.error || null,
+        postedAt: new Date(),
+      } as any);
+    } catch (logError) {
+      console.error("[Social API] Failed to log throwback story result:", logError);
+    }
+
+    return NextResponse.json({
+      success: storyResult.success,
+      message: storyResult.success
+        ? `Throwback IG Story posted (source: ${throwbackItem.contentType} ${throwbackItem.sourceId})`
+        : `Story post failed: ${storyResult.error || "unknown error"}`,
+      result: {
+        queueId: throwbackItem.id,
+        contentType: throwbackItem.contentType,
+        sourceId: throwbackItem.sourceId,
+        instagramStory: storyResult,
+      },
+      throwback: true,
+    });
+  } catch (error) {
+    console.error("[Social API] process-next-story-only error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Request failed";
+    return NextResponse.json(
+      { success: false, error: errorMessage, message: `Error en story-only: ${errorMessage}` },
+      { status: 500 }
+    );
+  }
 }
 
 // ===========================================
