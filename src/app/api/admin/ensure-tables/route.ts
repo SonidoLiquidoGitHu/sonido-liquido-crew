@@ -375,6 +375,19 @@ const ENSURE_TABLES_SQL = [
     added_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+
+  // === DELETED RELEASES BLOCKLIST ===
+  // Records spotifyId of releases that an admin has explicitly deleted,
+  // so the Spotify sync (runs every 6h) does NOT re-import the same album.
+  // Without this, deleted releases keep coming back on the next sync run.
+  `CREATE TABLE IF NOT EXISTS deleted_releases_blocklist (
+    id TEXT PRIMARY KEY,
+    spotify_id TEXT NOT NULL UNIQUE,
+    title TEXT,
+    artist_name TEXT,
+    spotify_url TEXT,
+    deleted_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ];
 
 // SQL statements to add missing columns to existing tables
@@ -431,6 +444,7 @@ const ENSURE_INDEXES_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_playlist_tracks_active ON playlist_tracks(is_active)`,
   `CREATE INDEX IF NOT EXISTS idx_curated_tracks_channel ON curated_tracks(curated_channel_id)`,
   `CREATE INDEX IF NOT EXISTS idx_curated_spotify_channels_active ON curated_spotify_channels(is_active)`,
+  `CREATE INDEX IF NOT EXISTS idx_deleted_releases_blocklist_spotify_id ON deleted_releases_blocklist(spotify_id)`,
 ];
 
 // Data fixes

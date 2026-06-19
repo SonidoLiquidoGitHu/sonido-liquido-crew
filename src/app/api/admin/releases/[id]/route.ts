@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { releases, releaseArtists } from "@/db/schema";
+import { releases, releaseArtists, deletedReleasesBlocklist } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { slugify } from "@/lib/utils";
+import { slugify, generateUUID } from "@/lib/utils";
 
 /**
  * Revalidate every public page that renders releases.
@@ -259,6 +259,39 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const artistSlugsToDelete = (existing?.releaseArtists ?? [])
       .map((ra) => ra.artist?.slug)
       .filter((s): s is string => Boolean(s));
+
+    // If this release was imported from Spotify, record its spotifyId in
+    // the blocklist so the next Spotify sync (every 6h) does NOT re-import
+    // the same album. Without this, the sync would re-create the deleted
+    // release on the next run, creating a "delete → reappear" loop.
+    if (existing?.spotifyId) {
+      const artistNameForLog = (existing.releaseArtists ?? [])
+        .map((ra) => ra.artist?.name)
+        .filter(Boolean)
+        .join(", ") || null;
+
+      try {
+        await db
+          .insert(deletedReleasesBlocklist)
+          .values({
+            id: generateUUID(),
+            spotifyId: existing.spotifyId,
+            title: existing.title,
+            artistName: artistNameForLog,
+            spotifyUrl: existing.spotifyUrl || null,
+            deletedAt: new Date(),
+          })
+          .onConflictDoNothing(); // if already blocked, no-op
+        console.log(
+          `[Admin] Added spotifyId ${existing.spotifyId} to blocklist ` +
+          `(release "${existing.title}" will not be re-imported by sync)`
+        );
+      } catch (blocklistError) {
+        // Non-fatal — we still want the delete itself to succeed.
+        // The table may not exist yet on older deploys (created by ensure-tables).
+        console.warn("[Admin] Could not add to blocklist (non-fatal):", blocklistError);
+      }
+    }
 
     // Delete release artists first (foreign key constraint)
     await db.delete(releaseArtists).where(eq(releaseArtists.releaseId, id));

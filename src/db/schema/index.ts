@@ -79,3 +79,7 @@ export * from "./social-credentials";
 
 // Vertical Videos (9:16 Reels / Shorts)
 export * from "./vertical-videos";
+
+// Deleted Releases Blocklist (prevents Spotify sync from re-importing
+// releases that an admin has explicitly deleted)
+export * from "./release-blocklist";

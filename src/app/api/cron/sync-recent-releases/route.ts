@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { releases, releaseArtists, artists, artistExternalProfiles } from "@/db/schema";
+import { releases, releaseArtists, artists, artistExternalProfiles, deletedReleasesBlocklist } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 import { spotifyClient } from "@/lib/clients";
@@ -86,6 +86,24 @@ async function runSync(artistsToProcess: typeof SLC_ARTISTS) {
     const spotifyProfiles = await db.select().from(artistExternalProfiles)
       .where(eq(artistExternalProfiles.platform, "spotify"));
 
+    // Load the deleted-releases blocklist (spotifyIds of releases that an
+    // admin has explicitly deleted). The sync skips any album whose
+    // spotifyId is in this set, so deleted releases don't get re-imported.
+    // Wrapped in try/catch because the table may not exist yet on deploys
+    // that haven't run ensure-tables — in that case we just skip the filter.
+    let blockedSpotifyIds = new Set<string>();
+    try {
+      const blocklistRows = await db
+        .select({ spotifyId: deletedReleasesBlocklist.spotifyId })
+        .from(deletedReleasesBlocklist);
+      blockedSpotifyIds = new Set(blocklistRows.map((r) => r.spotifyId));
+      if (blockedSpotifyIds.size > 0) {
+        console.log(`[Cron Sync] Blocklist: ${blockedSpotifyIds.size} blocked spotifyId(s) will be skipped`);
+      }
+    } catch (blocklistError) {
+      console.warn("[Cron Sync] Could not read blocklist (table may not exist yet):", blocklistError);
+    }
+
     const artistByNameMap = new Map<string, { artist: typeof dbArtists[0]; spotifyId: string | null }>();
     const artistBySpotifyIdMap = new Map<string, typeof dbArtists[0]>();
 
@@ -139,6 +157,14 @@ async function runSync(artistsToProcess: typeof SLC_ARTISTS) {
         results.totalReleasesFound += albums.length;
 
         for (const album of albums) {
+          // Skip albums in the deleted-releases blocklist. The admin has
+          // explicitly deleted these and we don't want the sync to bring
+          // them back.
+          if (blockedSpotifyIds.has(album.id)) {
+            console.log(`[Cron Sync] Skipping blocked album: ${album.name} (${album.id})`);
+            continue;
+          }
+
           if (processedReleaseIds.has(album.id)) {
             const [existingRelease] = await db.select().from(releases)
               .where(eq(releases.spotifyId, album.id)).limit(1);
