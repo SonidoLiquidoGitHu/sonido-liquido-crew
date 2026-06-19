@@ -625,7 +625,8 @@ export async function postToInstagram(
 export async function postToInstagramStory(
   imageUrl: string,
   caption: string,
-  linkUrl?: string
+  linkUrl?: string,
+  options?: { composeForStory?: boolean }
 ): Promise<InstagramPostResult> {
   if (!(await isMetaConfiguredAsync())) {
     return { success: false, mediaId: null, permalink: null, error: "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
@@ -639,6 +640,31 @@ export async function postToInstagramStory(
       permalink: null,
       error: "Instagram Business Account not found — make sure your FB Page is connected to an IG Business Account in Meta Business Settings",
     };
+  }
+
+  // If composeForStory is requested, route the image through the Story composer
+  // endpoint which pads the image to a 1080×1920 frame with black bars.
+  // This prevents Instagram from auto-cropping the image (which was causing
+  // images to appear oversized/cut off in Stories).
+  let finalImageUrl = imageUrl;
+  if (options?.composeForStory && imageUrl) {
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || "https://sonidoliquido.com";
+      const composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}`;
+      // Quick HEAD request to verify the composer can fetch + process the image.
+      // If it fails, fall back to the raw image URL (IG will crop it — better
+      // than failing the entire Story post).
+      const probe = await fetch(composerUrl, { method: "GET", signal: AbortSignal.timeout(20_000) });
+      if (probe.ok) {
+        finalImageUrl = composerUrl;
+        console.log("[Meta] Story image composer: using composed 1080×1920 image");
+      } else {
+        console.warn(`[Meta] Story image composer returned HTTP ${probe.status}, falling back to raw image URL`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.warn(`[Meta] Story image composer failed (${msg}), falling back to raw image URL`);
+    }
   }
 
   if (!imageUrl) {
@@ -659,7 +685,7 @@ export async function postToInstagramStory(
 
     const containerBody: Record<string, string | boolean> = {
       media_type: "STORIES",
-      image_url: imageUrl,
+      image_url: finalImageUrl,
       access_token: token,
     };
 
@@ -1892,7 +1918,8 @@ export async function processQueueItem(
       igStoryResult = await postToInstagramStory(
         item.imageUrl,
         caption,
-        item.linkUrl || undefined
+        item.linkUrl || undefined,
+        { composeForStory: true }
       );
 
       // Log the Story result separately so it shows up in admin history
