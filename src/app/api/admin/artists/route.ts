@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artists, artistExternalProfiles } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
-import { generateUUID, slugify } from "@/lib/utils";
+import { generateUUID, slugify, extractSpotifyId } from "@/lib/utils";
 
 /**
  * GET /api/admin/artists - Get all artists for admin selectors
@@ -122,11 +122,19 @@ export async function POST(request: NextRequest) {
     if (body.externalProfiles && Array.isArray(body.externalProfiles)) {
       for (const profile of body.externalProfiles) {
         if (profile.externalUrl) {
+          // Auto-extract Spotify ID from URL when platform is "spotify"
+          // and externalId was not explicitly provided. This lets admins
+          // paste just the artist URL without manually copying the ID.
+          let externalId = profile.externalId || null;
+          if (profile.platform === "spotify" && !externalId) {
+            externalId = extractSpotifyId(profile.externalUrl);
+          }
+
           await db.insert(artistExternalProfiles).values({
             id: generateUUID(),
             artistId,
             platform: profile.platform,
-            externalId: profile.externalId || null,
+            externalId,
             externalUrl: profile.externalUrl,
             handle: profile.handle || null,
             displayName: profile.displayName || null,

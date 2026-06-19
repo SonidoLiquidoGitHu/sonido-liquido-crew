@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artists, artistExternalProfiles, artistGalleryAssets, artistRelations, artistEpk } from "@/db/schema";
 import { eq, or } from "drizzle-orm";
-import { generateUUID, slugify } from "@/lib/utils";
+import { generateUUID, slugify, extractSpotifyId } from "@/lib/utils";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -146,12 +146,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       // Insert new profiles
       for (const profile of body.externalProfiles) {
         if (profile.externalUrl) {
+          // Auto-extract Spotify ID from URL when platform is "spotify"
+          // and externalId was not explicitly provided. This lets admins
+          // paste just the artist URL without manually copying the ID.
+          let externalId = profile.externalId || null;
+          if (profile.platform === "spotify" && !externalId) {
+            externalId = extractSpotifyId(profile.externalUrl);
+          }
+
           await db.insert(artistExternalProfiles).values({
             id: generateUUID(),
             artistId: id,
             platform: profile.platform,
             externalUrl: profile.externalUrl,
-            externalId: profile.externalId || null,
+            externalId,
             handle: profile.handle || null,
             isVerified: profile.isVerified || false,
           });
@@ -352,12 +360,18 @@ export async function POST(request: NextRequest) {
     if (body.externalProfiles) {
       for (const profile of body.externalProfiles) {
         if (profile.externalUrl) {
+          // Auto-extract Spotify ID from URL when platform is "spotify"
+          let externalId = profile.externalId || null;
+          if (profile.platform === "spotify" && !externalId) {
+            externalId = extractSpotifyId(profile.externalUrl);
+          }
+
           await db.insert(artistExternalProfiles).values({
             id: generateUUID(),
             artistId: id,
             platform: profile.platform,
             externalUrl: profile.externalUrl,
-            externalId: profile.externalId || null,
+            externalId,
             handle: profile.handle || null,
             isVerified: false,
           });

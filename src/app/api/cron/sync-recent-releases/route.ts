@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { releases, releaseArtists, artists, artistExternalProfiles, deletedReleasesBlocklist } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNotNull } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 import { spotifyClient } from "@/lib/clients";
 import { releasesRepository } from "@/lib/repositories";
@@ -10,8 +10,15 @@ import { releasesRepository } from "@/lib/repositories";
 // LIGHTWEIGHT DAILY SYNC - RECENT RELEASES ONLY
 // ===========================================
 // Designed for scheduled/cron use. Uses spotifyClient (env var credentials).
-// Processes one artist at a time via ?artist=INDEX (0-14) or all.
+// Processes one artist at a time via ?artist=INDEX (0-based) or all.
 // Handles multi-artist collaborations properly.
+//
+// The roster is DYNAMIC — sourced from the `artists` table joined with
+// `artist_external_profiles` (platform='spotify', external_id IS NOT NULL).
+// To add an artist to the sync roster: set them active in /admin/artists
+// and add a Spotify profile URL (the Spotify ID is auto-extracted from
+// the URL on save). To remove an artist: deactivate them or remove their
+// Spotify profile.
 //
 // IMPORTANT: Uses fire-and-forget pattern. Responds immediately with 202
 // and processes in the background. This prevents Netlify CDN inactivity timeouts.
@@ -19,23 +26,53 @@ import { releasesRepository } from "@/lib/repositories";
 
 export const maxDuration = 60;
 
-const SLC_ARTISTS = [
-  { name: "Brez", spotifyId: "2jJmTEMkGQfH3BxoG3MQvF" },
-  { name: "Bruno Grasso", spotifyId: "4fNQqyvcM71IyF2EitEtCj" },
-  { name: "Chas 7P", spotifyId: "3RAg8fPmZ8RnacJO8MhLP1" },
-  { name: "Codak", spotifyId: "2zrv1oduhIYh29vvQZwI5r" },
-  { name: "Dilema", spotifyId: "3eCEorgAoZkvnAQLdy4x38" },
-  { name: "Fancy Freak", spotifyId: "5TMoczTLclVyzzDY5qf3Yb" },
-  { name: "Hassyel", spotifyId: "6AN9ek9RwrLbSp9rT2lcDG" },
-  { name: "Kev Cabrone", spotifyId: "0QdRhOmiqAcV1dPCoiSIQJ" },
-  { name: "Latin Geisha", spotifyId: "16YScXC67nAnFDcA2LGdY0" },
-  { name: "Peon MC", spotifyId: "1SIBJEB7cX3QRhAVTqNc5N" },
-  { name: "Pepe Levine", spotifyId: "5HrBwfVDf0HXzGDrJ6Znqc" },
-  { name: "Q Master Weed", spotifyId: "4T4Z7jvUcMV16VsslRRuC5" },
-  { name: "Reick One", spotifyId: "4UqFXhJVb9zy2SbNx4ycJQ" },
-  { name: "X Santa-Ana", spotifyId: "2Apt0MjZGqXAd1pl4LNQrR" },
-  { name: "Zaque", spotifyId: "4WQmw3fIx9F7iPKL5v8SCN" },
-];
+// ===========================================
+// DYNAMIC ROSTER — sourced from DB
+// ===========================================
+// Returns active artists that have a Spotify external profile with a
+// non-null externalId. Sorted by sort_order, then name — same order the
+// admin UI shows, so artist INDEX N in the cron matches INDEX N in the
+// admin's mental model of "the roster".
+type SyncRosterEntry = { name: string; spotifyId: string; artistId: string };
+
+async function getSyncRoster(): Promise<SyncRosterEntry[]> {
+  try {
+    const rows = await db
+      .select({
+        artistId: artists.id,
+        name: artists.name,
+        spotifyId: artistExternalProfiles.externalId,
+        sortOrder: artists.sortOrder,
+      })
+      .from(artists)
+      .innerJoin(
+        artistExternalProfiles,
+        and(
+          eq(artistExternalProfiles.artistId, artists.id),
+          eq(artistExternalProfiles.platform, "spotify"),
+          isNotNull(artistExternalProfiles.externalId)
+        )
+      )
+      .where(eq(artists.isActive, true))
+      .orderBy(artists.sortOrder, artists.name);
+
+    // Filter out any rows where spotifyId ended up null/empty (defensive —
+    // the join condition already requires isNotNull, but libsql sometimes
+    // returns empty strings instead of null)
+    const roster: SyncRosterEntry[] = rows
+      .filter((r) => r.spotifyId && r.spotifyId.trim().length > 0)
+      .map((r) => ({
+        name: r.name,
+        spotifyId: r.spotifyId!,
+        artistId: r.artistId,
+      }));
+
+    return roster;
+  } catch (error) {
+    console.error("[Cron Sync] Failed to load roster from DB:", error);
+    return [];
+  }
+}
 
 function mapAlbumType(albumType: string): "album" | "ep" | "single" | "compilation" {
   switch (albumType.toLowerCase()) {
@@ -62,7 +99,7 @@ function getBestCoverImage(images: { url: string; width: number; height: number 
 // ===========================================
 // CORE SYNC LOGIC (shared between fire-and-forget and wait modes)
 // ===========================================
-async function runSync(artistsToProcess: typeof SLC_ARTISTS) {
+async function runSync(artistsToProcess: SyncRosterEntry[]) {
   const results = {
     success: true,
     timestamp: new Date().toISOString(),
@@ -113,7 +150,11 @@ async function runSync(artistsToProcess: typeof SLC_ARTISTS) {
       artistByNameMap.set(artist.name.toLowerCase(), { artist, spotifyId });
       if (spotifyId) artistBySpotifyIdMap.set(spotifyId, artist);
     }
-    for (const slcArtist of SLC_ARTISTS) {
+    // Also seed artistBySpotifyIdMap from the roster we're about to process,
+    // so that album.artists[].id lookups (for collaboration attribution)
+    // work even if the artist was added to the roster but their profile
+    // row in artist_external_profiles hasn't propagated yet.
+    for (const slcArtist of artistsToProcess) {
       if (!artistBySpotifyIdMap.has(slcArtist.spotifyId)) {
         const dbEntry = artistByNameMap.get(slcArtist.name.toLowerCase());
         if (dbEntry) artistBySpotifyIdMap.set(slcArtist.spotifyId, dbEntry.artist);
@@ -337,9 +378,25 @@ export async function POST(request: NextRequest) {
 
   const artistIndex = request.nextUrl.searchParams.get("artist");
   const wait = request.nextUrl.searchParams.get("wait") === "true";
+
+  // Load the roster dynamically from the DB. To add/remove an artist
+  // from sync, edit /admin/artists (toggle isActive or add/remove the
+  // Spotify profile) — no code change needed.
+  const fullRoster = await getSyncRoster();
   const artistsToProcess = artistIndex !== null
-    ? [SLC_ARTISTS[parseInt(artistIndex)]].filter(Boolean)
-    : SLC_ARTISTS;
+    ? [fullRoster[parseInt(artistIndex)]].filter(Boolean)
+    : fullRoster;
+
+  if (artistsToProcess.length === 0) {
+    return NextResponse.json({
+      success: true,
+      message: artistIndex !== null
+        ? `No artist at index ${artistIndex} in roster (roster has ${fullRoster.length} artists).`
+        : "Sync roster is empty. Add active artists with a Spotify profile in /admin/artists.",
+      artists: 0,
+      timestamp: new Date().toISOString(),
+    }, { status: 200 });
+  }
 
   // IMPORTANT: Always use fire-and-forget pattern to prevent Netlify CDN inactivity timeout.
   // The Spotify API can be slow from serverless environments, and the CDN kills connections
@@ -376,7 +433,8 @@ export async function POST(request: NextRequest) {
 }
 
 // ===========================================
-// GET - Status check
+// GET - Status check (also returns the dynamic roster so the Netlify
+// scheduled function knows how many artists to iterate over)
 // ===========================================
 export async function GET() {
   try {
@@ -385,13 +443,16 @@ export async function GET() {
       .filter(r => r.releaseDate)
       .sort((a, b) => new Date(b.releaseDate!).getTime() - new Date(a.releaseDate!).getTime())[0];
 
+    const roster = await getSyncRoster();
+
     return NextResponse.json({
       success: true,
       totalReleases: totalReleases.length,
       latestRelease: latestRelease ? { title: latestRelease.title, releaseDate: latestRelease.releaseDate } : null,
-      message: "POST to sync (responds immediately as 202, processes in background). Add ?wait=true to wait for results (may timeout). Add ?artist=0-14 for single artist.",
+      message: "POST to sync (responds immediately as 202, processes in background). Add ?wait=true to wait for results. Add ?artist=N for single artist (0-indexed, max = roster length - 1).",
       spotifyConfigured: spotifyClient.isConfigured(),
-      artists: SLC_ARTISTS.map((a, i) => ({ index: i, name: a.name, spotifyId: a.spotifyId })),
+      rosterSize: roster.length,
+      artists: roster.map((a, i) => ({ index: i, name: a.name, spotifyId: a.spotifyId })),
     });
   } catch (error) {
     return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
