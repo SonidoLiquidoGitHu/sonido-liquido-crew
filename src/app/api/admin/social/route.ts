@@ -1659,9 +1659,11 @@ async function handleAutopostUpcomingEvent() {
     );
     const HARD_24H_CAP = anyEventWithinWeek ? 3 : 2;
 
-    // === HARD BACKSTOP: count all successful event posts in the last 24h ===
-    // This is independent of which event was posted — it caps the TOTAL event
-    // posting volume per day. If we already hit the cap, refuse to post.
+    // === HARD BACKSTOP: count successful event IG Story posts in the last 24h ===
+    // IMPORTANT: We count ONLY platform='instagram_story' entries because each
+    // event autopost creates TWO log rows (one for FB, one for IG Story). If
+    // we counted both, the cap would be off by 2x. Counting only IG Story
+    // entries gives us the true number of event Story posts the user sees.
     const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const recent24hPosts = await db
       .select({ id: socialPostsLog.id })
@@ -1669,6 +1671,7 @@ async function handleAutopostUpcomingEvent() {
       .where(
         and(
           eq(socialPostsLog.contentType, "event"),
+          eq(socialPostsLog.platform, "instagram_story"),
           eq(socialPostsLog.status, "success"),
           gt(socialPostsLog.postedAt, cutoff24h)
         )
@@ -1677,11 +1680,11 @@ async function handleAutopostUpcomingEvent() {
 
     if (postsInLast24h >= HARD_24H_CAP) {
       console.log(
-        `[Social API] Hard 24h cap reached: ${postsInLast24h}/${HARD_24H_CAP} event posts in the last 24h (cap is ${HARD_24H_CAP} because ${anyEventWithinWeek ? "an event is within 1 week" : "no events within 1 week"}). Refusing to post.`
+        `[Social API] Hard 24h cap reached: ${postsInLast24h}/${HARD_24H_CAP} event IG Story posts in the last 24h (cap is ${HARD_24H_CAP} because ${anyEventWithinWeek ? "an event is within 1 week" : "no events within 1 week"}). Refusing to post.`
       );
       return NextResponse.json({
         success: false,
-        message: `Hard daily cap reached: ${postsInLast24h} event posts in the last 24h (max ${HARD_24H_CAP}). Skipping.`,
+        message: `Hard daily cap reached: ${postsInLast24h} event IG Story posts in the last 24h (max ${HARD_24H_CAP}). Skipping.`,
         alreadyPosted: true,
         postsInLast24h,
         hardCap: HARD_24H_CAP,
