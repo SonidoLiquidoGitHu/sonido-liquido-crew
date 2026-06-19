@@ -1642,14 +1642,22 @@ async function handleAutopostUpcomingEvent() {
     }
 
     // Tiered event posting frequency based on proximity:
-    // - More than 1 week away: 2 times/day → 12-hour dedup window
-    // - Within 1 week of the event: 3 times/day → 8-hour dedup window
-    // HARD BACKSTOP: Never more than 3 successful event Story posts in 24h,
-    // regardless of how many upcoming events exist or what the dedup window is.
+    // - ALL events more than 1 week away: 2 posts/day max (12h dedup, cap=2)
+    // - AT LEAST ONE event within 1 week: 3 posts/day max (8h dedup, cap=3)
+    //
+    // The hard cap is DYNAMIC — it depends on whether any upcoming event is
+    // close. This means when nothing is imminent, you see at most 2 event
+    // Stories per day. When something is within 1 week, you see up to 3.
+    // The cap applies to TOTAL event posts across all events, not per-event.
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-    const DEDUP_FAR_HOURS = 12;   // events >1 week away → 2x/day
-    const DEDUP_NEAR_HOURS = 8;   // events within 1 week → 3x/day
-    const HARD_24H_CAP = 3;       // absolute max event posts per 24h
+    const DEDUP_FAR_HOURS = 12;   // events >1 week away → 12h between posts
+    const DEDUP_NEAR_HOURS = 8;   // events within 1 week → 8h between posts
+
+    // If ANY upcoming event is within 1 week, allow 3/day. Otherwise cap at 2/day.
+    const anyEventWithinWeek = upcomingEvents.some(
+      (e) => new Date(e.eventDate).getTime() - now.getTime() <= ONE_WEEK_MS
+    );
+    const HARD_24H_CAP = anyEventWithinWeek ? 3 : 2;
 
     // === HARD BACKSTOP: count all successful event posts in the last 24h ===
     // This is independent of which event was posted — it caps the TOTAL event
@@ -1669,13 +1677,14 @@ async function handleAutopostUpcomingEvent() {
 
     if (postsInLast24h >= HARD_24H_CAP) {
       console.log(
-        `[Social API] Hard 24h cap reached: ${postsInLast24h}/${HARD_24H_CAP} event posts in the last 24h. Refusing to post again.`
+        `[Social API] Hard 24h cap reached: ${postsInLast24h}/${HARD_24H_CAP} event posts in the last 24h (cap is ${HARD_24H_CAP} because ${anyEventWithinWeek ? "an event is within 1 week" : "no events within 1 week"}). Refusing to post.`
       );
       return NextResponse.json({
         success: false,
         message: `Hard daily cap reached: ${postsInLast24h} event posts in the last 24h (max ${HARD_24H_CAP}). Skipping.`,
         alreadyPosted: true,
         postsInLast24h,
+        hardCap: HARD_24H_CAP,
       });
     }
 
