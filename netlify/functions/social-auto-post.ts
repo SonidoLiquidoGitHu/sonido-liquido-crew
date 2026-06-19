@@ -153,49 +153,26 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     );
 
     // ===========================================
-    // STEP 1: AUTOPOST UPCOMING EVENT (independent of queue)
+    // STEP 1: AUTOPOST UPCOMING EVENT — DISABLED INDEFINITELY
     // ===========================================
-    // Posts the nearest upcoming event to FB (feed) + IG (Story).
-    // Tiered frequency:
-    //   - More than 1 week before event: 2x/day (12-hour dedup)
-    //   - Within 1 week of event:        3x/day (8-hour dedup)
-    // The dedup is enforced BOTH in the API handler (handleAutopostUpcomingEvent)
-    // AND here as a hard backstop (max 3 successful event Story posts / 24h).
+    // The event autopost has been posting the same event to IG Stories
+    // repeatedly despite multiple fix attempts. Until we can verify the
+    // dedup/cap logic actually works against real production data, this
+    // step is OFF.
+    //
+    // Events will still appear in the regular queue rotation (Step 2) and
+    // post to FB + IG feed (NOT Stories) in their proper turn.
+    //
+    // To re-enable: replace this block with the original fetch call to
+    // /api/admin/social with action=autopost-upcoming-event. But BEFORE
+    // re-enabling, run a manual test and check the social_posts_log table
+    // to confirm the cap is actually firing.
     let eventAutopostResult: { success: boolean; message: string; event?: any } | null = null;
-
-    try {
-      console.log("[Social Auto-Post] Step 1: Checking for upcoming events to autopost...");
-      const eventResponse = await fetch(`${siteUrl}/api/admin/social`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ action: "autopost-upcoming-event" }),
-        signal: AbortSignal.timeout(50_000),
-      });
-
-      const eventData = await eventResponse.json();
-
-      if (eventData.success) {
-        console.log(`[Social Auto-Post] Event autoposted: ${eventData.message}`);
-        eventAutopostResult = {
-          success: true,
-          message: eventData.message,
-          event: eventData.event,
-        };
-      } else if (eventData.noEvents) {
-        console.log("[Social Auto-Post] No upcoming events to autopost.");
-        eventAutopostResult = { success: false, message: "No upcoming events" };
-      } else if (eventData.alreadyPosted) {
-        console.log("[Social Auto-Post] Upcoming event already posted recently, skipping.");
-        eventAutopostResult = { success: false, message: "Event already posted recently" };
-      } else {
-        console.warn(`[Social Auto-Post] Event autopost failed: ${eventData.message || eventData.error}`);
-        eventAutopostResult = { success: false, message: eventData.message || eventData.error || "Unknown error" };
-      }
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "Unknown error";
-      console.warn(`[Social Auto-Post] Event autopost exception: ${errMsg}`);
-      eventAutopostResult = { success: false, message: errMsg };
-    }
+    eventAutopostResult = {
+      success: false,
+      message: "Event autopost DISABLED — was posting duplicates to IG Stories",
+    };
+    console.log("[Social Auto-Post] Step 1 (event autopost) DISABLED");
 
     // ===========================================
     // STEP 2: PROCESS REGULAR QUEUE (as always)
