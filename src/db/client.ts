@@ -274,16 +274,22 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
       console.log("[DB] social_post_queue migrated successfully (youtube_video + processing)");
     }
 
-    // Also check social_posts_log for youtube_video + instagram_reel + facebook_reel
-    if (logSql && (!logSql.includes("youtube_video") || !logSql.includes("instagram_reel"))) {
-      console.log("[DB] Migrating social_posts_log: adding youtube_video, instagram_reel, facebook_reel to CHECK constraints...");
+    // Also check social_posts_log for youtube_video + instagram_reel + facebook_reel + instagram_story
+    // CRITICAL (2026-06-20): instagram_story was missing from the previous
+    // migration. Without it, every IG Story log insert silently failed
+    // with "CHECK constraint failed", which meant:
+    //   - today-counts story query returned 0 (cap never triggered)
+    //   - dedup set was always empty (same story reposted forever)
+    // Adding instagram_story here is the actual root-cause fix.
+    if (logSql && (!logSql.includes("youtube_video") || !logSql.includes("instagram_reel") || !logSql.includes("instagram_story"))) {
+      console.log("[DB] Migrating social_posts_log: adding youtube_video, instagram_reel, facebook_reel, instagram_story to CHECK constraints...");
       await client.execute("ALTER TABLE social_posts_log RENAME TO social_posts_log_old");
       await client.execute(`
         CREATE TABLE social_posts_log (
           id TEXT PRIMARY KEY NOT NULL,
           queue_id TEXT NOT NULL,
-          platform TEXT NOT NULL CHECK(platform IN ('facebook','instagram','tiktok','instagram_reel','facebook_reel')),
-          content_type TEXT NOT NULL CHECK(content_type IN ('gallery_photo','spotify_track','artist_profile','curated_track','vertical_video','youtube_video')),
+          platform TEXT NOT NULL CHECK(platform IN ('facebook','instagram','tiktok','instagram_reel','facebook_reel','instagram_story')),
+          content_type TEXT NOT NULL CHECK(content_type IN ('gallery_photo','spotify_track','artist_profile','curated_track','vertical_video','youtube_video','event')),
           source_id TEXT NOT NULL,
           image_url TEXT NOT NULL,
           caption TEXT,
@@ -308,7 +314,7 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
           SELECT * FROM social_posts_log_old
       `);
       await client.execute("DROP TABLE social_posts_log_old");
-      console.log("[DB] social_posts_log migrated successfully (youtube_video + reels)");
+      console.log("[DB] social_posts_log migrated successfully (youtube_video + reels + instagram_story)");
     }
   } catch (err) {
     console.error("[DB] Stale CHECK constraint migration failed (non-fatal):", err);
@@ -514,8 +520,8 @@ async function runAutoMigration(client: Client): Promise<void> {
       `CREATE TABLE IF NOT EXISTS social_posts_log (
         id TEXT PRIMARY KEY NOT NULL,
         queue_id TEXT NOT NULL,
-        platform TEXT NOT NULL CHECK(platform IN ('facebook','instagram','tiktok')),
-        content_type TEXT NOT NULL CHECK(content_type IN ('gallery_photo','spotify_track','artist_profile','curated_track','vertical_video')),
+        platform TEXT NOT NULL CHECK(platform IN ('facebook','instagram','tiktok','instagram_reel','facebook_reel','instagram_story')),
+        content_type TEXT NOT NULL CHECK(content_type IN ('gallery_photo','spotify_track','artist_profile','curated_track','vertical_video','youtube_video','event')),
         source_id TEXT NOT NULL,
         image_url TEXT NOT NULL,
         caption TEXT,
