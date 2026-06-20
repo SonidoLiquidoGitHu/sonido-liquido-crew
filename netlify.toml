@@ -49,15 +49,13 @@
   schedule = "0 */6 * * *"
   max_duration = 60
 
-# Scheduled function: social auto-poster
-# Runs every hour. The function itself checks the configured schedule hours
-# (stored in DB) to decide whether to post. This allows the admin to customize
-# posting times and frequency from the UI without redeploying.
-# Running every hour ensures all CST hours are covered (CST = UTC-6,
-# so odd CST hours map to odd UTC hours which a 2-hour cron would miss).
-# Default schedule: 4am, 10am, 3pm Mexico City time (CST = UTC-6)
+# Scheduled function: social auto-poster — HARD-DISABLED 2026-06-20
+# Schedule REMOVED to stop Netlify cron from invoking this function.
+# The function body also has an EMERGENCY KILL SWITCH that returns immediately.
+# Both must be restored (schedule line + kill switch removal) once root cause
+# of uncontrollable posting is fixed and verified against production.
+# Previous schedule was: "0 * * * *" (every hour)
 [functions."social-auto-post"]
-  schedule = "0 * * * *"
   max_duration = 60
 
 [[plugins]]
