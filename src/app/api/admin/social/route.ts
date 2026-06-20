@@ -133,15 +133,23 @@ export async function GET(request: NextRequest) {
         );
 
       // Count successful IG STORIES since startOfTodayCST.
-      // Stories = platform='instagram_story' AND status='success' AND
-      // postedAt >= startOfTodayCST.
+      // Stories = status='success' AND postedAt >= startOfTodayCST AND
+      // queueId LIKE 'throwback-%' (the prefix applied by
+      // handleProcessNextStoryOnly when it logs a Story).
+      //
+      // CRITICAL FIX (2026-06-20): The previous filter on platform='instagram_story'
+      // silently returned 0 in production (likely a column-value mismatch in
+      // older deployed rows), which made the daily cap NEVER trigger and let
+      // stories post every single scheduled hour. Stories are now identified
+      // by their queueId prefix 'throwback-' (set by handleProcessNextStoryOnly),
+      // which is deterministic and immune to platform-value drift.
       const storyCountRow = await db
         .select({ count: count() })
         .from(socialPostsLog)
         .where(
           and(
             eq(socialPostsLog.status, "success"),
-            eq(socialPostsLog.platform, "instagram_story"),
+            like(socialPostsLog.queueId, "throwback-%"),
             gte(socialPostsLog.postedAt, startOfTodayCST)
           )
         );
@@ -511,33 +519,55 @@ async function handleProcessNextStoryOnly() {
       });
     }
 
-    // Get recent story logs (last 7 days) for deduplication
+    // Get recent story logs (last 7 days) for deduplication.
+    // CRITICAL FIX (2026-06-20): Was filtering on platform='instagram_story'
+    // which silently returned 0 in production (same column-value drift bug as
+    // today-counts). Switched to queueId prefix 'throwback-' which is
+    // deterministic. Without this fix, recentStorySourceIds was empty, so
+    // the .find() below matched the FIRST eligible item every single time
+    // and posted the same Story every hour forever.
     const recentStoryLogs = await db
       .select({
-        imageUrl: socialPostsLog.imageUrl,
         sourceId: socialPostsLog.sourceId,
       })
       .from(socialPostsLog)
       .where(
         and(
-          eq(socialPostsLog.platform, "instagram_story"),
+          like(socialPostsLog.queueId, "throwback-%"),
           eq(socialPostsLog.status, "success"),
           gt(socialPostsLog.postedAt, sevenDaysAgo)
         )
       );
 
-    // Build a dedup set keyed by (sourceId + imageUrl) so the same content
-    // doesn't repeat as a Story within 7 days
-    const recentStoryKeys = new Set(
-      recentStoryLogs.map((log) => `${log.sourceId}::${log.imageUrl}`)
+    // Build a dedup set keyed by sourceId only. CRITICAL FIX (2026-06-20):
+    // The previous key was `${sourceId}::${imageUrl}`. But the imageUrl in
+    // social_posts_log is the rewritten publicImageUrl (e.g.
+    // https://sonidoliquido.com/api/social/og/...), while socialPostQueue
+    // stores the original URL (e.g. https://i.scdn.co/...). These never
+    // matched, so dedup never fired.
+    const recentStorySourceIds = new Set(
+      recentStoryLogs.map((log) => log.sourceId).filter(Boolean)
     );
 
-    // Pick the first eligible item not in the recent-story dedup set
+    // Pick the first eligible item whose sourceId has NOT been used as a
+    // Story in the last 7 days. CRITICAL FIX (2026-06-20): Removed the
+    // `|| eligibleItems[0]` fallback — that fallback defeated the dedup
+    // entirely, because once all 50 eligible items had been used as
+    // stories, it just reposted the most recent one forever.
     const throwbackItem = eligibleItems.find(
-      (item) => !recentStoryKeys.has(`${item.sourceId}::${item.imageUrl}`)
-    ) || eligibleItems[0]; // fallback to most recent if all have been used recently
+      (item) => !recentStorySourceIds.has(item.sourceId)
+    );
 
-    if (!throwbackItem || !throwbackItem.imageUrl) {
+    if (!throwbackItem) {
+      return NextResponse.json({
+        success: false,
+        message: "All recently-posted items have already been used as Stories in the last 7 days. Skipping to prevent duplicates.",
+        skipped: true,
+        reason: "dedup_exhausted",
+      });
+    }
+
+    if (!throwbackItem.imageUrl) {
       return NextResponse.json({
         success: false,
         message: "No throwback item with a usable image was found.",
