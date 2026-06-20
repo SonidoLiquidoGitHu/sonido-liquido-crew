@@ -169,6 +169,61 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================
+    // DIAGNOSTIC: recent-logs — return ALL social_posts_log entries
+    // from the last 24h, UNFILTERED (no platform filter, no status
+    // filter). Used to diagnose why story-history returns 0 while
+    // stories are visibly being posted to IG.
+    // ============================================================
+    if (action === "recent-logs") {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recentLogs = await db
+        .select({
+          id: socialPostsLog.id,
+          queueId: socialPostsLog.queueId,
+          platform: socialPostsLog.platform,
+          contentType: socialPostsLog.contentType,
+          sourceId: socialPostsLog.sourceId,
+          status: socialPostsLog.status,
+          errorMessage: socialPostsLog.errorMessage,
+          postedAt: socialPostsLog.postedAt,
+          createdAt: socialPostsLog.createdAt,
+        })
+        .from(socialPostsLog)
+        .where(gte(socialPostsLog.postedAt, oneDayAgo))
+        .orderBy(desc(socialPostsLog.postedAt))
+        .limit(200);
+
+      // Also get a platform breakdown of ALL logs (no time filter)
+      const allPlatformBreakdown = await db
+        .select({
+          platform: socialPostsLog.platform,
+          count: count(),
+        })
+        .from(socialPostsLog)
+        .groupBy(socialPostsLog.platform);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          recentCount: recentLogs.length,
+          window: "24h",
+          since: oneDayAgo.toISOString(),
+          recentLogs: recentLogs.map((l) => ({
+            postedAt: l.postedAt ? new Date(l.postedAt).toISOString() : null,
+            createdAt: l.createdAt ? new Date(l.createdAt).toISOString() : null,
+            platform: l.platform,
+            status: l.status,
+            queueId: l.queueId,
+            contentType: l.contentType,
+            sourceId: l.sourceId,
+            errorMessage: l.errorMessage,
+          })),
+          allPlatformBreakdown,
+        },
+      });
+    }
+
+    // ============================================================
     // DIAGNOSTIC: story-history — return ALL IG story logs from
     // the past 14 days so we can see exactly when stories were
     // posted and identify the spam pattern.
@@ -592,6 +647,7 @@ async function handleProcessNextStoryOnly() {
 
     // Log to social_posts_log with queueId prefixed 'throwback-' so the
     // cron's daily-count filter excludes it from maxPostsPerDay
+    let logError: string | null = null;
     try {
       await db.insert(socialPostsLog).values({
         id: crypto.randomUUID(),
@@ -609,7 +665,8 @@ async function handleProcessNextStoryOnly() {
         errorMessage: storyResult.error || null,
         postedAt: new Date(),
       } as any);
-    } catch (logError) {
+    } catch (logErr) {
+      logError = logErr instanceof Error ? logErr.message : String(logErr);
       console.error("[Social API] Failed to log throwback story result:", logError);
     }
 
@@ -625,6 +682,7 @@ async function handleProcessNextStoryOnly() {
         instagramStory: storyResult,
       },
       throwback: true,
+      logError, // null if log insert succeeded; error message if it failed
     });
   } catch (error) {
     console.error("[Social API] process-next-story-only error:", error);
