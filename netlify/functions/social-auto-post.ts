@@ -3,38 +3,32 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 // ===========================================
 // NETLIFY SCHEDULED FUNCTION - SOCIAL AUTO-POSTER
 // ===========================================
-// Runs every hour and processes N items per run based on config.
-// The actual posting is controlled by AUTOPOST_POSTS_PER_RUN and
-// AUTOPOST_SCHEDULE_HOURS stored in the social_credentials DB table.
+// Runs every hour. Two independent paths:
 //
-// FEED HOURS (AUTOPOST_SCHEDULE_HOURS, Mexico City time):
-//   At each feed hour, the cron calls process-next, which picks the next
-//   pending item from the queue and posts it to FB (wall) + IG (feed).
-//   These calls are capped by AUTOPOST_MAX_POSTS_PER_DAY.
+//   FEED PATH  (at hours in AUTOPOST_SCHEDULE_HOURS, Mexico City time):
+//     Calls process-next, which posts the next pending queue item to
+//     FB (wall) + IG (feed). Capped at AUTOPOST_MAX_POSTS_PER_DAY per
+//     Mexico-City day.
 //
-// STORY HOURS (AUTOPOST_STORY_SCHEDULE_HOURS, Mexico City time):
-//   At each story hour, the cron calls process-next-story-only, which
-//   picks a recently-posted queue item as throwback content and posts
-//   it as an Instagram Story ONLY (no FB wall, no IG feed, no queue
-//   advancement). Story-only calls do NOT count against
-//   AUTOPOST_MAX_POSTS_PER_DAY.
+//   STORY PATH (at hours in AUTOPOST_STORY_SCHEDULE_HOURS, Mexico City time):
+//     Calls process-next-story-only, which picks a recently-posted queue
+//     item as throwback content and posts ONLY an IG Story. Capped at
+//     AUTOPOST_MAX_STORIES_PER_DAY per Mexico-City day. Independent of
+//     the feed cap.
 //
-// If a given hour is in BOTH schedules (overlapping), both calls fire
-// in that order: feed first, then throwback story.
+// If a given hour is in BOTH schedules, both paths fire (feed first,
+// then story). Each path checks its own daily cap BEFORE posting, so
+// overlapping hours still respect both limits.
 //
 // MANUAL TRIGGER (POST with Bearer CRON_SECRET):
-//   Bypasses the hour-matching check. Runs both feed and story paths
-//   so admins can verify both work. The feed path still respects
-//   maxPostsPerDay; the story path always fires once.
-//
-// Schedule matching uses hour-granularity: if the cron runs at an hour
-// that matches a scheduled hour (in UTC), it posts.
+//   Bypasses the hour-matching check. Still respects both daily caps.
 //
 // Mexico City is permanently UTC-6 (DST abolished in 2022).
 
 // Default config (used when DB is not accessible)
 const DEFAULT_POSTS_PER_RUN = 1;
-const DEFAULT_MAX_POSTS_PER_DAY = 3;
+const DEFAULT_MAX_POSTS_PER_DAY = 4;
+const DEFAULT_MAX_STORIES_PER_DAY = 3;
 const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm CST
 const DEFAULT_STORY_SCHEDULE_HOURS = [4, 10, 15]; // Default: same as feed
 const CST_OFFSET = 6; // Mexico City = UTC-6
@@ -62,12 +56,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   };
 
   try {
-    // First, get the schedule config from the API
+    // ===========================================
+    // STEP 0: Load schedule config from DB (via admin API)
+    // ===========================================
     const configUrl = `${siteUrl}/api/admin/social?action=schedule-config`;
     let postsPerRun = DEFAULT_POSTS_PER_RUN;
     let scheduleHours: number[] = DEFAULT_SCHEDULE_HOURS;
     let storyScheduleHours: number[] = DEFAULT_STORY_SCHEDULE_HOURS;
     let maxPostsPerDay = DEFAULT_MAX_POSTS_PER_DAY;
+    let maxStoriesPerDay = DEFAULT_MAX_STORIES_PER_DAY;
 
     try {
       const configRes = await fetch(configUrl, {
@@ -78,7 +75,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const configData = await configRes.json();
         if (configData.success && configData.data) {
           postsPerRun = configData.data.postsPerRun || DEFAULT_POSTS_PER_RUN;
-          // Only override default if the DB returned actual schedule hours
           if (configData.data.scheduleHours && configData.data.scheduleHours.length > 0) {
             scheduleHours = configData.data.scheduleHours;
           }
@@ -89,14 +85,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             storyScheduleHours = scheduleHours;
           }
           maxPostsPerDay = configData.data.maxPostsPerDay || DEFAULT_MAX_POSTS_PER_DAY;
+          maxStoriesPerDay = configData.data.maxStoriesPerDay ?? DEFAULT_MAX_STORIES_PER_DAY;
         }
       }
     } catch (err) {
       console.warn("[Social Auto-Post] Could not fetch schedule config, using defaults:", err);
     }
 
-    // Check if we should post at this hour
-    // Convert schedule hours (CST) to UTC and check if the current UTC hour matches
+    // ===========================================
+    // STEP 1: Decide which paths to run this hour
+    // ===========================================
+    // Convert CST schedule hours to UTC and check if the current UTC hour matches.
     const currentHourUTC = new Date().getUTCHours();
     const utcScheduleHours = scheduleHours.map(h => (h + CST_OFFSET) % 24);
     const utcStoryScheduleHours = storyScheduleHours.map(h => (h + CST_OFFSET) % 24);
@@ -105,12 +104,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const shouldPostStory = utcStoryScheduleHours.includes(currentHourUTC);
     const shouldRunAnything = shouldPostFeed || shouldPostStory;
 
-    // For manual triggers, always run both feed and story
+    // For manual triggers, always run both paths (caps still enforced below)
     const effectiveShouldPostFeed = isManualTrigger || shouldPostFeed;
     const effectiveShouldPostStory = isManualTrigger || shouldPostStory;
 
     if (!shouldRunAnything && !isManualTrigger) {
-      // Build a list of upcoming hours for both schedules for the log message
       const nextFeedHour = scheduleHours
         .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
         .sort((a, b) => a.utc - b.utc)
@@ -125,8 +123,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
         .sort((a, b) => a.utc - b.utc)[0];
 
+      const cstHour = ((currentHourUTC - CST_OFFSET) + 24) % 24;
       console.log(
-        `[Social Auto-Post] Not scheduled for this hour (UTC ${currentHourUTC} = CST ${currentHourUTC - CST_OFFSET >= 0 ? currentHourUTC - CST_OFFSET : currentHourUTC - CST_OFFSET + 24}). ` +
+        `[Social Auto-Post] Not scheduled for this hour (UTC ${currentHourUTC} = CST ${cstHour}). ` +
         `Feed hours (Mexico City): ${scheduleHours.join(", ")}. Next feed: ${nextFeedHour?.cst}:00 CST. ` +
         `Story hours (Mexico City): ${storyScheduleHours.join(", ")}. Next story: ${nextStoryHour?.cst}:00 CST.`
       );
@@ -145,35 +144,60 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
+    const cstHour = ((currentHourUTC - CST_OFFSET) + 24) % 24;
     console.log(
-      `[Social Auto-Post] Hour matches schedule! UTC ${currentHourUTC} = CST ${currentHourUTC - CST_OFFSET >= 0 ? currentHourUTC - CST_OFFSET : currentHourUTC - CST_OFFSET + 24}. ` +
-      `Feed: ${effectiveShouldPostFeed ? "YES" : "no"}. Story: ${effectiveShouldPostStory ? "YES" : "no"}. ` +
-      `Feed cap: ${maxPostsPerDay} posts/day.`
+      `[Social Auto-Post] Hour matches schedule! UTC ${currentHourUTC} = CST ${cstHour}. ` +
+      `Feed: ${effectiveShouldPostFeed ? "YES" : "no"} (cap ${maxPostsPerDay}/day). ` +
+      `Story: ${effectiveShouldPostStory ? "YES" : "no"} (cap ${maxStoriesPerDay}/day).`
     );
 
     // ===========================================
-    // STEP 1: AUTOPOST UPCOMING EVENT — DISABLED INDEFINITELY
+    // STEP 2: AUTOPOST UPCOMING EVENT — DISABLED INDEFINITELY
     // ===========================================
-    // The event autopost has been posting the same event to IG Stories
-    // repeatedly despite multiple fix attempts. Until we can verify the
-    // dedup/cap logic actually works against real production data, this
-    // step is OFF.
-    //
-    // Events will still appear in the regular queue rotation (Step 2) and
-    // post to FB + IG feed (NOT Stories) in their proper turn.
-    let eventAutopostResult: { success: boolean; message: string; event?: any } | null = null;
-    eventAutopostResult = {
+    // Was posting duplicates to IG Stories. Events still appear in the regular
+    // queue rotation (Step 3) and post to FB + IG feed (NOT Stories) in turn.
+    const eventAutopostResult = {
       success: false,
       message: "Event autopost DISABLED — was posting duplicates to IG Stories",
     };
-    console.log("[Social Auto-Post] Step 1 (event autopost) DISABLED");
+    console.log("[Social Auto-Post] Step 2 (event autopost) DISABLED");
 
     // ===========================================
-    // STEP 2: PROCESS REGULAR FEED QUEUE (with daily cap)
+    // STEP 3: FETCH TODAY'S COUNTS (single source of truth for caps)
     // ===========================================
-    // Only runs when this hour is a feed hour (or manual trigger).
-    // The daily cap (maxPostsPerDay) ONLY applies to feed posts —
-    // throwback stories in Step 3 do NOT consume this quota.
+    // Uses the dedicated /api/admin/social?action=today-counts endpoint so the
+    // timezone math (start-of-day CST) and the count SQL live in ONE place.
+    // Previously the cron computed startOfDayCST wrong (00:00 UTC - 6h = noon
+    // CST yesterday), which let evening hours over-post after the cap
+    // "reset" at 6pm CST. Now the API computes it correctly.
+    let postsMadeToday = 0;
+    let storiesMadeToday = 0;
+    try {
+      const countsUrl = `${siteUrl}/api/admin/social?action=today-counts`;
+      const countsRes = await fetch(countsUrl, {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (countsRes.ok) {
+        const countsData = await countsRes.json();
+        if (countsData.success && countsData.data) {
+          postsMadeToday = Number(countsData.data.feedPostsToday) || 0;
+          storiesMadeToday = Number(countsData.data.storiesToday) || 0;
+          console.log(
+            `[Social Auto-Post] Today's counts (since ${countsData.data.startOfTodayCST}): ` +
+            `feed=${postsMadeToday}/${maxPostsPerDay}, stories=${storiesMadeToday}/${maxStoriesPerDay}`
+          );
+        }
+      } else {
+        console.warn(`[Social Auto-Post] today-counts returned ${countsRes.status}, caps will be unenforceable`);
+      }
+    } catch (err) {
+      console.warn("[Social Auto-Post] Could not fetch today's counts:", err);
+    }
+
+    // ===========================================
+    // STEP 4: FEED PATH (capped by maxPostsPerDay)
+    // ===========================================
     let feedResult: { success: boolean; message: string; processedCount: number; skipped: boolean; reason?: string } = {
       success: false,
       message: "Feed path not run",
@@ -183,39 +207,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     };
 
     if (effectiveShouldPostFeed) {
-      // Check how many feed posts were already made today
-      // (excludes throwback-* and autopost-event-* entries from social_posts_log)
-      let postsMadeToday = 0;
-      try {
-        const logUrl = `${siteUrl}/api/admin/social`; // GET returns recentLogs
-        const logRes = await fetch(logUrl, {
-          headers,
-          signal: AbortSignal.timeout(10_000),
-        });
-        if (logRes.ok) {
-          const logData = await logRes.json();
-          if (logData.success && logData.data?.recentLogs) {
-            const now = new Date();
-            const startOfDayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-            // Count successful posts from today (using Mexico City day: CST = UTC-6)
-            const startOfDayCST = new Date(startOfDayUTC.getTime() - CST_OFFSET * 60 * 60 * 1000);
-            // Only count regular feed queue posts — exclude throwback-* and autopost-event-*
-            postsMadeToday = logData.data.recentLogs.filter(
-              (log: any) =>
-                log.status === "success" &&
-                new Date(log.postedAt) >= startOfDayCST &&
-                !log.queueId?.startsWith("autopost-event-") &&
-                !log.queueId?.startsWith("throwback-")
-            ).length;
-          }
-        }
-      } catch (err) {
-        console.warn("[Social Auto-Post] Could not check today's feed post count:", err);
-      }
-
       if (postsMadeToday >= maxPostsPerDay) {
         console.log(
-          `[Social Auto-Post] Feed daily limit reached: ${postsMadeToday}/${maxPostsPerDay} feed posts already made today. Skipping feed path.`
+          `[Social Auto-Post] Feed daily limit reached: ${postsMadeToday}/${maxPostsPerDay}. Skipping feed path.`
         );
         feedResult = {
           success: false,
@@ -241,7 +235,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
           try {
             // Feed path: process-next WITHOUT alsoPostStory. Stories are
-            // handled separately in Step 3 via process-next-story-only.
+            // handled separately in Step 5 via process-next-story-only.
             const bodyPayload: Record<string, unknown> = { action: "process-next" };
 
             const response = await fetch(processUrl, {
@@ -257,6 +251,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
               console.log(`[Social Auto-Post] Feed item ${i + 1}/${itemsToProcess} posted:`, data.message);
               feedResults.push({ success: true, message: data.message });
               processedCount++;
+              // Increment running count so a multi-item run respects the cap
+              // even if the DB count is slightly stale.
+              postsMadeToday++;
             } else if (response.ok && !data.success) {
               console.log(`[Social Auto-Post] No more feed items after ${processedCount} items:`, data.message);
               feedResults.push({ success: false, message: data.message });
@@ -283,47 +280,60 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // ===========================================
-    // STEP 3: THROWBACK IG STORY (separate from feed cap)
+    // STEP 5: STORY PATH (capped by maxStoriesPerDay — INDEPENDENT of feed cap)
     // ===========================================
-    // Only runs when this hour is a story hour (or manual trigger).
-    // Calls process-next-story-only which picks a recently-posted item
-    // and posts ONLY an IG Story (no FB wall, no IG feed). Does NOT
-    // count against maxPostsPerDay.
-    let storyResult: { success: boolean; message: string; throwback?: boolean } = {
+    // Calls process-next-story-only which picks a recently-posted item as
+    // throwback content and posts ONLY an IG Story. Does NOT consume a feed
+    // slot. Logged with queueId prefixed 'throwback-' so it's excluded from
+    // the feed-count SQL.
+    let storyResult: { success: boolean; message: string; throwback?: boolean; skipped?: boolean; reason?: string } = {
       success: false,
       message: "Story path not run",
     };
 
     if (effectiveShouldPostStory) {
-      const storyUrl = `${siteUrl}/api/admin/social`;
-      try {
-        const response = await fetch(storyUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ action: "process-next-story-only" }),
-          signal: AbortSignal.timeout(50_000),
-        });
+      if (storiesMadeToday >= maxStoriesPerDay) {
+        console.log(
+          `[Social Auto-Post] Story daily limit reached: ${storiesMadeToday}/${maxStoriesPerDay}. Skipping story path.`
+        );
+        storyResult = {
+          success: false,
+          message: `Daily story limit reached (${storiesMadeToday}/${maxStoriesPerDay})`,
+          skipped: true,
+          reason: "daily_limit_reached",
+        };
+      } else {
+        const storyUrl = `${siteUrl}/api/admin/social`;
+        try {
+          const response = await fetch(storyUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ action: "process-next-story-only" }),
+            signal: AbortSignal.timeout(50_000),
+          });
 
-        const data = await response.json();
+          const data = await response.json();
 
-        if (response.ok && data.success) {
-          console.log("[Social Auto-Post] Throwback IG Story posted:", data.message);
-          storyResult = {
-            success: true,
-            message: data.message,
-            throwback: !!data.throwback,
-          };
-        } else {
-          console.warn("[Social Auto-Post] Throwback IG Story did not post:", data.message || data.error);
-          storyResult = {
-            success: false,
-            message: data.message || data.error || "Story post failed",
-          };
+          if (response.ok && data.success) {
+            console.log("[Social Auto-Post] Throwback IG Story posted:", data.message);
+            storyResult = {
+              success: true,
+              message: data.message,
+              throwback: !!data.throwback,
+            };
+            storiesMadeToday++;
+          } else {
+            console.warn("[Social Auto-Post] Throwback IG Story did not post:", data.message || data.error);
+            storyResult = {
+              success: false,
+              message: data.message || data.error || "Story post failed",
+            };
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : "Unknown error";
+          console.error("[Social Auto-Post] Exception on throwback story:", errMsg);
+          storyResult = { success: false, message: errMsg };
         }
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : "Unknown error";
-        console.error("[Social Auto-Post] Exception on throwback story:", errMsg);
-        storyResult = { success: false, message: errMsg };
       }
     }
 
@@ -331,7 +341,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     console.log(
       `[Social Auto-Post] Run complete in ${elapsed}s: ` +
-      `Feed=${feedResult.message}, Story=${storyResult.success ? "yes" : "no"}`
+      `Feed=${feedResult.message}, Story=${storyResult.success ? "yes" : (storyResult.skipped ? "skipped: " + (storyResult.reason || "") : "no")}`
     );
 
     return {
@@ -343,11 +353,16 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         eventAutopost: eventAutopostResult,
         feedResult,
         storyResult,
+        counts: {
+          postsMadeToday,
+          storiesMadeToday,
+        },
         config: {
           postsPerRun,
           scheduleHours,
           storyScheduleHours,
           maxPostsPerDay,
+          maxStoriesPerDay,
           shouldPostFeed: effectiveShouldPostFeed,
           shouldPostStory: effectiveShouldPostStory,
         },

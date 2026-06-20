@@ -84,6 +84,72 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: config });
     }
 
+    // Today's counts endpoint — used by the Netlify cron function to enforce
+    // daily caps. Returns DB-level counts of feed posts and IG stories posted
+    // "today" in Mexico City time (CST = UTC-6 permanently).
+    //
+    // Why a dedicated endpoint instead of reusing recentLogs from GET /:
+    //   1. recentLogs is capped at 20 rows, which undercounts on busy days.
+    //   2. The previous cap math lived in the cron function and computed
+    //      `startOfDayCST` wrong (00:00 UTC - 6h = noon CST yesterday),
+    //      causing the cap to "reset" at 6pm CST and let evening hours
+    //      over-post.
+    //   3. Centralizing the timezone math here means the cron function
+    //      doesn't need to know about CST at all.
+    if (action === "today-counts") {
+      const CST_OFFSET_HOURS = 6;
+      const now = new Date();
+      // Mexico City is UTC-6. "Today CST" started at 00:00 CST, which is
+      // 06:00 UTC of the same calendar day IF current UTC >= 06:00.
+      // If current UTC < 06:00, "today CST" started at 06:00 UTC YESTERDAY.
+      const startOfTodayCST = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), CST_OFFSET_HOURS, 0, 0)
+      );
+      if (now.getUTCHours() < CST_OFFSET_HOURS) {
+        // Before 06:00 UTC → CST is still on yesterday's calendar date.
+        startOfTodayCST.setTime(startOfTodayCST.getTime() - 24 * 60 * 60 * 1000);
+      }
+
+      // Count successful feed posts since startOfTodayCST.
+      // Feed posts = anything in social_posts_log with status='success',
+      // postedAt >= startOfTodayCST, AND queueId NOT prefixed with
+      // 'throwback-' or 'autopost-event-' (those are stories, not feed).
+      const feedCountRow = await db
+        .select({ count: drizzleSql`COUNT(*)` })
+        .from(socialPostsLog)
+        .where(
+          drizzleSql`${socialPostsLog.status} = 'success'
+            AND ${socialPostsLog.postedAt} >= ${startOfTodayCST}
+            AND ${socialPostsLog.queueId} NOT LIKE 'throwback-%'
+            AND ${socialPostsLog.queueId} NOT LIKE 'autopost-event-%'`
+        );
+
+      // Count successful IG stories since startOfTodayCST.
+      // Stories = platform='instagram_story' AND status='success' AND
+      // postedAt >= startOfTodayCST.
+      const storyCountRow = await db
+        .select({ count: drizzleSql`COUNT(*)` })
+        .from(socialPostsLog)
+        .where(
+          drizzleSql`${socialPostsLog.status} = 'success'
+            AND ${socialPostsLog.platform} = 'instagram_story'
+            AND ${socialPostsLog.postedAt} >= ${startOfTodayCST}`
+        );
+
+      const feedPostsToday = Number(feedCountRow[0]?.count) || 0;
+      const storiesToday = Number(storyCountRow[0]?.count) || 0;
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          feedPostsToday,
+          storiesToday,
+          startOfTodayCST: startOfTodayCST.toISOString(),
+          nowUTC: now.toISOString(),
+        },
+      });
+    }
+
     // Get queue summary
     const queueSummary = await db
       .select({
@@ -2339,12 +2405,14 @@ async function getContentCounts() {
 // ===========================================
 // Keys used: AUTOPOST_SCHEDULE_HOURS (comma-separated hours in Mexico City time, e.g. "4,10,15")
 //            AUTOPOST_POSTS_PER_RUN (number of queue items to process per cron run)
-//            AUTOPOST_MAX_POSTS_PER_DAY (maximum posts per day)
+//            AUTOPOST_MAX_POSTS_PER_DAY (maximum FEED posts per day)
 //            AUTOPOST_STORY_SCHEDULE_HOURS (comma-separated hours for throwback IG Stories)
+//            AUTOPOST_MAX_STORIES_PER_DAY (maximum IG Stories per day)
 
 const DEFAULT_SCHEDULE_HOURS = [4, 10, 15]; // 4am, 10am, 3pm Mexico City time (CST = UTC-6 permanently)
 const DEFAULT_POSTS_PER_RUN = 1;
-const DEFAULT_MAX_POSTS_PER_DAY = 3;
+const DEFAULT_MAX_POSTS_PER_DAY = 4;
+const DEFAULT_MAX_STORIES_PER_DAY = 3;
 // Default story schedule = same as regular schedule (back-compat: if not set, stories
 // post at the same hours as regular feed posts, matching the original Option C behavior)
 const DEFAULT_STORY_SCHEDULE_HOURS = [4, 10, 15];
@@ -2354,6 +2422,7 @@ async function getScheduleConfig(): Promise<{
   storyScheduleHours: number[];
   postsPerRun: number;
   maxPostsPerDay: number;
+  maxStoriesPerDay: number;
 }> {
   try {
     const creds = await db
@@ -2367,6 +2436,7 @@ async function getScheduleConfig(): Promise<{
     const storyScheduleHoursStr = credMap.get("AUTOPOST_STORY_SCHEDULE_HOURS");
     const postsPerRunStr = credMap.get("AUTOPOST_POSTS_PER_RUN");
     const maxPostsPerDayStr = credMap.get("AUTOPOST_MAX_POSTS_PER_DAY");
+    const maxStoriesPerDayStr = credMap.get("AUTOPOST_MAX_STORIES_PER_DAY");
 
     let scheduleHours = DEFAULT_SCHEDULE_HOURS;
     if (scheduleHoursStr) {
@@ -2395,7 +2465,13 @@ async function getScheduleConfig(): Promise<{
       if (!isNaN(parsed) && parsed >= 1 && parsed <= 24) maxPostsPerDay = parsed;
     }
 
-    return { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay };
+    let maxStoriesPerDay = DEFAULT_MAX_STORIES_PER_DAY;
+    if (maxStoriesPerDayStr) {
+      const parsed = parseInt(maxStoriesPerDayStr);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 24) maxStoriesPerDay = parsed;
+    }
+
+    return { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay, maxStoriesPerDay };
   } catch (error) {
     console.warn("[Social API] Error reading schedule config:", error);
     return {
@@ -2403,13 +2479,14 @@ async function getScheduleConfig(): Promise<{
       storyScheduleHours: DEFAULT_STORY_SCHEDULE_HOURS,
       postsPerRun: DEFAULT_POSTS_PER_RUN,
       maxPostsPerDay: DEFAULT_MAX_POSTS_PER_DAY,
+      maxStoriesPerDay: DEFAULT_MAX_STORIES_PER_DAY,
     };
   }
 }
 
 async function handleSaveScheduleConfig(body: Record<string, unknown>) {
   try {
-    const { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay } = body;
+    const { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay, maxStoriesPerDay } = body;
 
     const configToSave: Array<{ key: string; value: string }> = [];
 
@@ -2444,6 +2521,13 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
       const val = parseInt(String(maxPostsPerDay));
       if (!isNaN(val) && val >= 1 && val <= 24) {
         configToSave.push({ key: "AUTOPOST_MAX_POSTS_PER_DAY", value: String(val) });
+      }
+    }
+
+    if (maxStoriesPerDay !== undefined) {
+      const val = parseInt(String(maxStoriesPerDay));
+      if (!isNaN(val) && val >= 0 && val <= 24) {
+        configToSave.push({ key: "AUTOPOST_MAX_STORIES_PER_DAY", value: String(val) });
       }
     }
 

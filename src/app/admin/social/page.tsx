@@ -110,6 +110,7 @@ interface ScheduleConfig {
   storyScheduleHours: number[];
   postsPerRun: number;
   maxPostsPerDay: number;
+  maxStoriesPerDay: number;
 }
 
 interface CredentialInfo {
@@ -248,7 +249,8 @@ export default function AdminSocialPage() {
   const [editScheduleHours, setEditScheduleHours] = useState<number[]>([]);
   const [editStoryScheduleHours, setEditStoryScheduleHours] = useState<number[]>([]);
   const [editPostsPerRun, setEditPostsPerRun] = useState(1);
-  const [editMaxPostsPerDay, setEditMaxPostsPerDay] = useState(3);
+  const [editMaxPostsPerDay, setEditMaxPostsPerDay] = useState(4);
+  const [editMaxStoriesPerDay, setEditMaxStoriesPerDay] = useState(3);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleSaveResult, setScheduleSaveResult] = useState<string | null>(null);
   const [debugResult, setDebugResult] = useState<Record<string, any> | null>(null);
@@ -292,6 +294,7 @@ export default function AdminSocialPage() {
           setEditStoryScheduleHours(data.data.scheduleConfig.storyScheduleHours || data.data.scheduleConfig.scheduleHours);
           setEditPostsPerRun(data.data.scheduleConfig.postsPerRun);
           setEditMaxPostsPerDay(data.data.scheduleConfig.maxPostsPerDay);
+          setEditMaxStoriesPerDay(data.data.scheduleConfig.maxStoriesPerDay ?? 3);
         }
       }
     } catch (error) {
@@ -433,6 +436,7 @@ export default function AdminSocialPage() {
           storyScheduleHours: editStoryScheduleHours,
           postsPerRun: editPostsPerRun,
           maxPostsPerDay: editMaxPostsPerDay,
+          maxStoriesPerDay: editMaxStoriesPerDay,
         }),
       });
       const data = await res.json();
@@ -1091,6 +1095,33 @@ export default function AdminSocialPage() {
               </div>
             </div>
 
+            {/* Max Stories Per Day */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Máximo de Stories por día</label>
+              <p className="text-xs text-slc-muted mb-3">
+                Límite diario de Instagram Stories (throwback). Independiente del límite de feed.
+                Si el cron intenta pasar este límite, se detiene la publicación de Stories.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setEditMaxStoriesPerDay(Math.max(0, editMaxStoriesPerDay - 1))}
+                  className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-pink-500/50 text-lg font-bold"
+                >
+                  −
+                </button>
+                <span className="text-2xl font-oswald w-12 text-center">{editMaxStoriesPerDay}</span>
+                <button
+                  onClick={() => setEditMaxStoriesPerDay(Math.min(24, editMaxStoriesPerDay + 1))}
+                  className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-pink-500/50 text-lg font-bold"
+                >
+                  +
+                </button>
+                <span className="text-sm text-slc-muted ml-2">
+                  (máximo {editMaxStoriesPerDay} Stor{editMaxStoriesPerDay === 1 ? "y" : "ies"} por día en Instagram)
+                </span>
+              </div>
+            </div>
+
             {/* Summary */}
             <div className="p-4 bg-slc-dark rounded-lg border border-slc-border mb-6">
               <h3 className="text-sm font-medium mb-2">Resumen de tu configuración</h3>
@@ -1111,16 +1142,19 @@ export default function AdminSocialPage() {
                   <span className="text-white font-medium">Posts por ejecución:</span> {editPostsPerRun}
                 </p>
                 <p>
-                  <span className="text-white font-medium">Máximo diario:</span> {editMaxPostsPerDay} posts
+                  <span className="text-white font-medium">Máximo diario (feed):</span> {editMaxPostsPerDay} posts
+                </p>
+                <p>
+                  <span className="text-white font-medium">Máximo diario (Stories):</span> {editMaxStoriesPerDay} Stories
                 </p>
                 <p>
                   <span className="text-white font-medium">Feed/día:</span>{" "}
-                  {(editScheduleHours.length || 3) * editPostsPerRun} posts × 2 plataformas ={" "}
-                  {(editScheduleHours.length || 3) * editPostsPerRun * 2} publicaciones
+                  {Math.min((editScheduleHours.length || 3) * editPostsPerRun, editMaxPostsPerDay)} posts × 2 plataformas ={" "}
+                  {Math.min((editScheduleHours.length || 3) * editPostsPerRun, editMaxPostsPerDay) * 2} publicaciones
                 </p>
                 <p>
                   <span className="text-white font-medium">Stories throwback/día:</span>{" "}
-                  {editStoryScheduleHours.length || editScheduleHours.length || 3} Stories
+                  {Math.min(editStoryScheduleHours.length || editScheduleHours.length || 3, editMaxStoriesPerDay)} Stories
                 </p>
               </div>
             </div>
