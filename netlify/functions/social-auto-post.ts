@@ -35,6 +35,42 @@ const CST_OFFSET = 6; // Mexico City = UTC-6
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   const startTime = Date.now();
+
+  // ============================================================
+  // EMERGENCY KILL SWITCH — DISABLED UNTIL ROOT CAUSE IS FIXED
+  // ============================================================
+  // The autopost has been posting uncontrollably (same Story 10+ times).
+  // To stop the bleeding IMMEDIATELY, this function is hard-disabled
+  // regardless of trigger source (cron, manual POST, anything).
+  //
+  // To re-enable: delete this block AND verify the fix actually works
+  // by running `action=debug-autopost` first and inspecting the counts.
+  // Do NOT re-enable based on assumption — verify against production.
+  console.log("[Social Auto-Post] EMERGENCY KILL SWITCH ACTIVE — autopost disabled until root cause is fixed");
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      success: false,
+      skipped: true,
+      message: "EMERGENCY KILL SWITCH: autopost disabled. Set AUTOPOST_ENABLED=true in env to re-enable.",
+      killed: true,
+    }),
+  };
+
+  // Allow explicit re-enable via env var (set in Netlify dashboard) for
+  // future testing. Default: disabled.
+  if (process.env.AUTOPOST_ENABLED !== "true") {
+    console.log("[Social Auto-Post] AUTOPOST_ENABLED != 'true' — skipping run");
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: false,
+        skipped: true,
+        message: "Autopost disabled (AUTOPOST_ENABLED env var is not 'true')",
+      }),
+    };
+  }
+
   console.log("[Social Auto-Post] Starting scheduled post run...");
 
   const siteUrl = process.env.URL || process.env.DEPLOY_URL || "https://sonidoliquido.com";
