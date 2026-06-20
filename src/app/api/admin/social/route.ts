@@ -19,7 +19,7 @@ import {
   videos,
   events,
 } from "@/db/schema";
-import { eq, desc, sql as drizzleSql, and, count, isNotNull, gt } from "drizzle-orm";
+import { eq, desc, sql as drizzleSql, and, count, isNotNull, gt, gte, like, not, ne } from "drizzle-orm";
 import {
   isMetaConfiguredAsync,
   validateToken,
@@ -110,30 +110,40 @@ export async function GET(request: NextRequest) {
         startOfTodayCST.setTime(startOfTodayCST.getTime() - 24 * 60 * 60 * 1000);
       }
 
-      // Count successful feed posts since startOfTodayCST.
-      // Feed posts = anything in social_posts_log with status='success',
-      // postedAt >= startOfTodayCST, AND queueId NOT prefixed with
-      // 'throwback-' or 'autopost-event-' (those are stories, not feed).
+      // Count successful FEED posts since startOfTodayCST.
+      // Feed posts = status='success', postedAt >= startOfTodayCST, AND
+      // queueId NOT prefixed with 'throwback-' or 'autopost-event-'.
+      //
+      // IMPORTANT: use drizzle operators (gte, not, like) instead of raw
+      // drizzleSql. The postedAt column is integer mode "timestamp", which
+      // stores unix SECONDS. Drizzle's gte() knows how to convert a Date
+      // object to the correct integer; raw drizzleSql would pass the Date
+      // through to the driver as a string, silently breaking the comparison
+      // and returning 0 (which would then disable the daily cap entirely).
       const feedCountRow = await db
-        .select({ count: drizzleSql`COUNT(*)` })
+        .select({ count: count() })
         .from(socialPostsLog)
         .where(
-          drizzleSql`${socialPostsLog.status} = 'success'
-            AND ${socialPostsLog.postedAt} >= ${startOfTodayCST}
-            AND ${socialPostsLog.queueId} NOT LIKE 'throwback-%'
-            AND ${socialPostsLog.queueId} NOT LIKE 'autopost-event-%'`
+          and(
+            eq(socialPostsLog.status, "success"),
+            gte(socialPostsLog.postedAt, startOfTodayCST),
+            not(like(socialPostsLog.queueId, "throwback-%")),
+            not(like(socialPostsLog.queueId, "autopost-event-%"))
+          )
         );
 
-      // Count successful IG stories since startOfTodayCST.
+      // Count successful IG STORIES since startOfTodayCST.
       // Stories = platform='instagram_story' AND status='success' AND
       // postedAt >= startOfTodayCST.
       const storyCountRow = await db
-        .select({ count: drizzleSql`COUNT(*)` })
+        .select({ count: count() })
         .from(socialPostsLog)
         .where(
-          drizzleSql`${socialPostsLog.status} = 'success'
-            AND ${socialPostsLog.platform} = 'instagram_story'
-            AND ${socialPostsLog.postedAt} >= ${startOfTodayCST}`
+          and(
+            eq(socialPostsLog.status, "success"),
+            eq(socialPostsLog.platform, "instagram_story"),
+            gte(socialPostsLog.postedAt, startOfTodayCST)
+          )
         );
 
       const feedPostsToday = Number(feedCountRow[0]?.count) || 0;
@@ -1769,14 +1779,52 @@ async function handleDebugAutopost() {
       queueId: l.queueId,
     }));
 
-    // Check if any posts were made today (CST day)
-    const startOfDayCST = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 6 * 60 * 60 * 1000);
+    // Check how many posts were made today (CST day) — use the same
+    // timezone-correct math as the today-counts endpoint so the debug
+    // panel shows accurate numbers.
+    const CST_OFFSET_HOURS = 6;
+    const startOfDayCST = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), CST_OFFSET_HOURS, 0, 0)
+    );
+    if (now.getUTCHours() < CST_OFFSET_HOURS) {
+      startOfDayCST.setTime(startOfDayCST.getTime() - 24 * 60 * 60 * 1000);
+    }
+    // Use DB-level count (not the 10-row JS filter above, which undercounts)
+    const todayFeedCountRow = await db
+      .select({ count: count() })
+      .from(socialPostsLog)
+      .where(
+        and(
+          eq(socialPostsLog.status, "success"),
+          gte(socialPostsLog.postedAt, startOfDayCST),
+          not(like(socialPostsLog.queueId, "throwback-%")),
+          not(like(socialPostsLog.queueId, "autopost-event-%"))
+        )
+      );
+    const todayStoryCountRow = await db
+      .select({ count: count() })
+      .from(socialPostsLog)
+      .where(
+        and(
+          eq(socialPostsLog.status, "success"),
+          eq(socialPostsLog.platform, "instagram_story"),
+          gte(socialPostsLog.postedAt, startOfDayCST)
+        )
+      );
+    const todayFeedCount = Number(todayFeedCountRow[0]?.count) || 0;
+    const todayStoryCount = Number(todayStoryCountRow[0]?.count) || 0;
+    diagnostics.todayPostsCount = todayFeedCount + todayStoryCount;
+    diagnostics.todayFeedCount = todayFeedCount;
+    diagnostics.todayStoryCount = todayStoryCount;
+    diagnostics.startOfDayCST = startOfDayCST.toISOString();
+
+    // Keep the recent-logs based view for backwards compat (shows actual
+    // log entries, not just a count)
     const todayPosts = recentLogs.filter(l =>
       l.status === "success" &&
       l.postedAt &&
       new Date(l.postedAt) >= startOfDayCST
     );
-    diagnostics.todayPostsCount = todayPosts.length;
     diagnostics.todayPosts = todayPosts.map(l => ({
       platform: l.platform,
       contentType: l.contentType,
