@@ -160,6 +160,54 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // ============================================================
+    // DIAGNOSTIC: story-history — return ALL IG story logs from
+    // the past 14 days so we can see exactly when stories were
+    // posted and identify the spam pattern.
+    // ============================================================
+    if (action === "story-history") {
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+      const storyLogs = await db
+        .select({
+          id: socialPostsLog.id,
+          queueId: socialPostsLog.queueId,
+          platform: socialPostsLog.platform,
+          contentType: socialPostsLog.contentType,
+          sourceId: socialPostsLog.sourceId,
+          imageUrl: socialPostsLog.imageUrl,
+          status: socialPostsLog.status,
+          errorMessage: socialPostsLog.errorMessage,
+          postedAt: socialPostsLog.postedAt,
+        })
+        .from(socialPostsLog)
+        .where(
+          and(
+            eq(socialPostsLog.platform, "instagram_story"),
+            gte(socialPostsLog.postedAt, fourteenDaysAgo)
+          )
+        )
+        .orderBy(desc(socialPostsLog.postedAt))
+        .limit(500);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          count: storyLogs.length,
+          window: "14 days",
+          since: fourteenDaysAgo.toISOString(),
+          stories: storyLogs.map((s) => ({
+            postedAt: s.postedAt ? new Date(s.postedAt).toISOString() : null,
+            status: s.status,
+            queueId: s.queueId,
+            contentType: s.contentType,
+            sourceId: s.sourceId,
+            imageUrl: s.imageUrl,
+            errorMessage: s.errorMessage,
+          })),
+        },
+      });
+    }
+
     // Get queue summary
     const queueSummary = await db
       .select({
