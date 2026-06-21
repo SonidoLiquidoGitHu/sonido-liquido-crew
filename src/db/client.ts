@@ -540,6 +540,15 @@ async function runAutoMigration(client: Client): Promise<void> {
         posted_at INTEGER NOT NULL,
         created_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
+      // Dropbox link cache — resolved temp links for video playback.
+      // See src/db/schema/video-cache.ts for rationale.
+      `CREATE TABLE IF NOT EXISTS dropbox_link_cache (
+        dropbox_url TEXT PRIMARY KEY NOT NULL,
+        temp_link TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch()) NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_dropbox_link_cache_expires ON dropbox_link_cache(expires_at)`,
       `CREATE TABLE IF NOT EXISTS curated_playlists (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
