@@ -86,8 +86,8 @@ auth-wal
 # Backup repo
 slc-repo/
 
-# Local DB
-db/
+# Local DB (root-level only — anchored so it does NOT swallow src/db/)
+/db/
 
 # Local scripts
 inspect-db.mjs
