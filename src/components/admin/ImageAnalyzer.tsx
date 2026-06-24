@@ -50,20 +50,37 @@ interface ImageAnalyzerProps {
   className?: string;
 }
 
-// Convert Dropbox URL to direct download URL
+// Convert external image URLs to a same-origin proxy URL.
+//
+// WHY: The analyzer loads images with crossOrigin="anonymous" so it can read
+// pixel data from the canvas (color extraction). Dropbox's ?raw=1 redirect
+// chain doesn't return CORS headers on the initial 302 from dropbox.com,
+// which taints the canvas and causes getImageData() to throw — producing
+// "No se pudo analizar la imagen".
+//
+// Routing through /api/image-proxy (which fetches server-side and returns
+// the image with Access-Control-Allow-Origin: *) avoids the CORS taint
+// entirely. The proxy also fixes Dropbox's wrong content-type issue.
 function getDirectUrl(imageUrl: string): string {
-  if (imageUrl.includes("dropbox")) {
-    // Use ?raw=1 instead of dl.dropboxusercontent.com because Dropbox has
-    // migrated to a new shared link format (/scl/fi/...?rlkey=...) that is
-    // NOT compatible with dl.dropboxusercontent.com.
-    const result = imageUrl
-      .replace("?dl=0", "?raw=1")
-      .replace("&dl=0", "&raw=1");
-    if (!result.includes("raw=1")) {
-      return result + (result.includes("?") ? "&" : "?") + "raw=1";
-    }
-    return result;
+  if (!imageUrl) return imageUrl;
+
+  // Already a relative or same-origin URL — no proxy needed
+  if (imageUrl.startsWith("/") || imageUrl.startsWith(window.location.origin)) {
+    return imageUrl;
   }
+
+  // Dropbox and other external hosts — route through the image proxy
+  // so the browser gets CORS-clean bytes for canvas pixel reading.
+  const EXTERNAL_HOSTS = [
+    "dropbox.com",
+    "dropboxusercontent.com",
+  ];
+
+  const isExternal = EXTERNAL_HOSTS.some((h) => imageUrl.includes(h));
+  if (isExternal) {
+    return `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+  }
+
   return imageUrl;
 }
 
