@@ -255,7 +255,7 @@ export default function NewUpcomingReleasePage() {
                     setFormData((prev) => ({ ...prev, coverImageUrl: url }))
                   }
                   accept="image/*"
-                  maxSize={10}
+                  maxSize={25}
                   folder="/upcoming-releases/covers"
                   buttonText="Subir"
                 />
@@ -306,7 +306,7 @@ export default function NewUpcomingReleasePage() {
                     setFormData((prev) => ({ ...prev, bannerImageUrl: url }))
                   }
                   accept="image/*"
-                  maxSize={10}
+                  maxSize={25}
                   folder="/upcoming-releases/banners"
                   buttonText="Subir"
                 />

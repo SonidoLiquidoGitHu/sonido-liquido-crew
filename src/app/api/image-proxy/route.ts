@@ -24,7 +24,7 @@ const ALLOWED_HOSTS = [
 ];
 
 const TIMEOUT_MS = 15000; // 15s timeout for upstream fetch (increased from 10s for slow Dropbox responses)
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB max image size
+const MAX_SIZE = 25 * 1024 * 1024; // 25MB max image size (bumped from 10MB — banner/hero images routinely exceed 10MB at high res)
 
 // Cache durations
 const CACHE_SUCCESS = "public, max-age=86400, stale-while-revalidate=604800"; // 1 day, stale OK 7 days
