@@ -9,6 +9,7 @@ import { ArrowLeft, Calendar, ExternalLink, Rocket } from "lucide-react";
 import { CountdownTimer } from "@/components/public/CountdownTimer";
 import { PresaveButtons } from "@/components/public/PresaveButtons";
 import { DownloadGate } from "@/components/public/DownloadGate";
+import { ShareButtons } from "@/components/ui/share-button";
 
 export const dynamic = "force-dynamic";
 
@@ -177,9 +178,16 @@ export default async function UpcomingReleasePage({ params }: PageProps) {
               </p>
 
               {/* Release Date */}
-              <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 mb-8">
+              <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 mb-6">
                 <Calendar className="w-5 h-5" />
                 <span className="text-lg">{formatDate(release.releaseDate)}</span>
+              </div>
+
+              {/* Share Buttons — mirrors the beat detail page layout */}
+              <div className="flex justify-center lg:justify-start mb-8">
+                <ShareButtons
+                  title={`${release.title}${release.featuredArtists ? ` ft. ${release.featuredArtists}` : ""} — ${release.artistName} | Sonido Líquido`}
+                />
               </div>
 
               {/* Description */}
