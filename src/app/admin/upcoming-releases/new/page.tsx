@@ -699,31 +699,50 @@ export default function NewUpcomingReleasePage() {
                       <option value="stems">Stems</option>
                       <option value="other">Otro</option>
                     </select>
-                    <input
-                      type="url"
-                      placeholder="URL del archivo"
-                      id="dg-file-url"
-                      className="px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary sm:col-span-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const name = (document.getElementById('dg-file-name') as HTMLInputElement).value;
-                        const type = (document.getElementById('dg-file-type') as HTMLSelectElement).value as "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
-                        const url = (document.getElementById('dg-file-url') as HTMLInputElement).value;
-                        if (name && url) {
-                          setFormData(prev => ({
-                            ...prev,
-                            downloadGateFiles: [...(prev.downloadGateFiles || []), { name, type, url, fileName: name }]
-                          }));
-                          (document.getElementById('dg-file-name') as HTMLInputElement).value = '';
-                          (document.getElementById('dg-file-url') as HTMLInputElement).value = '';
-                        }
-                      }}
-                      className="px-4 py-2 bg-primary/20 text-primary rounded-lg text-sm hover:bg-primary/30 transition-colors"
-                    >
-                      + Agregar Archivo
-                    </button>
+                    <div className="sm:col-span-2 flex items-center gap-2">
+                      <input
+                        type="url"
+                        placeholder="URL del archivo (o sube a Dropbox ↓)"
+                        id="dg-file-url"
+                        className="flex-1 px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
+                      />
+                      <DropboxUploadButton
+                        onUploadComplete={(url, filename) => {
+                          const urlInput = document.getElementById('dg-file-url') as HTMLInputElement | null;
+                          if (urlInput) urlInput.value = url;
+                          // Auto-fill name if empty — saves the admin a step
+                          const nameInput = document.getElementById('dg-file-name') as HTMLInputElement | null;
+                          if (nameInput && !nameInput.value && filename) {
+                            // Strip extension for a cleaner default name
+                            nameInput.value = filename.replace(/\.[^.]+$/, '');
+                          }
+                        }}
+                        accept="*/*"
+                        maxSize={150}
+                        folder="/upcoming-releases/download-gate"
+                        buttonText="Subir"
+                        size="default"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const name = (document.getElementById('dg-file-name') as HTMLInputElement).value;
+                          const type = (document.getElementById('dg-file-type') as HTMLSelectElement).value as "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
+                          const url = (document.getElementById('dg-file-url') as HTMLInputElement).value;
+                          if (name && url) {
+                            setFormData(prev => ({
+                              ...prev,
+                              downloadGateFiles: [...(prev.downloadGateFiles || []), { name, type, url, fileName: name }]
+                            }));
+                            (document.getElementById('dg-file-name') as HTMLInputElement).value = '';
+                            (document.getElementById('dg-file-url') as HTMLInputElement).value = '';
+                          }
+                        }}
+                        className="px-4 py-2 bg-primary/20 text-primary rounded-lg text-sm hover:bg-primary/30 transition-colors whitespace-nowrap"
+                      >
+                        + Agregar Archivo
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>
