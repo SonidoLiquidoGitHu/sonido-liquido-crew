@@ -20,6 +20,14 @@ import { cn } from "@/lib/utils";
  * previously did not exist, causing "Error de conexión con Dropbox" whenever
  * the user tried to upload.
  *
+ * "Is Dropbox connected?" is determined from the **status** endpoint
+ * (`GET /api/admin/dropbox`), which is the same source of truth the Sync page
+ * uses. The token is fetched lazily on click — this avoids prematurely
+ * disabling the button in cases where the status endpoint says "connected"
+ * but the token endpoint transiently fails (e.g., a network blip during
+ * auto-refresh). If the token endpoint does fail at click time, we surface
+ * the actual error message so the user knows what to do next.
+ *
  * The props contract is unchanged from the previous version, so all existing
  * consumers (releases, EPK, products, upcoming-releases download gate, etc.)
  * keep working without modification.
@@ -71,57 +79,80 @@ export function DropboxUploadButton({
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch a fresh access token on mount. The token endpoint auto-refreshes
-  // expired tokens using the stored refresh_token, so we don't need to do
-  // any refresh logic here.
+  // Check Dropbox connection status on mount using the SAME endpoint the Sync
+  // page uses. This is the source of truth for "is Dropbox connected" — it
+  // handles all configurations (DB token, env token, OAuth, manual token) and
+  // auto-refreshes expired tokens on the server side. We deliberately do NOT
+  // use the token endpoint here: that endpoint returns 401/500 in several
+  // transient scenarios where status still reports "connected", which would
+  // cause the button to incorrectly disable.
   useEffect(() => {
-    const initDropbox = async () => {
+    let cancelled = false;
+
+    const checkStatus = async () => {
       try {
-        console.log("[DropboxUploadButton] Fetching Dropbox access token...");
-        const tokenRes = await fetch("/api/admin/dropbox/token");
-        const tokenData = await tokenRes.json();
+        console.log("[DropboxUploadButton] Checking Dropbox status...");
+        const res = await fetch("/api/admin/dropbox");
+        const data = await res.json();
 
-        if (tokenData.success && tokenData.data?.token) {
-          setAccessToken(tokenData.data.token);
-          setDropboxConfigured(true);
-          console.log("[DropboxUploadButton] Ready for direct browser upload");
-          return;
-        }
+        if (cancelled) return;
 
-        // Token endpoint couldn't give us a token. Check status so we can
-        // distinguish "not configured" from "expired/needs reconnect".
-        console.log("[DropboxUploadButton] Token endpoint failed, checking status...");
-        try {
-          const statusRes = await fetch("/api/admin/dropbox");
-          const statusData = await statusRes.json();
-          const connected =
-            statusData?.data?.connected ||
-            statusData?.data?.hasRefreshToken ||
-            statusData?.data?.hasEnvToken;
-          if (connected) {
-            // Status says connected — retry the token endpoint once more.
-            const retryRes = await fetch("/api/admin/dropbox/token");
-            const retryData = await retryRes.json();
-            if (retryData.success && retryData.data?.token) {
-              setAccessToken(retryData.data.token);
-              setDropboxConfigured(true);
-              return;
-            }
-          }
-        } catch {
-          // Ignore status-check errors — we'll fall through to "not configured".
-        }
-        setDropboxConfigured(false);
+        // Match the same "connected" logic used by other Dropbox components
+        // and the Sync page UI.
+        const isConnected =
+          data?.success &&
+          (data?.data?.connected === true ||
+            data?.data?.hasEnvToken === true ||
+            data?.data?.hasDatabaseToken === true ||
+            data?.data?.hasRefreshToken === true ||
+            data?.data?.configured === true);
+
+        console.log("[DropboxUploadButton] Status check result:", {
+          success: data?.success,
+          connected: data?.data?.connected,
+          hasEnvToken: data?.data?.hasEnvToken,
+          hasDatabaseToken: data?.data?.hasDatabaseToken,
+          hasRefreshToken: data?.data?.hasRefreshToken,
+          configured: data?.data?.configured,
+          isConnected,
+        });
+
+        setDropboxConfigured(isConnected);
       } catch (error) {
-        console.error("[DropboxUploadButton] Init error:", error);
-        setDropboxConfigured(false);
+        console.error("[DropboxUploadButton] Status check error:", error);
+        if (!cancelled) setDropboxConfigured(false);
       }
     };
 
-    initDropbox();
+    checkStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /**
+   * Fetch a fresh access token from the server. The token endpoint
+   * auto-refreshes expired tokens using the stored refresh_token, so each
+   * call returns a usable token (or a clear error).
+   *
+   * Returns null on failure; the caller surfaces the error to the user.
+   */
+  const fetchAccessToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/admin/dropbox/token");
+      const data = await res.json();
+      if (data?.success && data?.data?.token) {
+        return data.data.token as string;
+      }
+      console.warn("[DropboxUploadButton] Token endpoint returned no token:", data);
+      return null;
+    } catch (error) {
+      console.error("[DropboxUploadButton] Token fetch error:", error);
+      return null;
+    }
   }, []);
 
   /**
@@ -129,15 +160,13 @@ export function DropboxUploadButton({
    * Returns a direct-download URL (with ?raw=1).
    */
   const createSharedLink = useCallback(
-    async (path: string): Promise<string> => {
-      if (!accessToken) throw new Error("No hay token de Dropbox disponible");
-
+    async (path: string, token: string): Promise<string> => {
       const createRes = await fetch(
         "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -167,7 +196,7 @@ export function DropboxUploadButton({
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ path, direct_only: true }),
@@ -185,22 +214,12 @@ export function DropboxUploadButton({
         errorData?.error_summary || `Failed to create shared link (HTTP ${createRes.status})`
       );
     },
-    [accessToken]
+    []
   );
 
   const uploadFile = useCallback(
     async (file: File) => {
-      if (!accessToken) {
-        setStatus("error");
-        setMessage("Dropbox no está conectado");
-        setTimeout(() => {
-          setStatus("idle");
-          setMessage("");
-        }, 3000);
-        return;
-      }
-
-      // Validate file size
+      // Validate file size first — no point fetching a token for an oversized file.
       if (file.size > maxSize * 1024 * 1024) {
         setStatus("error");
         setMessage(`El archivo excede ${maxSize}MB`);
@@ -212,7 +231,23 @@ export function DropboxUploadButton({
       }
 
       setStatus("uploading");
-      setMessage("Subiendo...");
+      setMessage("Conectando con Dropbox...");
+
+      // Lazily fetch a fresh access token at click time. This is more reliable
+      // than caching it on mount because the token endpoint auto-refreshes
+      // expired tokens server-side. If this fails, we surface a specific error.
+      let token = await fetchAccessToken();
+      if (!token) {
+        setStatus("error");
+        setMessage(
+          "No se pudo obtener el token de Dropbox. Ve a Sincronización → Dropbox y verifica la conexión."
+        );
+        setTimeout(() => {
+          setStatus("idle");
+          setMessage("");
+        }, 5000);
+        return;
+      }
 
       try {
         // Build a unique Dropbox path so re-uploads with the same filename
@@ -231,13 +266,15 @@ export function DropboxUploadButton({
 
         const arrayBuffer = await file.arrayBuffer();
 
+        setMessage("Subiendo...");
+
         // Upload directly to Dropbox Content API from the browser.
-        const uploadResponse = await fetch(
+        let uploadResponse = await fetch(
           "https://content.dropboxapi.com/2/files/upload",
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/octet-stream",
               "Dropbox-API-Arg": JSON.stringify({
                 path: dropboxPath,
@@ -250,32 +287,51 @@ export function DropboxUploadButton({
           }
         );
 
+        // If the token expired mid-upload, fetch a fresh one and retry once.
+        if (
+          uploadResponse.status === 401 ||
+          (await uploadResponse
+            .json()
+            .catch(() => ({}))
+            .then((d) =>
+              (d?.error_summary || "").includes("invalid_access_token") ||
+              (d?.error_summary || "").includes("expired")
+            ))
+        ) {
+          console.log("[DropboxUploadButton] Token expired mid-upload, refreshing and retrying...");
+          const refreshedToken = await fetchAccessToken();
+          if (refreshedToken) {
+            token = refreshedToken;
+            uploadResponse = await fetch(
+              "https://content.dropboxapi.com/2/files/upload",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/octet-stream",
+                  "Dropbox-API-Arg": JSON.stringify({
+                    path: dropboxPath,
+                    mode: "overwrite",
+                    autorename: false,
+                    mute: false,
+                  }),
+                },
+                body: arrayBuffer,
+              }
+            );
+          }
+        }
+
         if (!uploadResponse.ok) {
           const errData = await uploadResponse.json().catch(() => ({}));
           const summary = errData?.error_summary || `HTTP ${uploadResponse.status}`;
-          // If the token expired mid-upload, surface a clear message and
-          // attempt a one-shot refresh so the next click works.
-          if (
-            uploadResponse.status === 401 ||
-            summary.includes("invalid_access_token") ||
-            summary.includes("expired")
-          ) {
-            try {
-              const refreshRes = await fetch("/api/admin/dropbox/token");
-              const refreshData = await refreshRes.json();
-              if (refreshData.success && refreshData.data?.token) {
-                setAccessToken(refreshData.data.token);
-              }
-            } catch {
-              // ignore — we'll surface the original error
-            }
-            throw new Error("Token expirado. Intenta de nuevo.");
-          }
           throw new Error(summary);
         }
 
+        setMessage("Creando enlace...");
+
         // Create a public shared link for the uploaded file.
-        const sharedUrl = await createSharedLink(dropboxPath);
+        const sharedUrl = await createSharedLink(dropboxPath, token);
 
         setStatus("success");
         setMessage("¡Listo!");
@@ -294,15 +350,15 @@ export function DropboxUploadButton({
         setMessage(
           errMessage.includes("401") || errMessage.includes("expired")
             ? "Token expirado. Reconecta Dropbox en Sincronización."
-            : errMessage.slice(0, 100)
+            : errMessage.slice(0, 120)
         );
         setTimeout(() => {
           setStatus("idle");
           setMessage("");
-        }, 4000);
+        }, 5000);
       }
     },
-    [accessToken, createSharedLink, folderPath, maxSize, onUploadComplete]
+    [createSharedLink, fetchAccessToken, folderPath, maxSize, onUploadComplete]
   );
 
   const handleClick = () => {
@@ -321,7 +377,9 @@ export function DropboxUploadButton({
     }
   };
 
-  // Show warning if Dropbox not configured
+  // Show warning if Dropbox is definitively NOT configured (status endpoint
+  // returned connected=false). While status is still loading (null), we render
+  // the normal button disabled so the UI doesn't flicker to the warning state.
   if (dropboxConfigured === false) {
     return (
       <Button
