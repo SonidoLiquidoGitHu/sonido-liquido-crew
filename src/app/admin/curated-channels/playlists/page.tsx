@@ -1326,8 +1326,17 @@ export default function PlaylistsPage() {
                         </div>
                       </button>
 
-                      {/* Edit / Delete buttons */}
+                      {/* Edit / View / Delete buttons */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Link
+                          href={`/playlists/curated/${playlist.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-slc-muted hover:text-primary transition-colors rounded hover:bg-slc-dark"
+                          title="Ver página pública"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Link>
                         <button
                           onClick={() => setEditPlaylist(playlist)}
                           className="p-1.5 text-slc-muted hover:text-white transition-colors rounded hover:bg-slc-dark"
