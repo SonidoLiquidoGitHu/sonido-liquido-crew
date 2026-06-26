@@ -14,6 +14,7 @@ import {
   Disc3,
   Play,
   Share2,
+  ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlaylistStoryCard, type PlaylistShareData } from "./PlaylistStoryCard";
@@ -198,8 +199,17 @@ function PlaylistsPageContent() {
                     </div>
                   </button>
 
-                  {/* Share button row — sits between the header and the expanded content */}
+                  {/* Action button row — sits between the header and the expanded content */}
                   <div className="flex items-center justify-end gap-2 px-6 py-2 border-t border-slc-border/50 bg-slc-darker/30">
+                    <Link
+                      href={`/playlists/curated/${playlist.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-medium uppercase tracking-wide hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                      title="Ver página de detalle"
+                    >
+                      Ver detalle
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </Link>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

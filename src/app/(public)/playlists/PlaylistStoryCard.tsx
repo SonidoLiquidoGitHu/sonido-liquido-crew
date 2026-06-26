@@ -408,7 +408,7 @@ async function generateStoryCard(
   // URL
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.font = "20px 'Oswald', sans-serif";
-  ctx.fillText("sonidoliquido.com/playlists", W / 2, ctaY + ctaHeight + 60);
+  ctx.fillText("sonidoliquido.com/playlists/curada", W / 2, ctaY + ctaHeight + 60);
 
   // Bottom branding
   ctx.fillStyle = "rgba(255,255,255,0.3)";
@@ -534,7 +534,7 @@ async function generatePostCard(
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.font = "16px 'Oswald', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("sonidoliquido.com/playlists", W / 2, H - 50);
+  ctx.fillText("sonidoliquido.com/playlists/curada", W / 2, H - 50);
 }
 
 // --- REEL: same as story (1080x1920) ---
@@ -567,12 +567,13 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
     setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
   }, []);
 
-  // Use the Spotify URL if available, otherwise fall back to the site URL.
+  // Prefer the on-site detail page so shared links land on a branded,
+  // trackable SLC page that itself hosts the Spotify embed + share CTAs.
+  // Fall back to the Spotify URL, then to the playlists index.
   const playlistShareUrl =
-    playlist.spotifyPlaylistUrl ||
-    (playlist.spotifyPlaylistId
-      ? `https://open.spotify.com/playlist/${playlist.spotifyPlaylistId}`
-      : "https://sonidoliquido.com/playlists");
+    typeof window !== "undefined" && window.location.pathname.startsWith("/playlists/curated/")
+      ? window.location.href
+      : `https://sonidoliquido.com/playlists/curated/${playlist.id}`;
 
   const shareText = `Escucha "${playlist.name}" — playlist curada por Sonido Líquido Crew`;
 

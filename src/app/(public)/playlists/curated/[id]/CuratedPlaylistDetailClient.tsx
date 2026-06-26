@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -40,6 +40,13 @@ export default function CuratedPlaylistDetailClient({
 }: CuratedPlaylistDetailClientProps) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showStoryCard, setShowStoryCard] = useState(false);
+  const [hasNativeShare, setHasNativeShare] = useState(false);
+
+  useEffect(() => {
+    setHasNativeShare(
+      typeof navigator !== "undefined" && typeof navigator.share === "function"
+    );
+  }, []);
 
   const detailUrl =
     typeof window !== "undefined"
@@ -244,7 +251,7 @@ export default function CuratedPlaylistDetailClient({
                   )}
                 </Button>
 
-                {typeof navigator !== "undefined" && navigator.share && (
+                {hasNativeShare && (
                   <Button
                     onClick={nativeShare}
                     variant="outline"
