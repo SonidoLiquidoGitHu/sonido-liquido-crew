@@ -13,8 +13,10 @@ import {
   ChevronRight,
   Disc3,
   Play,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PlaylistStoryCard, type PlaylistShareData } from "./PlaylistStoryCard";
 
 interface Playlist {
   id: string;
@@ -43,6 +45,7 @@ function PlaylistsPageContent() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingTracks, setLoadingTracks] = useState(false);
+  const [sharePlaylist, setSharePlaylist] = useState<Playlist | null>(null);
 
   useEffect(() => {
     fetchPlaylists();
@@ -195,6 +198,21 @@ function PlaylistsPageContent() {
                     </div>
                   </button>
 
+                  {/* Share button row — sits between the header and the expanded content */}
+                  <div className="flex items-center justify-end gap-2 px-6 py-2 border-t border-slc-border/50 bg-slc-darker/30">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSharePlaylist(playlist);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1DB954]/10 border border-[#1DB954]/30 text-[#1ed760] text-xs font-medium uppercase tracking-wide hover:bg-[#1DB954]/20 hover:border-[#1DB954]/50 transition-colors"
+                      title="Compartir playlist"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      Compartir
+                    </button>
+                  </div>
+
                   {/* Expanded Content */}
                   {selectedPlaylist?.id === playlist.id && (
                     <div className="border-t border-slc-border">
@@ -318,6 +336,14 @@ function PlaylistsPageContent() {
           </div>
         </div>
       </section>
+
+      {/* Playlist Story Card Share Modal */}
+      {sharePlaylist && (
+        <PlaylistStoryCard
+          playlist={sharePlaylist as PlaylistShareData}
+          onClose={() => setSharePlaylist(null)}
+        />
+      )}
     </div>
   );
 }
