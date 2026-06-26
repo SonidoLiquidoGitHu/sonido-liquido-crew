@@ -194,6 +194,7 @@ export const VALID_SUBSCRIPTION_SOURCES = [
   "musica",
   "contacto",
   "footer",
+  "sampling-resources",
 ] as const;
 
 export type SubscriptionSource = (typeof VALID_SUBSCRIPTION_SOURCES)[number];
