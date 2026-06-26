@@ -14,9 +14,14 @@ import {
   ChevronRight,
   Sparkles,
   Play,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlaylistStoryCard, type PlaylistShareData } from "../../PlaylistStoryCard";
+
+// ===========================================
+// Types — mirror the shape returned by /api/playlists?id=...
+// ===========================================
 
 export interface CuratedPlaylistDetail {
   id: string;
@@ -30,14 +35,78 @@ export interface CuratedPlaylistDetail {
 }
 
 interface CuratedPlaylistDetailClientProps {
-  playlist: CuratedPlaylistDetail;
-  others: CuratedPlaylistDetail[];
+  playlistId: string;
 }
 
+// ===========================================
+// Fallback playlists — used when the DB isn't configured or the
+// requested ID isn't found. Mirrors the list in /api/playlists/route.ts.
+// ===========================================
+
+const FALLBACK_PLAYLISTS: CuratedPlaylistDetail[] = [
+  {
+    id: "gran-reserva",
+    name: "Gran Reserva",
+    description: "Los mejores tracks del roster",
+    coverColor: "#f97316",
+    coverImageUrl: null,
+    spotifyPlaylistId: "2y0Z7WdObJY1IvCLCXwUez",
+    spotifyPlaylistUrl: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
+    trackCount: 0,
+  },
+  {
+    id: "weekly-picks",
+    name: "Picks de la Semana",
+    description: "Selección semanal",
+    coverColor: "#22c55e",
+    coverImageUrl: null,
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+    trackCount: 0,
+  },
+  {
+    id: "new-releases",
+    name: "Nuevos Lanzamientos",
+    description: "Lo más reciente",
+    coverColor: "#3b82f6",
+    coverImageUrl: null,
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+    trackCount: 0,
+  },
+  {
+    id: "classics",
+    name: "Clásicos",
+    description: "Tracks clásicos del crew",
+    coverColor: "#8b5cf6",
+    coverImageUrl: null,
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+    trackCount: 0,
+  },
+  {
+    id: "collaborations",
+    name: "Colaboraciones",
+    description: "Featurings y colaboraciones",
+    coverColor: "#eab308",
+    coverImageUrl: null,
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+    trackCount: 0,
+  },
+];
+
+// ===========================================
+// Main component
+// ===========================================
+
 export default function CuratedPlaylistDetailClient({
-  playlist,
-  others,
+  playlistId,
 }: CuratedPlaylistDetailClientProps) {
+  const [playlist, setPlaylist] = useState<CuratedPlaylistDetail | null>(null);
+  const [others, setOthers] = useState<CuratedPlaylistDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showStoryCard, setShowStoryCard] = useState(false);
   const [hasNativeShare, setHasNativeShare] = useState(false);
@@ -48,27 +117,88 @@ export default function CuratedPlaylistDetailClient({
     );
   }, []);
 
+  // Fetch the requested playlist + the list of others
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        // Fetch the specific playlist
+        const detailRes = await fetch(
+          `/api/playlists?id=${encodeURIComponent(playlistId)}`,
+          { cache: "no-store" }
+        );
+        const detailData = await detailRes.json();
+
+        if (cancelled) return;
+
+        if (detailData.success && detailData.data) {
+          const p = detailData.data;
+          setPlaylist({
+            id: p.id,
+            name: p.name,
+            description: p.description || "",
+            coverColor: p.coverColor || "#1DB954",
+            coverImageUrl: p.coverImageUrl || null,
+            spotifyPlaylistId: p.spotifyPlaylistId || null,
+            spotifyPlaylistUrl: p.spotifyPlaylistUrl || null,
+            trackCount: p.trackCount || 0,
+          });
+        } else {
+          // Try fallback list
+          const fallback = FALLBACK_PLAYLISTS.find((p) => p.id === playlistId);
+          if (fallback) {
+            setPlaylist(fallback);
+          } else {
+            setNotFound(true);
+          }
+        }
+
+        // Fetch all playlists for the "others" grid
+        const listRes = await fetch(`/api/playlists`, { cache: "no-store" });
+        const listData = await listRes.json();
+
+        if (cancelled) return;
+
+        if (listData.success && Array.isArray(listData.data)) {
+          const otherPlaylists = listData.data
+            .filter((p: any) => p.id !== playlistId)
+            .slice(0, 4)
+            .map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description || "",
+              coverColor: p.coverColor || "#1DB954",
+              coverImageUrl: p.coverImageUrl || null,
+              spotifyPlaylistId: p.spotifyPlaylistId || null,
+              spotifyPlaylistUrl: p.spotifyPlaylistUrl || null,
+              trackCount: p.trackCount || 0,
+            }));
+          setOthers(otherPlaylists);
+        }
+      } catch (err) {
+        console.error("[Curated Playlist Detail] fetch error:", err);
+        // Try fallback
+        const fallback = FALLBACK_PLAYLISTS.find((p) => p.id === playlistId);
+        if (fallback) {
+          setPlaylist(fallback);
+        } else {
+          setNotFound(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [playlistId]);
+
   const detailUrl =
     typeof window !== "undefined"
       ? window.location.href
-      : `https://sonidoliquido.com/playlists/curated/${playlist.id}`;
-
-  const spotifyUrl =
-    playlist.spotifyPlaylistUrl ||
-    (playlist.spotifyPlaylistId
-      ? `https://open.spotify.com/playlist/${playlist.spotifyPlaylistId}`
-      : null);
-
-  const shareData: PlaylistShareData = {
-    id: playlist.id,
-    name: playlist.name,
-    description: playlist.description,
-    coverImageUrl: playlist.coverImageUrl,
-    coverColor: playlist.coverColor,
-    trackCount: playlist.trackCount,
-    spotifyPlaylistId: playlist.spotifyPlaylistId,
-    spotifyPlaylistUrl: playlist.spotifyPlaylistUrl,
-  };
+      : `https://sonidoliquido.com/playlists/curated/${playlistId}`;
 
   function copyLink() {
     try {
@@ -87,14 +217,68 @@ export default function CuratedPlaylistDetailClient({
     }
     try {
       await navigator.share({
-        title: `${playlist.name} — Sonido Líquido Crew`,
-        text: `Escucha "${playlist.name}", playlist curada por Sonido Líquido Crew.`,
+        title: playlist
+          ? `${playlist.name} — Sonido Líquido Crew`
+          : "Sonido Líquido Crew",
+        text: playlist
+          ? `Escucha "${playlist.name}", playlist curada por Sonido Líquido Crew.`
+          : "Playlist curada por Sonido Líquido Crew.",
         url: detailUrl,
       });
     } catch (err) {
       // User cancelled — silent.
     }
   }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slc-dark via-slc-black to-slc-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#1ed760]" />
+      </div>
+    );
+  }
+
+  // Not found state
+  if (notFound || !playlist) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slc-dark via-slc-black to-slc-black flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <ListMusic className="w-16 h-16 text-slc-muted mx-auto mb-4" />
+          <h1 className="font-oswald text-2xl uppercase text-white mb-2">
+            Playlist no encontrada
+          </h1>
+          <p className="text-slc-muted mb-6">
+            Esta playlist no existe o no está disponible públicamente.
+          </p>
+          <Link
+            href="/playlists"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-black font-bold text-sm uppercase tracking-wide hover:opacity-90 transition-opacity"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Ver Playlists
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const spotifyUrl =
+    playlist.spotifyPlaylistUrl ||
+    (playlist.spotifyPlaylistId
+      ? `https://open.spotify.com/playlist/${playlist.spotifyPlaylistId}`
+      : null);
+
+  const shareData: PlaylistShareData = {
+    id: playlist.id,
+    name: playlist.name,
+    description: playlist.description,
+    coverImageUrl: playlist.coverImageUrl,
+    coverColor: playlist.coverColor,
+    trackCount: playlist.trackCount,
+    spotifyPlaylistId: playlist.spotifyPlaylistId,
+    spotifyPlaylistUrl: playlist.spotifyPlaylistUrl,
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slc-dark via-slc-black to-slc-black">
