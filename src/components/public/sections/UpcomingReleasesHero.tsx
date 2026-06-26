@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { Img } from "@/components/ui/img";
 import Link from "next/link";
-import { Bell, Rocket, Music, Calendar, Clock, ChevronRight, Star, ExternalLink } from "lucide-react";
+import { Bell, Rocket, Music, Calendar, Clock, ChevronRight, Star, ExternalLink, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, getReleaseTypeDisplay } from "@/lib/utils";
 import type { UpcomingRelease } from "@/db/schema/upcoming";
+import { UpcomingReleaseStoryCard, type UpcomingReleaseShareData } from "@/app/(public)/proximos/[slug]/UpcomingReleaseStoryCard";
 
 interface UpcomingReleasesHeroProps {
   releases: UpcomingRelease[];
@@ -178,6 +179,7 @@ function CompactReleaseCard({
   );
   const [isHovered, setIsHovered] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
 
   // Real-time countdown update
   useEffect(() => {
@@ -293,6 +295,20 @@ function CompactReleaseCard({
             "absolute inset-0 flex flex-col items-center justify-center gap-3 transition-all duration-300",
             isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
+            {/* Share button — top-right of the overlay, always available on hover/tap */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowShareCard(true);
+              }}
+              aria-label={`Compartir ${release.title}`}
+              title="Compartir"
+              className="absolute top-2 right-2 w-9 h-9 rounded-full flex items-center justify-center bg-black/70 backdrop-blur-sm hover:bg-purple-600 hover:text-white text-white transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+
             {/* Live countdown on hover/tap */}
             {timeRemaining.total > 0 && (
               <div className="text-center mb-2">
@@ -436,6 +452,26 @@ function CompactReleaseCard({
           </div>
         </div>
       </div>
+
+      {/* Story Card Share Modal — same component as the proximos detail page */}
+      {showShareCard && (
+        <UpcomingReleaseStoryCard
+          release={{
+            id: release.id,
+            title: release.title,
+            slug: release.slug,
+            description: release.description,
+            artistName: release.artistName,
+            featuredArtists: release.featuredArtists,
+            releaseDate: release.releaseDate.toString(),
+            coverImageUrl: release.coverImageUrl,
+            releaseType: release.releaseType,
+            rpmPresaveUrl: release.rpmPresaveUrl,
+            spotifyPresaveUrl: release.spotifyPresaveUrl,
+          } satisfies UpcomingReleaseShareData}
+          onClose={() => setShowShareCard(false)}
+        />
+      )}
     </div>
   );
 }

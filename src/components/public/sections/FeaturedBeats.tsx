@@ -3,9 +3,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Music, Play, Pause, Volume2 } from "lucide-react";
+import { ArrowRight, Music, Play, Pause, Volume2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
+import { BeatStoryCard } from "@/app/(public)/beats/[slug]/BeatStoryCard";
 
 interface Beat {
   id: string;
@@ -31,6 +32,7 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [shareBeat, setShareBeat] = useState<Beat | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
@@ -279,6 +281,20 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
                     beat.duration && formatDuration(beat.duration)
                   )}
                 </div>
+
+                {/* Share button — opens the same BeatStoryCard modal used on the beat detail page */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShareBeat(beat);
+                  }}
+                  aria-label={`Compartir ${beat.title}`}
+                  title="Compartir"
+                  className="w-9 h-9 rounded-full flex items-center justify-center bg-slc-dark hover:bg-purple-600 hover:text-white text-slc-muted transition-colors flex-shrink-0"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
               </div>
             );
           })}
@@ -294,6 +310,31 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
           </Button>
         </div>
       </div>
+
+      {/* Beat Story Card Share Modal — same component as the beat detail page.
+          Home-page list only has partial beat data; we pass nulls for the
+          missing fields (description, tags, price). The canvas drawer handles
+          missing fields gracefully. */}
+      {shareBeat && (
+        <BeatStoryCard
+          beat={{
+            id: shareBeat.id,
+            title: shareBeat.title,
+            slug: shareBeat.slug,
+            description: null,
+            producerName: shareBeat.producerName,
+            bpm: shareBeat.bpm,
+            key: shareBeat.key,
+            genre: shareBeat.genre,
+            tags: null,
+            duration: shareBeat.duration,
+            coverImageUrl: shareBeat.coverImageUrl,
+            isFree: shareBeat.isFree,
+            price: null,
+          }}
+          onClose={() => setShareBeat(null)}
+        />
+      )}
     </section>
   );
 }
