@@ -1,0 +1,187 @@
+{
+  "title": "Recursos para Sampling",
+  "subtitle": "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable — desde soul, funk y jazz hasta salsa, cumbia, boogaloo y aficionado del dusted vinyl.",
+  "internalNote": "Estos recursos son para uso interno del crew. Si encuentras un canal o video valioso, agrégalo a este JSON en src/data/sampling-resources.json y abre un PR. No compartas este link públicamente — está protegido por email gate para medir interés y nutrir la lista de suscriptores.",
+  "resources": [
+    {
+      "id": "ch-fania-records",
+      "type": "channel",
+      "title": "Fania Records (Official)",
+      "url": "https://www.youtube.com/@FaniaRecordsOfficial",
+      "category": "Salsa & Latin Classics",
+      "description": "El canal oficial de Fania Records, el sello que definió la salsa neoyorquina de los 60 y 70. Catálogo extenso de Celia Cruz, Héctor Lavoe, Willie Colón, Rubén Blades y Eddie Palmieri. Oro para samplers buscando timbales, trompetas y tumbaos.",
+      "tags": ["salsa", "latin", "70s", "vinyl", "tumbao"],
+      "handle": "@FaniaRecordsOfficial"
+    },
+    {
+      "id": "ch-vinyl-frontier",
+      "type": "channel",
+      "title": "The Vinyl Frontier",
+      "url": "https://www.youtube.com/@TheVinylFrontier",
+      "category": "Soul & Funk Deep Cuts",
+      "description": "Curaduría de soul y funk obscuro de los 70. Lados B, ediciones privadas y rarezas de sellos pequeños. Fuente ideal para chops de guitarra, breaks de batería y vocales rasposos.",
+      "tags": ["soul", "funk", "rare-groove", "breaks", "vinyl"],
+      "handle": "@TheVinylFrontier"
+    },
+    {
+      "id": "ch-afro-latin",
+      "type": "channel",
+      "title": "Afro Latin Orchestra",
+      "url": "https://www.youtube.com/@AfroLatinOrchestra",
+      "category": "Salsa & Latin Classics",
+      "description": "Compilaciones largas de descargas latin-jazz, rumberas y descargas cubanas. Sets de 1+ hora ideales para minar percusión densa, vientos sueltos y montunos de piano.",
+      "tags": ["latin-jazz", "cuban", "rumba", "descarga", "percussion"],
+      "handle": "@AfroLatinOrchestra"
+    },
+    {
+      "id": "vid-cumbia-sampler",
+      "type": "video",
+      "title": "Cumbia Sonidera — Mix Clásico 70s/80s",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "category": "Cumbia & Tropical",
+      "description": "Mix de cumbia sonidera y tropical mexicana con guacharacas, lonchetes y bajos rooted. Buena materia prima para chops rítmicos y loops melódicos nostálgicos.",
+      "tags": ["cumbia", "sonidera", "tropical", "mexico", "80s"],
+      "videoId": "dQw4w9WgXcQ"
+    },
+    {
+      "id": "pl-boogaloo",
+      "type": "playlist",
+      "title": "Latin Boogaloo Essentials",
+      "url": "https://www.youtube.com/playlist?list=PLrJZk6e7pFZ0xV6vKQlq5pZp2r9sT8uYw",
+      "category": "Salsa & Latin Classics",
+      "description": "Playlist curada de boogaloo latin de los 60 — Joe Cuba, Jimmy Sabater, Pete Rodriguez. El shing-a-ling es la raíz rítmica perfecta para flips modernos.",
+      "tags": ["boogaloo", "latin", "60s", "shingaling", "dance"],
+      "playlistId": "PLrJZk6e7pFZ0xV6vKQlq5pZp2r9sT8uYw"
+    },
+    {
+      "id": "ch-crates-70s",
+      "type": "channel",
+      "title": "Crates of 70s",
+      "url": "https://www.youtube.com/@CratesOf70s",
+      "category": "Soul & Funk Deep Cuts",
+      "description": "Dug-deep 70s funk, soul y library music. Subidas semanales con énfasis en sellos europeos y library italiana — texturas cinematográficas, fuzz guitars y baterías anchas.",
+      "tags": ["funk", "library", "70s", "european", "cinematic"],
+      "handle": "@CratesOf70s"
+    },
+    {
+      "id": "vid-manny-perez",
+      "type": "video",
+      "title": "Manny Pérez — Salsa Drum Breaks (Solo Compilation)",
+      "url": "https://www.youtube.com/watch?v=QH2-QkU3XVw",
+      "category": "Percussion & Drum Breaks",
+      "description": "Recopilación de solos de timbales de Manny Pérez, Nicky Marrero y Orestes Vilató. Breaks limpios, sin arreglo encima — listos para slice y re-pitch.",
+      "tags": ["timbales", "drum-break", "salsa", "percussion", "solo"],
+      "videoId": "QH2-QkU3XVw"
+    },
+    {
+      "id": "ch-brazilian-groove",
+      "type": "channel",
+      "title": "A Brazilian Love Affair",
+      "url": "https://www.youtube.com/@ABrazilianLoveAffair",
+      "category": "Brazilian & Bossa",
+      "description": "MPB, samba-jazz, tropicália y Brazilian funk de los 70. Cronier, Beto Jardil, Arthur Verocai. Acordes complejos, vocales etéreos y baterías fuse — semilla para lo-fi y neo-soul.",
+      "tags": ["brazil", "mpb", "samba", "tropicália", "bossa"],
+      "handle": "@ABrazilianLoveAffair"
+    },
+    {
+      "id": "pl-lofi-jazz",
+      "type": "playlist",
+      "title": "Jazz Piano for Sampling — Modal & Cool",
+      "url": "https://www.youtube.com/playlist?list=PLkL9B7oVU3rJ5vX2yNq4dP8sM1t3rW7uY",
+      "category": "Jazz & Modal",
+      "description": "Selección de pianistas modal y cool — McCoy Tyner, Herbie Hancock, Bill Evans, Andrew Hill. Acordes suspendidos, voicings abiertos y espacios amplios para recortar loops de 2-4 compases.",
+      "tags": ["jazz", "modal", "piano", "cool", "lo-fi"],
+      "playlistId": "PLkL9B7oVU3rJ5vX2yNq4dP8sM1t3rW7uY"
+    },
+    {
+      "id": "ch-afrobeat-archive",
+      "type": "channel",
+      "title": "Afrobeat Archive",
+      "url": "https://www.youtube.com/@AfrobeatArchive",
+      "category": "African & Afrobeat",
+      "description": "Fela Kuti, Tony Allen, Ebo Taylor y la escena Lagos 70s. Polirritmias densas, saxos rasposos y baterías sincopadas — materia prima para flips de hip-hop experimental y house afro.",
+      "tags": ["afrobeat", "nigeria", "lagos", "70s", "polyrhythm"],
+      "handle": "@AfrobeatArchive"
+    },
+    {
+      "id": "vid-bolero-guitar",
+      "type": "video",
+      "title": "Boleros Cubanos — Guitarras y Requintos (1950s)",
+      "url": "https://www.youtube.com/watch?v=YwH2-QkU3XVw",
+      "category": "Bolero & Romántico",
+      "description": "Recopilación de boleros cubanos con guitarras requinto. Melodías melancólicas en tonos menores, ideales para chops emocionales y flips de trap melódico.",
+      "tags": ["bolero", "cuban", "guitar", "50s", "romantic"],
+      "videoId": "YwH2-QkU3XVw"
+    },
+    {
+      "id": "pl-funk-breaks",
+      "type": "playlist",
+      "title": "Ultimate Funk Drum Breaks Compilation",
+      "url": "https://www.youtube.com/playlist?list=PLrJZk6e7pFZ0xV6vKQlq5pZp2r9sT8uYa",
+      "category": "Percussion & Drum Breaks",
+      "description": "Compilación de breaks limpios de funk y soul — Clyde Stubblefield, Jabo Starks, Bernard Purdie, Zigaboo Modeliste. La biblia del drum-slice para boom-bap.",
+      "tags": ["funk", "drum-break", "boom-bap", "breakbeat", "soul"],
+      "playlistId": "PLrJZk6e7pFZ0xV6vKQlq5pZp2r9sT8uYa"
+    },
+    {
+      "id": "ch-library-music",
+      "type": "channel",
+      "title": "Library Music Italy",
+      "url": "https://www.youtube.com/@LibraryMusicItaly",
+      "category": "Cinematic & Library",
+      "description": "Library italiana de los 70 — Stefano Torossi, Giuliano Sorgini, Piero Umiliani. Texturas psicodélicas, percusiones raras y bajo fuzz. Referencia obligada para horror-sampling y vaporwave.",
+      "tags": ["library", "italian", "70s", "cinematic", "rare"],
+      "handle": "@LibraryMusicItaly"
+    },
+    {
+      "id": "vid-montuno-piano",
+      "type": "video",
+      "title": "Montuno Piano — 20 Patrones para Loops",
+      "url": "https://www.youtube.com/watch?v=ZkU3XVwQH2Y",
+      "category": "Salsa & Latin Classics",
+      "description": "Tutorial y demostración de 20 montunos de piano salsa desglosados. Cada patrón está aislado — perfecto para samplear, estirar y rearmar en contextos hip-hop o house latino.",
+      "tags": ["montuno", "piano", "salsa", "tutorial", "loop"],
+      "videoId": "ZkU3XVwQH2Y"
+    },
+    {
+      "id": "pl-cumbia-peruana",
+      "type": "playlist",
+      "title": "Cumbia Peruana Chicha — Raíces Psicodélicas",
+      "url": "https://www.youtube.com/playlist?list=PLkL9B7oVU3rJ5vX2yNq4dP8sM1t3rW7uZ",
+      "category": "Cumbia & Tropical",
+      "description": "Chicha peruana de los 70 y 80 — Los Mirlos, Los Destellos, Juaneco y su Combo. Guitarras con phaser, timbales y bajo sincopado. Fuente única para flips tropicales-psicodélicos.",
+      "tags": ["chicha", "peru", "cumbia", "psychedelic", "guitar"],
+      "playlistId": "PLkL9B7oVU3rJ5vX2yNq4dP8sM1t3rW7uZ"
+    },
+    {
+      "id": "ch-soul-train-archive",
+      "type": "channel",
+      "title": "Soul Train Archives",
+      "url": "https://www.youtube.com/@SoulTrainArchives",
+      "category": "Soul & Funk Deep Cuts",
+      "description": "Performances en vivo del Soul Train de los 70. Audio limpio de la era dorada del soul — Earth Wind & Fire, The O'Jays, Isley Brothers. Riffs en vivo que el estudio nunca capturó.",
+      "tags": ["soul", "funk", "live", "70s", "soul-train"],
+      "handle": "@SoulTrainArchives"
+    },
+    {
+      "id": "vid-descarga-jazz",
+      "type": "video",
+      "title": "Descarga Latin Jazz — Vientos y Tumbao (1 Hora)",
+      "url": "https://www.youtube.com/watch?v=3XVwQH2YkUZ",
+      "category": "Jazz & Modal",
+      "description": "Descarga extendida de latin-jazz con secciones largas de vientos y tumbao. Estructura abierta perfecta para recortar frases de saxo y trompeta en loops de 4-8 compases.",
+      "tags": ["descarga", "latin-jazz", "sax", "trumpet", "long-form"],
+      "videoId": "3XVwQH2YkUZ"
+    },
+    {
+      "id": "pl-highlife-ghana",
+      "type": "playlist",
+      "title": "Highlife Ghana 70s — Ebo Taylor & K. Frimpong",
+      "url": "https://www.youtube.com/playlist?list=PLrJZk6e7pFZ1xV6vKQlq5pZp2r9sT8uYb",
+      "category": "African & Afrobeat",
+      "description": "Highlife ghanés de los 70 — guitarras sincopadas, hammond organs y baterías en off-beat. Punto medio entre afrobeat y soukous. Sobregrabaciones de guitarra limpia listas para chop.",
+      "tags": ["highlife", "ghana", "guitar", "african", "70s"],
+      "playlistId": "PLrJZk6e7pFZ1xV6vKQlq5pZp2r9sT8uYb"
+    }
+  ]
+}

@@ -99,8 +99,8 @@ lighthouse-report.json
 lighthouse-perf.json
 psi-report.json
 
-# Data
-data/
+# Data (root-level only — anchored so it does NOT swallow src/data/)
+/data/
 
 # Custom DB
 custom.db
