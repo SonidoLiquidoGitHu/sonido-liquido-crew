@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
       .jpeg({ quality: 90 })
       .toBuffer();
 
-    return new NextResponse(composed, {
+    return new NextResponse(new Uint8Array(composed), {
       status: 200,
       headers: {
         "Content-Type": "image/jpeg",
