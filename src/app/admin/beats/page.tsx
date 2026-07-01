@@ -31,6 +31,7 @@ import {
   ArrowDownRight,
   Clock,
   CheckCircle2,
+  Headphones,
 } from "lucide-react";
 
 interface Beat {
