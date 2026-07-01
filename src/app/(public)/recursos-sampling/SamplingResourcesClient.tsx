@@ -219,7 +219,7 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
       setStatus("success");
       // Brief success state before revealing content
       setTimeout(() => onUnlock(), 700);
-    } catch (err) {
+    } catch {
       setStatus("error");
       setErrorMsg("Error de conexión. Intenta de nuevo.");
     }
@@ -247,7 +247,7 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
           <div className="flex items-center justify-center gap-2 text-primary mb-2">
             <Headphones className="w-4 h-4" />
             <span className="text-[10px] uppercase tracking-widest font-medium">
-              Sonido Líquido Crew · Interno
+              Sonido Líquido Crew
             </span>
           </div>
           <h1 className="font-oswald text-3xl md:text-4xl uppercase text-white leading-tight">
@@ -359,17 +359,6 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
             Al continuar aceptas recibir comunicaciones de Sonido Líquido Crew. Puedes darte de baja en cualquier momento.
           </p>
         </form>
-
-        {/* Back link */}
-        <div className="text-center mt-6">
-          <Link
-            href="/beats"
-            className="inline-flex items-center gap-2 text-xs text-slc-muted hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            Volver a beats
-          </Link>
-        </div>
       </div>
     </div>
   );
@@ -380,7 +369,6 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
 // ===========================================
 
 export default function SamplingResourcesClient() {
-  // hydrate from localStorage on mount so refresh / repeat visit doesn't ask again
   const [accessGranted, setAccessGranted] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -388,7 +376,6 @@ export default function SamplingResourcesClient() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        // We trust the stored token. Server already recorded the email on first unlock.
         setAccessGranted(true);
       }
     } catch {
@@ -446,7 +433,7 @@ export default function SamplingResourcesClient() {
             <div className="flex items-center gap-2 text-primary mb-4">
               <Headphones className="w-5 h-5" />
               <span className="text-xs uppercase tracking-widest font-medium">
-                Sonido Líquido Crew · Interno
+                Sonido Líquido Crew
               </span>
             </div>
 
@@ -480,25 +467,6 @@ export default function SamplingResourcesClient() {
                 <span className="text-sm text-primary font-medium">{resources.length}</span>
                 <span className="text-xs text-primary/80 uppercase tracking-wide">Recursos</span>
               </div>
-            </div>
-
-            {/* Internal note callout */}
-            <div className="mt-8 p-4 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
-              <p className="text-xs text-yellow-400/90 leading-relaxed">
-                <strong className="uppercase tracking-wider">Nota interna:</strong>{" "}
-                {resourceData.internalNote}
-              </p>
-            </div>
-
-            {/* Back link */}
-            <div className="mt-6">
-              <Link
-                href="/beats"
-                className="inline-flex items-center gap-2 text-sm text-slc-muted hover:text-primary transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Volver a beats
-              </Link>
             </div>
           </div>
         </div>

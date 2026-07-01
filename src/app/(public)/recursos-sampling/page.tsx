@@ -4,7 +4,7 @@ import SamplingResourcesClient from "./SamplingResourcesClient";
 export const metadata: Metadata = {
   title: "Recursos para Sampling | Sonido Líquido Crew",
   description:
-    "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable.",
+    "Curaduría de canales, videos y playlists de YouTube para encontrar música sampleable.",
   robots: {
     index: false,
     follow: false,
