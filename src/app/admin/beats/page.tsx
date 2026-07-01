@@ -317,20 +317,9 @@ export default function AdminBeatsPage() {
 
   return (
     <div className="p-6 lg:p-8">
-      {/* Link to public beats page */}
-      <div className="mb-4">
-        <Link
-          href="/beats"
-          target="_blank"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-lg text-primary hover:bg-primary/20 transition-colors"
-        >
-          <ExternalLink className="w-4 h-4" />
-          <span className="text-sm font-medium">Ver página pública de beats</span>
-        </Link>
-      </div>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="font-oswald text-3xl uppercase">Beats</h1>
           <p className="text-slc-muted mt-1">
@@ -343,6 +332,40 @@ export default function AdminBeatsPage() {
             Agregar Beat
           </Link>
         </Button>
+      </div>
+
+      {/* Sampling Resources Landing Page — link card */}
+      <Link
+        href="/recursos-sampling"
+        target="_blank"
+        className="group mb-6 block rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-primary/5 hover:border-purple-400/50 hover:from-purple-500/15 transition-all duration-300"
+      >
+        <div className="flex items-center gap-4 p-5">
+          <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Headphones className="w-6 h-6 text-purple-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-oswald text-lg uppercase text-white group-hover:text-purple-300 transition-colors">
+              Recursos para Sampling
+            </h3>
+            <p className="text-sm text-slc-muted mt-0.5">
+              Curaduría de canales, videos y playlists de YouTube para encontrar música sampleable. Link privado con email gate.
+            </p>
+          </div>
+          <ExternalLink className="w-5 h-5 text-purple-400/60 group-hover:text-purple-300 flex-shrink-0 transition-colors" />
+        </div>
+      </Link>
+
+      {/* Quick links row */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Link
+          href="/beats"
+          target="_blank"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-lg text-primary hover:bg-primary/20 transition-colors"
+        >
+          <ExternalLink className="w-4 h-4" />
+          <span className="text-sm font-medium">Ver página pública de beats</span>
+        </Link>
       </div>
 
       {/* Stats Overview */}
