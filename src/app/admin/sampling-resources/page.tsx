@@ -16,9 +16,25 @@ import {
   Check,
   AlertCircle,
   GripVertical,
-  ArrowUpDown,
   Link2,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ===========================================
 // Types
@@ -83,6 +99,135 @@ const EXISTING_CATEGORIES = [
 ];
 
 // ===========================================
+// Sortable Resource Item
+// ===========================================
+
+function SortableResourceItem({
+  resource,
+  onEdit,
+  onDelete,
+  isDragOverlay = false,
+}: {
+  resource: SamplingResource;
+  onEdit: (r: SamplingResource) => void;
+  onDelete: (id: string) => void;
+  isDragOverlay?: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: resource.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  const meta = TYPE_META[resource.type];
+  const Icon = meta.icon;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group bg-slc-card border rounded-xl p-5 transition-all ${
+        isDragging
+          ? "border-primary/60 shadow-[0_0_30px_-5px_rgba(249,115,22,0.3)] scale-[1.01]"
+          : "border-slc-border hover:border-primary/30"
+      } ${isDragOverlay ? "shadow-2xl" : ""}`}
+    >
+      <div className="flex items-start gap-4">
+        {/* Drag handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 mt-1 p-1.5 rounded-lg text-slc-muted/40 hover:text-primary hover:bg-primary/10 cursor-grab active:cursor-grabbing transition-colors touch-none"
+          title="Arrastrar para reordenar"
+        >
+          <GripVertical className="w-5 h-5" />
+        </button>
+
+        {/* Type badge */}
+        <div
+          className={`flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${meta.color}`}
+        >
+          <Icon className="w-3 h-3" />
+          {meta.label}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-oswald text-lg uppercase text-white leading-tight group-hover:text-primary transition-colors">
+                {resource.title}
+              </h3>
+              <p className="text-[11px] uppercase tracking-widest text-primary/80 mt-0.5">
+                {resource.category}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg text-slc-muted hover:text-white hover:bg-slc-darker transition-colors"
+                title="Abrir en YouTube"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+              <button
+                onClick={() => onEdit(resource)}
+                className="p-2 rounded-lg text-slc-muted hover:text-primary hover:bg-primary/10 transition-colors"
+                title="Editar"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onDelete(resource.id)}
+                className="p-2 rounded-lg text-slc-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                title="Eliminar"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <p className="text-sm text-slc-muted leading-relaxed mt-2 line-clamp-2">
+            {resource.description}
+          </p>
+
+          {/* Tags + Handle */}
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {resource.tags.map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 text-[10px] uppercase tracking-wide rounded bg-slc-darker border border-slc-border text-slc-muted"
+              >
+                {tag}
+              </span>
+            ))}
+            {resource.handle && (
+              <span className="px-2 py-0.5 text-[10px] uppercase tracking-wide rounded bg-youtube/10 border border-youtube/30 text-red-400">
+                {resource.handle}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================
 // Main Page Component
 // ===========================================
 
@@ -92,6 +237,9 @@ export default function SamplingResourcesAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<ResourceType | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Drag & drop state
+  const [savingOrder, setSavingOrder] = useState(false);
 
   // Modal states
   const [showForm, setShowForm] = useState(false);
@@ -150,7 +298,62 @@ export default function SamplingResourcesAdminPage() {
     }
   };
 
-  // Filter resources
+  // ===========================================
+  // Drag & Drop
+  // ===========================================
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id || !data) return;
+
+    const oldIndex = data.resources.findIndex((r) => r.id === active.id);
+    const newIndex = data.resources.findIndex((r) => r.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Optimistic update — reorder locally first
+    const reordered = arrayMove(data.resources, oldIndex, newIndex);
+    setData((prev) => (prev ? { ...prev, resources: reordered } : prev));
+
+    // Persist new order to server
+    setSavingOrder(true);
+    try {
+      const orderedIds = reordered.map((r) => r.id);
+      const res = await fetch("/api/admin/sampling-resources", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        // Rollback on failure
+        setData((prev) => (prev ? { ...prev, resources: data.resources } : prev));
+        showToast("error", "Error al guardar orden");
+      } else {
+        showToast("success", "Orden guardado");
+      }
+    } catch {
+      // Rollback on network error
+      setData((prev) => (prev ? { ...prev, resources: data.resources } : prev));
+      showToast("error", "Error de conexión al reordenar");
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  // Filter resources (for display; drag reordering works on the full list)
   const filteredResources = data?.resources.filter((r) => {
     const matchesSearch =
       !searchQuery ||
@@ -162,6 +365,8 @@ export default function SamplingResourcesAdminPage() {
     const matchesCategory = categoryFilter === "all" || r.category === categoryFilter;
     return matchesSearch && matchesType && matchesCategory;
   }) || [];
+
+  const isFiltered = searchQuery || typeFilter !== "all" || categoryFilter !== "all";
 
   // Categories from current data
   const categories = data
@@ -217,6 +422,16 @@ export default function SamplingResourcesAdminPage() {
         </div>
       )}
 
+      {/* Saving order indicator */}
+      {savingOrder && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100]">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 border border-primary/30 text-primary shadow-lg">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Guardando orden…</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="border-b border-slc-border bg-slc-dark">
         <div className="p-6 md:p-8">
@@ -234,6 +449,7 @@ export default function SamplingResourcesAdminPage() {
               <p className="text-slc-muted text-sm mt-2 max-w-xl leading-relaxed">
                 Curaduría de canales, videos y playlists de YouTube para encontrar música sampleable.
                 Este recurso se ofrece a cambio del email del usuario (email gate).
+                Arrastra los recursos para reordenarlos.
               </p>
             </div>
 
@@ -320,10 +536,17 @@ export default function SamplingResourcesAdminPage() {
             ))}
           </select>
         </div>
+        {isFiltered && (
+          <div className="px-4 md:px-8 pb-3">
+            <p className="text-xs text-primary/70">
+              Los filtros están activos. El reordenamiento por arrastre solo funciona sin filtros.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Resource List */}
-      <div className="p-4 md:p-8 space-y-3">
+      {/* Resource List with DnD */}
+      <div className="p-4 md:p-8">
         {filteredResources.length === 0 ? (
           <div className="text-center py-16">
             <Headphones className="w-12 h-12 text-slc-muted/30 mx-auto mb-4" />
@@ -334,92 +557,47 @@ export default function SamplingResourcesAdminPage() {
                 : "Agrega el primer recurso con el botón de arriba"}
             </p>
           </div>
-        ) : (
-          filteredResources.map((resource) => {
-            const meta = TYPE_META[resource.type];
-            const Icon = meta.icon;
-            return (
-              <div
+        ) : isFiltered ? (
+          /* When filters are active, show simple list without drag */
+          <div className="space-y-3">
+            {filteredResources.map((resource) => (
+              <SortableResourceItem
                 key={resource.id}
-                className="group bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/30 transition-all"
-              >
-                <div className="flex items-start gap-4">
-                  {/* Type badge */}
-                  <div
-                    className={`flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${meta.color}`}
-                  >
-                    <Icon className="w-3 h-3" />
-                    {meta.label}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-oswald text-lg uppercase text-white leading-tight group-hover:text-primary transition-colors">
-                          {resource.title}
-                        </h3>
-                        <p className="text-[11px] uppercase tracking-widest text-primary/80 mt-0.5">
-                          {resource.category}
-                        </p>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <a
-                          href={resource.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 rounded-lg text-slc-muted hover:text-white hover:bg-slc-darker transition-colors"
-                          title="Abrir en YouTube"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                        <button
-                          onClick={() => {
-                            setEditingResource(resource);
-                            setShowForm(true);
-                          }}
-                          className="p-2 rounded-lg text-slc-muted hover:text-primary hover:bg-primary/10 transition-colors"
-                          title="Editar"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingId(resource.id)}
-                          className="p-2 rounded-lg text-slc-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-slc-muted leading-relaxed mt-2 line-clamp-2">
-                      {resource.description}
-                    </p>
-
-                    {/* Tags + URL */}
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
-                      {resource.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 text-[10px] uppercase tracking-wide rounded bg-slc-darker border border-slc-border text-slc-muted"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {resource.handle && (
-                        <span className="px-2 py-0.5 text-[10px] uppercase tracking-wide rounded bg-youtube/10 border border-youtube/30 text-red-400">
-                          {resource.handle}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                resource={resource}
+                onEdit={(r) => {
+                  setEditingResource(r);
+                  setShowForm(true);
+                }}
+                onDelete={(id) => setDeletingId(id)}
+              />
+            ))}
+          </div>
+        ) : (
+          /* Full list with drag & drop */
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={data?.resources.map((r) => r.id) || []}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-3">
+                {data?.resources.map((resource) => (
+                  <SortableResourceItem
+                    key={resource.id}
+                    resource={resource}
+                    onEdit={(r) => {
+                      setEditingResource(r);
+                      setShowForm(true);
+                    }}
+                    onDelete={(id) => setDeletingId(id)}
+                  />
+                ))}
               </div>
-            );
-          })
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
@@ -620,7 +798,6 @@ function ResourceFormModal({
 
   const handleUrlChange = (newUrl: string) => {
     setUrl(newUrl);
-    // Auto-fill IDs when URL changes
     if (type === "video" && !videoId) {
       const extracted = extractVideoId(newUrl);
       if (extracted) setVideoId(extracted);

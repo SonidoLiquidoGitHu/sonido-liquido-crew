@@ -39,8 +39,31 @@ async function readData(): Promise<SamplingData> {
   return JSON.parse(raw);
 }
 
+/**
+ * Serialize the data back to JSON preserving the compact-array style
+ * used in the original file (arrays on single lines, 2-space indent).
+ */
+function serializeData(data: SamplingData): string {
+  const raw = JSON.stringify(data, null, 2);
+  // Collapse multi-line arrays back to single lines for readability
+  // Matches patterns like:  [\n      "val1",\n      "val2"\n    ]
+  return raw.replace(
+    /\[\s*\n(\s*)"([^"]+)"(?:,\s*\n\s*"([^"]+)")*\s*\n\s*\]/g,
+    (match) => {
+      // Extract all string values from the array
+      const values: string[] = [];
+      const re = /"([^"]+)"/g;
+      let m;
+      while ((m = re.exec(match)) !== null) {
+        values.push(`"${m[1]}"`);
+      }
+      return `[${values.join(", ")}]`;
+    }
+  ) + "\n";
+}
+
 async function writeData(data: SamplingData): Promise<void> {
-  await writeFile(DATA_PATH, JSON.stringify(data, null, 2) + "\n", "utf-8");
+  await writeFile(DATA_PATH, serializeData(data), "utf-8");
 }
 
 // GET — list all resources
