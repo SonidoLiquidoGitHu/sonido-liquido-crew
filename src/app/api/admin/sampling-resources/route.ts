@@ -11,6 +11,7 @@ import { generateUUID } from "@/lib/utils";
 // on Netlify's read-only serverless filesystem.
 
 type ResourceType = "video" | "channel" | "playlist";
+type GateType = "email" | "presave" | "both";
 
 // -------------------------------------------
 // Helper: ensure the DB tables exist
@@ -62,6 +63,9 @@ async function readSettingsFromDB(): Promise<{
   title: string;
   subtitle: string;
   internalNote: string;
+  gateType: GateType;
+  presaveUrl: string;
+  presaveCta: string;
 }> {
   try {
     const rows = await db.select().from(samplingResourcesSettings);
@@ -72,6 +76,9 @@ async function readSettingsFromDB(): Promise<{
         map.subtitle ||
         "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable.",
       internalNote: map.internalNote || "",
+      gateType: (map.gateType as GateType) || "email",
+      presaveUrl: map.presaveUrl || "",
+      presaveCta: map.presaveCta || "Pre-guardar en Spotify",
     };
   } catch {
     // Settings table might not exist yet — return defaults
@@ -80,8 +87,21 @@ async function readSettingsFromDB(): Promise<{
       subtitle:
         "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable.",
       internalNote: "",
+      gateType: "email",
+      presaveUrl: "",
+      presaveCta: "Pre-guardar en Spotify",
     };
   }
+}
+
+// -------------------------------------------
+// Helper: upsert a single setting
+// -------------------------------------------
+async function upsertSetting(key: string, value: string): Promise<void> {
+  await db
+    .insert(samplingResourcesSettings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: samplingResourcesSettings.key, set: { value, updatedAt: new Date() } });
 }
 
 // -------------------------------------------
@@ -102,7 +122,7 @@ function rowToResource(row: (typeof samplingResources)["$inferSelect"]) {
   };
 }
 
-// GET — list all resources
+// GET — list all resources + settings
 export async function GET() {
   try {
     await ensureTables();
@@ -142,12 +162,31 @@ export async function GET() {
   }
 }
 
-// POST — add a new resource
+// POST — add a new resource OR save settings
 export async function POST(request: NextRequest) {
   try {
     await ensureTables();
 
     const body = await request.json();
+
+    // Check if this is a settings update (has _action: "settings")
+    if (body._action === "settings") {
+      const validGateTypes: GateType[] = ["email", "presave", "both"];
+      const gateType = validGateTypes.includes(body.gateType) ? body.gateType : "email";
+      const presaveUrl = (body.presaveUrl || "").trim();
+      const presaveCta = (body.presaveCta || "").trim() || "Pre-guardar en Spotify";
+
+      await upsertSetting("gateType", gateType);
+      await upsertSetting("presaveUrl", presaveUrl);
+      await upsertSetting("presaveCta", presaveCta);
+
+      return NextResponse.json({
+        success: true,
+        data: { gateType, presaveUrl, presaveCta },
+      });
+    }
+
+    // Otherwise, create a new resource
     const { type, title, url, category, description, tags, videoId, playlistId, handle } = body;
 
     if (!type || !title || !url || !category || !description) {

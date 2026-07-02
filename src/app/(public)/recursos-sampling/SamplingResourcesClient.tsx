@@ -7,7 +7,6 @@ import {
   ExternalLink,
   Headphones,
   Sparkles,
-  ArrowLeft,
   Music2,
   Mail,
   Lock,
@@ -15,11 +14,13 @@ import {
   Loader2,
   Check,
   AlertCircle,
+  Music,
 } from "lucide-react";
 // Resources are fetched from the API (DB-backed) instead of the JSON file
 // so that admin CRUD changes are immediately reflected.
 
 type ResourceType = "video" | "channel" | "playlist";
+type GateType = "email" | "presave" | "both";
 
 interface SamplingResource {
   id: string;
@@ -32,6 +33,12 @@ interface SamplingResource {
   videoId?: string;
   playlistId?: string;
   handle?: string;
+}
+
+interface GateConfig {
+  gateType: GateType;
+  presaveUrl: string;
+  presaveCta: string;
 }
 
 const typeMeta: Record<
@@ -55,7 +62,7 @@ const typeMeta: Record<
   },
 };
 
-const STORAGE_KEY = "slc:sampling-access:v1";
+const STORAGE_KEY = "slc:sampling-access:v2";
 
 function ResourceEmbed({ resource }: { resource: SamplingResource }) {
   if (resource.type === "video" && resource.videoId) {
@@ -209,6 +216,7 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
         localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({
+            method: "email",
             email,
             grantedAt: new Date().toISOString(),
           })
@@ -224,6 +232,201 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
       setStatus("error");
       setErrorMsg("Error de conexión. Intenta de nuevo.");
     }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="bg-slc-card border border-slc-border rounded-xl p-6 space-y-4"
+    >
+      {/* Name (optional) */}
+      <div>
+        <label
+          htmlFor="sr-name"
+          className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+        >
+          Nombre <span className="text-slc-muted/60">(opcional)</span>
+        </label>
+        <input
+          id="sr-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Tu nombre o alias"
+          autoComplete="name"
+          className="w-full px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted/60 focus:outline-none focus:border-primary transition-colors"
+        />
+      </div>
+
+      {/* Email */}
+      <div>
+        <label
+          htmlFor="sr-email"
+          className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+        >
+          Email <span className="text-primary">*</span>
+        </label>
+        <input
+          id="sr-email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="tu@email.com"
+          autoComplete="email"
+          className="w-full px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted/60 focus:outline-none focus:border-primary transition-colors"
+        />
+      </div>
+
+      {/* Honeypot — hidden from real users */}
+      <input
+        type="text"
+        name="website"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        data-lpignore="true"
+        data-form-type="other"
+        className="absolute -left-[9999px] w-px h-px opacity-0"
+        aria-hidden="true"
+      />
+
+      {/* Error message */}
+      {status === "error" && errorMsg && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Success message */}
+      {status === "success" && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs">
+          <Check className="w-4 h-4 flex-shrink-0" />
+          <span>Email confirmado. Acceso concedido.</span>
+        </div>
+      )}
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={!email || status === "submitting" || status === "success"}
+        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold uppercase tracking-wide transition-colors"
+      >
+        {status === "submitting" ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Procesando…
+          </>
+        ) : status === "success" ? (
+          <>
+            <Check className="w-4 h-4" />
+            Acceso concedido
+          </>
+        ) : (
+          <>
+            <Unlock className="w-4 h-4" />
+            Desbloquear con email
+          </>
+        )}
+      </button>
+
+      {/* Legal note */}
+      <p className="text-[11px] text-slc-muted/80 leading-relaxed text-center pt-1">
+        Al continuar aceptas recibir comunicaciones de Sonido Líquido Crew. Puedes darte de baja en cualquier momento.
+      </p>
+    </form>
+  );
+}
+
+// ===========================================
+// Pre-save Gate
+// ===========================================
+
+function PresaveGate({ presaveUrl, presaveCta, onUnlock }: { presaveUrl: string; presaveCta: string; onUnlock: () => void }) {
+  const [status, setStatus] = useState<"idle" | "clicked" | "success">("idle");
+
+  const handleClick = () => {
+    // Open the pre-save link in a new tab
+    window.open(presaveUrl, "_blank", "noopener,noreferrer");
+
+    setStatus("clicked");
+
+    // Grant access — trust-based, same as email gate
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          method: "presave",
+          grantedAt: new Date().toISOString(),
+        })
+      );
+    } catch {
+      // localStorage may be unavailable — non-critical
+    }
+
+    // Brief delay to simulate the "process" and let the user see the confirmation
+    setStatus("success");
+    setTimeout(() => onUnlock(), 700);
+  };
+
+  return (
+    <div className="bg-slc-card border border-slc-border rounded-xl p-6 space-y-4">
+      {/* Spotify icon area */}
+      <div className="flex items-center justify-center gap-3 py-4">
+        <div className="w-16 h-16 rounded-full bg-[#1DB954]/15 border border-[#1DB954]/30 flex items-center justify-center">
+          <Music className="w-8 h-8 text-[#1DB954]" />
+        </div>
+      </div>
+
+      <p className="text-center text-sm text-slc-muted leading-relaxed">
+        Apoya el próximo lanzamiento pre-guardándolo en Spotify y desbloquea acceso instantáneo a los recursos.
+      </p>
+
+      {status === "success" && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs">
+          <Check className="w-4 h-4 flex-shrink-0" />
+          <span>Pre-save abierto. Acceso concedido.</span>
+        </div>
+      )}
+
+      <button
+        onClick={handleClick}
+        disabled={status === "success"}
+        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#1DB954] hover:bg-[#1ed760] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold uppercase tracking-wide transition-colors"
+      >
+        {status === "success" ? (
+          <>
+            <Check className="w-4 h-4" />
+            Acceso concedido
+          </>
+        ) : (
+          <>
+            <Music className="w-4 h-4" />
+            {presaveCta}
+          </>
+        )}
+      </button>
+
+      <p className="text-[11px] text-slc-muted/80 leading-relaxed text-center pt-1">
+        Se abrirá Spotify en otra pestaña. El acceso se concede al hacer clic.
+      </p>
+    </div>
+  );
+}
+
+// ===========================================
+// Gate Wrapper — renders the correct gate based on config
+// ===========================================
+
+function AccessGate({ gateConfig, onUnlock }: { gateConfig: GateConfig; onUnlock: () => void }) {
+  const { gateType, presaveUrl, presaveCta } = gateConfig;
+
+  const gateDescription: Record<GateType, string> = {
+    email: "Ingresa tu email para desbloquear la curaduría de canales, videos y playlists de YouTube.",
+    presave: "Pre-guarda el próximo lanzamiento en Spotify y desbloquea la curaduría de recursos para sampling.",
+    both: "Desbloquea la curaduría de canales, videos y playlists de YouTube con tu email o pre-guardando en Spotify.",
   };
 
   return (
@@ -255,113 +458,37 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
             Recursos para Sampling
           </h1>
           <p className="text-slc-muted text-sm mt-3 leading-relaxed">
-            Ingresa tu email para desbloquear la curaduría de canales, videos y playlists de YouTube.
+            {gateDescription[gateType]}
           </p>
         </div>
 
-        {/* Form card */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-slc-card border border-slc-border rounded-xl p-6 space-y-4"
-        >
-          {/* Name (optional) */}
-          <div>
-            <label
-              htmlFor="sr-name"
-              className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
-            >
-              Nombre <span className="text-slc-muted/60">(opcional)</span>
-            </label>
-            <input
-              id="sr-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Tu nombre o alias"
-              autoComplete="name"
-              className="w-full px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted/60 focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+        {/* Email only */}
+        {gateType === "email" && (
+          <EmailGate onUnlock={onUnlock} />
+        )}
 
-          {/* Email */}
-          <div>
-            <label
-              htmlFor="sr-email"
-              className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
-            >
-              Email <span className="text-primary">*</span>
-            </label>
-            <input
-              id="sr-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              autoComplete="email"
-              className="w-full px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted/60 focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
+        {/* Pre-save only */}
+        {gateType === "presave" && presaveUrl && (
+          <PresaveGate presaveUrl={presaveUrl} presaveCta={presaveCta} onUnlock={onUnlock} />
+        )}
 
-          {/* Honeypot — hidden from real users */}
-          <input
-            type="text"
-            name="website"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            tabIndex={-1}
-            autoComplete="off"
-            data-lpignore="true"
-            data-form-type="other"
-            className="absolute -left-[9999px] w-px h-px opacity-0"
-            aria-hidden="true"
-          />
-
-          {/* Error message */}
-          {status === "error" && errorMsg && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          {/* Success message */}
-          {status === "success" && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs">
-              <Check className="w-4 h-4 flex-shrink-0" />
-              <span>Email confirmado. Acceso concedido.</span>
-            </div>
-          )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={!email || status === "submitting" || status === "success"}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold uppercase tracking-wide transition-colors"
-          >
-            {status === "submitting" ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Procesando…
-              </>
-            ) : status === "success" ? (
-              <>
-                <Check className="w-4 h-4" />
-                Acceso concedido
-              </>
-            ) : (
-              <>
-                <Unlock className="w-4 h-4" />
-                Desbloquear recursos
-              </>
+        {/* Both — user can choose */}
+        {gateType === "both" && (
+          <div className="space-y-4">
+            {presaveUrl && (
+              <PresaveGate presaveUrl={presaveUrl} presaveCta={presaveCta} onUnlock={onUnlock} />
             )}
-          </button>
 
-          {/* Legal note */}
-          <p className="text-[11px] text-slc-muted/80 leading-relaxed text-center pt-1">
-            Al continuar aceptas recibir comunicaciones de Sonido Líquido Crew. Puedes darte de baja en cualquier momento.
-          </p>
-        </form>
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-slc-border" />
+              <span className="text-xs text-slc-muted uppercase tracking-wider">o</span>
+              <div className="h-px flex-1 bg-slc-border" />
+            </div>
+
+            <EmailGate onUnlock={onUnlock} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -375,6 +502,14 @@ export default function SamplingResourcesClient() {
   const [accessGranted, setAccessGranted] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
+  const [resources, setResources] = useState<SamplingResource[]>([]);
+  const [pageMeta, setPageMeta] = useState({ title: "Recursos para Sampling", subtitle: "" });
+  const [gateConfig, setGateConfig] = useState<GateConfig>({
+    gateType: "email",
+    presaveUrl: "",
+    presaveCta: "Pre-guardar en Spotify",
+  });
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -387,9 +522,6 @@ export default function SamplingResourcesClient() {
     setHydrated(true);
   }, []);
 
-  const [resources, setResources] = useState<SamplingResource[]>([]);
-  const [pageMeta, setPageMeta] = useState({ title: "Recursos para Sampling", subtitle: "" });
-
   useEffect(() => {
     fetch("/api/admin/sampling-resources")
       .then((r) => r.json())
@@ -397,6 +529,11 @@ export default function SamplingResourcesClient() {
         if (json.success && json.data) {
           setResources(json.data.resources || []);
           setPageMeta({ title: json.data.title || "Recursos para Sampling", subtitle: json.data.subtitle || "" });
+          setGateConfig({
+            gateType: json.data.gateType || "email",
+            presaveUrl: json.data.presaveUrl || "",
+            presaveCta: json.data.presaveCta || "Pre-guardar en Spotify",
+          });
         }
       })
       .catch(() => {});
@@ -428,7 +565,7 @@ export default function SamplingResourcesClient() {
   }
 
   if (!accessGranted) {
-    return <EmailGate onUnlock={() => setAccessGranted(true)} />;
+    return <AccessGate gateConfig={gateConfig} onUnlock={() => setAccessGranted(true)} />;
   }
 
   return (
@@ -514,14 +651,7 @@ export default function SamplingResourcesClient() {
         <div className="section-container py-10">
           <div className="max-w-3xl mx-auto text-center">
             <p className="text-sm text-slc-muted leading-relaxed">
-              Para agregar nuevos recursos, edita{" "}
-              <code className="px-1.5 py-0.5 rounded bg-slc-card border border-slc-border text-primary text-xs">
-                src/data/sampling-resources.json
-              </code>{" "}
-              y vuelve a desplegar. Cada entrada puede ser de tipo{" "}
-              <span className="text-orange-400">video</span>,{" "}
-              <span className="text-orange-400">channel</span> o{" "}
-              <span className="text-orange-400">playlist</span>, con su título, descripción, categoría y tags.
+              Curaduría de recursos para sampling de Sonido Líquido Crew. Canales, videos y playlists de YouTube para encontrar música sampleable.
             </p>
           </div>
         </div>

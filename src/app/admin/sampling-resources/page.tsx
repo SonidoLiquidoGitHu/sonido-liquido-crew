@@ -17,6 +17,9 @@ import {
   AlertCircle,
   GripVertical,
   Link2,
+  Settings,
+  Mail,
+  Music,
 } from "lucide-react";
 import {
   DndContext,
@@ -55,10 +58,15 @@ interface SamplingResource {
   handle?: string;
 }
 
+type GateType = "email" | "presave" | "both";
+
 interface SamplingData {
   title: string;
   subtitle: string;
   internalNote: string;
+  gateType: GateType;
+  presaveUrl: string;
+  presaveCta: string;
   resources: SamplingResource[];
 }
 
@@ -85,6 +93,26 @@ const TYPE_META: Record<ResourceType, { label: string; color: string; icon: type
 };
 
 const RESOURCE_TYPES: ResourceType[] = ["channel", "video", "playlist"];
+
+const GATE_TYPE_META: Record<GateType, { label: string; description: string; icon: typeof Mail }> = {
+  email: {
+    label: "Email",
+    description: "Requiere email para desbloquear",
+    icon: Mail,
+  },
+  presave: {
+    label: "Pre-save",
+    description: "Requiere pre-save en Spotify",
+    icon: Music,
+  },
+  both: {
+    label: "Ambos",
+    description: "El usuario elige: email o pre-save",
+    icon: Settings,
+  },
+};
+
+const GATE_TYPES: GateType[] = ["email", "presave", "both"];
 
 const EXISTING_CATEGORIES = [
   "Salsa & Latin Classics",
@@ -248,6 +276,13 @@ export default function SamplingResourcesAdminPage() {
   const [saving, setSaving] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Gate config states
+  const [gateType, setGateType] = useState<GateType>("email");
+  const [presaveUrl, setPresaveUrl] = useState("");
+  const [presaveCta, setPresaveCta] = useState("Pre-guardar en Spotify");
+  const [savingGate, setSavingGate] = useState(false);
+  const [showGateConfig, setShowGateConfig] = useState(false);
+
   // Toast
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -263,6 +298,10 @@ export default function SamplingResourcesAdminPage() {
       const json = await res.json();
       if (json.success) {
         setData(json.data);
+        // Sync gate config state from DB
+        setGateType(json.data.gateType || "email");
+        setPresaveUrl(json.data.presaveUrl || "");
+        setPresaveCta(json.data.presaveCta || "Pre-guardar en Spotify");
       }
     } catch (err) {
       console.error("Error fetching sampling resources:", err);
@@ -293,6 +332,34 @@ export default function SamplingResourcesAdminPage() {
       showToast("error", "Error de conexión");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  // Gate config save handler
+  const handleSaveGateConfig = async () => {
+    setSavingGate(true);
+    try {
+      const res = await fetch("/api/admin/sampling-resources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _action: "settings",
+          gateType,
+          presaveUrl,
+          presaveCta,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await fetchData();
+        showToast("success", "Configuración de acceso guardada");
+      } else {
+        showToast("error", json.error || "Error al guardar configuración");
+      }
+    } catch {
+      showToast("error", "Error de conexión");
+    } finally {
+      setSavingGate(false);
     }
   };
 
@@ -446,12 +513,22 @@ export default function SamplingResourcesAdminPage() {
               </h1>
               <p className="text-slc-muted text-sm mt-2 max-w-xl leading-relaxed">
                 Curaduría de canales, videos y playlists de YouTube para encontrar música sampleable.
-                Este recurso se ofrece a cambio del email del usuario (email gate).
-                Arrastra los recursos para reordenarlos.
+                Configura el tipo de acceso (email, pre-save o ambos) y arrastra los recursos para reordenarlos.
               </p>
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowGateConfig(!showGateConfig)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium uppercase tracking-wide transition-colors ${
+                  showGateConfig
+                    ? "bg-primary/10 border-primary text-primary"
+                    : "bg-slc-card border-slc-border text-white hover:border-primary/40"
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                Configurar Acceso
+              </button>
               <Link
                 href="/recursos-sampling"
                 target="_blank"
@@ -485,6 +562,122 @@ export default function SamplingResourcesAdminPage() {
           )}
         </div>
       </div>
+
+      {/* Gate Config Panel */}
+      {showGateConfig && (
+        <div className="border-b border-slc-border bg-slc-dark">
+          <div className="p-6 md:p-8">
+            <div className="max-w-2xl">
+              <h2 className="font-oswald text-xl uppercase text-white mb-1">Configurar Acceso</h2>
+              <p className="text-slc-muted text-sm mb-6">
+                Define qué requisito deben cumplir los usuarios para desbloquear los recursos.
+              </p>
+
+              {/* Gate Type Selector */}
+              <div className="mb-6">
+                <label className="block text-xs uppercase tracking-wider text-slc-muted mb-3">
+                  Tipo de Acceso
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {GATE_TYPES.map((gt) => {
+                    const meta = GATE_TYPE_META[gt];
+                    const Icon = meta.icon;
+                    return (
+                      <button
+                        key={gt}
+                        type="button"
+                        onClick={() => setGateType(gt)}
+                        className={`flex flex-col items-center gap-2 px-4 py-3.5 rounded-lg border text-sm transition-colors ${
+                          gateType === gt
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-slc-card border-slc-border text-slc-muted hover:text-white hover:border-slc-muted"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="font-bold uppercase tracking-wide">{meta.label}</span>
+                        <span className="text-[10px] text-slc-muted/80 text-center leading-tight">{meta.description}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pre-save settings (visible when gate type is presave or both) */}
+              {(gateType === "presave" || gateType === "both") && (
+                <div className="space-y-4 mb-6 p-4 rounded-lg bg-slc-card border border-slc-border">
+                  <div className="flex items-center gap-2 text-primary mb-2">
+                    <Music className="w-4 h-4" />
+                    <span className="text-xs uppercase tracking-wider font-medium">Configuración de Pre-save</span>
+                  </div>
+
+                  <div>
+                    <label htmlFor="gate-presave-url" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+                      URL de Pre-save <span className="text-primary">*</span>
+                    </label>
+                    <input
+                      id="gate-presave-url"
+                      type="url"
+                      value={presaveUrl}
+                      onChange={(e) => setPresaveUrl(e.target.value)}
+                      placeholder="https://presave.io/tu-enlace o URL de Feature.fm / Linkfire"
+                      className="w-full px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted/60 focus:outline-none focus:border-primary transition-colors"
+                    />
+                    <p className="text-[10px] text-slc-muted/60 mt-1">
+                      URL del enlace de pre-save (Feature.fm, Linkfire, Spotify SmartLink, etc.)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="gate-presave-cta" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+                      Texto del Botón
+                    </label>
+                    <input
+                      id="gate-presave-cta"
+                      type="text"
+                      value={presaveCta}
+                      onChange={(e) => setPresaveCta(e.target.value)}
+                      placeholder="Pre-guardar en Spotify"
+                      className="w-full px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted/60 focus:outline-none focus:border-primary transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Current gate badge */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-slc-muted">Acceso actual:</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-full border bg-primary/10 border-primary/30 text-primary">
+                    {(() => {
+                      const Icon = GATE_TYPE_META[gateType].icon;
+                      return <Icon className="w-3 h-3" />;
+                    })()}
+                    {GATE_TYPE_META[gateType].label}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleSaveGateConfig}
+                  disabled={savingGate || ((gateType === "presave" || gateType === "both") && !presaveUrl.trim())}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-bold uppercase tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingGate ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Guardando…
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Guardar Configuración
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="border-b border-slc-border bg-slc-card/50">
