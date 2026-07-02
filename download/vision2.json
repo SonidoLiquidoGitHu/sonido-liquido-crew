@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "La imagen muestra una página web del sitio **Sonido Líquido** (especializado en hip hop mexicano) con el título **\"RECURSOS PARA SAMPLING\"**. En el centro, hay un formulario para desbloquear recursos (canales, videos y playlists de YouTube) ingresando un email (y un nombre opcional). El campo de email muestra un error (\"Email no válido\") y un botón naranja para \"DESbloquear recursos\". La interfaz tiene un diseño oscuro con menú de navegación superior (Inicio, Artistas, Discografía, etc.).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783006785,
+  "id": "20260702233941a67938a4a66244c5",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260702233941a67938a4a66244c5",
+  "usage": {
+    "completion_tokens": 130,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2500,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 2630
+  }
+}
