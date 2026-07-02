@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const { email, name, website } = parsed.data;
 
     // Honeypot: if hidden website field is filled, it's a bot
-    if (website && website.length > 0) {
+    if (website && website.trim().length > 0) {
       // Pretend success so bots think they won
       return NextResponse.json({
         success: true,
@@ -115,13 +115,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Subscribe with the dedicated source
+    // Subscribe with the dedicated source and Mailchimp tag
     try {
       await subscribersService.subscribe(email, name || undefined, "sampling-resources");
     } catch (err) {
       // If it's a duplicate-email error, that's fine — they're already on the list.
       // Log but don't fail the request, since we still want to grant access.
       console.warn("[sampling-resources] subscribe() returned an error (likely duplicate):", err);
+    }
+
+    // Ensure the "sampling-resources" tag is applied in Mailchimp for segmentation
+    try {
+      const { mailchimpClient } = await import("@/lib/clients");
+      if (mailchimpClient.isConfigured()) {
+        await mailchimpClient.addTagsToMember(email, ["sampling-resources"]);
+        console.log(`[sampling-resources] Applied "sampling-resources" Mailchimp tag to ${email.substring(0, 3)}***`);
+      }
+    } catch (tagErr) {
+      // Non-critical: subscriber is already in Mailchimp, just the tag failed
+      console.warn("[sampling-resources] Failed to apply Mailchimp tag:", tagErr);
     }
 
     return NextResponse.json({

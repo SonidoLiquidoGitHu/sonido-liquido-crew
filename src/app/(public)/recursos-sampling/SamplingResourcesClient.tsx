@@ -310,6 +310,8 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
             onChange={(e) => setWebsite(e.target.value)}
             tabIndex={-1}
             autoComplete="off"
+            data-lpignore="true"
+            data-form-type="other"
             className="absolute -left-[9999px] w-px h-px opacity-0"
             aria-hidden="true"
           />

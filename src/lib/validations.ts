@@ -204,7 +204,9 @@ export const subscribeSchema = z.object({
   name: z.string().max(200).nullable().optional(),
   source: z.string().max(100).nullable().optional(),
   // Honeypot field — must be empty for real users, bots fill it
-  website: z.string().max(0).nullable().optional(),
+  // We accept any string here and let the route handler decide
+  // (avoids false "Email no válido" errors when browser autofill fills the hidden field)
+  website: z.string().nullable().optional(),
 });
 
 // ===========================================
