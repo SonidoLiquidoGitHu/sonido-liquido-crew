@@ -34,6 +34,7 @@ import {
   Share2,
   Smartphone,
   Zap,
+  Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -44,6 +45,7 @@ const sidebarLinks = [
   { href: "/admin/upcoming-releases", label: "Próximos Lanzamientos", icon: Rocket },
   { href: "/admin/campaigns", label: "Campañas", icon: Megaphone },
   { href: "/admin/beats", label: "Beats", icon: Music },
+  { href: "/admin/sampling-resources", label: "Sampling Resources", icon: Headphones },
   { href: "/admin/press-kits", label: "Press Kits", icon: FileText },
   { href: "/admin/media-releases", label: "Media Releases", icon: Newspaper },
   { href: "/admin/styles", label: "Estilos", icon: Palette },
