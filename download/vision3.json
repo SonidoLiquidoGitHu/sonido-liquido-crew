@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "La captura muestra una página web de **Sonido Líquido** (sección \"Recursos para Sampling\") con un panel de administración. Se listan recursos de YouTube (canales, videos, playlists) para sampling, con estadísticas (18 recursos totales, 8 canales, 5 videos, 5 playlists, 9 categorías).  \n\nEl **error** es que la página está en modo \"Email Gate Resource\" (indicado en la cabecera), lo que significa que el acceso a estos recursos requiere un intercambio de correo electrónico del usuario (un \"email gate\"), lo que limita el acceso inmediato a los materiales.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783025225,
+  "id": "2026070304470026644a3514e140a7",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "2026070304470026644a3514e140a7",
+  "usage": {
+    "completion_tokens": 140,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2513,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 2653
+  }
+}

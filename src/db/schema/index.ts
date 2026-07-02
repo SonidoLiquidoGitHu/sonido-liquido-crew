@@ -86,3 +86,6 @@ export * from "./video-cache";
 // Deleted Releases Blocklist (prevents Spotify sync from re-importing
 // releases that an admin has explicitly deleted)
 export * from "./release-blocklist";
+
+// Sampling Resources (curated YouTube channels, videos, playlists)
+export * from "./sampling-resources";

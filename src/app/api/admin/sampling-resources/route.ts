@@ -1,76 +1,83 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, writeFile } from "fs/promises";
-import path from "path";
+import { db } from "@/db/client";
+import { samplingResources, samplingResourcesSettings } from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
 
 // ===========================================
-// Sampling Resources Admin API
+// Sampling Resources Admin API (DB-backed)
 // ===========================================
-// Reads/writes src/data/sampling-resources.json directly.
-// This is a file-based resource (not DB-backed) since it's a
-// curated list that changes infrequently.
-
-const DATA_PATH = path.join(process.cwd(), "src/data/sampling-resources.json");
+// All reads/writes go to the Turso database so they work
+// on Netlify's read-only serverless filesystem.
 
 type ResourceType = "video" | "channel" | "playlist";
 
-interface SamplingResource {
-  id: string;
-  type: ResourceType;
-  title: string;
-  url: string;
-  category: string;
-  description: string;
-  tags: string[];
-  videoId?: string;
-  playlistId?: string;
-  handle?: string;
-}
-
-interface SamplingData {
+// -------------------------------------------
+// Helper: read settings from DB (with JSON file fallback)
+// -------------------------------------------
+async function readSettingsFromDB(): Promise<{
   title: string;
   subtitle: string;
   internalNote: string;
-  resources: SamplingResource[];
+}> {
+  const rows = await db.select().from(samplingResourcesSettings);
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  return {
+    title: map.title || "Recursos para Sampling",
+    subtitle:
+      map.subtitle ||
+      "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable.",
+    internalNote: map.internalNote || "",
+  };
 }
 
-async function readData(): Promise<SamplingData> {
-  const raw = await readFile(DATA_PATH, "utf-8");
-  return JSON.parse(raw);
-}
-
-/**
- * Serialize the data back to JSON preserving the compact-array style
- * used in the original file (arrays on single lines, 2-space indent).
- */
-function serializeData(data: SamplingData): string {
-  const raw = JSON.stringify(data, null, 2);
-  // Collapse multi-line arrays back to single lines for readability
-  // Matches patterns like:  [\n      "val1",\n      "val2"\n    ]
-  return raw.replace(
-    /\[\s*\n(\s*)"([^"]+)"(?:,\s*\n\s*"([^"]+)")*\s*\n\s*\]/g,
-    (match) => {
-      // Extract all string values from the array
-      const values: string[] = [];
-      const re = /"([^"]+)"/g;
-      let m;
-      while ((m = re.exec(match)) !== null) {
-        values.push(`"${m[1]}"`);
-      }
-      return `[${values.join(", ")}]`;
-    }
-  ) + "\n";
-}
-
-async function writeData(data: SamplingData): Promise<void> {
-  await writeFile(DATA_PATH, serializeData(data), "utf-8");
+// -------------------------------------------
+// Helper: parse DB row into resource object
+// -------------------------------------------
+function rowToResource(row: (typeof samplingResources)["$inferSelect"]) {
+  return {
+    id: row.id,
+    type: row.type as ResourceType,
+    title: row.title,
+    url: row.url,
+    category: row.category,
+    description: row.description,
+    tags: JSON.parse(row.tags || "[]"),
+    ...(row.videoId ? { videoId: row.videoId } : {}),
+    ...(row.playlistId ? { playlistId: row.playlistId } : {}),
+    ...(row.handle ? { handle: row.handle } : {}),
+  };
 }
 
 // GET — list all resources
 export async function GET() {
   try {
-    const data = await readData();
-    return NextResponse.json({ success: true, data });
+    const [settings, rows] = await Promise.all([
+      readSettingsFromDB(),
+      db.select().from(samplingResources).orderBy(asc(samplingResources.sortOrder)),
+    ]);
+
+    const resources = rows.map(rowToResource);
+
+    // If DB is empty, seed from JSON file (one-time migration)
+    if (resources.length === 0) {
+      const seeded = await seedFromJsonFile();
+      if (seeded) {
+        const [settings2, rows2] = await Promise.all([
+          readSettingsFromDB(),
+          db.select().from(samplingResources).orderBy(asc(samplingResources.sortOrder)),
+        ]);
+        return NextResponse.json({
+          success: true,
+          data: { ...settings2, resources: rows2.map(rowToResource) },
+        });
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: { ...settings, resources },
+    });
   } catch (error) {
     console.error("[sampling-resources] GET error:", error);
     return NextResponse.json(
@@ -86,7 +93,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, title, url, category, description, tags, videoId, playlistId, handle } = body;
 
-    // Validate required fields
     if (!type || !title || !url || !category || !description) {
       return NextResponse.json(
         { success: false, error: "Faltan campos requeridos: type, title, url, category, description" },
@@ -101,27 +107,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await readData();
+    // Get max sort order
+    const allRows = await db.select().from(samplingResources);
+    const maxSort = allRows.reduce((max, r) => Math.max(max, r.sortOrder), -1);
 
-    const newResource: SamplingResource = {
-      id: `${type.charAt(0) === "c" ? "ch" : type === "video" ? "vid" : "pl"}-${generateUUID().slice(0, 8)}`,
-      type,
+    const id = `${type.charAt(0) === "c" ? "ch" : type === "video" ? "vid" : "pl"}-${generateUUID().slice(0, 8)}`;
+
+    const newResource = {
+      id,
+      type: type as ResourceType,
       title: title.trim(),
       url: url.trim(),
       category: category.trim(),
       description: description.trim(),
-      tags: Array.isArray(tags) ? tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean) : [],
+      tags: JSON.stringify(
+        Array.isArray(tags) ? tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean) : []
+      ),
+      videoId: type === "video" && videoId ? videoId.trim() : null,
+      playlistId: type === "playlist" && playlistId ? playlistId.trim() : null,
+      handle: type === "channel" && handle ? handle.trim() : null,
+      sortOrder: maxSort + 1,
     };
 
-    // Add type-specific fields
-    if (type === "video" && videoId) newResource.videoId = videoId.trim();
-    if (type === "playlist" && playlistId) newResource.playlistId = playlistId.trim();
-    if (type === "channel" && handle) newResource.handle = handle.trim();
+    await db.insert(samplingResources).values(newResource);
 
-    data.resources.push(newResource);
-    await writeData(data);
-
-    return NextResponse.json({ success: true, data: newResource });
+    return NextResponse.json({ success: true, data: rowToResource(newResource as any) });
   } catch (error) {
     console.error("[sampling-resources] POST error:", error);
     return NextResponse.json(
@@ -144,34 +154,41 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const data = await readData();
-    const index = data.resources.findIndex((r) => r.id === id);
-
-    if (index === -1) {
+    // Check existence
+    const [existing] = await db.select().from(samplingResources).where(eq(samplingResources.id, id)).limit(1);
+    if (!existing) {
       return NextResponse.json(
         { success: false, error: "Recurso no encontrado." },
         { status: 404 }
       );
     }
 
-    // Clean up tags if provided
-    if (updates.tags) {
-      updates.tags = updates.tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean);
+    const newType = (updates.type || existing.type) as ResourceType;
+
+    // Build update object
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (updates.title !== undefined) updateData.title = updates.title.trim();
+    if (updates.url !== undefined) updateData.url = updates.url.trim();
+    if (updates.category !== undefined) updateData.category = updates.category.trim();
+    if (updates.description !== undefined) updateData.description = updates.description.trim();
+    if (updates.type !== undefined) updateData.type = updates.type;
+
+    if (updates.tags !== undefined) {
+      updateData.tags = JSON.stringify(
+        updates.tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean)
+      );
     }
 
-    // Clean up optional fields — remove type-specific fields if type changed
-    const existing = data.resources[index];
-    const newType = updates.type || existing.type;
+    // Type-specific fields: clear fields that don't belong to the new type
+    updateData.videoId = newType === "video" && updates.videoId ? updates.videoId.trim() : null;
+    updateData.playlistId = newType === "playlist" && updates.playlistId ? updates.playlistId.trim() : null;
+    updateData.handle = newType === "channel" && updates.handle ? updates.handle.trim() : null;
 
-    // Remove fields that don't belong to the new type
-    if (newType !== "video") delete updates.videoId;
-    if (newType !== "playlist") delete updates.playlistId;
-    if (newType !== "channel") delete updates.handle;
+    await db.update(samplingResources).set(updateData).where(eq(samplingResources.id, id));
 
-    data.resources[index] = { ...existing, ...updates };
-    await writeData(data);
+    const [updated] = await db.select().from(samplingResources).where(eq(samplingResources.id, id)).limit(1);
 
-    return NextResponse.json({ success: true, data: data.resources[index] });
+    return NextResponse.json({ success: true, data: rowToResource(updated!) });
   } catch (error) {
     console.error("[sampling-resources] PUT error:", error);
     return NextResponse.json(
@@ -194,13 +211,14 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const data = await readData();
-    const resourceMap = new Map(data.resources.map((r) => [r.id, r]));
-    data.resources = orderedIds
-      .map((id: string) => resourceMap.get(id))
-      .filter(Boolean) as SamplingResource[];
+    // Update sort orders in sequence
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db
+        .update(samplingResources)
+        .set({ sortOrder: i, updatedAt: new Date() })
+        .where(eq(samplingResources.id, orderedIds[i]));
+    }
 
-    await writeData(data);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[sampling-resources] PATCH error:", error);
@@ -224,25 +242,74 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const data = await readData();
-    const index = data.resources.findIndex((r) => r.id === id);
-
-    if (index === -1) {
+    const [existing] = await db.select().from(samplingResources).where(eq(samplingResources.id, id)).limit(1);
+    if (!existing) {
       return NextResponse.json(
         { success: false, error: "Recurso no encontrado." },
         { status: 404 }
       );
     }
 
-    const deleted = data.resources.splice(index, 1)[0];
-    await writeData(data);
+    await db.delete(samplingResources).where(eq(samplingResources.id, id));
 
-    return NextResponse.json({ success: true, data: deleted });
+    return NextResponse.json({ success: true, data: rowToResource(existing) });
   } catch (error) {
     console.error("[sampling-resources] DELETE error:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar recurso." },
       { status: 500 }
     );
+  }
+}
+
+// -------------------------------------------
+// One-time seed: migrate JSON file → DB
+// -------------------------------------------
+async function seedFromJsonFile(): Promise<boolean> {
+  try {
+    const { readFile } = await import("fs/promises");
+    const path = await import("path");
+    const dataPath = path.join(process.cwd(), "src/data/sampling-resources.json");
+    const raw = await readFile(dataPath, "utf-8");
+    const data = JSON.parse(raw);
+
+    if (!data.resources || data.resources.length === 0) return false;
+
+    // Seed settings
+    for (const [key, value] of Object.entries({
+      title: data.title || "",
+      subtitle: data.subtitle || "",
+      internalNote: data.internalNote || "",
+    })) {
+      await db
+        .insert(samplingResourcesSettings)
+        .values({ key, value })
+        .onConflictDoUpdate({ target: samplingResourcesSettings.key, set: { value, updatedAt: new Date() } });
+    }
+
+    // Seed resources
+    for (let i = 0; i < data.resources.length; i++) {
+      const r = data.resources[i];
+      await db.insert(samplingResources).values({
+        id: r.id || generateUUID(),
+        type: r.type,
+        title: r.title,
+        url: r.url,
+        category: r.category,
+        description: r.description,
+        tags: JSON.stringify(r.tags || []),
+        videoId: r.videoId || null,
+        playlistId: r.playlistId || null,
+        handle: r.handle || null,
+        sortOrder: i,
+      });
+    }
+
+    console.log(`[sampling-resources] Seeded ${data.resources.length} resources from JSON file`);
+    return true;
+  } catch (err) {
+    // JSON file might not exist in production build — that's fine
+    console.warn("[sampling-resources] Could not seed from JSON file:", err);
+    return false;
   }
 }

@@ -16,7 +16,8 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react";
-import resourceData from "@/data/sampling-resources.json";
+// Resources are fetched from the API (DB-backed) instead of the JSON file
+// so that admin CRUD changes are immediately reflected.
 
 type ResourceType = "video" | "channel" | "playlist";
 
@@ -386,7 +387,20 @@ export default function SamplingResourcesClient() {
     setHydrated(true);
   }, []);
 
-  const resources = resourceData.resources as SamplingResource[];
+  const [resources, setResources] = useState<SamplingResource[]>([]);
+  const [pageMeta, setPageMeta] = useState({ title: "Recursos para Sampling", subtitle: "" });
+
+  useEffect(() => {
+    fetch("/api/admin/sampling-resources")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setResources(json.data.resources || []);
+          setPageMeta({ title: json.data.title || "Recursos para Sampling", subtitle: json.data.subtitle || "" });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Group by category
   const categories = Array.from(
@@ -440,11 +454,11 @@ export default function SamplingResourcesClient() {
             </div>
 
             <h1 className="font-oswald text-4xl md:text-5xl lg:text-6xl uppercase text-white leading-[1.05]">
-              {resourceData.title}
+              {pageMeta.title}
             </h1>
 
             <p className="text-slc-muted text-base md:text-lg mt-5 max-w-2xl leading-relaxed">
-              {resourceData.subtitle}
+              {pageMeta.subtitle}
             </p>
 
             {/* Quick type stats */}
