@@ -283,10 +283,8 @@ export default function SamplingResourcesAdminPage() {
       const res = await fetch(`/api/admin/sampling-resources?id=${id}`, { method: "DELETE" });
       const json = await res.json();
       if (json.success) {
-        setData((prev) =>
-          prev ? { ...prev, resources: prev.resources.filter((r) => r.id !== id) } : prev
-        );
         setDeletingId(null);
+        await fetchData(); // Re-fetch to ensure UI stays in sync with DB
         showToast("success", "Recurso eliminado");
       } else {
         showToast("error", json.error || "Error al eliminar");
@@ -620,19 +618,10 @@ export default function SamplingResourcesAdminPage() {
                 });
                 const json = await res.json();
                 if (json.success) {
-                  setData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          resources: prev.resources.map((r) =>
-                            r.id === editingResource.id ? json.data : r
-                          ),
-                        }
-                      : prev
-                  );
-                  showToast("success", "Recurso actualizado");
                   setShowForm(false);
                   setEditingResource(null);
+                  await fetchData(); // Re-fetch to ensure UI stays in sync with DB
+                  showToast("success", "Recurso actualizado");
                 } else {
                   showToast("error", json.error || "Error al actualizar");
                 }
@@ -645,11 +634,9 @@ export default function SamplingResourcesAdminPage() {
                 });
                 const json = await res.json();
                 if (json.success) {
-                  setData((prev) =>
-                    prev ? { ...prev, resources: [...prev.resources, json.data] } : prev
-                  );
-                  showToast("success", "Recurso creado");
                   setShowForm(false);
+                  await fetchData(); // Re-fetch to ensure UI stays in sync with DB
+                  showToast("success", "Recurso creado");
                 } else {
                   showToast("error", json.error || "Error al crear");
                 }

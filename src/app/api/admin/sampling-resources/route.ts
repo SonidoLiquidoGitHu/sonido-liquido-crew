@@ -13,22 +13,78 @@ import { generateUUID } from "@/lib/utils";
 type ResourceType = "video" | "channel" | "playlist";
 
 // -------------------------------------------
-// Helper: read settings from DB (with JSON file fallback)
+// Helper: ensure the DB tables exist
+// -------------------------------------------
+let tablesEnsured = false;
+
+async function ensureTables(): Promise<void> {
+  if (tablesEnsured) return;
+
+  try {
+    // Run CREATE TABLE IF NOT EXISTS for both tables.
+    // This is idempotent and safe to call on every cold start.
+    const client = (db as any).__client || (db as any).client;
+    if (client && typeof client.execute === "function") {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS sampling_resources (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL CHECK (type IN ('video', 'channel', 'playlist')),
+          title TEXT NOT NULL,
+          url TEXT NOT NULL,
+          category TEXT NOT NULL,
+          description TEXT NOT NULL,
+          tags TEXT NOT NULL DEFAULT '[]',
+          video_id TEXT,
+          playlist_id TEXT,
+          handle TEXT,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        )
+      `);
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS sampling_resources_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        )
+      `);
+      console.log("[sampling-resources] Tables ensured");
+    }
+  } catch (err) {
+    console.warn("[sampling-resources] ensureTables error (may be OK if tables already exist):", err);
+  }
+
+  tablesEnsured = true;
+}
+
+// -------------------------------------------
+// Helper: read settings from DB (with fallback)
 // -------------------------------------------
 async function readSettingsFromDB(): Promise<{
   title: string;
   subtitle: string;
   internalNote: string;
 }> {
-  const rows = await db.select().from(samplingResourcesSettings);
-  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-  return {
-    title: map.title || "Recursos para Sampling",
-    subtitle:
-      map.subtitle ||
-      "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable.",
-    internalNote: map.internalNote || "",
-  };
+  try {
+    const rows = await db.select().from(samplingResourcesSettings);
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    return {
+      title: map.title || "Recursos para Sampling",
+      subtitle:
+        map.subtitle ||
+        "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable.",
+      internalNote: map.internalNote || "",
+    };
+  } catch {
+    // Settings table might not exist yet — return defaults
+    return {
+      title: "Recursos para Sampling",
+      subtitle:
+        "Curaduría interna de canales, videos y playlists de YouTube para encontrar música sampleable.",
+      internalNote: "",
+    };
+  }
 }
 
 // -------------------------------------------
@@ -52,6 +108,8 @@ function rowToResource(row: (typeof samplingResources)["$inferSelect"]) {
 // GET — list all resources
 export async function GET() {
   try {
+    await ensureTables();
+
     const [settings, rows] = await Promise.all([
       readSettingsFromDB(),
       db.select().from(samplingResources).orderBy(asc(samplingResources.sortOrder)),
@@ -90,6 +148,8 @@ export async function GET() {
 // POST — add a new resource
 export async function POST(request: NextRequest) {
   try {
+    await ensureTables();
+
     const body = await request.json();
     const { type, title, url, category, description, tags, videoId, playlistId, handle } = body;
 
@@ -144,6 +204,8 @@ export async function POST(request: NextRequest) {
 // PUT — update an existing resource
 export async function PUT(request: NextRequest) {
   try {
+    await ensureTables();
+
     const body = await request.json();
     const { id, ...updates } = body;
 
@@ -201,6 +263,8 @@ export async function PUT(request: NextRequest) {
 // PATCH — reorder resources
 export async function PATCH(request: NextRequest) {
   try {
+    await ensureTables();
+
     const body = await request.json();
     const { orderedIds } = body;
 
@@ -232,6 +296,8 @@ export async function PATCH(request: NextRequest) {
 // DELETE — remove a resource
 export async function DELETE(request: NextRequest) {
   try {
+    await ensureTables();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
