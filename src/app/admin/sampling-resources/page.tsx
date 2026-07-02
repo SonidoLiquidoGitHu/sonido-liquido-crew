@@ -1042,32 +1042,39 @@ function ResourceFormModal({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slc-border">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="px-4 py-2.5 rounded-lg bg-slc-card border border-slc-border text-sm text-white hover:bg-slc-darker transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !title || !url || !category || !description}
-              className="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-bold uppercase tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Guardando…
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  {isEditing ? "Guardar Cambios" : "Crear Recurso"}
-                </>
-              )}
-            </button>
+          <div className="space-y-2 pt-4 border-t border-slc-border">
+            {!title || !url || !category || !description ? (
+              <p className="text-xs text-slc-muted/60 text-right">
+                Completa todos los campos requeridos: {!title && "título "}{!url && "URL "}{!category && "categoría "}{!description && "descripción"}
+              </p>
+            ) : null}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="px-4 py-2.5 rounded-lg bg-slc-card border border-slc-border text-sm text-white hover:bg-slc-darker transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving || !title || !url || !category || !description}
+                className="px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-bold uppercase tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Guardando…
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    {isEditing ? "Guardar Cambios" : "Crear Recurso"}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

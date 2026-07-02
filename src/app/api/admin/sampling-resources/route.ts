@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db/client";
+import { db, executeRaw } from "@/db/client";
 import { samplingResources, samplingResourcesSettings } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
@@ -23,34 +23,31 @@ async function ensureTables(): Promise<void> {
   try {
     // Run CREATE TABLE IF NOT EXISTS for both tables.
     // This is idempotent and safe to call on every cold start.
-    const client = (db as any).__client || (db as any).client;
-    if (client && typeof client.execute === "function") {
-      await client.execute(`
-        CREATE TABLE IF NOT EXISTS sampling_resources (
-          id TEXT PRIMARY KEY,
-          type TEXT NOT NULL CHECK (type IN ('video', 'channel', 'playlist')),
-          title TEXT NOT NULL,
-          url TEXT NOT NULL,
-          category TEXT NOT NULL,
-          description TEXT NOT NULL,
-          tags TEXT NOT NULL DEFAULT '[]',
-          video_id TEXT,
-          playlist_id TEXT,
-          handle TEXT,
-          sort_order INTEGER NOT NULL DEFAULT 0,
-          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-        )
-      `);
-      await client.execute(`
-        CREATE TABLE IF NOT EXISTS sampling_resources_settings (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL,
-          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-        )
-      `);
-      console.log("[sampling-resources] Tables ensured");
-    }
+    await executeRaw(`
+      CREATE TABLE IF NOT EXISTS sampling_resources (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL CHECK (type IN ('video', 'channel', 'playlist')),
+        title TEXT NOT NULL,
+        url TEXT NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        video_id TEXT,
+        playlist_id TEXT,
+        handle TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    await executeRaw(`
+      CREATE TABLE IF NOT EXISTS sampling_resources_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    console.log("[sampling-resources] Tables ensured");
   } catch (err) {
     console.warn("[sampling-resources] ensureTables error (may be OK if tables already exist):", err);
   }
