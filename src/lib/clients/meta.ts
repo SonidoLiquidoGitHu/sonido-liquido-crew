@@ -539,6 +539,7 @@ export interface InstagramPostResult {
 export async function postToInstagram(
   imageUrl: string,
   caption: string,
+  linkUrl?: string,
 ): Promise<InstagramPostResult> {
   if (!(await isMetaConfiguredAsync())) {
     return {
@@ -574,6 +575,14 @@ export async function postToInstagram(
   // Use system user token for IG operations (tested and works)
   const token = await getSystemUserToken();
 
+  // Append linkUrl to caption if provided and not already present
+  // Instagram feed posts don't support clickable links in captions,
+  // but including the URL makes it copy-pasteable for viewers.
+  const fullCaption =
+    linkUrl && !caption.includes(linkUrl)
+      ? `${caption}\n\n${linkUrl}`
+      : caption;
+
   try {
     // Step 1: Create media container
     console.log(
@@ -588,7 +597,7 @@ export async function postToInstagram(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image_url: imageUrl,
-          caption: caption,
+          caption: fullCaption,
           access_token: token,
         }),
       },
@@ -819,11 +828,33 @@ export async function postToInstagramStory(
   // Use system user token for IG operations
   const token = await getSystemUserToken();
 
+  // Ensure linkUrl is absolute (prefix with site URL if relative path)
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.URL ||
+    "https://sonidoliquido.com";
+  let absoluteLinkUrl: string | undefined;
+  if (linkUrl) {
+    absoluteLinkUrl = linkUrl.startsWith("http")
+      ? linkUrl
+      : `${siteUrl}${linkUrl.startsWith("/") ? "" : "/"}${linkUrl}`;
+  }
+
+  // Build the Story caption: include the link as visible text fallback
+  // so viewers can see/copy it even if the link sticker doesn't render
+  let storyCaption = caption || "";
+  if (absoluteLinkUrl && !storyCaption.includes(absoluteLinkUrl)) {
+    storyCaption = storyCaption
+      ? `${storyCaption}\n\n${absoluteLinkUrl}`
+      : absoluteLinkUrl;
+  }
+
   try {
     // Step 1: Create Story container
     console.log(
       "[Meta] Creating IG Story container with image:",
       imageUrl.substring(0, 80),
+      absoluteLinkUrl ? ` link: ${absoluteLinkUrl.substring(0, 60)}` : "",
     );
 
     const containerBody: Record<string, string | boolean> = {
@@ -833,16 +864,15 @@ export async function postToInstagramStory(
     };
 
     // Add caption if provided (visible as text overlay on some story formats)
-    if (caption) {
-      containerBody.caption = caption;
+    if (storyCaption) {
+      containerBody.caption = storyCaption;
     }
 
     // If a link URL is provided, attach it as a link sticker
     // This requires instagram_content_publish + instagram_manage_comments permissions
-    if (linkUrl) {
-      // Link stickers on Stories via API: attach the URL to the story
-      // The IG Graph API supports link stickers via the "link" parameter on story containers
-      containerBody.link = linkUrl;
+    // The IG Graph API supports link stickers via the "link" parameter on story containers
+    if (absoluteLinkUrl) {
+      containerBody.link = absoluteLinkUrl;
     }
 
     const containerResponse = await fetch(
@@ -2222,7 +2252,7 @@ export async function processQueueItem(
       console.log(
         `[Social] Posting to Instagram: ${item.contentType} (${item.sourceId})`,
       );
-      igResult = await postToInstagram(item.imageUrl, caption);
+      igResult = await postToInstagram(item.imageUrl, caption, item.linkUrl || undefined);
 
       // Log the result
       try {

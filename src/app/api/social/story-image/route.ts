@@ -4,20 +4,22 @@ import sharp from "sharp";
 /**
  * Story Image Composer
  * ====================
- * Generates a 1080×1920 (9:16) image with the source image fitted inside
- * (preserving aspect ratio) and centered on a black background.
+ * Generates a 1080×1920 (9:16) image with the source image scaled to fill
+ * the full width (1080px), centered vertically on a black background.
  *
- * This solves the "oversized image" problem on Instagram Stories — when you
- * pass a non-9:16 image to IG's Story API, IG auto-crops it to fill the
- * frame, which cuts off important content. By pre-composing the image with
- * letterboxing/pillarboxing, we guarantee the entire original image is
- * visible inside the Story frame.
+ * Strategy: "fill width, center vertically"
+ * - Resize to fill the full 1080px width (upscaling if needed)
+ * - If the resulting height <= 1920: letterbox with black bars top/bottom
+ * - If the resulting height > 1920: crop from center to fit the canvas
+ *
+ * This ensures images always fill the horizontal space in Instagram Stories,
+ * so they appear large and prominent rather than small with wide black bars.
  *
  * Usage:
  *   GET /api/social/story-image?url=<encoded-image-url>
  *
  * Returns:
- *   image/jpeg (1080×1920) with the source image fitted inside
+ *   image/jpeg (1080×1920) with the source image filling the width
  */
 
 export const dynamic = "force-dynamic";
@@ -25,7 +27,6 @@ export const maxDuration = 30;
 
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
-const MAX_SOURCE_DIM = 1600; // cap source size to keep memory + processing reasonable
 
 export async function GET(req: NextRequest) {
   const urlParam = req.nextUrl.searchParams.get("url");
@@ -77,25 +78,69 @@ export async function GET(req: NextRequest) {
   }
 
   // Compose the Story image:
-  // 1. Resize source to fit inside 1080×1920 (preserve aspect ratio, no crop)
-  // 2. Composite onto a 1080×1920 black background, centered
+  // Strategy: fill the full width (1080px), then handle the height
   try {
-    const fitted = await sharp(sourceBuffer)
-      .rotate() // auto-rotate based on EXIF
-      .resize({
-        width: STORY_WIDTH,
-        height: STORY_HEIGHT,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    // Step 1: Get source dimensions after EXIF rotation
+    const rotated = sharp(sourceBuffer).rotate();
+    const sourceMeta = await rotated.metadata();
+    const srcWidth = sourceMeta.width || STORY_WIDTH;
+    const srcHeight = sourceMeta.height || STORY_HEIGHT;
 
-    // Determine fitted image dimensions to center it on the canvas
-    const meta = await sharp(fitted).metadata();
-    const fittedWidth = meta.width || STORY_WIDTH;
-    const fittedHeight = meta.height || STORY_HEIGHT;
-    const left = Math.floor((STORY_WIDTH - fittedWidth) / 2);
+    // Step 2: Calculate scale to fill the width
+    const widthScale = STORY_WIDTH / srcWidth;
+    const scaledHeight = Math.round(srcHeight * widthScale);
+
+    let fitted: Buffer;
+    let fittedWidth: number;
+    let fittedHeight: number;
+
+    if (scaledHeight <= STORY_HEIGHT) {
+      // Image fits within canvas after filling width — letterbox with black bars
+      fitted = await sharp(sourceBuffer)
+        .rotate()
+        .resize({
+          width: STORY_WIDTH,
+          withoutEnlargement: false,
+        })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+
+      fittedWidth = STORY_WIDTH;
+      fittedHeight = scaledHeight;
+    } else {
+      // Image is taller than canvas after filling width — crop from center
+      fitted = await sharp(sourceBuffer)
+        .rotate()
+        .resize({
+          width: STORY_WIDTH,
+          height: STORY_HEIGHT,
+          fit: sharp.fit.cover,
+          position: sharp.gravity.center,
+          withoutEnlargement: false,
+        })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+
+      fittedWidth = STORY_WIDTH;
+      fittedHeight = STORY_HEIGHT;
+    }
+
+    // If the fitted image already matches the canvas exactly, return it directly
+    if (fittedWidth === STORY_WIDTH && fittedHeight === STORY_HEIGHT) {
+      return new NextResponse(new Uint8Array(fitted), {
+        status: 200,
+        headers: {
+          "Content-Type": "image/jpeg",
+          "Cache-Control": "public, max-age=86400, s-maxage=86400",
+          "X-Story-Composed": "true",
+          "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
+          "X-Story-Fit-Mode": "cover",
+        },
+      });
+    }
+
+    // Composite onto a 1080×1920 black background, centered vertically
+    const left = 0; // already fills the full width
     const top = Math.floor((STORY_HEIGHT - fittedHeight) / 2);
 
     const composed = await sharp({
@@ -122,7 +167,8 @@ export async function GET(req: NextRequest) {
         "Content-Type": "image/jpeg",
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
         "X-Story-Composed": "true",
-        "X-Story-Source-Size": `${fittedWidth}x${fittedHeight}`,
+        "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
+        "X-Story-Fit-Mode": "fill-width",
       },
     });
   } catch (err) {
