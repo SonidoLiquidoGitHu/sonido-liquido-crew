@@ -33,6 +33,7 @@ import {
   postToInstagramStory,
   postInstagramReel,
   postFacebookReel,
+  extractStoryLinkUrl,
   type PostQueueItemResult,
   type FacebookReelResult,
 } from "@/lib/clients/meta";
@@ -638,10 +639,13 @@ async function handleProcessNextStoryOnly() {
     );
 
     // Post ONLY as Instagram Story (no FB wall, no IG feed)
+    // Extract the best link from the caption (Spotify > YouTube > any URL > fallback)
+    // so the Story link sticker points to the same external link visible in the post.
+    const storyLink = extractStoryLinkUrl(throwbackItem.caption, throwbackItem.linkUrl);
     const storyResult = await postToInstagramStory(
       publicImageUrl,
       throwbackItem.caption || "",
-      throwbackItem.linkUrl || undefined,
+      storyLink,
       { composeForStory: true }
     );
 
@@ -1739,7 +1743,9 @@ async function handlePostUpcomingEvent(body: {
 
   // Post to Instagram as a Story (events always go to Stories on IG)
   if (platforms.includes("instagram")) {
-    const igResult = await postToInstagramStory(publicImageUrl, finalCaption, finalLinkUrl);
+    // Extract the best link from the caption for the Story link sticker
+    const storyLink = extractStoryLinkUrl(finalCaption, finalLinkUrl);
+    const igResult = await postToInstagramStory(publicImageUrl, finalCaption, storyLink);
     results.instagram_story = {
       success: igResult.success,
       mediaId: igResult.mediaId || undefined,
@@ -2223,7 +2229,9 @@ async function handleAutopostUpcomingEvent() {
     // Events go to Stories for more visibility and urgency — they disappear after 24h,
     // which matches the time-sensitive nature of upcoming events.
     if (platforms.includes("instagram_story")) {
-      const igResult = await postToInstagramStory(publicImageUrl, caption, eventLinkUrl);
+      // Extract the best link from the caption for the Story link sticker
+      const storyLink = extractStoryLinkUrl(caption, eventLinkUrl);
+      const igResult = await postToInstagramStory(publicImageUrl, caption, storyLink);
       results.instagram_story = {
         success: igResult.success,
         mediaId: igResult.mediaId || undefined,

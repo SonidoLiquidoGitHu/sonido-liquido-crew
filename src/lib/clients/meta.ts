@@ -114,6 +114,45 @@ export function invalidateMetaCredentialsCache(): void {
 }
 
 // ===========================================
+// STORY LINK EXTRACTION
+// ===========================================
+
+/**
+ * Extract the best URL from a caption to use as a Story link sticker.
+ *
+ * Priority:
+ * 1. Spotify URLs (open.spotify.com) — preferred for music content
+ * 2. YouTube URLs (youtube.com, youtu.be) — for video content
+ * 3. Any other URL found in the caption (e.g., feature.fm, linkfire)
+ * 4. Fall back to the provided linkUrl
+ *
+ * This ensures that Story link stickers point to the same external links
+ * that appear in the feed post captions (Spotify, YouTube, etc.) rather
+ * than the internal website URLs stored in linkUrl.
+ */
+export function extractStoryLinkUrl(
+  caption: string | null | undefined,
+  fallbackLinkUrl?: string | null
+): string | undefined {
+  if (!caption) return fallbackLinkUrl || undefined;
+
+  // Priority 1: Spotify URLs
+  const spotifyMatch = caption.match(/https?:\/\/open\.spotify\.com\/[^\s)]+/);
+  if (spotifyMatch) return spotifyMatch[0];
+
+  // Priority 2: YouTube URLs
+  const ytMatch = caption.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]+|youtu\.be\/[^\s)]+)/);
+  if (ytMatch) return ytMatch[0];
+
+  // Priority 3: Any other URL (feature.fm, linkfire, sonidoliquido.com, etc.)
+  const anyUrlMatch = caption.match(/https?:\/\/[^\s)<>"]+/);
+  if (anyUrlMatch) return anyUrlMatch[0];
+
+  // Priority 4: Fallback
+  return fallbackLinkUrl || undefined;
+}
+
+// ===========================================
 // PAGE ACCESS TOKEN (cached)
 // ===========================================
 
@@ -1915,10 +1954,13 @@ export async function processQueueItem(
   ) {
     console.log(`[Social] Also posting to Instagram Story: ${item.contentType} (${item.sourceId})`);
     try {
+      // Extract the best link from the caption (Spotify > YouTube > any URL > fallback)
+      // so the Story link sticker points to the same external link visible in the post.
+      const storyLink = extractStoryLinkUrl(caption, item.linkUrl);
       igStoryResult = await postToInstagramStory(
         item.imageUrl,
         caption,
-        item.linkUrl || undefined,
+        storyLink,
         { composeForStory: true }
       );
 
