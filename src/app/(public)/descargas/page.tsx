@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Lock, Download, Mail, Loader2, CheckCircle, XCircle, FileText } from "lucide-react";
+import { NewsletterForm } from "@/components/public/NewsletterForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NewsletterForm } from "@/components/public/NewsletterForm";
+import {
+  CheckCircle,
+  Download,
+  FileText,
+  Loader2,
+  Lock,
+  Mail,
+  XCircle,
+} from "lucide-react";
+import { useState } from "react";
 
 interface DownloadItem {
   id: string;
@@ -105,7 +113,8 @@ export default function DescargasPage() {
                 Verificar Suscripción
               </h2>
               <p className="text-white/50 text-sm mb-6">
-                Ingresa tu email para verificar si eres suscriptor y acceder a las descargas exclusivas.
+                Ingresa tu email para verificar si eres suscriptor y acceder a
+                las descargas exclusivas.
               </p>
 
               <form onSubmit={handleVerify} className="space-y-4">
@@ -153,23 +162,27 @@ export default function DescargasPage() {
                   <p className="text-white/40 text-sm mb-4">
                     Suscríbete al newsletter para obtener acceso inmediato:
                   </p>
-                  <NewsletterForm source="download-gate" variant="inline" onSuccess={(subscribedEmail) => {
-                    setEmail(subscribedEmail);
-                    // Auto-verify after successful subscription
-                    fetch("/api/newsletter/verify", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ email: subscribedEmail }),
-                    })
-                      .then((res) => res.json())
-                      .then((data) => {
-                        if (data.success && data.verified) {
-                          setVerified(true);
-                          setDownloads(data.downloads || []);
-                        }
+                  <NewsletterForm
+                    source="download-gate"
+                    variant="inline"
+                    onSuccess={(subscribedEmail) => {
+                      setEmail(subscribedEmail);
+                      // Auto-verify after successful subscription
+                      fetch("/api/newsletter/verify", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: subscribedEmail }),
                       })
-                      .catch(() => {});
-                  }} />
+                        .then((res) => res.json())
+                        .then((data) => {
+                          if (data.success && data.verified) {
+                            setVerified(true);
+                            setDownloads(data.downloads || []);
+                          }
+                        })
+                        .catch(() => {});
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -183,7 +196,11 @@ export default function DescargasPage() {
               <CheckCircle className="w-5 h-5" />
               <span className="text-sm">Suscripción verificada: {email}</span>
               <button
-                onClick={() => { setVerified(null); setDownloads([]); setEmail(""); }}
+                onClick={() => {
+                  setVerified(null);
+                  setDownloads([]);
+                  setEmail("");
+                }}
                 className="ml-auto text-xs text-white/40 hover:text-white/60 underline"
               >
                 Cambiar email

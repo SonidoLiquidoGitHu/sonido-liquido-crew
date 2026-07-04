@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { artists } from "./artists";
 
 // ===========================================
@@ -24,12 +24,14 @@ export const mediaReleases = sqliteTable("media_releases", {
       "event",
       "announcement",
       "interview",
-      "feature"
-    ]
+      "feature",
+    ],
   }).default("announcement"),
 
   // Main Artist (can be from roster or custom name)
-  mainArtistId: text("main_artist_id").references(() => artists.id, { onDelete: "set null" }),
+  mainArtistId: text("main_artist_id").references(() => artists.id, {
+    onDelete: "set null",
+  }),
   mainArtistName: text("main_artist_name"), // Custom artist name if not in roster
 
   // Content
@@ -81,9 +83,15 @@ export const mediaReleases = sqliteTable("media_releases", {
   eventDate: integer("event_date", { mode: "timestamp" }), // For events/tours
 
   // Status & Visibility
-  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
-  isArchived: integer("is_archived", { mode: "boolean" }).notNull().default(false),
+  isPublished: integer("is_published", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isArchived: integer("is_archived", { mode: "boolean" })
+    .notNull()
+    .default(false),
   accessCode: text("access_code"), // Optional code for private press access
 
   // Analytics
@@ -113,8 +121,12 @@ export const mediaReleases = sqliteTable("media_releases", {
     buttonRounded?: "none" | "sm" | "md" | "lg" | "full";
   }>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -123,15 +135,21 @@ export const mediaReleases = sqliteTable("media_releases", {
 
 export const pressKits = sqliteTable("press_kits", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
+  artistId: text("artist_id").references(() => artists.id, {
+    onDelete: "set null",
+  }),
   title: text("title").notNull(),
   description: text("description"),
   downloadUrl: text("download_url").notNull(),
   fileSize: integer("file_size"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   downloadCount: integer("download_count").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

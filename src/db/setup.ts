@@ -1,9 +1,9 @@
 import { config } from "dotenv";
 config(); // Load .env file
 
+import fs from "node:fs";
+import path from "node:path";
 import { createClient } from "@libsql/client";
-import path from "path";
-import fs from "fs";
 
 // ===========================================
 // DATABASE SETUP - Creates all tables
@@ -40,12 +40,13 @@ const setupDatabase = async () => {
 
   // Get all migration files in order
   const migrationsDir = path.join(__dirname, "migrations");
-  const migrationFiles = fs.readdirSync(migrationsDir)
-    .filter(f => f.endsWith(".sql"))
+  const migrationFiles = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith(".sql"))
     .sort(); // Sort to ensure correct order (0000, 0001, 0002, etc.)
 
   console.log(`\n📝 Found ${migrationFiles.length} migration files:`);
-  migrationFiles.forEach(f => console.log(`   • ${f}`));
+  migrationFiles.forEach((f) => console.log(`   • ${f}`));
 
   let totalSuccess = 0;
   let totalErrors = 0;
@@ -73,9 +74,9 @@ const setupDatabase = async () => {
         const errorMessage = (error as Error).message;
         // Ignore "table already exists" and "column already exists" errors
         if (errorMessage.includes("already exists")) {
-          console.log(`   ⚠️  Already exists, skipping...`);
+          console.log("   ⚠️  Already exists, skipping...");
         } else if (errorMessage.includes("duplicate column name")) {
-          console.log(`   ⚠️  Column already exists, skipping...`);
+          console.log("   ⚠️  Column already exists, skipping...");
         } else {
           console.error(`   ❌ Error: ${errorMessage}`);
           errorCount++;
@@ -92,7 +93,7 @@ const setupDatabase = async () => {
     totalErrors += errorCount;
   }
 
-  console.log(`\n✅ Database setup complete!`);
+  console.log("\n✅ Database setup complete!");
   console.log(`   • ${totalSuccess} total statements executed successfully`);
   if (totalErrors > 0) {
     console.log(`   • ${totalErrors} total statements had errors`);
@@ -100,7 +101,7 @@ const setupDatabase = async () => {
 
   // List tables
   const tablesResult = await client.execute(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
   );
 
   console.log(`\n📊 Tables in database: ${tablesResult.rows.length}`);
@@ -109,9 +110,16 @@ const setupDatabase = async () => {
   }
 
   // Verify critical tables exist
-  const criticalTables = ['artists', 'releases', 'site_settings', 'campaigns', 'beats', 'media_releases'];
-  console.log(`\n🔍 Verifying critical tables...`);
-  const existingTables = tablesResult.rows.map(r => r.name as string);
+  const criticalTables = [
+    "artists",
+    "releases",
+    "site_settings",
+    "campaigns",
+    "beats",
+    "media_releases",
+  ];
+  console.log("\n🔍 Verifying critical tables...");
+  const existingTables = tablesResult.rows.map((r) => r.name as string);
 
   for (const table of criticalTables) {
     if (existingTables.includes(table)) {

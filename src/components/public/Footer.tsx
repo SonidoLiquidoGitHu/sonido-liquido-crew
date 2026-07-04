@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
+import Link from "next/link";
 
 const socialIcons = [
   {
@@ -84,7 +84,14 @@ export function Footer() {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-slc-card border border-slc-border flex items-center justify-center">
                 <svg viewBox="0 0 24 24" className="w-6 h-6 text-primary">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                  />
                   <circle cx="12" cy="12" r="3" fill="currentColor" />
                 </svg>
               </div>
@@ -98,9 +105,9 @@ export function Footer() {
               </div>
             </div>
             <p className="text-slc-muted text-sm max-w-md mb-6">
-              El colectivo de Hip Hop más representativo de México.
-              Fundado en 1999 en la Ciudad de México.
-              +160 lanzamientos, +25 años de historia.
+              El colectivo de Hip Hop más representativo de México. Fundado en
+              1999 en la Ciudad de México. +160 lanzamientos, +25 años de
+              historia.
             </p>
             {/* Social Links — dynamic from DB */}
             <div className="flex items-center gap-3">
@@ -155,7 +162,13 @@ export function Footer() {
                     }`}
                   >
                     {link.isAdmin && (
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
                     )}
@@ -170,7 +183,8 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-slc-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-slc-muted text-sm">
-            © {new Date().getFullYear()} Sonido Líquido Crew. Todos los derechos reservados.
+            © {new Date().getFullYear()} Sonido Líquido Crew. Todos los derechos
+            reservados.
           </p>
           <p className="text-slc-muted text-xs">
             Lo más avanzado del Hip Hop mexicano desde 1999

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { syncYouTube } from "@/lib/sync";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     console.error("Error running YouTube sync:", error);
     return NextResponse.json(
       { success: false, error: "Failed to run YouTube sync" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -41,7 +41,7 @@ export async function GET() {
     console.error("Error fetching YouTube sync status:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch sync status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

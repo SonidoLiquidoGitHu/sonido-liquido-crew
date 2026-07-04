@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // SOCIAL POST QUEUE TABLE
@@ -14,7 +14,15 @@ export const socialPostQueue = sqliteTable("social_post_queue", {
 
   // Content source — which entity this post promotes
   contentType: text("content_type", {
-    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track", "vertical_video", "youtube_video", "event"],
+    enum: [
+      "gallery_photo",
+      "spotify_track",
+      "artist_profile",
+      "curated_track",
+      "vertical_video",
+      "youtube_video",
+      "event",
+    ],
   }).notNull(),
 
   // Reference to the source entity (gallery_photo_id, release_id, artist_id, video_id, or event_id)
@@ -78,12 +86,27 @@ export const socialPostsLog = sqliteTable("social_posts_log", {
 
   // Which platform this log entry is for
   platform: text("platform", {
-    enum: ["facebook", "instagram", "instagram_story", "tiktok", "instagram_reel", "facebook_reel"],
+    enum: [
+      "facebook",
+      "instagram",
+      "instagram_story",
+      "tiktok",
+      "instagram_reel",
+      "facebook_reel",
+    ],
   }).notNull(),
 
   // The content type that was posted
   contentType: text("content_type", {
-    enum: ["gallery_photo", "spotify_track", "artist_profile", "curated_track", "vertical_video", "youtube_video", "event"],
+    enum: [
+      "gallery_photo",
+      "spotify_track",
+      "artist_profile",
+      "curated_track",
+      "vertical_video",
+      "youtube_video",
+      "event",
+    ],
   }).notNull(),
 
   sourceId: text("source_id").notNull(),

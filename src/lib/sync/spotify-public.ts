@@ -4,9 +4,9 @@
  */
 
 import { db } from "@/db/client";
-import { artists, releases, releaseArtists } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { artists, releaseArtists, releases } from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
+import { eq } from "drizzle-orm";
 
 interface SpotifyOembedData {
   title: string;
@@ -33,7 +33,9 @@ interface SpotifyAlbumEmbed {
 /**
  * Fetch artist info from Spotify's public oembed endpoint
  */
-export async function fetchArtistEmbed(spotifyId: string): Promise<SpotifyArtistEmbed | null> {
+export async function fetchArtistEmbed(
+  spotifyId: string,
+): Promise<SpotifyArtistEmbed | null> {
   try {
     const url = `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${spotifyId}`;
     const response = await fetch(url);
@@ -86,14 +88,18 @@ export async function fetchAlbumEmbed(spotifyId: string): Promise<{
 /**
  * Update artist profile image from Spotify embed
  */
-export async function syncArtistImageFromEmbed(artistId: string, spotifyId: string): Promise<boolean> {
+export async function syncArtistImageFromEmbed(
+  artistId: string,
+  spotifyId: string,
+): Promise<boolean> {
   try {
     const embedData = await fetchArtistEmbed(spotifyId);
     if (!embedData || !embedData.imageUrl) {
       return false;
     }
 
-    await db.update(artists)
+    await db
+      .update(artists)
       .set({
         profileImageUrl: embedData.imageUrl,
         updatedAt: new Date(),
@@ -110,7 +116,10 @@ export async function syncArtistImageFromEmbed(artistId: string, spotifyId: stri
 /**
  * Sync all artist images from Spotify embeds
  */
-export async function syncAllArtistImages(): Promise<{ success: number; failed: number }> {
+export async function syncAllArtistImages(): Promise<{
+  success: number;
+  failed: number;
+}> {
   const allArtists = await db.select().from(artists);
   let success = 0;
   let failed = 0;
@@ -118,10 +127,8 @@ export async function syncAllArtistImages(): Promise<{ success: number; failed: 
   for (const artist of allArtists) {
     // Get Spotify ID from external profiles or stored spotifyId
     const spotifyProfile = await db.query.artistExternalProfiles.findFirst({
-      where: (profiles, { and, eq }) => and(
-        eq(profiles.artistId, artist.id),
-        eq(profiles.platform, "spotify")
-      ),
+      where: (profiles, { and, eq }) =>
+        and(eq(profiles.artistId, artist.id), eq(profiles.platform, "spotify")),
     });
 
     const spotifyId = spotifyProfile?.externalId;
@@ -131,7 +138,7 @@ export async function syncAllArtistImages(): Promise<{ success: number; failed: 
     }
 
     // Small delay to be nice to the server
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const result = await syncArtistImageFromEmbed(artist.id, spotifyId);
     if (result) {
@@ -153,12 +160,14 @@ export async function addReleaseFromSpotify(
   spotifyUrl: string,
   artistId: string,
   releaseType: "album" | "single" | "ep" | "compilation" = "album",
-  releaseDate?: Date
+  releaseDate?: Date,
 ): Promise<string | null> {
   try {
     // Extract Spotify ID from URL (supports locale prefixes like intl-es/)
-    const match = spotifyUrl.match(/spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?album\/([a-zA-Z0-9]+)/)
-      || spotifyUrl.match(/album\/([a-zA-Z0-9]+)/); // fallback
+    const match =
+      spotifyUrl.match(
+        /spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?album\/([a-zA-Z0-9]+)/,
+      ) || spotifyUrl.match(/album\/([a-zA-Z0-9]+)/); // fallback
     if (!match) {
       console.error("Invalid Spotify album URL");
       return null;
@@ -225,7 +234,7 @@ export async function batchAddReleasesFromSpotify(
     artistName: string;
     releaseType?: "album" | "single" | "ep" | "compilation";
     releaseDate?: string;
-  }>
+  }>,
 ): Promise<{ success: number; failed: number }> {
   let success = 0;
   let failed = 0;
@@ -243,13 +252,13 @@ export async function batchAddReleasesFromSpotify(
     }
 
     // Small delay
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     const result = await addReleaseFromSpotify(
       item.spotifyUrl,
       artist.id,
       item.releaseType || "album",
-      item.releaseDate ? new Date(item.releaseDate) : undefined
+      item.releaseDate ? new Date(item.releaseDate) : undefined,
     );
 
     if (result) {

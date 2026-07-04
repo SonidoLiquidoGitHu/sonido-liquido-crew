@@ -1,43 +1,43 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import {
-  Headphones,
-  Plus,
-  Pencil,
-  Trash2,
-  Youtube,
-  Music2,
-  ExternalLink,
-  Search,
-  X,
-  Loader2,
-  Check,
-  AlertCircle,
-  GripVertical,
-  Link2,
-  Settings,
-  Mail,
-  Music,
-} from "lucide-react";
 import {
   DndContext,
-  closestCenter,
+  type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
+  arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  AlertCircle,
+  Check,
+  ExternalLink,
+  GripVertical,
+  Headphones,
+  Link2,
+  Loader2,
+  Mail,
+  Music,
+  Music2,
+  Pencil,
+  Plus,
+  Search,
+  Settings,
+  Trash2,
+  X,
+  Youtube,
+} from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 
 // ===========================================
 // Types
@@ -74,7 +74,10 @@ interface SamplingData {
 // Constants
 // ===========================================
 
-const TYPE_META: Record<ResourceType, { label: string; color: string; icon: typeof Youtube }> = {
+const TYPE_META: Record<
+  ResourceType,
+  { label: string; color: string; icon: typeof Youtube }
+> = {
   channel: {
     label: "Canal",
     color: "bg-orange-500/15 text-orange-400 border-orange-500/30",
@@ -94,7 +97,10 @@ const TYPE_META: Record<ResourceType, { label: string; color: string; icon: type
 
 const RESOURCE_TYPES: ResourceType[] = ["channel", "video", "playlist"];
 
-const GATE_TYPE_META: Record<GateType, { label: string; description: string; icon: typeof Mail }> = {
+const GATE_TYPE_META: Record<
+  GateType,
+  { label: string; description: string; icon: typeof Mail }
+> = {
   email: {
     label: "Email",
     description: "Requiere email para desbloquear",
@@ -271,7 +277,8 @@ export default function SamplingResourcesAdminPage() {
 
   // Modal states
   const [showForm, setShowForm] = useState(false);
-  const [editingResource, setEditingResource] = useState<SamplingResource | null>(null);
+  const [editingResource, setEditingResource] =
+    useState<SamplingResource | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -284,12 +291,18 @@ export default function SamplingResourcesAdminPage() {
   const [showGateConfig, setShowGateConfig] = useState(false);
 
   // Toast
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
-  const showToast = useCallback((type: "success" | "error", message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3500);
-  }, []);
+  const showToast = useCallback(
+    (type: "success" | "error", message: string) => {
+      setToast({ type, message });
+      setTimeout(() => setToast(null), 3500);
+    },
+    [],
+  );
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -319,7 +332,9 @@ export default function SamplingResourcesAdminPage() {
   const handleDelete = async (id: string) => {
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/admin/sampling-resources?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/sampling-resources?id=${id}`, {
+        method: "DELETE",
+      });
       const json = await res.json();
       if (json.success) {
         setDeletingId(null);
@@ -375,7 +390,7 @@ export default function SamplingResourcesAdminPage() {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -404,7 +419,9 @@ export default function SamplingResourcesAdminPage() {
       const json = await res.json();
       if (!json.success) {
         // Rollback on failure
-        setData((prev) => (prev ? { ...prev, resources: data.resources } : prev));
+        setData((prev) =>
+          prev ? { ...prev, resources: data.resources } : prev,
+        );
         showToast("error", "Error al guardar orden");
       } else {
         showToast("success", "Orden guardado");
@@ -419,19 +436,24 @@ export default function SamplingResourcesAdminPage() {
   };
 
   // Filter resources (for display; drag reordering works on the full list)
-  const filteredResources = data?.resources.filter((r) => {
-    const matchesSearch =
-      !searchQuery ||
-      r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      r.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || r.type === typeFilter;
-    const matchesCategory = categoryFilter === "all" || r.category === categoryFilter;
-    return matchesSearch && matchesType && matchesCategory;
-  }) || [];
+  const filteredResources =
+    data?.resources.filter((r) => {
+      const matchesSearch =
+        !searchQuery ||
+        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.tags.some((t) =>
+          t.toLowerCase().includes(searchQuery.toLowerCase()),
+        ) ||
+        r.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = typeFilter === "all" || r.type === typeFilter;
+      const matchesCategory =
+        categoryFilter === "all" || r.category === categoryFilter;
+      return matchesSearch && matchesType && matchesCategory;
+    }) || [];
 
-  const isFiltered = searchQuery || typeFilter !== "all" || categoryFilter !== "all";
+  const isFiltered =
+    searchQuery || typeFilter !== "all" || categoryFilter !== "all";
 
   // Categories from current data
   const categories = data
@@ -512,8 +534,9 @@ export default function SamplingResourcesAdminPage() {
                 Recursos para Sampling
               </h1>
               <p className="text-slc-muted text-sm mt-2 max-w-xl leading-relaxed">
-                Curaduría de canales, videos y playlists de YouTube para encontrar música sampleable.
-                Configura el tipo de acceso (email, pre-save o ambos) y arrastra los recursos para reordenarlos.
+                Curaduría de canales, videos y playlists de YouTube para
+                encontrar música sampleable. Configura el tipo de acceso (email,
+                pre-save o ambos) y arrastra los recursos para reordenarlos.
               </p>
             </div>
 
@@ -554,9 +577,17 @@ export default function SamplingResourcesAdminPage() {
           {counts && (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6">
               <StatCard label="Total Recursos" value={counts.total} accent />
-              <StatCard label="Canales" value={counts.channels} icon={Youtube} />
+              <StatCard
+                label="Canales"
+                value={counts.channels}
+                icon={Youtube}
+              />
               <StatCard label="Videos" value={counts.videos} icon={Youtube} />
-              <StatCard label="Playlists" value={counts.playlists} icon={Music2} />
+              <StatCard
+                label="Playlists"
+                value={counts.playlists}
+                icon={Music2}
+              />
               <StatCard label="Categorías" value={counts.categories} />
             </div>
           )}
@@ -568,9 +599,12 @@ export default function SamplingResourcesAdminPage() {
         <div className="border-b border-slc-border bg-slc-dark">
           <div className="p-6 md:p-8">
             <div className="max-w-2xl">
-              <h2 className="font-oswald text-xl uppercase text-white mb-1">Configurar Acceso</h2>
+              <h2 className="font-oswald text-xl uppercase text-white mb-1">
+                Configurar Acceso
+              </h2>
               <p className="text-slc-muted text-sm mb-6">
-                Define qué requisito deben cumplir los usuarios para desbloquear los recursos.
+                Define qué requisito deben cumplir los usuarios para desbloquear
+                los recursos.
               </p>
 
               {/* Gate Type Selector */}
@@ -594,8 +628,12 @@ export default function SamplingResourcesAdminPage() {
                         }`}
                       >
                         <Icon className="w-5 h-5" />
-                        <span className="font-bold uppercase tracking-wide">{meta.label}</span>
-                        <span className="text-[10px] text-slc-muted/80 text-center leading-tight">{meta.description}</span>
+                        <span className="font-bold uppercase tracking-wide">
+                          {meta.label}
+                        </span>
+                        <span className="text-[10px] text-slc-muted/80 text-center leading-tight">
+                          {meta.description}
+                        </span>
                       </button>
                     );
                   })}
@@ -607,11 +645,16 @@ export default function SamplingResourcesAdminPage() {
                 <div className="space-y-4 mb-6 p-4 rounded-lg bg-slc-card border border-slc-border">
                   <div className="flex items-center gap-2 text-primary mb-2">
                     <Music className="w-4 h-4" />
-                    <span className="text-xs uppercase tracking-wider font-medium">Configuración de Pre-save</span>
+                    <span className="text-xs uppercase tracking-wider font-medium">
+                      Configuración de Pre-save
+                    </span>
                   </div>
 
                   <div>
-                    <label htmlFor="gate-presave-url" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+                    <label
+                      htmlFor="gate-presave-url"
+                      className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+                    >
                       URL de Pre-save <span className="text-primary">*</span>
                     </label>
                     <input
@@ -623,12 +666,16 @@ export default function SamplingResourcesAdminPage() {
                       className="w-full px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted/60 focus:outline-none focus:border-primary transition-colors"
                     />
                     <p className="text-[10px] text-slc-muted/60 mt-1">
-                      URL del enlace de pre-save (Feature.fm, Linkfire, Spotify SmartLink, etc.)
+                      URL del enlace de pre-save (Feature.fm, Linkfire, Spotify
+                      SmartLink, etc.)
                     </p>
                   </div>
 
                   <div>
-                    <label htmlFor="gate-presave-cta" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+                    <label
+                      htmlFor="gate-presave-cta"
+                      className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+                    >
                       Texto del Botón
                     </label>
                     <input
@@ -658,7 +705,11 @@ export default function SamplingResourcesAdminPage() {
 
                 <button
                   onClick={handleSaveGateConfig}
-                  disabled={savingGate || ((gateType === "presave" || gateType === "both") && !presaveUrl.trim())}
+                  disabled={
+                    savingGate ||
+                    ((gateType === "presave" || gateType === "both") &&
+                      !presaveUrl.trim())
+                  }
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-bold uppercase tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {savingGate ? (
@@ -703,7 +754,9 @@ export default function SamplingResourcesAdminPage() {
 
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as ResourceType | "all")}
+            onChange={(e) =>
+              setTypeFilter(e.target.value as ResourceType | "all")
+            }
             className="px-3 py-2.5 bg-slc-darker border border-slc-border rounded-lg text-sm text-white focus:outline-none focus:border-primary transition-colors"
           >
             <option value="all">Todos los tipos</option>
@@ -730,7 +783,8 @@ export default function SamplingResourcesAdminPage() {
         {isFiltered && (
           <div className="px-4 md:px-8 pb-3">
             <p className="text-xs text-primary/70">
-              Los filtros están activos. El reordenamiento por arrastre solo funciona sin filtros.
+              Los filtros están activos. El reordenamiento por arrastre solo
+              funciona sin filtros.
             </p>
           </div>
         )}
@@ -797,7 +851,13 @@ export default function SamplingResourcesAdminPage() {
         <ResourceFormModal
           resource={editingResource}
           existingCategories={EXISTING_CATEGORIES}
-          existingTags={data ? Array.from(new Set(data.resources.flatMap((r) => r.tags))).sort() : []}
+          existingTags={
+            data
+              ? Array.from(
+                  new Set(data.resources.flatMap((r) => r.tags)),
+                ).sort()
+              : []
+          }
           saving={saving}
           onSave={async (resourceData) => {
             setSaving(true);
@@ -807,7 +867,10 @@ export default function SamplingResourcesAdminPage() {
                 const res = await fetch("/api/admin/sampling-resources", {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ id: editingResource.id, ...resourceData }),
+                  body: JSON.stringify({
+                    id: editingResource.id,
+                    ...resourceData,
+                  }),
                 });
                 const json = await res.json();
                 if (json.success) {
@@ -855,9 +918,12 @@ export default function SamplingResourcesAdminPage() {
             onClick={() => !deleteLoading && setDeletingId(null)}
           />
           <div className="relative bg-slc-card border border-slc-border rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="font-oswald text-xl uppercase text-white mb-2">Eliminar Recurso</h3>
+            <h3 className="font-oswald text-xl uppercase text-white mb-2">
+              Eliminar Recurso
+            </h3>
             <p className="text-slc-muted text-sm mb-6">
-              ¿Estás seguro de que quieres eliminar este recurso? Esta acción no se puede deshacer.
+              ¿Estás seguro de que quieres eliminar este recurso? Esta acción no
+              se puede deshacer.
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -916,12 +982,20 @@ function StatCard({
       }`}
     >
       <div className="flex items-center gap-2 mb-1">
-        {Icon && <Icon className={`w-4 h-4 ${accent ? "text-primary" : "text-slc-muted"}`} />}
-        <span className={`text-xs uppercase tracking-wider ${accent ? "text-primary/80" : "text-slc-muted"}`}>
+        {Icon && (
+          <Icon
+            className={`w-4 h-4 ${accent ? "text-primary" : "text-slc-muted"}`}
+          />
+        )}
+        <span
+          className={`text-xs uppercase tracking-wider ${accent ? "text-primary/80" : "text-slc-muted"}`}
+        >
           {label}
         </span>
       </div>
-      <span className={`font-oswald text-2xl ${accent ? "text-primary" : "text-white"}`}>
+      <span
+        className={`font-oswald text-2xl ${accent ? "text-primary" : "text-white"}`}
+      >
         {value}
       </span>
     </div>
@@ -995,7 +1069,8 @@ function ResourceFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const finalCategory = category === "__custom__" ? customCategory.trim() : category;
+    const finalCategory =
+      category === "__custom__" ? customCategory.trim() : category;
     const tags = tagsInput
       .split(",")
       .map((t) => t.trim().toLowerCase())
@@ -1010,16 +1085,22 @@ function ResourceFormModal({
       tags,
     };
 
-    if (type === "video") payload.videoId = videoId.trim() || extractVideoId(url);
-    if (type === "playlist") payload.playlistId = playlistId.trim() || extractPlaylistId(url);
-    if (type === "channel") payload.handle = handle.trim() || extractHandle(url);
+    if (type === "video")
+      payload.videoId = videoId.trim() || extractVideoId(url);
+    if (type === "playlist")
+      payload.playlistId = playlistId.trim() || extractPlaylistId(url);
+    if (type === "channel")
+      payload.handle = handle.trim() || extractHandle(url);
 
     onSave(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative bg-slc-dark border border-slc-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-slc-dark border-b border-slc-border p-6 flex items-center justify-between">
@@ -1066,7 +1147,10 @@ function ResourceFormModal({
 
           {/* Title */}
           <div>
-            <label htmlFor="sr-title" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+            <label
+              htmlFor="sr-title"
+              className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+            >
               Título <span className="text-primary">*</span>
             </label>
             <input
@@ -1082,7 +1166,10 @@ function ResourceFormModal({
 
           {/* URL */}
           <div>
-            <label htmlFor="sr-url" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+            <label
+              htmlFor="sr-url"
+              className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+            >
               URL de YouTube <span className="text-primary">*</span>
             </label>
             <div className="relative">
@@ -1102,8 +1189,14 @@ function ResourceFormModal({
           {/* Type-specific fields */}
           {type === "video" && (
             <div>
-              <label htmlFor="sr-videoId" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
-                Video ID <span className="text-slc-muted/60">(se extrae automáticamente de la URL)</span>
+              <label
+                htmlFor="sr-videoId"
+                className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+              >
+                Video ID{" "}
+                <span className="text-slc-muted/60">
+                  (se extrae automáticamente de la URL)
+                </span>
               </label>
               <input
                 id="sr-videoId"
@@ -1118,8 +1211,14 @@ function ResourceFormModal({
 
           {type === "playlist" && (
             <div>
-              <label htmlFor="sr-playlistId" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
-                Playlist ID <span className="text-slc-muted/60">(se extrae automáticamente de la URL)</span>
+              <label
+                htmlFor="sr-playlistId"
+                className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+              >
+                Playlist ID{" "}
+                <span className="text-slc-muted/60">
+                  (se extrae automáticamente de la URL)
+                </span>
               </label>
               <input
                 id="sr-playlistId"
@@ -1134,8 +1233,14 @@ function ResourceFormModal({
 
           {type === "channel" && (
             <div>
-              <label htmlFor="sr-handle" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
-                Handle <span className="text-slc-muted/60">(se extrae automáticamente de la URL)</span>
+              <label
+                htmlFor="sr-handle"
+                className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+              >
+                Handle{" "}
+                <span className="text-slc-muted/60">
+                  (se extrae automáticamente de la URL)
+                </span>
               </label>
               <input
                 id="sr-handle"
@@ -1150,7 +1255,10 @@ function ResourceFormModal({
 
           {/* Category */}
           <div>
-            <label htmlFor="sr-category" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+            <label
+              htmlFor="sr-category"
+              className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+            >
               Categoría <span className="text-primary">*</span>
             </label>
             <select
@@ -1183,7 +1291,10 @@ function ResourceFormModal({
 
           {/* Description */}
           <div>
-            <label htmlFor="sr-description" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
+            <label
+              htmlFor="sr-description"
+              className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+            >
               Descripción <span className="text-primary">*</span>
             </label>
             <textarea
@@ -1199,8 +1310,12 @@ function ResourceFormModal({
 
           {/* Tags */}
           <div>
-            <label htmlFor="sr-tags" className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5">
-              Tags <span className="text-slc-muted/60">(separados por coma)</span>
+            <label
+              htmlFor="sr-tags"
+              className="block text-xs uppercase tracking-wider text-slc-muted mb-1.5"
+            >
+              Tags{" "}
+              <span className="text-slc-muted/60">(separados por coma)</span>
             </label>
             <input
               id="sr-tags"
@@ -1222,7 +1337,9 @@ function ResourceFormModal({
                         .map((t) => t.trim())
                         .filter(Boolean);
                       if (!current.includes(tag)) {
-                        setTagsInput(current.length > 0 ? `${tagsInput}, ${tag}` : tag);
+                        setTagsInput(
+                          current.length > 0 ? `${tagsInput}, ${tag}` : tag,
+                        );
                       }
                     }}
                     className="px-2 py-0.5 text-[10px] uppercase tracking-wide rounded bg-slc-darker border border-slc-border text-slc-muted hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
@@ -1238,7 +1355,10 @@ function ResourceFormModal({
           <div className="space-y-2 pt-4 border-t border-slc-border">
             {!title || !url || !category || !description ? (
               <p className="text-xs text-slc-muted/60 text-right">
-                Completa todos los campos requeridos: {!title && "título "}{!url && "URL "}{!category && "categoría "}{!description && "descripción"}
+                Completa todos los campos requeridos: {!title && "título "}
+                {!url && "URL "}
+                {!category && "categoría "}
+                {!description && "descripción"}
               </p>
             ) : null}
             <div className="flex items-center justify-end gap-3">

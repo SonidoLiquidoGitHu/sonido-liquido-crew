@@ -1,5 +1,9 @@
 import { spotifyClient } from "@/lib/clients";
-import { artistsRepository, releasesRepository, syncJobsRepository } from "@/lib/repositories";
+import {
+  artistsRepository,
+  releasesRepository,
+  syncJobsRepository,
+} from "@/lib/repositories";
 import { generateUUID, slugify } from "@/lib/utils";
 import type { SpotifyAlbum } from "@/types";
 
@@ -26,7 +30,9 @@ export interface SpotifySyncResult {
 /**
  * Sync artists and releases from Spotify
  */
-export async function syncSpotify(options: SpotifySyncOptions = {}): Promise<SpotifySyncResult> {
+export async function syncSpotify(
+  options: SpotifySyncOptions = {},
+): Promise<SpotifySyncResult> {
   const result: SpotifySyncResult = {
     success: true,
     artistsProcessed: 0,
@@ -51,10 +57,14 @@ export async function syncSpotify(options: SpotifySyncOptions = {}): Promise<Spo
   });
 
   try {
-    await syncJobsRepository.addLog(syncJob.id, "info", "Starting Spotify sync");
+    await syncJobsRepository.addLog(
+      syncJob.id,
+      "info",
+      "Starting Spotify sync",
+    );
 
     // Get artists to sync
-    let artistSpotifyIds: string[] = options.artistIds || [];
+    const artistSpotifyIds: string[] = options.artistIds || [];
 
     if (artistSpotifyIds.length === 0) {
       // Get all artists with Spotify profiles from database
@@ -72,66 +82,96 @@ export async function syncSpotify(options: SpotifySyncOptions = {}): Promise<Spo
     await syncJobsRepository.addLog(
       syncJob.id,
       "info",
-      `Found ${artistSpotifyIds.length} artists with Spotify profiles`
+      `Found ${artistSpotifyIds.length} artists with Spotify profiles`,
     );
 
     // Sync artists
     if (options.syncArtists !== false && artistSpotifyIds.length > 0) {
-      await syncJobsRepository.addLog(syncJob.id, "info", "Syncing artist data from Spotify");
+      await syncJobsRepository.addLog(
+        syncJob.id,
+        "info",
+        "Syncing artist data from Spotify",
+      );
 
       try {
         const spotifyArtists = await spotifyClient.getArtists(artistSpotifyIds);
 
         for (const spotifyArtist of spotifyArtists) {
           try {
-            const localArtist = await artistsRepository.findBySpotifyId(spotifyArtist.id);
+            const localArtist = await artistsRepository.findBySpotifyId(
+              spotifyArtist.id,
+            );
 
             if (localArtist) {
               // Update artist with latest Spotify data including stats
               await artistsRepository.update(localArtist.id, {
-                profileImageUrl: spotifyArtist.images[0]?.url || localArtist.profileImageUrl,
-                followers: spotifyArtist.followers?.total || localArtist.followers,
+                profileImageUrl:
+                  spotifyArtist.images[0]?.url || localArtist.profileImageUrl,
+                followers:
+                  spotifyArtist.followers?.total || localArtist.followers,
               });
 
               // Also update the external profile with follower count
-              const profiles = await artistsRepository.getExternalProfiles(localArtist.id);
-              const spotifyProfile = profiles.find(p => p.platform === "spotify");
+              const profiles = await artistsRepository.getExternalProfiles(
+                localArtist.id,
+              );
+              const spotifyProfile = profiles.find(
+                (p) => p.platform === "spotify",
+              );
               if (spotifyProfile) {
-                await artistsRepository.updateExternalProfile(spotifyProfile.id, {
-                  followerCount: spotifyArtist.followers?.total,
-                  lastSynced: new Date(),
-                });
+                await artistsRepository.updateExternalProfile(
+                  spotifyProfile.id,
+                  {
+                    followerCount: spotifyArtist.followers?.total,
+                    lastSynced: new Date(),
+                  },
+                );
               }
 
               result.artistsProcessed++;
             }
           } catch (error) {
             result.artistsFailed++;
-            result.errors.push(`Failed to sync artist ${spotifyArtist.name}: ${(error as Error).message}`);
+            result.errors.push(
+              `Failed to sync artist ${spotifyArtist.name}: ${(error as Error).message}`,
+            );
             await syncJobsRepository.addLog(
               syncJob.id,
               "error",
               `Failed to sync artist ${spotifyArtist.name}`,
-              { error: (error as Error).message }
+              { error: (error as Error).message },
             );
           }
         }
       } catch (error) {
-        result.errors.push(`Failed to fetch artists from Spotify: ${(error as Error).message}`);
-        await syncJobsRepository.addLog(syncJob.id, "error", "Failed to fetch artists from Spotify", {
-          error: (error as Error).message,
-        });
+        result.errors.push(
+          `Failed to fetch artists from Spotify: ${(error as Error).message}`,
+        );
+        await syncJobsRepository.addLog(
+          syncJob.id,
+          "error",
+          "Failed to fetch artists from Spotify",
+          {
+            error: (error as Error).message,
+          },
+        );
       }
     }
 
     // Sync releases
     if (options.syncReleases !== false && artistSpotifyIds.length > 0) {
-      await syncJobsRepository.addLog(syncJob.id, "info", "Syncing releases from Spotify");
+      await syncJobsRepository.addLog(
+        syncJob.id,
+        "info",
+        "Syncing releases from Spotify",
+      );
 
       for (const artistSpotifyId of artistSpotifyIds) {
         try {
-          const albums = await spotifyClient.getAllArtistAlbums(artistSpotifyId);
-          const localArtist = await artistsRepository.findBySpotifyId(artistSpotifyId);
+          const albums =
+            await spotifyClient.getAllArtistAlbums(artistSpotifyId);
+          const localArtist =
+            await artistsRepository.findBySpotifyId(artistSpotifyId);
 
           if (!localArtist) continue;
 
@@ -141,15 +181,24 @@ export async function syncSpotify(options: SpotifySyncOptions = {}): Promise<Spo
               result.releasesProcessed++;
             } catch (error) {
               result.releasesFailed++;
-              result.errors.push(`Failed to sync release ${album.name}: ${(error as Error).message}`);
+              result.errors.push(
+                `Failed to sync release ${album.name}: ${(error as Error).message}`,
+              );
             }
           }
         } catch (error) {
-          result.errors.push(`Failed to fetch albums for artist ${artistSpotifyId}: ${(error as Error).message}`);
-          await syncJobsRepository.addLog(syncJob.id, "error", `Failed to fetch albums for artist`, {
-            artistSpotifyId,
-            error: (error as Error).message,
-          });
+          result.errors.push(
+            `Failed to fetch albums for artist ${artistSpotifyId}: ${(error as Error).message}`,
+          );
+          await syncJobsRepository.addLog(
+            syncJob.id,
+            "error",
+            "Failed to fetch albums for artist",
+            {
+              artistSpotifyId,
+              error: (error as Error).message,
+            },
+          );
         }
       }
     }
@@ -166,9 +215,8 @@ export async function syncSpotify(options: SpotifySyncOptions = {}): Promise<Spo
       syncJob.id,
       result.errors.length === 0 ? "info" : "warning",
       `Spotify sync completed: ${result.artistsProcessed} artists, ${result.releasesProcessed} releases`,
-      { errors: result.errors }
+      { errors: result.errors },
     );
-
   } catch (error) {
     result.success = false;
     result.errors.push(`Sync failed: ${(error as Error).message}`);
@@ -179,9 +227,14 @@ export async function syncSpotify(options: SpotifySyncOptions = {}): Promise<Spo
       errorMessage: (error as Error).message,
     });
 
-    await syncJobsRepository.addLog(syncJob.id, "error", "Spotify sync failed", {
-      error: (error as Error).message,
-    });
+    await syncJobsRepository.addLog(
+      syncJob.id,
+      "error",
+      "Spotify sync failed",
+      {
+        error: (error as Error).message,
+      },
+    );
   }
 
   return result;
@@ -190,7 +243,10 @@ export async function syncSpotify(options: SpotifySyncOptions = {}): Promise<Spo
 /**
  * Sync a single release from Spotify
  */
-async function syncSpotifyRelease(album: SpotifyAlbum, artistId: string): Promise<void> {
+async function syncSpotifyRelease(
+  album: SpotifyAlbum,
+  artistId: string,
+): Promise<void> {
   // Check if release already exists
   const existing = await releasesRepository.findBySpotifyId(album.id);
 
@@ -220,7 +276,7 @@ async function syncSpotifyRelease(album: SpotifyAlbum, artistId: string): Promis
         isUpcoming: releaseDate > new Date(),
       },
       [artistId],
-      artistId
+      artistId,
     );
   }
 }
@@ -228,7 +284,9 @@ async function syncSpotifyRelease(album: SpotifyAlbum, artistId: string): Promis
 /**
  * Map Spotify album type to our release type
  */
-function mapAlbumType(albumType: string): "album" | "ep" | "single" | "compilation" {
+function mapAlbumType(
+  albumType: string,
+): "album" | "ep" | "single" | "compilation" {
   switch (albumType) {
     case "album":
       return "album";
@@ -246,9 +304,9 @@ function mapAlbumType(albumType: string): "album" | "ep" | "single" | "compilati
  */
 function parseSpotifyDate(dateStr: string): Date {
   const parts = dateStr.split("-");
-  const year = parseInt(parts[0], 10);
-  const month = parts[1] ? parseInt(parts[1], 10) - 1 : 0;
-  const day = parts[2] ? parseInt(parts[2], 10) : 1;
+  const year = Number.parseInt(parts[0], 10);
+  const month = parts[1] ? Number.parseInt(parts[1], 10) - 1 : 0;
+  const day = parts[2] ? Number.parseInt(parts[2], 10) : 1;
   return new Date(year, month, day);
 }
 
@@ -273,7 +331,7 @@ export async function syncSpotifyArtist(spotifyId: string): Promise<boolean> {
 
       // Update external profile with sync time
       const profiles = await artistsRepository.getExternalProfiles(existing.id);
-      const spotifyProfile = profiles.find(p => p.platform === "spotify");
+      const spotifyProfile = profiles.find((p) => p.platform === "spotify");
       if (spotifyProfile) {
         await artistsRepository.updateExternalProfile(spotifyProfile.id, {
           followerCount: spotifyArtist.followers?.total,

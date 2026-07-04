@@ -4,17 +4,17 @@
 // POST: Start a new video generation task
 // GET: List recent generation tasks
 
-import { NextRequest, NextResponse } from "next/server";
 import {
+  type RunwayModel,
+  type RunwayRatio,
+  estimateCost,
   generateImageToVideo,
   generateTextToVideo,
   isRunwayConfigured,
-  estimateCost,
-  type RunwayModel,
-  type RunwayRatio,
 } from "@/lib/clients/runway";
-import { storeTask, getAllTasks } from "@/lib/clients/runway-task-store";
+import { getAllTasks, storeTask } from "@/lib/clients/runway-task-store";
 import { getDirectDropboxUrl, isDropboxUrl } from "@/lib/video-utils";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Resolve a prompt image URL so Runway can fetch it.
@@ -27,7 +27,10 @@ import { getDirectDropboxUrl, isDropboxUrl } from "@/lib/video-utils";
 async function resolvePromptImageUrl(url: string): Promise<string> {
   if (!isDropboxUrl(url)) return url;
 
-  console.log("[Runway API] Resolving Dropbox URL for promptImage:", url.substring(0, 80));
+  console.log(
+    "[Runway API] Resolving Dropbox URL for promptImage:",
+    url.substring(0, 80),
+  );
 
   try {
     const { dropboxClient } = await import("@/lib/clients/dropbox");
@@ -35,7 +38,9 @@ async function resolvePromptImageUrl(url: string): Promise<string> {
     // Convert to a format the metadata API can resolve
     let sharedLink = getDirectDropboxUrl(url);
     if (sharedLink.includes("raw=1")) {
-      sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+      sharedLink = sharedLink
+        .replace("?raw=1", "?dl=0")
+        .replace("&raw=1", "&dl=0");
     }
     if (!sharedLink.includes("?")) {
       sharedLink += "?dl=0";
@@ -53,12 +58,14 @@ async function resolvePromptImageUrl(url: string): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ url: sharedLink }),
-      }
+      },
     );
 
     if (!metaResponse.ok) {
       const errorBody = await metaResponse.text();
-      console.warn(`[Runway API] Dropbox metadata API returned ${metaResponse.status}: ${errorBody.substring(0, 200)}`);
+      console.warn(
+        `[Runway API] Dropbox metadata API returned ${metaResponse.status}: ${errorBody.substring(0, 200)}`,
+      );
       return url; // Fallback to original URL
     }
 
@@ -80,12 +87,14 @@ async function resolvePromptImageUrl(url: string): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ path: filePath }),
-      }
+      },
     );
 
     if (!tempLinkResponse.ok) {
       const errorBody = await tempLinkResponse.text();
-      console.warn(`[Runway API] Dropbox temp link API returned ${tempLinkResponse.status}: ${errorBody.substring(0, 200)}`);
+      console.warn(
+        `[Runway API] Dropbox temp link API returned ${tempLinkResponse.status}: ${errorBody.substring(0, 200)}`,
+      );
       return url; // Fallback to original URL
     }
 
@@ -93,7 +102,9 @@ async function resolvePromptImageUrl(url: string): Promise<string> {
     const tempLink = tempLinkData.link;
 
     if (tempLink) {
-      console.log("[Runway API] Resolved Dropbox URL to temporary CDN link successfully");
+      console.log(
+        "[Runway API] Resolved Dropbox URL to temporary CDN link successfully",
+      );
       return tempLink;
     }
 
@@ -111,7 +122,7 @@ export async function POST(request: NextRequest) {
     if (!config.configured) {
       return NextResponse.json(
         { success: false, error: `Runway API not configured: ${config.error}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -130,7 +141,7 @@ export async function POST(request: NextRequest) {
     if (!promptText) {
       return NextResponse.json(
         { success: false, error: "promptText is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -147,7 +158,8 @@ export async function POST(request: NextRequest) {
       if (resolved === promptImage) {
         // Resolution failed — use our image proxy as a fallback
         // This ensures Runway gets an actual image, not an HTML page
-        const serverPrefix = process.env.NEXT_PUBLIC_SERVER_URL || "https://sonidoliquido.com";
+        const serverPrefix =
+          process.env.NEXT_PUBLIC_SERVER_URL || "https://sonidoliquido.com";
         const proxiedUrl = `${serverPrefix}/api/image-proxy?url=${encodeURIComponent(promptImage)}`;
         console.log("[Runway API] Using image proxy fallback for Dropbox URL");
         promptImage = proxiedUrl;
@@ -176,22 +188,32 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (genError) {
-      const errMsg = genError instanceof Error ? genError.message : "Unknown error";
+      const errMsg =
+        genError instanceof Error ? genError.message : "Unknown error";
       console.error("[Runway API] Generation creation failed:", errMsg);
 
       // Return a user-friendly error
       let friendlyError = errMsg;
-      if (errMsg.includes("insufficient_credits") || errMsg.includes("credits")) {
-        friendlyError = "Créditos insuficientes en tu cuenta de Runway. Recarga en runwayml.com";
+      if (
+        errMsg.includes("insufficient_credits") ||
+        errMsg.includes("credits")
+      ) {
+        friendlyError =
+          "Créditos insuficientes en tu cuenta de Runway. Recarga en runwayml.com";
       } else if (errMsg.includes("invalid") && errMsg.includes("image")) {
-        friendlyError = "La imagen de portada no se pudo cargar. Intenta con una URL directa (no Dropbox).";
-      } else if (errMsg.includes("content_policy") || errMsg.includes("safety")) {
-        friendlyError = "La imagen fue rechazada por la política de contenido de Runway.";
+        friendlyError =
+          "La imagen de portada no se pudo cargar. Intenta con una URL directa (no Dropbox).";
+      } else if (
+        errMsg.includes("content_policy") ||
+        errMsg.includes("safety")
+      ) {
+        friendlyError =
+          "La imagen fue rechazada por la política de contenido de Runway.";
       }
 
       return NextResponse.json(
         { success: false, error: friendlyError },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -215,7 +237,9 @@ export async function POST(request: NextRequest) {
 
     await storeTask(taskInfo);
 
-    console.log(`[Runway API] Task created: ${result.id} (${model}, ${ratio}, ${validDuration}s, $${cost.usd.toFixed(2)})`);
+    console.log(
+      `[Runway API] Task created: ${result.id} (${model}, ${ratio}, ${validDuration}s, $${cost.usd.toFixed(2)})`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -230,7 +254,7 @@ export async function POST(request: NextRequest) {
     console.error("[Runway API] Generation error:", errMsg);
     return NextResponse.json(
       { success: false, error: errMsg },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -248,7 +272,7 @@ export async function GET() {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { success: false, error: errMsg },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

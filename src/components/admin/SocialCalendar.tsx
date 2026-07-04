@@ -1,31 +1,31 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  Bell,
   Calendar,
-  Clock,
-  Plus,
-  Trash2,
-  Instagram,
-  Youtube,
-  Twitter,
-  Facebook,
+  Check,
   ChevronLeft,
   ChevronRight,
-  Edit2,
-  Check,
-  X,
+  Clock,
   Copy,
-  Bell,
-  Sparkles,
-  Rocket,
-  Music,
-  Video,
-  Image as ImageIcon,
-  FileText,
+  Edit2,
   ExternalLink,
+  Facebook,
+  FileText,
+  Image as ImageIcon,
+  Instagram,
+  Music,
+  Plus,
+  Rocket,
+  Sparkles,
+  Trash2,
+  Twitter,
+  Video,
+  X,
+  Youtube,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 // Platform icons are inline below
 
@@ -55,14 +55,43 @@ interface SocialCalendarProps {
   className?: string;
 }
 
-const PLATFORMS: { id: Platform; name: string; icon: React.ReactNode; color: string }[] = [
-  { id: "instagram", name: "Instagram", icon: <Instagram className="w-4 h-4" />, color: "bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400" },
-  { id: "youtube", name: "YouTube", icon: <Youtube className="w-4 h-4" />, color: "bg-red-600" },
-  { id: "twitter", name: "X", icon: <Twitter className="w-4 h-4" />, color: "bg-black" },
-  { id: "facebook", name: "Facebook", icon: <Facebook className="w-4 h-4" />, color: "bg-blue-600" },
+const PLATFORMS: {
+  id: Platform;
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+}[] = [
+  {
+    id: "instagram",
+    name: "Instagram",
+    icon: <Instagram className="w-4 h-4" />,
+    color: "bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400",
+  },
+  {
+    id: "youtube",
+    name: "YouTube",
+    icon: <Youtube className="w-4 h-4" />,
+    color: "bg-red-600",
+  },
+  {
+    id: "twitter",
+    name: "X",
+    icon: <Twitter className="w-4 h-4" />,
+    color: "bg-black",
+  },
+  {
+    id: "facebook",
+    name: "Facebook",
+    icon: <Facebook className="w-4 h-4" />,
+    color: "bg-blue-600",
+  },
 ];
 
-const CONTENT_TYPES: { id: ContentType; name: string; icon: React.ReactNode }[] = [
+const CONTENT_TYPES: {
+  id: ContentType;
+  name: string;
+  icon: React.ReactNode;
+}[] = [
   { id: "reel", name: "Reel/Short", icon: <Video className="w-4 h-4" /> },
   { id: "story", name: "Story", icon: <Sparkles className="w-4 h-4" /> },
   { id: "post", name: "Post", icon: <ImageIcon className="w-4 h-4" /> },
@@ -84,7 +113,8 @@ const POST_TEMPLATES = [
     daysBeforeRelease: 10,
     platform: "instagram" as Platform,
     contentType: "post" as ContentType,
-    caption: "🚨 PRE-SAVE YA DISPONIBLE 🚨\n\n{title} sale el {date}!\n\n🔗 Link en bio para pre-guardar\n\n#PreSave #NuevoSingle",
+    caption:
+      "🚨 PRE-SAVE YA DISPONIBLE 🚨\n\n{title} sale el {date}!\n\n🔗 Link en bio para pre-guardar\n\n#PreSave #NuevoSingle",
     time: "18:00",
   },
   {
@@ -116,7 +146,8 @@ const POST_TEMPLATES = [
     daysBeforeRelease: 0,
     platform: "instagram" as Platform,
     contentType: "reel" as ContentType,
-    caption: "🎉 ¡YA ESTÁ AQUÍ! 🎉\n\n{title} disponible AHORA en todas las plataformas 🎧\n\n#OutNow #StreamNow",
+    caption:
+      "🎉 ¡YA ESTÁ AQUÍ! 🎉\n\n{title} disponible AHORA en todas las plataformas 🎧\n\n#OutNow #StreamNow",
     time: "00:01",
   },
 ];
@@ -194,11 +225,15 @@ export function SocialCalendar({
 
   // Navigate months
   const prevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
+    );
   };
 
   const nextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
+    );
   };
 
   // Add new post
@@ -247,7 +282,13 @@ export function SocialCalendar({
 
       const caption = template.caption
         .replace("{title}", releaseTitle)
-        .replace("{date}", releaseDate.toLocaleDateString("es-MX", { day: "numeric", month: "long" }));
+        .replace(
+          "{date}",
+          releaseDate.toLocaleDateString("es-MX", {
+            day: "numeric",
+            month: "long",
+          }),
+        );
 
       return {
         id: generateId(),
@@ -271,7 +312,10 @@ export function SocialCalendar({
     await navigator.clipboard.writeText(caption);
   };
 
-  const monthName = currentMonth.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+  const monthName = currentMonth.toLocaleDateString("es-MX", {
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -300,7 +344,9 @@ export function SocialCalendar({
           <Rocket className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <p className="font-oswald uppercase text-sm text-primary">Fecha de Lanzamiento</p>
+          <p className="font-oswald uppercase text-sm text-primary">
+            Fecha de Lanzamiento
+          </p>
           <p className="font-medium">
             {releaseDate.toLocaleDateString("es-MX", {
               weekday: "long",
@@ -328,7 +374,10 @@ export function SocialCalendar({
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => (
-            <div key={day} className="text-center text-xs text-slc-muted font-medium py-2">
+            <div
+              key={day}
+              className="text-center text-xs text-slc-muted font-medium py-2"
+            >
               {day}
             </div>
           ))}
@@ -343,7 +392,8 @@ export function SocialCalendar({
 
             const dayPosts = getPostsForDate(date);
             const isRelease = isReleaseDate(date);
-            const isSelected = selectedDate?.toDateString() === date.toDateString();
+            const isSelected =
+              selectedDate?.toDateString() === date.toDateString();
             const isToday = new Date().toDateString() === date.toDateString();
             const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
 
@@ -359,12 +409,12 @@ export function SocialCalendar({
                   isSelected
                     ? "bg-primary text-white"
                     : isRelease
-                    ? "bg-green-500/20 text-green-500 border border-green-500/30"
-                    : isToday
-                    ? "bg-primary/10 text-primary"
-                    : isPast
-                    ? "text-slc-muted/50"
-                    : "hover:bg-slc-dark text-white"
+                      ? "bg-green-500/20 text-green-500 border border-green-500/30"
+                      : isToday
+                        ? "bg-primary/10 text-primary"
+                        : isPast
+                          ? "text-slc-muted/50"
+                          : "hover:bg-slc-dark text-white"
                 }`}
               >
                 <span className="font-medium">{date.getDate()}</span>
@@ -373,7 +423,9 @@ export function SocialCalendar({
                 {dayPosts.length > 0 && (
                   <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
                     {dayPosts.slice(0, 3).map((post, i) => {
-                      const platform = PLATFORMS.find((p) => p.id === post.platform);
+                      const platform = PLATFORMS.find(
+                        (p) => p.id === post.platform,
+                      );
                       return (
                         <div
                           key={i}
@@ -382,7 +434,9 @@ export function SocialCalendar({
                       );
                     })}
                     {dayPosts.length > 3 && (
-                      <span className="text-[8px] text-slc-muted">+{dayPosts.length - 3}</span>
+                      <span className="text-[8px] text-slc-muted">
+                        +{dayPosts.length - 3}
+                      </span>
                     )}
                   </div>
                 )}
@@ -421,7 +475,9 @@ export function SocialCalendar({
             <div className="space-y-3">
               {getPostsForDate(selectedDate).map((post) => {
                 const platform = PLATFORMS.find((p) => p.id === post.platform);
-                const contentType = CONTENT_TYPES.find((c) => c.id === post.contentType);
+                const contentType = CONTENT_TYPES.find(
+                  (c) => c.id === post.contentType,
+                );
 
                 return (
                   <div
@@ -430,12 +486,16 @@ export function SocialCalendar({
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${platform?.color} text-white`}>
+                        <div
+                          className={`p-2 rounded-lg ${platform?.color} text-white`}
+                        >
                           {platform?.icon}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{platform?.name}</span>
+                            <span className="font-medium">
+                              {platform?.name}
+                            </span>
                             <span className="text-xs text-slc-muted flex items-center gap-1">
                               {contentType?.icon}
                               {contentType?.name}
@@ -483,10 +543,10 @@ export function SocialCalendar({
                           post.status === "published"
                             ? "bg-green-500/10 text-green-500"
                             : post.status === "scheduled"
-                            ? "bg-blue-500/10 text-blue-500"
-                            : post.status === "failed"
-                            ? "bg-red-500/10 text-red-500"
-                            : "bg-slc-muted/10 text-slc-muted"
+                              ? "bg-blue-500/10 text-blue-500"
+                              : post.status === "failed"
+                                ? "bg-red-500/10 text-red-500"
+                                : "bg-slc-muted/10 text-slc-muted"
                         }`}
                       >
                         {post.status === "draft" && "Borrador"}
@@ -513,20 +573,26 @@ export function SocialCalendar({
 
               {/* Platform selection */}
               <div>
-                <label className="block text-xs text-slc-muted mb-2">Plataforma</label>
+                <label className="block text-xs text-slc-muted mb-2">
+                  Plataforma
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {PLATFORMS.map((platform) => (
                     <button
                       key={platform.id}
                       type="button"
-                      onClick={() => setNewPost({ ...newPost, platform: platform.id })}
+                      onClick={() =>
+                        setNewPost({ ...newPost, platform: platform.id })
+                      }
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
                         newPost.platform === platform.id
                           ? "border-primary bg-primary/10"
                           : "border-slc-border hover:border-primary/50"
                       }`}
                     >
-                      <span className={`p-1 rounded ${platform.color} text-white`}>
+                      <span
+                        className={`p-1 rounded ${platform.color} text-white`}
+                      >
                         {platform.icon}
                       </span>
                       <span className="text-sm">{platform.name}</span>
@@ -537,13 +603,17 @@ export function SocialCalendar({
 
               {/* Content type */}
               <div>
-                <label className="block text-xs text-slc-muted mb-2">Tipo de contenido</label>
+                <label className="block text-xs text-slc-muted mb-2">
+                  Tipo de contenido
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {CONTENT_TYPES.map((type) => (
                     <button
                       key={type.id}
                       type="button"
-                      onClick={() => setNewPost({ ...newPost, contentType: type.id })}
+                      onClick={() =>
+                        setNewPost({ ...newPost, contentType: type.id })
+                      }
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
                         newPost.contentType === type.id
                           ? "border-primary bg-primary/10"
@@ -559,21 +629,29 @@ export function SocialCalendar({
 
               {/* Time */}
               <div>
-                <label className="block text-xs text-slc-muted mb-2">Hora</label>
+                <label className="block text-xs text-slc-muted mb-2">
+                  Hora
+                </label>
                 <input
                   type="time"
                   value={newPost.scheduledTime || "19:00"}
-                  onChange={(e) => setNewPost({ ...newPost, scheduledTime: e.target.value })}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, scheduledTime: e.target.value })
+                  }
                   className="px-3 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                 />
               </div>
 
               {/* Caption */}
               <div>
-                <label className="block text-xs text-slc-muted mb-2">Caption</label>
+                <label className="block text-xs text-slc-muted mb-2">
+                  Caption
+                </label>
                 <textarea
                   value={newPost.caption || ""}
-                  onChange={(e) => setNewPost({ ...newPost, caption: e.target.value })}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, caption: e.target.value })
+                  }
                   placeholder="Escribe tu caption aquí..."
                   rows={4}
                   className="w-full px-3 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none text-sm"
@@ -582,11 +660,15 @@ export function SocialCalendar({
 
               {/* Notes */}
               <div>
-                <label className="block text-xs text-slc-muted mb-2">Notas (opcional)</label>
+                <label className="block text-xs text-slc-muted mb-2">
+                  Notas (opcional)
+                </label>
                 <input
                   type="text"
                   value={newPost.notes || ""}
-                  onChange={(e) => setNewPost({ ...newPost, notes: e.target.value })}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, notes: e.target.value })
+                  }
                   placeholder="ej: Teaser inicial, Behind the scenes..."
                   className="w-full px-3 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary text-sm"
                 />
@@ -617,13 +699,17 @@ export function SocialCalendar({
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {PLATFORMS.map((platform) => {
-              const count = posts.filter((p) => p.platform === platform.id).length;
+              const count = posts.filter(
+                (p) => p.platform === platform.id,
+              ).length;
               return (
                 <div
                   key={platform.id}
                   className="p-3 bg-slc-dark rounded-lg text-center"
                 >
-                  <div className={`w-8 h-8 mx-auto rounded-lg ${platform.color} flex items-center justify-center text-white mb-2`}>
+                  <div
+                    className={`w-8 h-8 mx-auto rounded-lg ${platform.color} flex items-center justify-center text-white mb-2`}
+                  >
                     {platform.icon}
                   </div>
                   <p className="text-lg font-oswald">{count}</p>
@@ -633,7 +719,9 @@ export function SocialCalendar({
             })}
           </div>
           <div className="mt-4 pt-4 border-t border-slc-border flex items-center justify-between">
-            <span className="text-sm text-slc-muted">Total: {posts.length} posts programados</span>
+            <span className="text-sm text-slc-muted">
+              Total: {posts.length} posts programados
+            </span>
             <Button variant="outline" size="sm">
               <Bell className="w-4 h-4 mr-2" />
               Configurar recordatorios

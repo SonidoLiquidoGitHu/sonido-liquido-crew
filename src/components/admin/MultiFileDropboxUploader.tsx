@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Cloud,
-  Upload,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  X,
+  CheckCircle,
+  Cloud,
   File,
-  Image as ImageIcon,
-  Music,
   FileText,
-  Zap,
-  Trash2,
+  Image as ImageIcon,
+  Loader2,
+  Music,
   Pause,
   Play,
   RotateCcw,
+  Trash2,
+  Upload,
+  X,
+  Zap,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UploadedFile {
   id: string;
@@ -31,7 +31,14 @@ interface UploadedFile {
 }
 
 interface MultiFileDropboxUploaderProps {
-  onFilesUploaded: (files: { url: string; filename: string; fileSize: number; originalName: string }[]) => void;
+  onFilesUploaded: (
+    files: {
+      url: string;
+      filename: string;
+      fileSize: number;
+      originalName: string;
+    }[],
+  ) => void;
   accept?: string;
   maxSize?: number; // in MB per file
   maxFiles?: number; // max number of files
@@ -56,7 +63,9 @@ export function MultiFileDropboxUploader({
 }: MultiFileDropboxUploaderProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -96,7 +105,8 @@ export function MultiFileDropboxUploader({
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) return <ImageIcon className="w-4 h-4" />;
     if (mimeType.startsWith("audio/")) return <Music className="w-4 h-4" />;
-    if (mimeType.startsWith("application/pdf")) return <FileText className="w-4 h-4" />;
+    if (mimeType.startsWith("application/pdf"))
+      return <FileText className="w-4 h-4" />;
     return <File className="w-4 h-4" />;
   };
 
@@ -105,134 +115,170 @@ export function MultiFileDropboxUploader({
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
-  const addFiles = useCallback((newFiles: FileList | File[]) => {
-    const filesToAdd: UploadedFile[] = [];
+  const addFiles = useCallback(
+    (newFiles: FileList | File[]) => {
+      const filesToAdd: UploadedFile[] = [];
 
-    for (let i = 0; i < newFiles.length && files.length + filesToAdd.length < maxFiles; i++) {
-      const file = newFiles[i];
+      for (
+        let i = 0;
+        i < newFiles.length && files.length + filesToAdd.length < maxFiles;
+        i++
+      ) {
+        const file = newFiles[i];
 
-      // Check file size
-      if (file.size > maxSize * 1024 * 1024) {
-        continue; // Skip files that are too large
+        // Check file size
+        if (file.size > maxSize * 1024 * 1024) {
+          continue; // Skip files that are too large
+        }
+
+        // Check for duplicates
+        const isDuplicate = files.some(
+          (f) => f.file.name === file.name && f.file.size === file.size,
+        );
+        if (isDuplicate) continue;
+
+        filesToAdd.push({
+          id: generateUniqueId(),
+          file,
+          status: "pending",
+          progress: 0,
+        });
       }
 
-      // Check for duplicates
-      const isDuplicate = files.some(f => f.file.name === file.name && f.file.size === file.size);
-      if (isDuplicate) continue;
-
-      filesToAdd.push({
-        id: generateUniqueId(),
-        file,
-        status: "pending",
-        progress: 0,
-      });
-    }
-
-    if (filesToAdd.length > 0) {
-      setFiles(prev => [...prev, ...filesToAdd]);
-    }
-  }, [files, maxFiles, maxSize]);
+      if (filesToAdd.length > 0) {
+        setFiles((prev) => [...prev, ...filesToAdd]);
+      }
+    },
+    [files, maxFiles, maxSize],
+  );
 
   const removeFile = useCallback((id: string) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
+    setFiles((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
   const retryFile = useCallback((id: string) => {
-    setFiles(prev => prev.map(f =>
-      f.id === id ? { ...f, status: "pending" as const, progress: 0, error: undefined } : f
-    ));
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.id === id
+          ? { ...f, status: "pending" as const, progress: 0, error: undefined }
+          : f,
+      ),
+    );
   }, []);
 
-  const uploadFile = async (uploadFile: UploadedFile): Promise<{ url: string; filename: string } | null> => {
+  const uploadFile = async (
+    uploadFile: UploadedFile,
+  ): Promise<{ url: string; filename: string } | null> => {
     if (!accessToken) return null;
 
     const file = uploadFile.file;
     const ext = file.name.split(".").pop() || "";
-    const baseName = file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const baseName = file.name
+      .replace(`.${ext}`, "")
+      .replace(/[^a-zA-Z0-9-_]/g, "_");
     const uniqueId = generateUniqueId();
     const filename = `${baseName}_${uniqueId}.${ext}`;
     const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
     const dropboxPath = `${normalizedFolder}/${filename}`;
 
     // Update status to uploading
-    setFiles(prev => prev.map(f =>
-      f.id === uploadFile.id ? { ...f, status: "uploading" as const, progress: 10 } : f
-    ));
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.id === uploadFile.id
+          ? { ...f, status: "uploading" as const, progress: 10 }
+          : f,
+      ),
+    );
 
     try {
       const arrayBuffer = await file.arrayBuffer();
 
       // Update progress
-      setFiles(prev => prev.map(f =>
-        f.id === uploadFile.id ? { ...f, progress: 30 } : f
-      ));
+      setFiles((prev) =>
+        prev.map((f) => (f.id === uploadFile.id ? { ...f, progress: 30 } : f)),
+      );
 
       // Upload to Dropbox
-      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/octet-stream",
-          "Dropbox-API-Arg": JSON.stringify({
-            path: dropboxPath,
-            mode: "overwrite",
-            autorename: false,
-            mute: false,
-          }),
+      const uploadResponse = await fetch(
+        "https://content.dropboxapi.com/2/files/upload",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream",
+            "Dropbox-API-Arg": JSON.stringify({
+              path: dropboxPath,
+              mode: "overwrite",
+              autorename: false,
+              mute: false,
+            }),
+          },
+          body: arrayBuffer,
         },
-        body: arrayBuffer,
-      });
+      );
 
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json().catch(() => ({}));
-        throw new Error(errorData.error_summary || `HTTP ${uploadResponse.status}`);
+        throw new Error(
+          errorData.error_summary || `HTTP ${uploadResponse.status}`,
+        );
       }
 
       // Update progress
-      setFiles(prev => prev.map(f =>
-        f.id === uploadFile.id ? { ...f, progress: 70 } : f
-      ));
+      setFiles((prev) =>
+        prev.map((f) => (f.id === uploadFile.id ? { ...f, progress: 70 } : f)),
+      );
 
       // Create shared link
       let sharedUrl: string;
       try {
-        const linkResponse = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            path: dropboxPath,
-            settings: {
-              access: "viewer",
-              audience: "public",
-              requested_visibility: "public",
+        const linkResponse = await fetch(
+          "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
             },
-          }),
-        });
+            body: JSON.stringify({
+              path: dropboxPath,
+              settings: {
+                access: "viewer",
+                audience: "public",
+                requested_visibility: "public",
+              },
+            }),
+          },
+        );
 
         if (linkResponse.ok) {
           const data = await linkResponse.json();
           sharedUrl = data.url
             .replace("?dl=0", "?raw=1")
             .replace("&dl=0", "&raw=1");
-        if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+          if (!sharedUrl.includes("raw=1"))
+            sharedUrl = `${sharedUrl + (sharedUrl.includes("?") ? "&" : "?")}raw=1`;
         } else {
           // Try to get existing link
           const errorData = await linkResponse.json().catch(() => ({}));
-          if (errorData.error_summary?.includes("shared_link_already_exists") || linkResponse.status === 409) {
-            const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
+          if (
+            errorData.error_summary?.includes("shared_link_already_exists") ||
+            linkResponse.status === 409
+          ) {
+            const listResponse = await fetch(
+              "https://api.dropboxapi.com/2/sharing/list_shared_links",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path: dropboxPath, direct_only: true }),
               },
-              body: JSON.stringify({ path: dropboxPath, direct_only: true }),
-            });
+            );
 
             if (listResponse.ok) {
               const listData = await listResponse.json();
@@ -240,7 +286,8 @@ export function MultiFileDropboxUploader({
                 sharedUrl = listData.links[0].url
                   .replace("?dl=0", "?raw=1")
                   .replace("&dl=0", "&raw=1");
-                if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+                if (!sharedUrl.includes("raw=1"))
+                  sharedUrl = `${sharedUrl + (sharedUrl.includes("?") ? "&" : "?")}raw=1`;
               } else {
                 throw new Error("Could not get shared link");
               }
@@ -248,7 +295,9 @@ export function MultiFileDropboxUploader({
               throw new Error("Could not get existing shared link");
             }
           } else {
-            throw new Error(errorData.error_summary || "Failed to create shared link");
+            throw new Error(
+              errorData.error_summary || "Failed to create shared link",
+            );
           }
         }
       } catch (linkError) {
@@ -256,15 +305,33 @@ export function MultiFileDropboxUploader({
       }
 
       // Update to success
-      setFiles(prev => prev.map(f =>
-        f.id === uploadFile.id ? { ...f, status: "success" as const, progress: 100, url: sharedUrl, filename } : f
-      ));
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadFile.id
+            ? {
+                ...f,
+                status: "success" as const,
+                progress: 100,
+                url: sharedUrl,
+                filename,
+              }
+            : f,
+        ),
+      );
 
       return { url: sharedUrl, filename };
     } catch (error) {
-      setFiles(prev => prev.map(f =>
-        f.id === uploadFile.id ? { ...f, status: "error" as const, error: (error as Error).message } : f
-      ));
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadFile.id
+            ? {
+                ...f,
+                status: "error" as const,
+                error: (error as Error).message,
+              }
+            : f,
+        ),
+      );
       return null;
     }
   };
@@ -275,8 +342,15 @@ export function MultiFileDropboxUploader({
     setIsUploading(true);
     setIsPaused(false);
 
-    const pendingFiles = files.filter(f => f.status === "pending" || f.status === "error");
-    const results: { url: string; filename: string; fileSize: number; originalName: string }[] = [];
+    const pendingFiles = files.filter(
+      (f) => f.status === "pending" || f.status === "error",
+    );
+    const results: {
+      url: string;
+      filename: string;
+      fileSize: number;
+      originalName: string;
+    }[] = [];
 
     for (const file of pendingFiles) {
       if (isPaused) break;
@@ -304,7 +378,7 @@ export function MultiFileDropboxUploader({
   };
 
   const clearCompleted = () => {
-    setFiles(prev => prev.filter(f => f.status !== "success"));
+    setFiles((prev) => prev.filter((f) => f.status !== "success"));
   };
 
   const clearAll = () => {
@@ -335,10 +409,10 @@ export function MultiFileDropboxUploader({
     }
   };
 
-  const pendingCount = files.filter(f => f.status === "pending").length;
-  const uploadingCount = files.filter(f => f.status === "uploading").length;
-  const successCount = files.filter(f => f.status === "success").length;
-  const errorCount = files.filter(f => f.status === "error").length;
+  const pendingCount = files.filter((f) => f.status === "pending").length;
+  const uploadingCount = files.filter((f) => f.status === "uploading").length;
+  const successCount = files.filter((f) => f.status === "success").length;
+  const errorCount = files.filter((f) => f.status === "error").length;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -348,9 +422,15 @@ export function MultiFileDropboxUploader({
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="text-yellow-500 font-medium">Dropbox no configurado</p>
+              <p className="text-yellow-500 font-medium">
+                Dropbox no configurado
+              </p>
               <p className="text-yellow-500/80 text-xs mt-1">
-                Ve a <a href="/admin/sync" className="underline hover:no-underline">Sincronización</a> para conectar Dropbox.
+                Ve a{" "}
+                <a href="/admin/sync" className="underline hover:no-underline">
+                  Sincronización
+                </a>{" "}
+                para conectar Dropbox.
               </p>
             </div>
           </div>
@@ -361,7 +441,10 @@ export function MultiFileDropboxUploader({
       {dropboxConfigured && (
         <div className="flex items-center gap-2 text-xs text-emerald-500">
           <Zap className="w-3 h-3" />
-          <span>Upload múltiple directo - Hasta {maxFiles} archivos de {maxSize}MB cada uno</span>
+          <span>
+            Upload múltiple directo - Hasta {maxFiles} archivos de {maxSize}MB
+            cada uno
+          </span>
         </div>
       )}
 
@@ -403,18 +486,40 @@ export function MultiFileDropboxUploader({
           <div className="flex items-center justify-between text-xs text-slc-muted">
             <div className="flex items-center gap-4">
               <span>{files.length} archivo(s)</span>
-              {pendingCount > 0 && <span className="text-yellow-500">{pendingCount} pendientes</span>}
-              {uploadingCount > 0 && <span className="text-primary">{uploadingCount} subiendo</span>}
-              {successCount > 0 && <span className="text-green-500">{successCount} completados</span>}
-              {errorCount > 0 && <span className="text-red-500">{errorCount} errores</span>}
+              {pendingCount > 0 && (
+                <span className="text-yellow-500">
+                  {pendingCount} pendientes
+                </span>
+              )}
+              {uploadingCount > 0 && (
+                <span className="text-primary">{uploadingCount} subiendo</span>
+              )}
+              {successCount > 0 && (
+                <span className="text-green-500">
+                  {successCount} completados
+                </span>
+              )}
+              {errorCount > 0 && (
+                <span className="text-red-500">{errorCount} errores</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {successCount > 0 && (
-                <Button type="button" variant="ghost" size="sm" onClick={clearCompleted}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearCompleted}
+                >
                   Limpiar completados
                 </Button>
               )}
-              <Button type="button" variant="ghost" size="sm" onClick={clearAll}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearAll}
+              >
                 <Trash2 className="w-3 h-3 mr-1" />
                 Limpiar todo
               </Button>
@@ -430,10 +535,10 @@ export function MultiFileDropboxUploader({
                   file.status === "success"
                     ? "border-green-500/30 bg-green-500/5"
                     : file.status === "error"
-                    ? "border-red-500/30 bg-red-500/5"
-                    : file.status === "uploading"
-                    ? "border-primary/30 bg-primary/5"
-                    : "border-slc-border bg-slc-card"
+                      ? "border-red-500/30 bg-red-500/5"
+                      : file.status === "uploading"
+                        ? "border-primary/30 bg-primary/5"
+                        : "border-slc-border bg-slc-card"
                 }`}
               >
                 {/* Icon */}
@@ -458,7 +563,9 @@ export function MultiFileDropboxUploader({
                       <span className="text-primary">{file.progress}%</span>
                     )}
                     {file.status === "error" && (
-                      <span className="text-red-500 truncate">{file.error}</span>
+                      <span className="text-red-500 truncate">
+                        {file.error}
+                      </span>
                     )}
                   </div>
                   {/* Progress bar */}
@@ -513,7 +620,10 @@ export function MultiFileDropboxUploader({
                 {isUploading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Subiendo {uploadingCount > 0 ? `(${uploadingCount}/${pendingCount + uploadingCount})` : "..."}
+                    Subiendo{" "}
+                    {uploadingCount > 0
+                      ? `(${uploadingCount}/${pendingCount + uploadingCount})`
+                      : "..."}
                   </>
                 ) : (
                   <>

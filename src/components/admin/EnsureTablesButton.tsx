@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2, AlertTriangle, Database } from "lucide-react";
+import { AlertTriangle, CheckCircle, Database, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 interface EnsureTablesButtonProps {
   connected?: boolean;
 }
 
-export function EnsureTablesButton({ connected = true }: EnsureTablesButtonProps) {
+export function EnsureTablesButton({
+  connected = true,
+}: EnsureTablesButtonProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -26,7 +28,9 @@ export function EnsureTablesButton({ connected = true }: EnsureTablesButtonProps
 
       setResult({
         success: data.success,
-        message: data.message || (data.success ? "Tablas aseguradas" : "Error al asegurar tablas"),
+        message:
+          data.message ||
+          (data.success ? "Tablas aseguradas" : "Error al asegurar tablas"),
       });
     } catch (error) {
       setResult({
@@ -71,7 +75,9 @@ export function EnsureTablesButton({ connected = true }: EnsureTablesButtonProps
         )}
       </Button>
       {result && (
-        <span className={`text-xs ${result.success ? "text-green-500" : "text-yellow-500"}`}>
+        <span
+          className={`text-xs ${result.success ? "text-green-500" : "text-yellow-500"}`}
+        >
           {result.message}
         </span>
       )}

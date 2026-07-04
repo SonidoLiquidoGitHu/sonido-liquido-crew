@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { artistExternalProfiles, artists } from "@/db/schema";
 import { spotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +13,18 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (!spotifyClient.isConfigured()) {
       return NextResponse.json(
-        { success: false, error: "Spotify API not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET." },
-        { status: 500 }
+        {
+          success: false,
+          error:
+            "Spotify API not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET.",
+        },
+        { status: 500 },
       );
     }
 
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
         const searchResult = await spotifyClient.search(
           `artist:${artist.name} Sonido Liquido`,
           ["artist"],
-          5
+          5,
         );
 
         const spotifyArtist = searchResult.artists?.items?.[0];
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
           const retryResult = await spotifyClient.search(
             artist.name,
             ["artist"],
-            5
+            5,
           );
           const retryArtist = retryResult.artists?.items?.[0];
           if (!retryArtist) {
@@ -119,7 +123,7 @@ export async function POST(request: NextRequest) {
     console.error("[Spotify Sync] Error:", error);
     return NextResponse.json(
       { success: false, error: "Spotify sync failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -132,7 +136,7 @@ async function syncArtistData(
     name: string;
     followers?: { total: number };
     external_urls?: { spotify: string };
-  }
+  },
 ) {
   // Update artist stats
   await db
@@ -151,8 +155,8 @@ async function syncArtistData(
     .where(
       and(
         eq(artistExternalProfiles.artistId, artistId),
-        eq(artistExternalProfiles.platform, "spotify")
-      )
+        eq(artistExternalProfiles.platform, "spotify"),
+      ),
     )
     .limit(1);
 
@@ -161,7 +165,8 @@ async function syncArtistData(
       .update(artistExternalProfiles)
       .set({
         externalId: spotifyArtist.id,
-        externalUrl: spotifyArtist.external_urls?.spotify || existingProfile.externalUrl,
+        externalUrl:
+          spotifyArtist.external_urls?.spotify || existingProfile.externalUrl,
         handle: spotifyArtist.id,
         displayName: spotifyArtist.name,
         followerCount: spotifyArtist.followers?.total || null,
@@ -174,7 +179,9 @@ async function syncArtistData(
       artistId,
       platform: "spotify",
       externalId: spotifyArtist.id,
-      externalUrl: spotifyArtist.external_urls?.spotify || `https://open.spotify.com/artist/${spotifyArtist.id}`,
+      externalUrl:
+        spotifyArtist.external_urls?.spotify ||
+        `https://open.spotify.com/artist/${spotifyArtist.id}`,
       handle: spotifyArtist.id,
       displayName: spotifyArtist.name,
       isPrimary: true,
@@ -191,7 +198,8 @@ export async function GET() {
       return NextResponse.json({
         success: false,
         connected: false,
-        message: "Spotify API not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET.",
+        message:
+          "Spotify API not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET.",
       });
     }
 

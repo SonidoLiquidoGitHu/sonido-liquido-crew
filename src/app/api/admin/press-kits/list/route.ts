@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { pressKits, artists } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { artists, pressKits } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -37,7 +37,7 @@ export async function GET() {
     console.error("[API] Error fetching press kits list:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch press kits" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

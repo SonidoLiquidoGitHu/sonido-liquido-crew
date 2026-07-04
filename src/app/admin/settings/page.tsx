@@ -1,43 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Save,
-  Settings,
-  Globe,
-  Mail,
-  Phone,
-  MapPin,
-  Link as LinkIcon,
-  RefreshCw,
-  CheckCircle,
   AlertTriangle,
-  Music,
-  Video,
-  ShoppingBag,
+  BarChart3,
+  Bell,
+  CheckCircle,
   Cloud,
+  Download,
   Eye,
   EyeOff,
-  HardDrive,
-  Trash2,
-  Plug,
-  Bell,
-  Timer,
-  Percent,
-  MousePointerClick,
-  TestTube,
-  Image,
-  Plus,
-  X,
-  BarChart3,
-  RotateCcw,
-  Download,
   FileText,
   Gift,
+  Globe,
+  HardDrive,
+  Image,
+  Link as LinkIcon,
+  Mail,
+  MapPin,
+  MousePointerClick,
+  Music,
+  Percent,
+  Phone,
+  Plug,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Settings,
+  ShoppingBag,
+  TestTube,
+  Timer,
+  Trash2,
+  Video,
+  X,
 } from "lucide-react";
-import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
+import { useEffect, useState } from "react";
 
 interface SiteSetting {
   key: string;
@@ -107,7 +107,8 @@ const defaultPopupSettings: PopupSettings = {
   badgeText: "Contenido Exclusivo",
   buttonText: "Suscribirme Gratis",
   successTitle: "¡Bienvenido al Crew!",
-  successMessage: "Revisa tu correo para confirmar tu suscripción y recibir tu contenido exclusivo.",
+  successMessage:
+    "Revisa tu correo para confirmar tu suscripción y recibir tu contenido exclusivo.",
   abTestEnabled: false,
   variantAHeadline: "",
   variantBHeadline: "",
@@ -119,7 +120,8 @@ const defaultPopupSettings: PopupSettings = {
   downloadFileUrl: "",
   downloadFileName: "",
   downloadButtonText: "Descargar Regalo",
-  downloadDescription: "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
+  downloadDescription:
+    "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
 };
 
 const iconOptions = [
@@ -145,7 +147,10 @@ const colorOptions = [
 export default function AdminSettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Dropbox state
   const [dropboxToken, setDropboxToken] = useState("");
@@ -163,8 +168,11 @@ export default function AdminSettingsPage() {
   const [dropboxTesting, setDropboxTesting] = useState(false);
 
   // Newsletter Popup state
-  const [popupSettings, setPopupSettings] = useState<PopupSettings>(defaultPopupSettings);
-  const [popupAnalytics, setPopupAnalytics] = useState<PopupAnalytics | null>(null);
+  const [popupSettings, setPopupSettings] =
+    useState<PopupSettings>(defaultPopupSettings);
+  const [popupAnalytics, setPopupAnalytics] = useState<PopupAnalytics | null>(
+    null,
+  );
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupSaving, setPopupSaving] = useState(false);
 
@@ -180,7 +188,8 @@ export default function AdminSettingsPage() {
     location: "Ciudad de México, CDMX",
 
     // Social
-    spotify_playlist_url: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
+    spotify_playlist_url:
+      "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
     youtube_channel_url: "https://www.youtube.com/@sonidoliquidocrew",
     instagram_url: "https://www.instagram.com/sonidoliquido/",
     facebook_url: "https://www.facebook.com/sonidoliquidocrew/",
@@ -217,7 +226,7 @@ export default function AdminSettingsPage() {
               acc[s.key] = s.value;
               return acc;
             }, {});
-            setSettings(prev => ({ ...prev, ...fetched }));
+            setSettings((prev) => ({ ...prev, ...fetched }));
           }
         }
       } catch (error) {
@@ -286,7 +295,10 @@ export default function AdminSettingsPage() {
       const data = await res.json();
 
       if (data.success) {
-        setMessage({ type: "success", text: "Configuración del popup guardada" });
+        setMessage({
+          type: "success",
+          text: "Configuración del popup guardada",
+        });
       } else {
         setMessage({ type: "error", text: data.error || "Error al guardar" });
       }
@@ -300,7 +312,11 @@ export default function AdminSettingsPage() {
 
   // Reset A/B test analytics
   const resetAnalytics = async () => {
-    if (!confirm("¿Estás seguro de que quieres reiniciar las estadísticas del A/B test?")) {
+    if (
+      !confirm(
+        "¿Estás seguro de que quieres reiniciar las estadísticas del A/B test?",
+      )
+    ) {
       return;
     }
 
@@ -324,39 +340,54 @@ export default function AdminSettingsPage() {
   };
 
   // Update popup setting
-  const updatePopupSetting = <K extends keyof PopupSettings>(key: K, value: PopupSettings[K]) => {
-    setPopupSettings(prev => ({ ...prev, [key]: value }));
+  const updatePopupSetting = <K extends keyof PopupSettings>(
+    key: K,
+    value: PopupSettings[K],
+  ) => {
+    setPopupSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   // Add benefit
   const addBenefit = () => {
     if (popupSettings.benefits.length >= 5) return;
-    setPopupSettings(prev => ({
+    setPopupSettings((prev) => ({
       ...prev,
-      benefits: [...prev.benefits, { icon: "gift", title: "Nuevo beneficio", color: "primary" }],
+      benefits: [
+        ...prev.benefits,
+        { icon: "gift", title: "Nuevo beneficio", color: "primary" },
+      ],
     }));
   };
 
   // Remove benefit
   const removeBenefit = (index: number) => {
-    setPopupSettings(prev => ({
+    setPopupSettings((prev) => ({
       ...prev,
       benefits: prev.benefits.filter((_, i) => i !== index),
     }));
   };
 
   // Update benefit
-  const updateBenefit = (index: number, field: keyof Benefit, value: string) => {
-    setPopupSettings(prev => ({
+  const updateBenefit = (
+    index: number,
+    field: keyof Benefit,
+    value: string,
+  ) => {
+    setPopupSettings((prev) => ({
       ...prev,
-      benefits: prev.benefits.map((b, i) => i === index ? { ...b, [field]: value } : b),
+      benefits: prev.benefits.map((b, i) =>
+        i === index ? { ...b, [field]: value } : b,
+      ),
     }));
   };
 
   // Test Dropbox token
   const testDropboxToken = async () => {
     if (!dropboxToken.trim()) {
-      setMessage({ type: "error", text: "Por favor ingresa un token de Dropbox" });
+      setMessage({
+        type: "error",
+        text: "Por favor ingresa un token de Dropbox",
+      });
       return;
     }
 
@@ -372,7 +403,7 @@ export default function AdminSettingsPage() {
       if (data.success) {
         setMessage({
           type: "success",
-          text: `Token válido. Cuenta: ${data.data.accountName} (${data.data.email})`
+          text: `Token válido. Cuenta: ${data.data.accountName} (${data.data.email})`,
         });
       } else {
         setMessage({ type: "error", text: data.error || "Token inválido" });
@@ -388,7 +419,10 @@ export default function AdminSettingsPage() {
   // Save Dropbox token
   const saveDropboxToken = async () => {
     if (!dropboxToken.trim()) {
-      setMessage({ type: "error", text: "Por favor ingresa un token de Dropbox" });
+      setMessage({
+        type: "error",
+        text: "Por favor ingresa un token de Dropbox",
+      });
       return;
     }
 
@@ -402,11 +436,17 @@ export default function AdminSettingsPage() {
       const data = await res.json();
 
       if (data.success) {
-        setMessage({ type: "success", text: data.message || "Token guardado exitosamente" });
+        setMessage({
+          type: "success",
+          text: data.message || "Token guardado exitosamente",
+        });
         setDropboxToken("");
         fetchDropboxStatus();
       } else {
-        setMessage({ type: "error", text: data.error || "Error al guardar el token" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error al guardar el token",
+        });
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error al guardar el token" });
@@ -418,7 +458,9 @@ export default function AdminSettingsPage() {
 
   // Clear Dropbox token
   const clearDropboxToken = async () => {
-    if (!confirm("¿Estás seguro de que quieres eliminar el token de Dropbox?")) {
+    if (
+      !confirm("¿Estás seguro de que quieres eliminar el token de Dropbox?")
+    ) {
       return;
     }
 
@@ -435,7 +477,10 @@ export default function AdminSettingsPage() {
         setMessage({ type: "success", text: "Token de Dropbox eliminado" });
         fetchDropboxStatus();
       } else {
-        setMessage({ type: "error", text: data.error || "Error al eliminar el token" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error al eliminar el token",
+        });
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error al eliminar el token" });
@@ -451,7 +496,7 @@ export default function AdminSettingsPage() {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   const handleSave = async () => {
@@ -465,7 +510,10 @@ export default function AdminSettingsPage() {
 
       const data = await response.json();
       if (data.success) {
-        setMessage({ type: "success", text: "Configuración guardada exitosamente" });
+        setMessage({
+          type: "success",
+          text: "Configuración guardada exitosamente",
+        });
       } else {
         setMessage({ type: "error", text: data.error || "Error al guardar" });
       }
@@ -478,7 +526,7 @@ export default function AdminSettingsPage() {
   };
 
   const updateSetting = (key: string, value: string | boolean) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -503,11 +551,13 @@ export default function AdminSettingsPage() {
 
       {/* Message */}
       {message && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-          message.type === "success"
-            ? "bg-green-500/10 border border-green-500/20 text-green-500"
-            : "bg-red-500/10 border border-red-500/20 text-red-500"
-        }`}>
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-green-500/10 border border-green-500/20 text-green-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500"
+          }`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
@@ -534,7 +584,9 @@ export default function AdminSettingsPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Nombre del Sitio</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Nombre del Sitio
+                </label>
                 <Input
                   value={settings.site_name}
                   onChange={(e) => updateSetting("site_name", e.target.value)}
@@ -542,18 +594,26 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Tagline</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Tagline
+                </label>
                 <Input
                   value={settings.site_tagline}
-                  onChange={(e) => updateSetting("site_tagline", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("site_tagline", e.target.value)
+                  }
                   placeholder="Hip Hop México desde 1999"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Año de Fundación</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Año de Fundación
+                </label>
                 <Input
                   value={settings.founded_year}
-                  onChange={(e) => updateSetting("founded_year", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("founded_year", e.target.value)
+                  }
                   placeholder="1999"
                   type="number"
                 />
@@ -572,12 +632,16 @@ export default function AdminSettingsPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Email</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Email
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
                   <Input
                     value={settings.contact_email}
-                    onChange={(e) => updateSetting("contact_email", e.target.value)}
+                    onChange={(e) =>
+                      updateSetting("contact_email", e.target.value)
+                    }
                     placeholder="email@example.com"
                     type="email"
                     className="pl-10"
@@ -585,19 +649,25 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Teléfono</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Teléfono
+                </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
                   <Input
                     value={settings.contact_phone}
-                    onChange={(e) => updateSetting("contact_phone", e.target.value)}
+                    onChange={(e) =>
+                      updateSetting("contact_phone", e.target.value)
+                    }
                     placeholder="+52 55 1234 5678"
                     className="pl-10"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Ubicación</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Ubicación
+                </label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
                   <Input
@@ -622,39 +692,57 @@ export default function AdminSettingsPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Spotify Playlist</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Spotify Playlist
+                </label>
                 <Input
                   value={settings.spotify_playlist_url}
-                  onChange={(e) => updateSetting("spotify_playlist_url", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("spotify_playlist_url", e.target.value)
+                  }
                   placeholder="https://open.spotify.com/playlist/..."
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">YouTube</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  YouTube
+                </label>
                 <Input
                   value={settings.youtube_channel_url}
-                  onChange={(e) => updateSetting("youtube_channel_url", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("youtube_channel_url", e.target.value)
+                  }
                   placeholder="https://www.youtube.com/..."
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Instagram</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Instagram
+                </label>
                 <Input
                   value={settings.instagram_url}
-                  onChange={(e) => updateSetting("instagram_url", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("instagram_url", e.target.value)
+                  }
                   placeholder="https://www.instagram.com/..."
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Facebook</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Facebook
+                </label>
                 <Input
                   value={settings.facebook_url}
-                  onChange={(e) => updateSetting("facebook_url", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("facebook_url", e.target.value)
+                  }
                   placeholder="https://www.facebook.com/..."
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Twitter/X</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Twitter/X
+                </label>
                 <Input
                   value={settings.twitter_url}
                   onChange={(e) => updateSetting("twitter_url", e.target.value)}
@@ -662,7 +750,9 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-2">TikTok</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  TikTok
+                </label>
                 <Input
                   value={settings.tiktok_url}
                   onChange={(e) => updateSetting("tiktok_url", e.target.value)}
@@ -690,7 +780,9 @@ export default function AdminSettingsPage() {
                 <input
                   type="checkbox"
                   checked={settings.store_enabled}
-                  onChange={(e) => updateSetting("store_enabled", e.target.checked)}
+                  onChange={(e) =>
+                    updateSetting("store_enabled", e.target.checked)
+                  }
                   className="w-5 h-5 rounded border-slc-border"
                 />
               </label>
@@ -702,7 +794,9 @@ export default function AdminSettingsPage() {
                 <input
                   type="checkbox"
                   checked={settings.newsletter_enabled}
-                  onChange={(e) => updateSetting("newsletter_enabled", e.target.checked)}
+                  onChange={(e) =>
+                    updateSetting("newsletter_enabled", e.target.checked)
+                  }
                   className="w-5 h-5 rounded border-slc-border"
                 />
               </label>
@@ -714,7 +808,9 @@ export default function AdminSettingsPage() {
                 <input
                   type="checkbox"
                   checked={settings.events_enabled}
-                  onChange={(e) => updateSetting("events_enabled", e.target.checked)}
+                  onChange={(e) =>
+                    updateSetting("events_enabled", e.target.checked)
+                  }
                   className="w-5 h-5 rounded border-slc-border"
                 />
               </label>
@@ -726,7 +822,9 @@ export default function AdminSettingsPage() {
                 <input
                   type="checkbox"
                   checked={settings.downloads_enabled}
-                  onChange={(e) => updateSetting("downloads_enabled", e.target.checked)}
+                  onChange={(e) =>
+                    updateSetting("downloads_enabled", e.target.checked)
+                  }
                   className="w-5 h-5 rounded border-slc-border"
                 />
               </label>
@@ -741,11 +839,19 @@ export default function AdminSettingsPage() {
                   <Bell className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="font-oswald text-xl uppercase">Newsletter Popup</h2>
-                  <p className="text-xs text-slc-muted">Configura el popup de suscripción</p>
+                  <h2 className="font-oswald text-xl uppercase">
+                    Newsletter Popup
+                  </h2>
+                  <p className="text-xs text-slc-muted">
+                    Configura el popup de suscripción
+                  </p>
                 </div>
               </div>
-              <Button onClick={savePopupSettings} disabled={popupSaving} size="sm">
+              <Button
+                onClick={savePopupSettings}
+                disabled={popupSaving}
+                size="sm"
+              >
                 {popupSaving ? (
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
@@ -766,17 +872,26 @@ export default function AdminSettingsPage() {
                   <div className="bg-slc-card p-4 rounded-lg border border-slc-border">
                     <div className="flex items-center gap-2 mb-3">
                       <Timer className="w-4 h-4 text-primary" />
-                      <label className="text-sm font-medium">Retraso (segundos)</label>
+                      <label className="text-sm font-medium">
+                        Retraso (segundos)
+                      </label>
                     </div>
                     <Input
                       type="number"
                       min="1"
                       max="120"
                       value={popupSettings.delaySeconds}
-                      onChange={(e) => updatePopupSetting("delaySeconds", parseInt(e.target.value) || 8)}
+                      onChange={(e) =>
+                        updatePopupSetting(
+                          "delaySeconds",
+                          Number.parseInt(e.target.value) || 8,
+                        )
+                      }
                       className="text-center"
                     />
-                    <p className="text-xs text-slc-muted mt-2">Tiempo antes de mostrar el popup</p>
+                    <p className="text-xs text-slc-muted mt-2">
+                      Tiempo antes de mostrar el popup
+                    </p>
                   </div>
 
                   <div className="bg-slc-card p-4 rounded-lg border border-slc-border">
@@ -789,7 +904,12 @@ export default function AdminSettingsPage() {
                       min="10"
                       max="100"
                       value={popupSettings.scrollPercentage}
-                      onChange={(e) => updatePopupSetting("scrollPercentage", parseInt(e.target.value) || 50)}
+                      onChange={(e) =>
+                        updatePopupSetting(
+                          "scrollPercentage",
+                          Number.parseInt(e.target.value) || 50,
+                        )
+                      }
                       className="text-center"
                       disabled={!popupSettings.showOnScroll}
                     />
@@ -797,10 +917,14 @@ export default function AdminSettingsPage() {
                       <input
                         type="checkbox"
                         checked={popupSettings.showOnScroll}
-                        onChange={(e) => updatePopupSetting("showOnScroll", e.target.checked)}
+                        onChange={(e) =>
+                          updatePopupSetting("showOnScroll", e.target.checked)
+                        }
                         className="w-4 h-4 rounded"
                       />
-                      <span className="text-xs text-slc-muted">Activar por scroll</span>
+                      <span className="text-xs text-slc-muted">
+                        Activar por scroll
+                      </span>
                     </label>
                   </div>
 
@@ -815,7 +939,12 @@ export default function AdminSettingsPage() {
                       max="10000"
                       step="500"
                       value={popupSettings.exitIntentDelay}
-                      onChange={(e) => updatePopupSetting("exitIntentDelay", parseInt(e.target.value) || 2000)}
+                      onChange={(e) =>
+                        updatePopupSetting(
+                          "exitIntentDelay",
+                          Number.parseInt(e.target.value) || 2000,
+                        )
+                      }
                       className="text-center"
                       disabled={!popupSettings.exitIntentEnabled}
                     />
@@ -823,77 +952,117 @@ export default function AdminSettingsPage() {
                       <input
                         type="checkbox"
                         checked={popupSettings.exitIntentEnabled}
-                        onChange={(e) => updatePopupSetting("exitIntentEnabled", e.target.checked)}
+                        onChange={(e) =>
+                          updatePopupSetting(
+                            "exitIntentEnabled",
+                            e.target.checked,
+                          )
+                        }
                         className="w-4 h-4 rounded"
                       />
-                      <span className="text-xs text-slc-muted">Detectar salida</span>
+                      <span className="text-xs text-slc-muted">
+                        Detectar salida
+                      </span>
                     </label>
                   </div>
 
                   <div className="bg-slc-card p-4 rounded-lg border border-slc-border">
                     <div className="flex items-center gap-2 mb-3">
                       <RotateCcw className="w-4 h-4 text-purple-500" />
-                      <label className="text-sm font-medium">Días de espera</label>
+                      <label className="text-sm font-medium">
+                        Días de espera
+                      </label>
                     </div>
                     <Input
                       type="number"
                       min="1"
                       max="90"
                       value={popupSettings.dismissDays}
-                      onChange={(e) => updatePopupSetting("dismissDays", parseInt(e.target.value) || 7)}
+                      onChange={(e) =>
+                        updatePopupSetting(
+                          "dismissDays",
+                          Number.parseInt(e.target.value) || 7,
+                        )
+                      }
                       className="text-center"
                     />
-                    <p className="text-xs text-slc-muted mt-2">Días antes de volver a mostrar</p>
+                    <p className="text-xs text-slc-muted mt-2">
+                      Días antes de volver a mostrar
+                    </p>
                   </div>
                 </div>
 
                 {/* Content Settings */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Titular</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Titular
+                    </label>
                     <Input
                       value={popupSettings.headline}
-                      onChange={(e) => updatePopupSetting("headline", e.target.value)}
+                      onChange={(e) =>
+                        updatePopupSetting("headline", e.target.value)
+                      }
                       placeholder="¡APÚNTATE!"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Subtítulo</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Subtítulo
+                    </label>
                     <Input
                       value={popupSettings.subheadline}
-                      onChange={(e) => updatePopupSetting("subheadline", e.target.value)}
+                      onChange={(e) =>
+                        updatePopupSetting("subheadline", e.target.value)
+                      }
                       placeholder="Suscríbete y obtén acceso..."
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Badge</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Badge
+                    </label>
                     <Input
                       value={popupSettings.badgeText}
-                      onChange={(e) => updatePopupSetting("badgeText", e.target.value)}
+                      onChange={(e) =>
+                        updatePopupSetting("badgeText", e.target.value)
+                      }
                       placeholder="Contenido Exclusivo"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Texto del Botón</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Texto del Botón
+                    </label>
                     <Input
                       value={popupSettings.buttonText}
-                      onChange={(e) => updatePopupSetting("buttonText", e.target.value)}
+                      onChange={(e) =>
+                        updatePopupSetting("buttonText", e.target.value)
+                      }
                       placeholder="Suscribirme Gratis"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Título de Éxito</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Título de Éxito
+                    </label>
                     <Input
                       value={popupSettings.successTitle}
-                      onChange={(e) => updatePopupSetting("successTitle", e.target.value)}
+                      onChange={(e) =>
+                        updatePopupSetting("successTitle", e.target.value)
+                      }
                       placeholder="¡Bienvenido al Crew!"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Mensaje de Éxito</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Mensaje de Éxito
+                    </label>
                     <Input
                       value={popupSettings.successMessage}
-                      onChange={(e) => updatePopupSetting("successMessage", e.target.value)}
+                      onChange={(e) =>
+                        updatePopupSetting("successMessage", e.target.value)
+                      }
                       placeholder="Revisa tu correo..."
                     />
                   </div>
@@ -903,16 +1072,22 @@ export default function AdminSettingsPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Image className="w-4 h-4 text-slc-muted" />
-                    <label className="text-sm text-slc-muted">Imagen del Popup</label>
+                    <label className="text-sm text-slc-muted">
+                      Imagen del Popup
+                    </label>
                   </div>
                   <div className="flex gap-4 items-start">
                     <div className="flex-1">
                       <Input
                         value={popupSettings.popupImageUrl}
-                        onChange={(e) => updatePopupSetting("popupImageUrl", e.target.value)}
+                        onChange={(e) =>
+                          updatePopupSetting("popupImageUrl", e.target.value)
+                        }
                         placeholder="https://..."
                       />
-                      <p className="text-xs text-slc-muted mt-1">URL de la imagen (PNG o SVG recomendado)</p>
+                      <p className="text-xs text-slc-muted mt-1">
+                        URL de la imagen (PNG o SVG recomendado)
+                      </p>
                     </div>
                     {popupSettings.popupImageUrl && (
                       <div className="w-20 h-20 bg-slc-card rounded-lg border border-slc-border p-2 shrink-0">
@@ -932,7 +1107,9 @@ export default function AdminSettingsPage() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <label className="text-sm font-medium">Beneficios</label>
-                      <span className="text-xs text-slc-muted">({popupSettings.benefits.length}/5)</span>
+                      <span className="text-xs text-slc-muted">
+                        ({popupSettings.benefits.length}/5)
+                      </span>
                     </div>
                     <Button
                       variant="outline"
@@ -946,34 +1123,49 @@ export default function AdminSettingsPage() {
                   </div>
                   <div className="space-y-3">
                     {popupSettings.benefits.map((benefit, index) => (
-                      <div key={index} className="flex items-center gap-3 bg-slc-card p-3 rounded-lg border border-slc-border">
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 bg-slc-card p-3 rounded-lg border border-slc-border"
+                      >
                         <select
                           value={benefit.icon}
-                          onChange={(e) => updateBenefit(index, "icon", e.target.value)}
+                          onChange={(e) =>
+                            updateBenefit(index, "icon", e.target.value)
+                          }
                           className="w-32 px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-sm"
                         >
-                          {iconOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          {iconOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
                           ))}
                         </select>
                         <Input
                           value={benefit.title}
-                          onChange={(e) => updateBenefit(index, "title", e.target.value)}
+                          onChange={(e) =>
+                            updateBenefit(index, "title", e.target.value)
+                          }
                           placeholder="Título del beneficio"
                           className="flex-1"
                         />
                         <select
                           value={benefit.color}
-                          onChange={(e) => updateBenefit(index, "color", e.target.value)}
+                          onChange={(e) =>
+                            updateBenefit(index, "color", e.target.value)
+                          }
                           className="w-28 px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-sm"
                         >
-                          {colorOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          {colorOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
                           ))}
                         </select>
                         <Input
                           value={benefit.imageUrl || ""}
-                          onChange={(e) => updateBenefit(index, "imageUrl", e.target.value)}
+                          onChange={(e) =>
+                            updateBenefit(index, "imageUrl", e.target.value)
+                          }
                           placeholder="URL imagen (opcional)"
                           className="w-40"
                         />
@@ -996,15 +1188,24 @@ export default function AdminSettingsPage() {
                     <div className="flex items-center gap-3">
                       <Gift className="w-5 h-5 text-primary" />
                       <div>
-                        <h3 className="font-medium">Archivo de Regalo por Suscripción</h3>
-                        <p className="text-xs text-slc-muted">Ofrece un archivo descargable a cambio del email</p>
+                        <h3 className="font-medium">
+                          Archivo de Regalo por Suscripción
+                        </h3>
+                        <p className="text-xs text-slc-muted">
+                          Ofrece un archivo descargable a cambio del email
+                        </p>
                       </div>
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={popupSettings.downloadFileEnabled}
-                        onChange={(e) => updatePopupSetting("downloadFileEnabled", e.target.checked)}
+                        onChange={(e) =>
+                          updatePopupSetting(
+                            "downloadFileEnabled",
+                            e.target.checked,
+                          )
+                        }
                         className="w-5 h-5 rounded"
                       />
                       <span className="text-sm">Activar</span>
@@ -1015,7 +1216,9 @@ export default function AdminSettingsPage() {
                     <div className="space-y-4 mt-4 pt-4 border-t border-slc-border">
                       {/* File Upload */}
                       <div>
-                        <label className="block text-sm text-slc-muted mb-2">Archivo de Descarga</label>
+                        <label className="block text-sm text-slc-muted mb-2">
+                          Archivo de Descarga
+                        </label>
                         <DirectDropboxUploader
                           onUploadComplete={(url, filename) => {
                             updatePopupSetting("downloadFileUrl", url);
@@ -1031,50 +1234,81 @@ export default function AdminSettingsPage() {
 
                       {/* File URL (manual override) */}
                       <div>
-                        <label className="block text-sm text-slc-muted mb-2">URL del Archivo (manual)</label>
+                        <label className="block text-sm text-slc-muted mb-2">
+                          URL del Archivo (manual)
+                        </label>
                         <Input
                           value={popupSettings.downloadFileUrl}
-                          onChange={(e) => updatePopupSetting("downloadFileUrl", e.target.value)}
+                          onChange={(e) =>
+                            updatePopupSetting(
+                              "downloadFileUrl",
+                              e.target.value,
+                            )
+                          }
                           placeholder="https://dl.dropboxusercontent.com/..."
                         />
                         <p className="text-xs text-slc-muted mt-1">
-                          Se llena automáticamente al subir un archivo, o puedes pegar una URL directamente
+                          Se llena automáticamente al subir un archivo, o puedes
+                          pegar una URL directamente
                         </p>
                       </div>
 
                       {/* File Name */}
                       <div>
-                        <label className="block text-sm text-slc-muted mb-2">Nombre del Archivo</label>
+                        <label className="block text-sm text-slc-muted mb-2">
+                          Nombre del Archivo
+                        </label>
                         <Input
                           value={popupSettings.downloadFileName}
-                          onChange={(e) => updatePopupSetting("downloadFileName", e.target.value)}
+                          onChange={(e) =>
+                            updatePopupSetting(
+                              "downloadFileName",
+                              e.target.value,
+                            )
+                          }
                           placeholder="Ej: Guía de Producción Musical, Pack de Samples, etc."
                         />
                         <p className="text-xs text-slc-muted mt-1">
-                          Nombre que se muestra al suscriptor como descripción del archivo
+                          Nombre que se muestra al suscriptor como descripción
+                          del archivo
                         </p>
                       </div>
 
                       {/* Download Button Text */}
                       <div>
-                        <label className="block text-sm text-slc-muted mb-2">Texto del Botón de Descarga</label>
+                        <label className="block text-sm text-slc-muted mb-2">
+                          Texto del Botón de Descarga
+                        </label>
                         <Input
                           value={popupSettings.downloadButtonText}
-                          onChange={(e) => updatePopupSetting("downloadButtonText", e.target.value)}
+                          onChange={(e) =>
+                            updatePopupSetting(
+                              "downloadButtonText",
+                              e.target.value,
+                            )
+                          }
                           placeholder="Descargar Regalo"
                         />
                       </div>
 
                       {/* Download Description */}
                       <div>
-                        <label className="block text-sm text-slc-muted mb-2">Descripción de la Descarga</label>
+                        <label className="block text-sm text-slc-muted mb-2">
+                          Descripción de la Descarga
+                        </label>
                         <Input
                           value={popupSettings.downloadDescription}
-                          onChange={(e) => updatePopupSetting("downloadDescription", e.target.value)}
+                          onChange={(e) =>
+                            updatePopupSetting(
+                              "downloadDescription",
+                              e.target.value,
+                            )
+                          }
                           placeholder="Descarga tu archivo exclusivo como agradecimiento por suscribirte."
                         />
                         <p className="text-xs text-slc-muted mt-1">
-                          Texto que aparece arriba del botón de descarga después de suscribirse
+                          Texto que aparece arriba del botón de descarga después
+                          de suscribirse
                         </p>
                       </div>
 
@@ -1083,17 +1317,22 @@ export default function AdminSettingsPage() {
                         <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <Download className="w-4 h-4 text-primary" />
-                            <span className="text-sm font-medium">Vista previa del resultado</span>
+                            <span className="text-sm font-medium">
+                              Vista previa del resultado
+                            </span>
                           </div>
                           <p className="text-sm text-slc-muted mb-2">
-                            {popupSettings.downloadDescription || "Descarga tu archivo exclusivo como agradecimiento por suscribirte."}
+                            {popupSettings.downloadDescription ||
+                              "Descarga tu archivo exclusivo como agradecimiento por suscribirte."}
                           </p>
                           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white font-semibold rounded-xl text-sm">
                             <Download className="w-4 h-4" />
-                            {popupSettings.downloadButtonText || "Descargar Regalo"}
+                            {popupSettings.downloadButtonText ||
+                              "Descargar Regalo"}
                           </div>
                           <p className="text-xs text-slc-muted mt-2">
-                            {popupSettings.downloadFileName || "Archivo exclusivo"}
+                            {popupSettings.downloadFileName ||
+                              "Archivo exclusivo"}
                           </p>
                         </div>
                       )}
@@ -1108,14 +1347,18 @@ export default function AdminSettingsPage() {
                       <TestTube className="w-5 h-5 text-yellow-500" />
                       <div>
                         <h3 className="font-medium">A/B Testing</h3>
-                        <p className="text-xs text-slc-muted">Prueba diferentes versiones del popup</p>
+                        <p className="text-xs text-slc-muted">
+                          Prueba diferentes versiones del popup
+                        </p>
                       </div>
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={popupSettings.abTestEnabled}
-                        onChange={(e) => updatePopupSetting("abTestEnabled", e.target.checked)}
+                        onChange={(e) =>
+                          updatePopupSetting("abTestEnabled", e.target.checked)
+                        }
                         className="w-5 h-5 rounded"
                       />
                       <span className="text-sm">Activar</span>
@@ -1127,33 +1370,65 @@ export default function AdminSettingsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">A</div>
-                            <span className="text-sm font-medium">Variante A</span>
+                            <div className="w-6 h-6 rounded bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">
+                              A
+                            </div>
+                            <span className="text-sm font-medium">
+                              Variante A
+                            </span>
                           </div>
                           <Input
                             value={popupSettings.variantAHeadline}
-                            onChange={(e) => updatePopupSetting("variantAHeadline", e.target.value)}
-                            placeholder={popupSettings.headline || "Titular variante A"}
+                            onChange={(e) =>
+                              updatePopupSetting(
+                                "variantAHeadline",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={
+                              popupSettings.headline || "Titular variante A"
+                            }
                           />
                           <Input
                             value={popupSettings.variantAButtonText}
-                            onChange={(e) => updatePopupSetting("variantAButtonText", e.target.value)}
-                            placeholder={popupSettings.buttonText || "Texto botón A"}
+                            onChange={(e) =>
+                              updatePopupSetting(
+                                "variantAButtonText",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={
+                              popupSettings.buttonText || "Texto botón A"
+                            }
                           />
                         </div>
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-green-500/20 text-green-500 flex items-center justify-center text-xs font-bold">B</div>
-                            <span className="text-sm font-medium">Variante B</span>
+                            <div className="w-6 h-6 rounded bg-green-500/20 text-green-500 flex items-center justify-center text-xs font-bold">
+                              B
+                            </div>
+                            <span className="text-sm font-medium">
+                              Variante B
+                            </span>
                           </div>
                           <Input
                             value={popupSettings.variantBHeadline}
-                            onChange={(e) => updatePopupSetting("variantBHeadline", e.target.value)}
+                            onChange={(e) =>
+                              updatePopupSetting(
+                                "variantBHeadline",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Titular variante B"
                           />
                           <Input
                             value={popupSettings.variantBButtonText}
-                            onChange={(e) => updatePopupSetting("variantBButtonText", e.target.value)}
+                            onChange={(e) =>
+                              updatePopupSetting(
+                                "variantBButtonText",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Texto botón B"
                           />
                         </div>
@@ -1165,9 +1440,15 @@ export default function AdminSettingsPage() {
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                               <BarChart3 className="w-4 h-4 text-slc-muted" />
-                              <span className="text-sm font-medium">Resultados</span>
+                              <span className="text-sm font-medium">
+                                Resultados
+                              </span>
                             </div>
-                            <Button variant="ghost" size="sm" onClick={resetAnalytics}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={resetAnalytics}
+                            >
                               <RotateCcw className="w-3 h-3 mr-1" />
                               Reiniciar
                             </Button>
@@ -1175,41 +1456,69 @@ export default function AdminSettingsPage() {
                           <div className="grid grid-cols-2 gap-4">
                             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                               <div className="flex items-center gap-2 mb-2">
-                                <div className="w-5 h-5 rounded bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">A</div>
+                                <div className="w-5 h-5 rounded bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">
+                                  A
+                                </div>
                                 <span className="text-sm">Variante A</span>
                               </div>
                               <div className="grid grid-cols-3 gap-2 text-center">
                                 <div>
-                                  <div className="text-lg font-bold">{popupAnalytics.variantA.shown}</div>
-                                  <div className="text-xs text-slc-muted">Vistos</div>
+                                  <div className="text-lg font-bold">
+                                    {popupAnalytics.variantA.shown}
+                                  </div>
+                                  <div className="text-xs text-slc-muted">
+                                    Vistos
+                                  </div>
                                 </div>
                                 <div>
-                                  <div className="text-lg font-bold">{popupAnalytics.variantA.converted}</div>
-                                  <div className="text-xs text-slc-muted">Conversiones</div>
+                                  <div className="text-lg font-bold">
+                                    {popupAnalytics.variantA.converted}
+                                  </div>
+                                  <div className="text-xs text-slc-muted">
+                                    Conversiones
+                                  </div>
                                 </div>
                                 <div>
-                                  <div className="text-lg font-bold text-blue-500">{popupAnalytics.conversionRates.variantA}%</div>
-                                  <div className="text-xs text-slc-muted">Tasa</div>
+                                  <div className="text-lg font-bold text-blue-500">
+                                    {popupAnalytics.conversionRates.variantA}%
+                                  </div>
+                                  <div className="text-xs text-slc-muted">
+                                    Tasa
+                                  </div>
                                 </div>
                               </div>
                             </div>
                             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
                               <div className="flex items-center gap-2 mb-2">
-                                <div className="w-5 h-5 rounded bg-green-500/20 text-green-500 flex items-center justify-center text-xs font-bold">B</div>
+                                <div className="w-5 h-5 rounded bg-green-500/20 text-green-500 flex items-center justify-center text-xs font-bold">
+                                  B
+                                </div>
                                 <span className="text-sm">Variante B</span>
                               </div>
                               <div className="grid grid-cols-3 gap-2 text-center">
                                 <div>
-                                  <div className="text-lg font-bold">{popupAnalytics.variantB.shown}</div>
-                                  <div className="text-xs text-slc-muted">Vistos</div>
+                                  <div className="text-lg font-bold">
+                                    {popupAnalytics.variantB.shown}
+                                  </div>
+                                  <div className="text-xs text-slc-muted">
+                                    Vistos
+                                  </div>
                                 </div>
                                 <div>
-                                  <div className="text-lg font-bold">{popupAnalytics.variantB.converted}</div>
-                                  <div className="text-xs text-slc-muted">Conversiones</div>
+                                  <div className="text-lg font-bold">
+                                    {popupAnalytics.variantB.converted}
+                                  </div>
+                                  <div className="text-xs text-slc-muted">
+                                    Conversiones
+                                  </div>
                                 </div>
                                 <div>
-                                  <div className="text-lg font-bold text-green-500">{popupAnalytics.conversionRates.variantB}%</div>
-                                  <div className="text-xs text-slc-muted">Tasa</div>
+                                  <div className="text-lg font-bold text-green-500">
+                                    {popupAnalytics.conversionRates.variantB}%
+                                  </div>
+                                  <div className="text-xs text-slc-muted">
+                                    Tasa
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1219,18 +1528,36 @@ export default function AdminSettingsPage() {
                           <div className="mt-4 grid grid-cols-3 gap-3">
                             <div className="bg-slc-card p-3 rounded-lg border border-slc-border text-center">
                               <Timer className="w-4 h-4 mx-auto mb-1 text-primary" />
-                              <div className="text-sm font-medium">{popupAnalytics.bySource.time.converted}/{popupAnalytics.bySource.time.shown}</div>
-                              <div className="text-xs text-slc-muted">Por Tiempo</div>
+                              <div className="text-sm font-medium">
+                                {popupAnalytics.bySource.time.converted}/
+                                {popupAnalytics.bySource.time.shown}
+                              </div>
+                              <div className="text-xs text-slc-muted">
+                                Por Tiempo
+                              </div>
                             </div>
                             <div className="bg-slc-card p-3 rounded-lg border border-slc-border text-center">
                               <Percent className="w-4 h-4 mx-auto mb-1 text-green-500" />
-                              <div className="text-sm font-medium">{popupAnalytics.bySource.scroll.converted}/{popupAnalytics.bySource.scroll.shown}</div>
-                              <div className="text-xs text-slc-muted">Por Scroll</div>
+                              <div className="text-sm font-medium">
+                                {popupAnalytics.bySource.scroll.converted}/
+                                {popupAnalytics.bySource.scroll.shown}
+                              </div>
+                              <div className="text-xs text-slc-muted">
+                                Por Scroll
+                              </div>
                             </div>
                             <div className="bg-slc-card p-3 rounded-lg border border-slc-border text-center">
                               <MousePointerClick className="w-4 h-4 mx-auto mb-1 text-cyan-500" />
-                              <div className="text-sm font-medium">{popupAnalytics.bySource["exit-intent"].converted}/{popupAnalytics.bySource["exit-intent"].shown}</div>
-                              <div className="text-xs text-slc-muted">Exit Intent</div>
+                              <div className="text-sm font-medium">
+                                {
+                                  popupAnalytics.bySource["exit-intent"]
+                                    .converted
+                                }
+                                /{popupAnalytics.bySource["exit-intent"].shown}
+                              </div>
+                              <div className="text-xs text-slc-muted">
+                                Exit Intent
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1250,7 +1577,9 @@ export default function AdminSettingsPage() {
               </div>
               <div className="flex-1">
                 <h2 className="font-oswald text-xl uppercase">Dropbox</h2>
-                <p className="text-xs text-slc-muted">Almacenamiento de archivos para beats, campañas y descargas</p>
+                <p className="text-xs text-slc-muted">
+                  Almacenamiento de archivos para beats, campañas y descargas
+                </p>
               </div>
               {dropboxLoading ? (
                 <RefreshCw className="w-5 h-5 animate-spin text-slc-muted" />
@@ -1282,7 +1611,9 @@ export default function AdminSettingsPage() {
                     </div>
                     <div>
                       <p className="font-medium">{dropboxStatus.accountName}</p>
-                      <p className="text-xs text-slc-muted">{dropboxStatus.email}</p>
+                      <p className="text-xs text-slc-muted">
+                        {dropboxStatus.email}
+                      </p>
                     </div>
                   </div>
                   <Button
@@ -1299,14 +1630,19 @@ export default function AdminSettingsPage() {
                 {dropboxStatus.storage && (
                   <div className="mt-3">
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slc-muted">Almacenamiento usado</span>
-                      <span>{formatBytes(dropboxStatus.storage.used)} / {formatBytes(dropboxStatus.storage.allocated)}</span>
+                      <span className="text-slc-muted">
+                        Almacenamiento usado
+                      </span>
+                      <span>
+                        {formatBytes(dropboxStatus.storage.used)} /{" "}
+                        {formatBytes(dropboxStatus.storage.allocated)}
+                      </span>
                     </div>
                     <div className="w-full bg-slc-border rounded-full h-2">
                       <div
                         className="bg-blue-500 h-2 rounded-full transition-all"
                         style={{
-                          width: `${Math.min(100, (dropboxStatus.storage.used / dropboxStatus.storage.allocated) * 100)}%`
+                          width: `${Math.min(100, (dropboxStatus.storage.used / dropboxStatus.storage.allocated) * 100)}%`,
                         }}
                       />
                     </div>
@@ -1349,7 +1685,11 @@ export default function AdminSettingsPage() {
                     type={showDropboxToken ? "text" : "password"}
                     value={dropboxToken}
                     onChange={(e) => setDropboxToken(e.target.value)}
-                    placeholder={dropboxStatus?.connected ? "Ingresa un nuevo token para reemplazar" : "sl.u.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+                    placeholder={
+                      dropboxStatus?.connected
+                        ? "Ingresa un nuevo token para reemplazar"
+                        : "sl.u.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    }
                     className="pr-10 font-mono text-sm"
                   />
                   <button
@@ -1357,11 +1697,16 @@ export default function AdminSettingsPage() {
                     onClick={() => setShowDropboxToken(!showDropboxToken)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slc-muted hover:text-white"
                   >
-                    {showDropboxToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showDropboxToken ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
                 <p className="text-xs text-slc-muted mt-2">
-                  El token se almacena de forma segura en la base de datos y se usa para todos los servicios de sincronización de archivos.
+                  El token se almacena de forma segura en la base de datos y se
+                  usa para todos los servicios de sincronización de archivos.
                 </p>
               </div>
 
@@ -1394,16 +1739,32 @@ export default function AdminSettingsPage() {
 
             {/* Instructions */}
             <div className="mt-6 p-4 bg-slc-card/50 rounded-lg border border-slc-border">
-              <h4 className="font-medium mb-2">Cómo obtener un Access Token:</h4>
+              <h4 className="font-medium mb-2">
+                Cómo obtener un Access Token:
+              </h4>
               <ol className="text-sm text-slc-muted space-y-1 list-decimal list-inside">
-                <li>Ve a <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Dropbox App Console</a></li>
+                <li>
+                  Ve a{" "}
+                  <a
+                    href="https://www.dropbox.com/developers/apps"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Dropbox App Console
+                  </a>
+                </li>
                 <li>Crea una nueva app o selecciona una existente</li>
-                <li>En la pestaña "Settings", busca "Generated access token"</li>
+                <li>
+                  En la pestaña "Settings", busca "Generated access token"
+                </li>
                 <li>Haz clic en "Generate" para crear un token de acceso</li>
                 <li>Copia el token y pégalo aquí</li>
               </ol>
               <p className="text-xs text-slc-muted mt-3">
-                <strong>Nota:</strong> Los tokens generados manualmente no expiran, pero puedes revocarlos en cualquier momento desde la consola de Dropbox.
+                <strong>Nota:</strong> Los tokens generados manualmente no
+                expiran, pero puedes revocarlos en cualquier momento desde la
+                consola de Dropbox.
               </p>
             </div>
           </div>
@@ -1415,8 +1776,12 @@ export default function AdminSettingsPage() {
                 <Bell className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="font-oswald text-xl uppercase">Correos de Recordatorios</h2>
-                <p className="text-xs text-slc-muted">Direcciones que reciben notificaciones del sistema</p>
+                <h2 className="font-oswald text-xl uppercase">
+                  Correos de Recordatorios
+                </h2>
+                <p className="text-xs text-slc-muted">
+                  Direcciones que reciben notificaciones del sistema
+                </p>
               </div>
             </div>
 
@@ -1445,7 +1810,8 @@ export default function AdminSettingsPage() {
             </div>
 
             <p className="text-xs text-slc-muted mt-4">
-              Estos correos recibirán recordatorios de lanzamientos, actualizaciones del sistema y notificaciones administrativas.
+              Estos correos recibirán recordatorios de lanzamientos,
+              actualizaciones del sistema y notificaciones administrativas.
             </p>
           </div>
 
@@ -1460,10 +1826,14 @@ export default function AdminSettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Moneda</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Moneda
+                </label>
                 <select
                   value={settings.store_currency}
-                  onChange={(e) => updateSetting("store_currency", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("store_currency", e.target.value)
+                  }
                   className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                 >
                   <option value="MXN">MXN - Peso Mexicano</option>
@@ -1472,20 +1842,25 @@ export default function AdminSettingsPage() {
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm text-slc-muted mb-2">Stripe</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Stripe
+                </label>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={settings.stripe_enabled}
-                      onChange={(e) => updateSetting("stripe_enabled", e.target.checked)}
+                      onChange={(e) =>
+                        updateSetting("stripe_enabled", e.target.checked)
+                      }
                       className="w-5 h-5 rounded border-slc-border"
                     />
                     <span>Habilitar pagos con Stripe</span>
                   </label>
                 </div>
                 <p className="text-xs text-slc-muted mt-2">
-                  Configura las API keys de Stripe en las variables de entorno (.env)
+                  Configura las API keys de Stripe en las variables de entorno
+                  (.env)
                 </p>
               </div>
             </div>

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { analytics } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
-import { sql, desc, and, gte, eq } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,12 +12,15 @@ export async function POST(request: NextRequest) {
     // Get user info from headers
     const userAgent = request.headers.get("user-agent") || "unknown";
     const referer = request.headers.get("referer") || null;
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
 
     // Simple session ID from a combination of IP and user agent
-    const sessionId = Buffer.from(`${ip}-${userAgent.slice(0, 50)}`).toString("base64").slice(0, 32);
+    const sessionId = Buffer.from(`${ip}-${userAgent.slice(0, 50)}`)
+      .toString("base64")
+      .slice(0, 32);
 
-    const eventType = type === "pageview" ? "page_view" : (event || type);
+    const eventType = type === "pageview" ? "page_view" : event || type;
 
     console.log(`[Analytics] ${eventType}: ${page || entityId || ""}`, {
       sessionId: sessionId.slice(0, 8),
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get("days") || "30", 10);
+    const days = Number.parseInt(searchParams.get("days") || "30", 10);
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json({
@@ -75,7 +78,9 @@ export async function GET(request: NextRequest) {
     }
 
     const since = Math.floor(Date.now() / 1000) - days * 86400;
-    const todayStart = Math.floor(new Date(new Date().toISOString().split("T")[0]).getTime() / 1000);
+    const todayStart = Math.floor(
+      new Date(new Date().toISOString().split("T")[0]).getTime() / 1000,
+    );
 
     // Run all queries in parallel
     const [
@@ -96,8 +101,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         ),
 
       // Unique sessions in period
@@ -107,8 +112,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         ),
 
       // Today's page views
@@ -118,8 +123,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(todayStart * 1000))
-          )
+            gte(analytics.createdAt, new Date(todayStart * 1000)),
+          ),
         ),
 
       // Today's unique sessions
@@ -129,8 +134,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(todayStart * 1000))
-          )
+            gte(analytics.createdAt, new Date(todayStart * 1000)),
+          ),
         ),
 
       // Top pages
@@ -143,8 +148,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
         .groupBy(analytics.entityId)
         .orderBy(desc(sql`count(*)`))
@@ -173,8 +178,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
         .groupBy(sql`date(${analytics.createdAt}, 'unixepoch')`)
         .orderBy(sql`date(${analytics.createdAt}, 'unixepoch')`)
@@ -193,8 +198,8 @@ export async function GET(request: NextRequest) {
             gte(analytics.createdAt, new Date(since * 1000)),
             sql`${analytics.referrer} IS NOT NULL`,
             sql`${analytics.referrer} != ''`,
-            sql`${analytics.referrer} != 'unknown'`
-          )
+            sql`${analytics.referrer} != 'unknown'`,
+          ),
         )
         .groupBy(analytics.referrer)
         .orderBy(desc(sql`count(*)`))
@@ -210,10 +215,12 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
-        .groupBy(sql`CASE WHEN ${analytics.userAgent} LIKE '%Mobile%' OR ${analytics.userAgent} LIKE '%Android%' OR ${analytics.userAgent} LIKE '%iPhone%' THEN 1 ELSE 0 END`),
+        .groupBy(
+          sql`CASE WHEN ${analytics.userAgent} LIKE '%Mobile%' OR ${analytics.userAgent} LIKE '%Android%' OR ${analytics.userAgent} LIKE '%iPhone%' THEN 1 ELSE 0 END`,
+        ),
     ]);
 
     return NextResponse.json({
@@ -243,8 +250,12 @@ export async function GET(request: NextRequest) {
           count: Number(r.count),
         })),
         devices: {
-          mobile: Number(devicesResult.find((d) => d.isMobile === 1)?.count || 0),
-          desktop: Number(devicesResult.find((d) => d.isMobile === 0)?.count || 0),
+          mobile: Number(
+            devicesResult.find((d) => d.isMobile === 1)?.count || 0,
+          ),
+          desktop: Number(
+            devicesResult.find((d) => d.isMobile === 0)?.count || 0,
+          ),
         },
       },
     });
@@ -252,7 +263,7 @@ export async function GET(request: NextRequest) {
     console.error("[Analytics] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch analytics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

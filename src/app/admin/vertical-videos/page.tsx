@@ -1,50 +1,50 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { SafeImage } from "@/components/ui/safe-image";
-import {
-  getYouTubeId,
-  getVideoThumbnail,
-  isYouTubeThumbnailUrl,
-  getYouTubeThumbnailFallback,
-  getVideoPlaceholderSvg,
-} from "@/lib/video-utils";
-import Link from "next/link";
+import { VideoUploader, parseVideoUrl } from "@/components/admin/VideoUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { VideoUploader, parseVideoUrl } from "@/components/admin/VideoUploader";
+import { SafeImage } from "@/components/ui/safe-image";
+import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
+import { cn } from "@/lib/utils";
 import {
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  X,
-  Star,
-  Eye,
-  EyeOff,
-  Loader2,
-  CheckCircle,
+  getVideoPlaceholderSvg,
+  getVideoThumbnail,
+  getYouTubeId,
+  getYouTubeThumbnailFallback,
+  isYouTubeThumbnailUrl,
+} from "@/lib/video-utils";
+import {
   AlertTriangle,
-  ArrowUp,
   ArrowDown,
-  Smartphone,
-  Share2,
+  ArrowUp,
+  Calendar,
+  CheckCircle,
   Copy,
   ExternalLink,
-  Play,
-  Video,
-  Pencil,
-  ImageIcon,
-  Save,
-  Link as LinkIcon,
-  RefreshCw,
-  Calendar,
-  MapPin,
+  Eye,
+  EyeOff,
   FolderOpen,
+  ImageIcon,
+  Link as LinkIcon,
+  Loader2,
   Mail,
+  MapPin,
+  Pencil,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  Share2,
+  Smartphone,
+  Star,
+  Trash2,
+  Upload,
+  Video,
+  X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface VerticalVideo {
   id: string;
@@ -101,7 +101,10 @@ export default function AdminVerticalVideosPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [artistFilter, setArtistFilter] = useState("");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Upload modal state
@@ -157,34 +160,53 @@ export default function AdminVerticalVideosPage() {
   const [isDraggingCover, setIsDraggingCover] = useState(false);
 
   // Send to subscribers state
-  const [sendingToSubscribers, setSendingToSubscribers] = useState<string | null>(null);
+  const [sendingToSubscribers, setSendingToSubscribers] = useState<
+    string | null
+  >(null);
 
   // Send event to newsletter subscribers
   const sendToSubscribers = async (event: VideoEvent) => {
-    if (!confirm(`¿Enviar "${event.title}" a todos los suscriptores del newsletter?`)) return;
+    if (
+      !confirm(
+        `¿Enviar "${event.title}" a todos los suscriptores del newsletter?`,
+      )
+    )
+      return;
     setSendingToSubscribers(event.id);
     try {
-      const res = await fetch("/api/admin/vertical-video-events/share-with-subscribers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId: event.id,
-          eventTitle: event.title,
-          eventSlug: event.slug,
-          eventDate: event.eventDate,
-          eventLocation: event.location,
-          eventDescription: event.description,
-          coverImageUrl: event.coverImageUrl,
-        }),
-      });
+      const res = await fetch(
+        "/api/admin/vertical-video-events/share-with-subscribers",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId: event.id,
+            eventTitle: event.title,
+            eventSlug: event.slug,
+            eventDate: event.eventDate,
+            eventLocation: event.location,
+            eventDescription: event.description,
+            coverImageUrl: event.coverImageUrl,
+          }),
+        },
+      );
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: "success", text: `Campaña enviada: "${event.title}" → suscriptores` });
+        setMessage({
+          type: "success",
+          text: `Campaña enviada: "${event.title}" → suscriptores`,
+        });
       } else {
-        setMessage({ type: "error", text: data.error || "Error al enviar campaña" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error al enviar campaña",
+        });
       }
     } catch {
-      setMessage({ type: "error", text: "Error de conexión al enviar campaña" });
+      setMessage({
+        type: "error",
+        text: "Error de conexión al enviar campaña",
+      });
     }
     setSendingToSubscribers(null);
     setTimeout(() => setMessage(null), 5000);
@@ -254,24 +276,34 @@ export default function AdminVerticalVideosPage() {
     const data = await res.json();
     if (!data.success) return;
 
-    const videosWithoutThumbnail = (data.data || []).filter((v: VerticalVideo) => !v.thumbnailUrl);
+    const videosWithoutThumbnail = (data.data || []).filter(
+      (v: VerticalVideo) => !v.thumbnailUrl,
+    );
     if (videosWithoutThumbnail.length === 0) return;
 
-    console.log(`[Auto-Regen] Found ${videosWithoutThumbnail.length} videos without thumbnails, regenerating...`);
+    console.log(
+      `[Auto-Regen] Found ${videosWithoutThumbnail.length} videos without thumbnails, regenerating...`,
+    );
 
     // Try server-side generation first
     try {
-      const serverRes = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ all: false }),
-      });
+      const serverRes = await fetch(
+        "/api/admin/vertical-videos/generate-thumbnails",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ all: false }),
+        },
+      );
       const serverData = await serverRes.json();
       if (serverData.success && serverData.generated > 0) {
-        console.log(`[Auto-Regen] Server generated ${serverData.generated} thumbnails`);
+        console.log(
+          `[Auto-Regen] Server generated ${serverData.generated} thumbnails`,
+        );
         fetchData(); // Refresh the list
         // Check if there are still missing thumbnails after server-side
-        const stillMissing = videosWithoutThumbnail.length - serverData.generated;
+        const stillMissing =
+          videosWithoutThumbnail.length - serverData.generated;
         if (stillMissing <= 0) return;
       }
     } catch {
@@ -279,10 +311,15 @@ export default function AdminVerticalVideosPage() {
     }
 
     // Client-side regeneration for remaining videos
-    const remaining = (data.data || []).filter((v: VerticalVideo) => !v.thumbnailUrl);
-    for (const video of remaining.slice(0, 5)) { // Limit to 5 at a time to avoid overload
+    const remaining = (data.data || []).filter(
+      (v: VerticalVideo) => !v.thumbnailUrl,
+    );
+    for (const video of remaining.slice(0, 5)) {
+      // Limit to 5 at a time to avoid overload
       try {
-        const urlRes = await fetch(`/api/admin/vertical-videos/video-download-url?videoId=${video.id}`);
+        const urlRes = await fetch(
+          `/api/admin/vertical-videos/video-download-url?videoId=${video.id}`,
+        );
         const urlData = await urlRes.json();
         if (!urlData.success || !urlData.downloadUrl) continue;
 
@@ -291,9 +328,20 @@ export default function AdminVerticalVideosPage() {
         const videoBlob = await videoRes.blob();
 
         // Try with relaxed detection first, then desperate
-        let thumbnailUrl = await extractThumbnailFromBlobWithMode(videoBlob, "strict");
-        if (!thumbnailUrl) thumbnailUrl = await extractThumbnailFromBlobWithMode(videoBlob, "relaxed");
-        if (!thumbnailUrl) thumbnailUrl = await extractThumbnailFromBlobWithMode(videoBlob, "desperate");
+        let thumbnailUrl = await extractThumbnailFromBlobWithMode(
+          videoBlob,
+          "strict",
+        );
+        if (!thumbnailUrl)
+          thumbnailUrl = await extractThumbnailFromBlobWithMode(
+            videoBlob,
+            "relaxed",
+          );
+        if (!thumbnailUrl)
+          thumbnailUrl = await extractThumbnailFromBlobWithMode(
+            videoBlob,
+            "desperate",
+          );
 
         if (thumbnailUrl) {
           await fetch("/api/admin/vertical-videos", {
@@ -301,7 +349,9 @@ export default function AdminVerticalVideosPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: video.id, thumbnailUrl }),
           });
-          console.log(`[Auto-Regen] Generated thumbnail for: ${video.title || video.id}`);
+          console.log(
+            `[Auto-Regen] Generated thumbnail for: ${video.title || video.id}`,
+          );
         }
       } catch {
         // Skip this video
@@ -324,11 +374,15 @@ export default function AdminVerticalVideosPage() {
       const data = await res.json();
       if (data.success) {
         setVideos((prev) =>
-          prev.map((v) => v.id === video.id ? { ...v, isFeatured: !v.isFeatured } : v)
+          prev.map((v) =>
+            v.id === video.id ? { ...v, isFeatured: !v.isFeatured } : v,
+          ),
         );
         setMessage({
           type: "success",
-          text: video.isFeatured ? "Video quitado de destacados" : "Video marcado como destacado",
+          text: video.isFeatured
+            ? "Video quitado de destacados"
+            : "Video marcado como destacado",
         });
       }
     } catch (error) {
@@ -350,7 +404,9 @@ export default function AdminVerticalVideosPage() {
       const data = await res.json();
       if (data.success) {
         setVideos((prev) =>
-          prev.map((v) => v.id === video.id ? { ...v, isPublished: !v.isPublished } : v)
+          prev.map((v) =>
+            v.id === video.id ? { ...v, isPublished: !v.isPublished } : v,
+          ),
         );
         setMessage({
           type: "success",
@@ -369,7 +425,9 @@ export default function AdminVerticalVideosPage() {
     if (!confirm(`¿Eliminar "${video.title || "este video"}"?`)) return;
     setUpdatingId(video.id);
     try {
-      const res = await fetch(`/api/admin/vertical-videos?id=${video.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/vertical-videos?id=${video.id}`, {
+        method: "DELETE",
+      });
       const data = await res.json();
       if (data.success) {
         setVideos((prev) => prev.filter((v) => v.id !== video.id));
@@ -398,12 +456,18 @@ export default function AdminVerticalVideosPage() {
         fetch("/api/admin/vertical-videos", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: video.id, displayOrder: swapVideo.displayOrder }),
+          body: JSON.stringify({
+            id: video.id,
+            displayOrder: swapVideo.displayOrder,
+          }),
         }),
         fetch("/api/admin/vertical-videos", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: swapVideo.id, displayOrder: video.displayOrder }),
+          body: JSON.stringify({
+            id: swapVideo.id,
+            displayOrder: video.displayOrder,
+          }),
         }),
       ]);
       fetchData();
@@ -421,7 +485,9 @@ export default function AdminVerticalVideosPage() {
     setUploading(true);
     try {
       const parsed = parseVideoUrl(uploadVideoInfo.url);
-      const hasThumbnail = !!(uploadThumbnailUrl || uploadVideoInfo.thumbnailUrl);
+      const hasThumbnail = !!(
+        uploadThumbnailUrl || uploadVideoInfo.thumbnailUrl
+      );
       const res = await fetch("/api/admin/vertical-videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -429,8 +495,10 @@ export default function AdminVerticalVideosPage() {
           title: uploadTitle || uploadVideoInfo.title || null,
           description: uploadDescription || null,
           videoUrl: uploadVideoInfo.url,
-          thumbnailUrl: uploadThumbnailUrl || uploadVideoInfo.thumbnailUrl || null,
-          platform: uploadVideoInfo.platform || parsed?.platform?.toLowerCase() || null,
+          thumbnailUrl:
+            uploadThumbnailUrl || uploadVideoInfo.thumbnailUrl || null,
+          platform:
+            uploadVideoInfo.platform || parsed?.platform?.toLowerCase() || null,
           platformUrl: uploadVideoInfo.url,
           embedUrl: uploadVideoInfo.embedUrl || parsed?.embedUrl || null,
           artistId: uploadArtistId || null,
@@ -445,7 +513,10 @@ export default function AdminVerticalVideosPage() {
       if (data.success) {
         // If no thumbnail was provided, auto-generate one
         if (!hasThumbnail && data.data?.id) {
-          setMessage({ type: "success", text: "Video agregado. Generando miniatura automáticamente..." });
+          setMessage({
+            type: "success",
+            text: "Video agregado. Generando miniatura automáticamente...",
+          });
           setShowUploader(false);
           resetUploadForm();
           fetchData();
@@ -456,11 +527,14 @@ export default function AdminVerticalVideosPage() {
           const videoId = data.data.id;
           (async () => {
             try {
-              const serverRes = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ videoId }),
-              });
+              const serverRes = await fetch(
+                "/api/admin/vertical-videos/generate-thumbnails",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ videoId }),
+                },
+              );
               const serverData = await serverRes.json();
               if (serverData.success && serverData.generated > 0) {
                 console.log("[Thumbnail] Server-side generation succeeded");
@@ -468,7 +542,9 @@ export default function AdminVerticalVideosPage() {
                 return;
               }
             } catch {
-              console.log("[Thumbnail] Server-side generation failed, trying client-side");
+              console.log(
+                "[Thumbnail] Server-side generation failed, trying client-side",
+              );
             }
 
             // Server-side didn't work — fall back to client-side canvas extraction
@@ -487,7 +563,10 @@ export default function AdminVerticalVideosPage() {
           fetchData();
         }
       } else {
-        setMessage({ type: "error", text: data.error || "Error al agregar video" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error al agregar video",
+        });
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -539,7 +618,9 @@ export default function AdminVerticalVideosPage() {
           isFeatured: editForm.isFeatured,
           isPublished: editForm.isPublished,
           tagIds: editForm.tagIds,
-          ...(editForm.thumbnailUrl ? { thumbnailUrl: editForm.thumbnailUrl } : {}),
+          ...(editForm.thumbnailUrl
+            ? { thumbnailUrl: editForm.thumbnailUrl }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -581,7 +662,7 @@ export default function AdminVerticalVideosPage() {
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    mode: "strict" | "relaxed" | "desperate" = "strict"
+    mode: "strict" | "relaxed" | "desperate" = "strict",
   ): boolean => {
     if (mode === "desperate") return false;
     try {
@@ -601,7 +682,8 @@ export default function AdminVerticalVideosPage() {
         if (brightness < 20) darkPixelCount++;
         sampledCount++;
       }
-      const avgBrightness = sampledCount > 0 ? totalBrightness / sampledCount : 0;
+      const avgBrightness =
+        sampledCount > 0 ? totalBrightness / sampledCount : 0;
       const darkRatio = sampledCount > 0 ? darkPixelCount / sampledCount : 0;
       if (mode === "relaxed") {
         return avgBrightness < 10 || darkRatio > 0.97;
@@ -618,7 +700,7 @@ export default function AdminVerticalVideosPage() {
   // Supports black-frame detection modes: "strict", "relaxed", "desperate"
   const extractThumbnailFromBlob = async (
     videoBlob: Blob,
-    blackMode: "strict" | "relaxed" | "desperate" = "strict"
+    blackMode: "strict" | "relaxed" | "desperate" = "strict",
   ): Promise<string | null> => {
     return new Promise((resolve) => {
       const video = document.createElement("video");
@@ -652,7 +734,7 @@ export default function AdminVerticalVideosPage() {
           // Method 1: requestVideoFrameCallback (Chrome 83+, Edge 83+)
           // This is the ONLY API that guarantees the video has produced a
           // composited frame that canvas.drawImage() can capture.
-          if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+          if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
             const onFrame = () => {
               // The callback fired — the video has at least one composited frame.
               // Wait one more animation frame to ensure the GPU has finished
@@ -669,7 +751,9 @@ export default function AdminVerticalVideosPage() {
                     } else if (Date.now() - startTime < MAX_WAIT) {
                       setTimeout(pollDimensions, 100);
                     } else {
-                      console.warn("[Thumbnail] Timed out waiting for video dimensions");
+                      console.warn(
+                        "[Thumbnail] Timed out waiting for video dimensions",
+                      );
                       frameResolve();
                     }
                   };
@@ -702,7 +786,11 @@ export default function AdminVerticalVideosPage() {
               frameResolve();
               return;
             }
-            if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+            if (
+              video.readyState >= 2 &&
+              video.videoWidth > 0 &&
+              video.videoHeight > 0
+            ) {
               // Use a longer delay (800ms) for the poll-based fallback since
               // we can't be certain the frame is composited yet.
               setTimeout(() => frameResolve(), 800);
@@ -724,7 +812,9 @@ export default function AdminVerticalVideosPage() {
       const tryCaptureFrame = (): boolean => {
         try {
           if (video.videoWidth === 0 || video.videoHeight === 0) {
-            console.warn(`[Thumbnail] Video dimensions not ready: ${video.videoWidth}x${video.videoHeight}`);
+            console.warn(
+              `[Thumbnail] Video dimensions not ready: ${video.videoWidth}x${video.videoHeight}`,
+            );
             return false;
           }
 
@@ -733,7 +823,7 @@ export default function AdminVerticalVideosPage() {
           const scale = Math.min(
             maxDim / video.videoWidth,
             maxDim / video.videoHeight,
-            1
+            1,
           );
           canvas.width = Math.round(video.videoWidth * scale);
           canvas.height = Math.round(video.videoHeight * scale);
@@ -745,7 +835,12 @@ export default function AdminVerticalVideosPage() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-          const isBlack = isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackMode);
+          const isBlack = isCanvasMostlyBlack(
+            ctx,
+            canvas.width,
+            canvas.height,
+            blackMode,
+          );
 
           if (!isBlack) {
             // Found a good frame! Convert to blob immediately
@@ -758,13 +853,15 @@ export default function AdminVerticalVideosPage() {
                 finish();
               },
               "image/jpeg",
-              0.85
+              0.85,
             );
             return true;
           }
 
           canvas.remove();
-          console.log(`[Thumbnail] Frame at ${video.currentTime}s is black (retry ${retryCountAtPosition}/${MAX_RETRIES_PER_POSITION})`);
+          console.log(
+            `[Thumbnail] Frame at ${video.currentTime}s is black (retry ${retryCountAtPosition}/${MAX_RETRIES_PER_POSITION})`,
+          );
           return false;
         } catch (e) {
           console.warn("[Thumbnail] tryCaptureFrame error:", e);
@@ -786,7 +883,7 @@ export default function AdminVerticalVideosPage() {
           const result = await uploadToDropboxDirect(
             thumbFile,
             "/vertical-videos/thumbnails",
-            undefined
+            undefined,
           );
           resolve(result.success ? result.url || null : null);
         } catch {
@@ -798,7 +895,9 @@ export default function AdminVerticalVideosPage() {
         // If we haven't retried enough times at this position, retry with longer wait
         if (retryCountAtPosition < MAX_RETRIES_PER_POSITION) {
           retryCountAtPosition++;
-          console.log(`[Thumbnail] Retrying same position (attempt ${retryCountAtPosition})`);
+          console.log(
+            `[Thumbnail] Retrying same position (attempt ${retryCountAtPosition})`,
+          );
           // Re-seek to the same position to force a fresh decode
           const currentTime = video.currentTime;
           video.currentTime = 0;
@@ -813,13 +912,18 @@ export default function AdminVerticalVideosPage() {
         currentSeekIndex++;
         if (currentSeekIndex < seekPositions.length) {
           const nextTime = seekPositions[currentSeekIndex];
-          if (isFinite(nextTime) && nextTime < (video.duration || Infinity)) {
+          if (
+            Number.isFinite(nextTime) &&
+            nextTime < (video.duration || Number.POSITIVE_INFINITY)
+          ) {
             video.currentTime = nextTime;
             return;
           }
         }
         // All positions gave black frames — do NOT save a black thumbnail
-        console.warn("[Thumbnail] All seek positions produced black frames, skipping");
+        console.warn(
+          "[Thumbnail] All seek positions produced black frames, skipping",
+        );
         cleanup();
         resolve(null);
       };
@@ -828,32 +932,42 @@ export default function AdminVerticalVideosPage() {
       // 'loadedmetadata' fires when we know duration/dimensions but the decoder
       // hasn't produced any frames yet. 'loadeddata' fires when the first frame
       // is actually decoded and available for rendering/canvas capture.
-      video.addEventListener("loadeddata", () => {
-        const duration = video.duration;
-        console.log(`[Thumbnail] Video data loaded: duration=${duration}s, dimensions=${video.videoWidth}x${video.videoHeight}, readyState=${video.readyState}`);
-        // Add percentage-based positions
-        if (isFinite(duration) && duration > 0) {
-          seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
-        }
-        // Start seeking
-        video.currentTime = seekPositions[0] || 1.0;
-      }, { once: true });
+      video.addEventListener(
+        "loadeddata",
+        () => {
+          const duration = video.duration;
+          console.log(
+            `[Thumbnail] Video data loaded: duration=${duration}s, dimensions=${video.videoWidth}x${video.videoHeight}, readyState=${video.readyState}`,
+          );
+          // Add percentage-based positions
+          if (Number.isFinite(duration) && duration > 0) {
+            seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
+          }
+          // Start seeking
+          video.currentTime = seekPositions[0] || 1.0;
+        },
+        { once: true },
+      );
 
       // Also listen for loadedmetadata as a safety net — if loadeddata never fires
       // (rare, but possible with some codecs), we still want to proceed.
-      video.addEventListener("loadedmetadata", () => {
-        // If loadeddata already fired, this is redundant. If not, this is our fallback.
-        if (video.readyState >= 2) return; // loadeddata already happened
-        console.log("[Thumbnail] loadedmetadata fired (loadeddata fallback)");
-        const duration = video.duration;
-        if (isFinite(duration) && duration > 0) {
-          seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
-        }
-        // Wait a bit longer before seeking since we don't have decoded frames yet
-        setTimeout(() => {
-          if (!resolved) video.currentTime = seekPositions[0] || 1.0;
-        }, 500);
-      }, { once: true });
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          // If loadeddata already fired, this is redundant. If not, this is our fallback.
+          if (video.readyState >= 2) return; // loadeddata already happened
+          console.log("[Thumbnail] loadedmetadata fired (loadeddata fallback)");
+          const duration = video.duration;
+          if (Number.isFinite(duration) && duration > 0) {
+            seekPositions.push(duration * 0.1, duration * 0.25, duration * 0.5);
+          }
+          // Wait a bit longer before seeking since we don't have decoded frames yet
+          setTimeout(() => {
+            if (!resolved) video.currentTime = seekPositions[0] || 1.0;
+          }, 500);
+        },
+        { once: true },
+      );
 
       video.onseeked = async () => {
         if (resolved) return;
@@ -886,7 +1000,10 @@ export default function AdminVerticalVideosPage() {
   // Extract a thumbnail by PLAYING the video and capturing a frame during playback.
   // This is a last-resort fallback when seeking produces only black frames.
   // Playing forces the decoder to produce real frames, which canvas can capture.
-  const extractThumbnailViaPlayback = (videoBlob: Blob, blackMode: "strict" | "relaxed" | "desperate" = "strict"): Promise<string | null> => {
+  const extractThumbnailViaPlayback = (
+    videoBlob: Blob,
+    blackMode: "strict" | "relaxed" | "desperate" = "strict",
+  ): Promise<string | null> => {
     return new Promise((resolve) => {
       const video = document.createElement("video");
       video.muted = true;
@@ -912,13 +1029,19 @@ export default function AdminVerticalVideosPage() {
           if (video.videoWidth === 0 || video.videoHeight === 0) return null;
           const canvas = document.createElement("canvas");
           const maxDim = 480;
-          const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+          const scale = Math.min(
+            maxDim / video.videoWidth,
+            maxDim / video.videoHeight,
+            1,
+          );
           canvas.width = Math.round(video.videoWidth * scale);
           canvas.height = Math.round(video.videoHeight * scale);
           const ctx = canvas.getContext("2d");
           if (!ctx) return null;
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackMode)) {
+          if (
+            isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackMode)
+          ) {
             canvas.remove();
             return null;
           }
@@ -933,55 +1056,69 @@ export default function AdminVerticalVideosPage() {
 
       // Wait for the video to start playing, then try to capture frames
       let captureAttempts = 0;
-      const MAX_CAPTURE_ATTEMPTS = blackMode === "desperate" ? 40 :
-                                    blackMode === "relaxed" ? 30 : 20;
+      const MAX_CAPTURE_ATTEMPTS =
+        blackMode === "desperate" ? 40 : blackMode === "relaxed" ? 30 : 20;
 
-      video.addEventListener("playing", () => {
-        // Try capturing frames at intervals during playback
-        const tryCapture = () => {
-          if (resolved) return;
-          captureAttempts++;
+      video.addEventListener(
+        "playing",
+        () => {
+          // Try capturing frames at intervals during playback
+          const tryCapture = () => {
+            if (resolved) return;
+            captureAttempts++;
 
-          const dataUrl = captureFrame();
-          if (dataUrl) {
-            // Got a good frame! Upload it.
-            cleanup();
-            // Convert data URL to blob for upload
-            fetch(dataUrl)
-              .then(r => r.blob())
-              .then(blob => {
-                const thumbFile = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
-                return uploadToDropboxDirect(thumbFile, "/vertical-videos/thumbnails", undefined);
-              })
-              .then(result => {
-                resolve(result.success ? result.url || null : null);
-              })
-              .catch(() => resolve(null));
-            return;
-          }
+            const dataUrl = captureFrame();
+            if (dataUrl) {
+              // Got a good frame! Upload it.
+              cleanup();
+              // Convert data URL to blob for upload
+              fetch(dataUrl)
+                .then((r) => r.blob())
+                .then((blob) => {
+                  const thumbFile = new File([blob], "thumbnail.jpg", {
+                    type: "image/jpeg",
+                  });
+                  return uploadToDropboxDirect(
+                    thumbFile,
+                    "/vertical-videos/thumbnails",
+                    undefined,
+                  );
+                })
+                .then((result) => {
+                  resolve(result.success ? result.url || null : null);
+                })
+                .catch(() => resolve(null));
+              return;
+            }
 
-          if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
-            const interval = blackMode === "desperate" ? 350 : 250;
-            setTimeout(tryCapture, interval);
-          } else {
-            // Give up
+            if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
+              const interval = blackMode === "desperate" ? 350 : 250;
+              setTimeout(tryCapture, interval);
+            } else {
+              // Give up
+              cleanup();
+              resolve(null);
+            }
+          };
+
+          // Start capturing after a delay to let the first few frames render
+          const initialDelay = blackMode === "desperate" ? 600 : 300;
+          setTimeout(tryCapture, initialDelay);
+        },
+        { once: true },
+      );
+
+      video.addEventListener(
+        "loadeddata",
+        () => {
+          // Start playback — this forces the decoder to produce frames
+          video.play().catch(() => {
             cleanup();
             resolve(null);
-          }
-        };
-
-        // Start capturing after a delay to let the first few frames render
-        const initialDelay = blackMode === "desperate" ? 600 : 300;
-        setTimeout(tryCapture, initialDelay);
-      }, { once: true });
-
-      video.addEventListener("loadeddata", () => {
-        // Start playback — this forces the decoder to produce frames
-        video.play().catch(() => {
-          cleanup();
-          resolve(null);
-        });
-      }, { once: true });
+          });
+        },
+        { once: true },
+      );
 
       video.onerror = () => {
         cleanup();
@@ -1000,7 +1137,7 @@ export default function AdminVerticalVideosPage() {
   // This is the function used by auto-regeneration
   const extractThumbnailFromBlobWithMode = async (
     videoBlob: Blob,
-    mode: "strict" | "relaxed" | "desperate" = "strict"
+    mode: "strict" | "relaxed" | "desperate" = "strict",
   ): Promise<string | null> => {
     // Try seek-based extraction with the given mode
     let thumbnailUrl = await extractThumbnailFromBlob(videoBlob, mode);
@@ -1015,11 +1152,16 @@ export default function AdminVerticalVideosPage() {
   // Uses escalating strategies: strict → relaxed → desperate
   const regenerateThumbnail = async (videoId: string) => {
     setUpdatingId(videoId);
-    setMessage({ type: "success", text: "Descargando video para extraer miniatura..." });
+    setMessage({
+      type: "success",
+      text: "Descargando video para extraer miniatura...",
+    });
 
     try {
       // Step 1: Get a direct download URL from the server
-      const urlRes = await fetch(`/api/admin/vertical-videos/video-download-url?videoId=${videoId}`);
+      const urlRes = await fetch(
+        `/api/admin/vertical-videos/video-download-url?videoId=${videoId}`,
+      );
       const urlData = await urlRes.json();
 
       if (!urlData.success || !urlData.downloadUrl) {
@@ -1035,14 +1177,20 @@ export default function AdminVerticalVideosPage() {
       }
 
       const videoBlob = await videoRes.blob();
-      console.log(`[Thumbnail] Downloaded video blob: ${(videoBlob.size / 1024 / 1024).toFixed(1)} MB`);
+      console.log(
+        `[Thumbnail] Downloaded video blob: ${(videoBlob.size / 1024 / 1024).toFixed(1)} MB`,
+      );
 
       setMessage({ type: "success", text: "Extrayendo frame del video..." });
 
       // Step 3: Try with escalating black-frame detection modes
       // strict → relaxed → desperate (a dim thumbnail is better than no thumbnail)
       let thumbnailUrl: string | null = null;
-      const modes: Array<"strict" | "relaxed" | "desperate"> = ["strict", "relaxed", "desperate"];
+      const modes: Array<"strict" | "relaxed" | "desperate"> = [
+        "strict",
+        "relaxed",
+        "desperate",
+      ];
 
       for (const mode of modes) {
         // Try seek-based extraction
@@ -1053,16 +1201,23 @@ export default function AdminVerticalVideosPage() {
         }
 
         // Try playback-based extraction
-        setMessage({ type: "success", text: `Reintentando extracción (modo ${mode})...` });
+        setMessage({
+          type: "success",
+          text: `Reintentando extracción (modo ${mode})...`,
+        });
         thumbnailUrl = await extractThumbnailViaPlayback(videoBlob, mode);
         if (thumbnailUrl) {
-          console.log(`[Thumbnail] Playback extraction succeeded in ${mode} mode`);
+          console.log(
+            `[Thumbnail] Playback extraction succeeded in ${mode} mode`,
+          );
           break;
         }
       }
 
       if (!thumbnailUrl) {
-        throw new Error("No se pudo extraer un frame del video (posible video negro o corrupto)");
+        throw new Error(
+          "No se pudo extraer un frame del video (posible video negro o corrupto)",
+        );
       }
 
       // Step 5: Save to database
@@ -1075,15 +1230,21 @@ export default function AdminVerticalVideosPage() {
 
       if (saveData.success) {
         setVideos((prev) =>
-          prev.map((v) => v.id === videoId ? { ...v, thumbnailUrl } : v)
+          prev.map((v) => (v.id === videoId ? { ...v, thumbnailUrl } : v)),
         );
-        setMessage({ type: "success", text: "Miniatura regenerada exitosamente" });
+        setMessage({
+          type: "success",
+          text: "Miniatura regenerada exitosamente",
+        });
       } else {
         throw new Error(saveData.error || "Error guardando miniatura");
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Error desconocido";
-      setMessage({ type: "error", text: `Error regenerando miniatura: ${msg}` });
+      setMessage({
+        type: "error",
+        text: `Error regenerando miniatura: ${msg}`,
+      });
     }
 
     setUpdatingId(null);
@@ -1094,7 +1255,10 @@ export default function AdminVerticalVideosPage() {
   const generateMissingThumbnails = async () => {
     const videosWithoutThumbnail = videos.filter((v) => !v.thumbnailUrl);
     if (videosWithoutThumbnail.length === 0) {
-      setMessage({ type: "success", text: "Todos los videos ya tienen miniatura" });
+      setMessage({
+        type: "success",
+        text: "Todos los videos ya tienen miniatura",
+      });
       setTimeout(() => setMessage(null), 3000);
       return;
     }
@@ -1111,7 +1275,7 @@ export default function AdminVerticalVideosPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ all: false }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -1129,18 +1293,21 @@ export default function AdminVerticalVideosPage() {
 
       // Server-side didn't generate any – fall through to client-side
       console.log(
-        "[Thumbnails] Server-side generated 0, falling back to client-side"
+        "[Thumbnails] Server-side generated 0, falling back to client-side",
       );
     } catch {
       console.log(
-        "[Thumbnails] Server-side failed, falling back to client-side"
+        "[Thumbnails] Server-side failed, falling back to client-side",
       );
     }
 
     // Step 2: Client-side extraction via full video download + canvas
     const remaining = videos.filter((v) => !v.thumbnailUrl);
     if (remaining.length === 0) {
-      setMessage({ type: "success", text: "Todas las miniaturas fueron generadas" });
+      setMessage({
+        type: "success",
+        text: "Todas las miniaturas fueron generadas",
+      });
       setGeneratingThumbnails(false);
       setThumbnailProgress("");
       setTimeout(() => setMessage(null), 3000);
@@ -1151,12 +1318,14 @@ export default function AdminVerticalVideosPage() {
     for (let i = 0; i < remaining.length; i++) {
       const video = remaining[i];
       setThumbnailProgress(
-        `Extrayendo miniatura ${i + 1}/${remaining.length}...`
+        `Extrayendo miniatura ${i + 1}/${remaining.length}...`,
       );
 
       try {
         // Get a direct download URL
-        const urlRes = await fetch(`/api/admin/vertical-videos/video-download-url?videoId=${video.id}`);
+        const urlRes = await fetch(
+          `/api/admin/vertical-videos/video-download-url?videoId=${video.id}`,
+        );
         const urlData = await urlRes.json();
 
         if (!urlData.success || !urlData.downloadUrl) {
@@ -1172,11 +1341,17 @@ export default function AdminVerticalVideosPage() {
         // Extract thumbnail from the complete video with escalating modes
         // strict → relaxed → desperate (dim thumbnail > no thumbnail)
         let thumbnailUrl: string | null = null;
-        const modes: Array<"strict" | "relaxed" | "desperate"> = ["strict", "relaxed", "desperate"];
+        const modes: Array<"strict" | "relaxed" | "desperate"> = [
+          "strict",
+          "relaxed",
+          "desperate",
+        ];
         for (const mode of modes) {
           thumbnailUrl = await extractThumbnailFromBlob(videoBlob, mode);
           if (thumbnailUrl) break;
-          console.log(`[Thumbnails] Seek ${mode} failed for ${video.id}, trying playback...`);
+          console.log(
+            `[Thumbnails] Seek ${mode} failed for ${video.id}, trying playback...`,
+          );
           thumbnailUrl = await extractThumbnailViaPlayback(videoBlob, mode);
           if (thumbnailUrl) break;
         }
@@ -1192,9 +1367,7 @@ export default function AdminVerticalVideosPage() {
 
           // Optimistic update
           setVideos((prev) =>
-            prev.map((v) =>
-              v.id === video.id ? { ...v, thumbnailUrl } : v
-            )
+            prev.map((v) => (v.id === video.id ? { ...v, thumbnailUrl } : v)),
           );
         }
       } catch {
@@ -1224,11 +1397,14 @@ export default function AdminVerticalVideosPage() {
   const fixThumbnailUrls = async () => {
     setFixingUrls(true);
     try {
-      const res = await fetch("/api/admin/vertical-videos/generate-thumbnails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fixUrls: true }),
-      });
+      const res = await fetch(
+        "/api/admin/vertical-videos/generate-thumbnails",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fixUrls: true }),
+        },
+      );
       const data = await res.json();
       if (data.success) {
         setMessage({
@@ -1237,7 +1413,10 @@ export default function AdminVerticalVideosPage() {
         });
         fetchData();
       } else {
-        setMessage({ type: "error", text: data.error || "Error arreglando URLs" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error arreglando URLs",
+        });
       }
     } catch {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -1249,11 +1428,16 @@ export default function AdminVerticalVideosPage() {
   // Get platform badge color
   const getPlatformColor = (platform: string | null) => {
     switch (platform?.toLowerCase()) {
-      case "youtube": return "bg-red-600";
-      case "instagram": return "bg-gradient-to-r from-purple-600 to-pink-500";
-      case "tiktok": return "bg-black";
-      case "dropbox": return "bg-blue-600";
-      default: return "bg-slc-card";
+      case "youtube":
+        return "bg-red-600";
+      case "instagram":
+        return "bg-gradient-to-r from-purple-600 to-pink-500";
+      case "tiktok":
+        return "bg-black";
+      case "dropbox":
+        return "bg-blue-600";
+      default:
+        return "bg-slc-card";
     }
   };
 
@@ -1283,13 +1467,17 @@ export default function AdminVerticalVideosPage() {
   const openEditEventModal = (event: VideoEvent) => {
     setEditingEvent(event);
     // Get video IDs assigned to this event
-    const eventVideoIds = videos.filter(v => v.eventId === event.id).map(v => v.id);
+    const eventVideoIds = videos
+      .filter((v) => v.eventId === event.id)
+      .map((v) => v.id);
     setEventForm({
       title: event.title,
       description: event.description || "",
       coverImageUrl: event.coverImageUrl || "",
       artistId: event.artistId || "",
-      eventDate: event.eventDate ? new Date(event.eventDate).toISOString().split("T")[0] : "",
+      eventDate: event.eventDate
+        ? new Date(event.eventDate).toISOString().split("T")[0]
+        : "",
       location: event.location || "",
       isPublished: event.isPublished,
       videoIds: eventVideoIds,
@@ -1328,7 +1516,10 @@ export default function AdminVerticalVideosPage() {
           setShowEventModal(false);
           fetchData();
         } else {
-          setMessage({ type: "error", text: data.error || "Error al actualizar evento" });
+          setMessage({
+            type: "error",
+            text: data.error || "Error al actualizar evento",
+          });
         }
       } else {
         // Create new event
@@ -1351,7 +1542,10 @@ export default function AdminVerticalVideosPage() {
           setShowEventModal(false);
           fetchData();
         } else {
-          setMessage({ type: "error", text: data.error || "Error al crear evento" });
+          setMessage({
+            type: "error",
+            text: data.error || "Error al crear evento",
+          });
         }
       }
     } catch {
@@ -1361,9 +1555,17 @@ export default function AdminVerticalVideosPage() {
   };
 
   const deleteEvent = async (event: VideoEvent) => {
-    if (!confirm(`¿Eliminar el evento "${event.title}"? Los videos no se eliminarán.`)) return;
+    if (
+      !confirm(
+        `¿Eliminar el evento "${event.title}"? Los videos no se eliminarán.`,
+      )
+    )
+      return;
     try {
-      const res = await fetch(`/api/admin/vertical-video-events?id=${event.id}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/admin/vertical-video-events?id=${event.id}`,
+        { method: "DELETE" },
+      );
       const data = await res.json();
       if (data.success) {
         setMessage({ type: "success", text: "Evento eliminado" });
@@ -1378,11 +1580,17 @@ export default function AdminVerticalVideosPage() {
   const uploadEventCover = async (file: File) => {
     setUploadingCover(true);
     try {
-      const result = await uploadToDropboxDirect(file, "/vertical-videos/event-covers");
+      const result = await uploadToDropboxDirect(
+        file,
+        "/vertical-videos/event-covers",
+      );
       if (result.success && result.url) {
-        setEventForm(prev => ({ ...prev, coverImageUrl: result.url! }));
+        setEventForm((prev) => ({ ...prev, coverImageUrl: result.url! }));
       } else {
-        setMessage({ type: "error", text: result.error || "Error al subir portada" });
+        setMessage({
+          type: "error",
+          text: result.error || "Error al subir portada",
+        });
         setTimeout(() => setMessage(null), 3000);
       }
     } catch {
@@ -1393,17 +1601,18 @@ export default function AdminVerticalVideosPage() {
   };
 
   const toggleEventVideo = (videoId: string) => {
-    setEventForm(prev => ({
+    setEventForm((prev) => ({
       ...prev,
       videoIds: prev.videoIds.includes(videoId)
-        ? prev.videoIds.filter(id => id !== videoId)
+        ? prev.videoIds.filter((id) => id !== videoId)
         : [...prev.videoIds, videoId],
     }));
   };
 
   // Filtered videos
   const filteredVideos = videos.filter((video) => {
-    const matchesSearch = !searchQuery ||
+    const matchesSearch =
+      !searchQuery ||
       video.title?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesArtist = !artistFilter || video.artistId === artistFilter;
     return matchesSearch && matchesArtist;
@@ -1436,7 +1645,7 @@ export default function AdminVerticalVideosPage() {
             "px-5 py-2.5 font-oswald uppercase text-sm tracking-wider transition-colors border-b-2 -mb-px",
             activeTab === "videos"
               ? "text-primary border-primary"
-              : "text-slc-muted border-transparent hover:text-white"
+              : "text-slc-muted border-transparent hover:text-white",
           )}
         >
           <Video className="w-4 h-4 inline mr-2" />
@@ -1448,7 +1657,7 @@ export default function AdminVerticalVideosPage() {
             "px-5 py-2.5 font-oswald uppercase text-sm tracking-wider transition-colors border-b-2 -mb-px",
             activeTab === "eventos"
               ? "text-primary border-primary"
-              : "text-slc-muted border-transparent hover:text-white"
+              : "text-slc-muted border-transparent hover:text-white",
           )}
         >
           <FolderOpen className="w-4 h-4 inline mr-2" />
@@ -1458,7 +1667,7 @@ export default function AdminVerticalVideosPage() {
 
       {/* Videos Tab Actions */}
       {activeTab === "videos" && (
-      <div className="flex gap-2 flex-wrap mb-6">
+        <div className="flex gap-2 flex-wrap mb-6">
           <Button variant="outline" onClick={fetchData} disabled={loading}>
             Actualizar
           </Button>
@@ -1479,7 +1688,11 @@ export default function AdminVerticalVideosPage() {
                 : "Generar Miniaturas"}
             </Button>
           )}
-          {videos.some((v) => v.thumbnailUrl?.includes("dl.dropboxusercontent.com") || v.videoUrl?.includes("dl.dropboxusercontent.com")) && (
+          {videos.some(
+            (v) =>
+              v.thumbnailUrl?.includes("dl.dropboxusercontent.com") ||
+              v.videoUrl?.includes("dl.dropboxusercontent.com"),
+          ) && (
             <Button
               variant="outline"
               onClick={fixThumbnailUrls}
@@ -1503,15 +1716,15 @@ export default function AdminVerticalVideosPage() {
 
       {/* Events Tab Actions */}
       {activeTab === "eventos" && (
-      <div className="flex gap-2 flex-wrap mb-6">
-        <Button variant="outline" onClick={fetchData} disabled={loading}>
-          Actualizar
-        </Button>
-        <Button onClick={openCreateEventModal}>
-          <Plus className="w-4 h-4 mr-2" />
-          Crear Evento
-        </Button>
-      </div>
+        <div className="flex gap-2 flex-wrap mb-6">
+          <Button variant="outline" onClick={fetchData} disabled={loading}>
+            Actualizar
+          </Button>
+          <Button onClick={openCreateEventModal}>
+            <Plus className="w-4 h-4 mr-2" />
+            Crear Evento
+          </Button>
+        </div>
       )}
 
       {/* Message */}
@@ -1521,34 +1734,46 @@ export default function AdminVerticalVideosPage() {
             "mb-6 p-4 rounded-lg flex items-center gap-2",
             message.type === "success"
               ? "bg-green-500/10 border border-green-500/20 text-green-500"
-              : "bg-red-500/10 border border-red-500/20 text-red-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500",
           )}
         >
-          {message.type === "success" ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+          {message.type === "success" ? (
+            <CheckCircle className="w-5 h-5" />
+          ) : (
+            <AlertTriangle className="w-5 h-5" />
+          )}
           {message.text}
         </div>
       )}
 
       {/* Stats */}
       {activeTab === "videos" && (
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-primary">{videos.length}</div>
-          <div className="text-xs text-slc-muted uppercase">Total Videos</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
+            <div className="font-oswald text-2xl text-primary">
+              {videos.length}
+            </div>
+            <div className="text-xs text-slc-muted uppercase">Total Videos</div>
+          </div>
+          <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
+            <div className="font-oswald text-2xl text-yellow-500">
+              {featuredCount}
+            </div>
+            <div className="text-xs text-slc-muted uppercase">Destacados</div>
+          </div>
+          <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
+            <div className="font-oswald text-2xl text-green-500">
+              {totalViews}
+            </div>
+            <div className="text-xs text-slc-muted uppercase">Vistas</div>
+          </div>
+          <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
+            <div className="font-oswald text-2xl text-blue-500">
+              {totalShares}
+            </div>
+            <div className="text-xs text-slc-muted uppercase">Compartidos</div>
+          </div>
         </div>
-        <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-yellow-500">{featuredCount}</div>
-          <div className="text-xs text-slc-muted uppercase">Destacados</div>
-        </div>
-        <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-green-500">{totalViews}</div>
-          <div className="text-xs text-slc-muted uppercase">Vistas</div>
-        </div>
-        <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-blue-500">{totalShares}</div>
-          <div className="text-xs text-slc-muted uppercase">Compartidos</div>
-        </div>
-      </div>
       )}
 
       {/* Events Tab Content */}
@@ -1587,15 +1812,23 @@ export default function AdminVerticalVideosPage() {
               </div>
               {/* Info */}
               <div className="p-4">
-                <h3 className="font-oswald text-lg uppercase line-clamp-1">{event.title}</h3>
+                <h3 className="font-oswald text-lg uppercase line-clamp-1">
+                  {event.title}
+                </h3>
                 {event.description && (
-                  <p className="text-sm text-slc-muted mt-1 line-clamp-2">{event.description}</p>
+                  <p className="text-sm text-slc-muted mt-1 line-clamp-2">
+                    {event.description}
+                  </p>
                 )}
                 <div className="flex items-center gap-3 mt-2 text-xs text-slc-muted">
                   {event.eventDate && (
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {new Date(event.eventDate).toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "numeric" })}
+                      {new Date(event.eventDate).toLocaleDateString("es-MX", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </span>
                   )}
                   {event.location && (
@@ -1643,8 +1876,12 @@ export default function AdminVerticalVideosPage() {
           {events.length === 0 && !loading && (
             <div className="col-span-full text-center py-16">
               <FolderOpen className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-              <h3 className="font-oswald text-xl uppercase mb-2">No hay eventos</h3>
-              <p className="text-slc-muted mb-6">Crea eventos para agrupar videos verticales.</p>
+              <h3 className="font-oswald text-xl uppercase mb-2">
+                No hay eventos
+              </h3>
+              <p className="text-slc-muted mb-6">
+                Crea eventos para agrupar videos verticales.
+              </p>
               <Button onClick={openCreateEventModal}>
                 <Plus className="w-4 h-4 mr-2" />
                 Crear Evento
@@ -1656,27 +1893,29 @@ export default function AdminVerticalVideosPage() {
 
       {/* Search & Filters - only in videos tab */}
       {activeTab === "videos" && (
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
-          <Input
-            placeholder="Buscar videos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
+            <Input
+              placeholder="Buscar videos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <select
+            value={artistFilter}
+            onChange={(e) => setArtistFilter(e.target.value)}
+            className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
+          >
+            <option value="">Todos los artistas</option>
+            {artists.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
         </div>
-        <select
-          value={artistFilter}
-          onChange={(e) => setArtistFilter(e.target.value)}
-          className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
-        >
-          <option value="">Todos los artistas</option>
-          {artists.map((a) => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
-      </div>
       )}
 
       {/* Loading */}
@@ -1695,7 +1934,7 @@ export default function AdminVerticalVideosPage() {
                   "bg-slc-dark border rounded-xl overflow-hidden group relative",
                   video.isFeatured
                     ? "border-yellow-500/50 ring-1 ring-yellow-500/20"
-                    : "border-slc-border"
+                    : "border-slc-border",
                 )}
               >
                 {/* Thumbnail - 9:16 aspect ratio */}
@@ -1711,7 +1950,10 @@ export default function AdminVerticalVideosPage() {
                         const thumb = getVideoThumbnail(video)!;
                         const ytId = getYouTubeId(video);
                         if (ytId && isYouTubeThumbnailUrl(thumb)) {
-                          return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+                          return (
+                            getYouTubeThumbnailFallback(ytId, thumb) ||
+                            getVideoPlaceholderSvg("9/16")
+                          );
                         }
                         return getVideoPlaceholderSvg("9/16");
                       })()}
@@ -1725,13 +1967,21 @@ export default function AdminVerticalVideosPage() {
                   {/* Play overlay */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                      <Play className="w-6 h-6 text-white ml-0.5" fill="white" />
+                      <Play
+                        className="w-6 h-6 text-white ml-0.5"
+                        fill="white"
+                      />
                     </div>
                   </div>
 
                   {/* Platform badge */}
                   {video.platform && (
-                    <div className={cn("absolute top-2 left-2 px-2 py-0.5 rounded text-xs text-white", getPlatformColor(video.platform))}>
+                    <div
+                      className={cn(
+                        "absolute top-2 left-2 px-2 py-0.5 rounded text-xs text-white",
+                        getPlatformColor(video.platform),
+                      )}
+                    >
                       {video.platform}
                     </div>
                   )}
@@ -1802,7 +2052,7 @@ export default function AdminVerticalVideosPage() {
                         onClick={() => regenerateThumbnail(video.id)}
                         className={cn(
                           "p-1 rounded transition-colors",
-                          "text-slc-muted hover:text-primary hover:bg-slc-card"
+                          "text-slc-muted hover:text-primary hover:bg-slc-card",
                         )}
                         title="Regenerar miniatura"
                         disabled={updatingId === video.id}
@@ -1824,21 +2074,32 @@ export default function AdminVerticalVideosPage() {
                         onClick={() => toggleFeatured(video)}
                         className={cn(
                           "p-1 rounded transition-colors",
-                          video.isFeatured ? "text-yellow-500" : "text-slc-muted hover:text-yellow-500"
+                          video.isFeatured
+                            ? "text-yellow-500"
+                            : "text-slc-muted hover:text-yellow-500",
                         )}
-                        title={video.isFeatured ? "Quitar de destacados" : "Destacar"}
+                        title={
+                          video.isFeatured ? "Quitar de destacados" : "Destacar"
+                        }
                       >
-                        <Star className="w-3.5 h-3.5" fill={video.isFeatured ? "currentColor" : "none"} />
+                        <Star
+                          className="w-3.5 h-3.5"
+                          fill={video.isFeatured ? "currentColor" : "none"}
+                        />
                       </button>
                       <button
                         onClick={() => togglePublished(video)}
                         className={cn(
                           "p-1 rounded transition-colors",
-                          video.isPublished ? "text-green-500" : "text-red-500"
+                          video.isPublished ? "text-green-500" : "text-red-500",
                         )}
                         title={video.isPublished ? "Ocultar" : "Publicar"}
                       >
-                        {video.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                        {video.isPublished ? (
+                          <Eye className="w-3.5 h-3.5" />
+                        ) : (
+                          <EyeOff className="w-3.5 h-3.5" />
+                        )}
                       </button>
                       <button
                         onClick={() => deleteVideo(video)}
@@ -1858,7 +2119,9 @@ export default function AdminVerticalVideosPage() {
           {filteredVideos.length === 0 && !loading && (
             <div className="text-center py-16">
               <Smartphone className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-              <h3 className="font-oswald text-xl uppercase mb-2">No hay videos verticales</h3>
+              <h3 className="font-oswald text-xl uppercase mb-2">
+                No hay videos verticales
+              </h3>
               <p className="text-slc-muted mb-6">
                 {searchQuery || artistFilter
                   ? "No se encontraron videos con esos filtros."
@@ -1884,7 +2147,14 @@ export default function AdminVerticalVideosPage() {
                 <Smartphone className="w-5 h-5 text-primary" />
                 Agregar Video Vertical (9:16)
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => { setShowUploader(false); resetUploadForm(); }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowUploader(false);
+                  resetUploadForm();
+                }}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -1901,7 +2171,9 @@ export default function AdminVerticalVideosPage() {
 
               {/* Title */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Título</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Título
+                </label>
                 <Input
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
@@ -1911,7 +2183,9 @@ export default function AdminVerticalVideosPage() {
 
               {/* Description */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Descripción</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Descripción
+                </label>
                 <textarea
                   value={uploadDescription}
                   onChange={(e) => setUploadDescription(e.target.value)}
@@ -1922,7 +2196,9 @@ export default function AdminVerticalVideosPage() {
 
               {/* Artist */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Artista</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Artista
+                </label>
                 <select
                   value={uploadArtistId}
                   onChange={(e) => setUploadArtistId(e.target.value)}
@@ -1930,14 +2206,18 @@ export default function AdminVerticalVideosPage() {
                 >
                   <option value="">Sin artista</option>
                   {artists.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
                   ))}
                 </select>
               </div>
 
               {/* Event */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Evento</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Evento
+                </label>
                 <select
                   value={uploadEventId}
                   onChange={(e) => setUploadEventId(e.target.value)}
@@ -1945,28 +2225,34 @@ export default function AdminVerticalVideosPage() {
                 >
                   <option value="">Sin evento</option>
                   {events.map((e) => (
-                    <option key={e.id} value={e.id}>{e.title}</option>
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
                   ))}
                 </select>
               </div>
 
               {/* Tags */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Etiquetas</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Etiquetas
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
                     <button
                       key={tag.id}
                       onClick={() => {
-                        setUploadTagIds(prev =>
-                          prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
+                        setUploadTagIds((prev) =>
+                          prev.includes(tag.id)
+                            ? prev.filter((id) => id !== tag.id)
+                            : [...prev, tag.id],
                         );
                       }}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm transition-colors",
                         uploadTagIds.includes(tag.id)
                           ? "bg-primary text-white"
-                          : "bg-slc-card border border-slc-border hover:border-primary/50"
+                          : "bg-slc-card border border-slc-border hover:border-primary/50",
                       )}
                     >
                       {tag.name}
@@ -1984,12 +2270,17 @@ export default function AdminVerticalVideosPage() {
                 <Input
                   value={uploadThumbnailUrl}
                   onChange={(e) => setUploadThumbnailUrl(e.target.value)}
-                  placeholder={uploadVideoInfo?.thumbnailUrl ? "Ya generada automáticamente" : "Se genera automáticamente al subir video"}
+                  placeholder={
+                    uploadVideoInfo?.thumbnailUrl
+                      ? "Ya generada automáticamente"
+                      : "Se genera automáticamente al subir video"
+                  }
                   className="text-sm"
                 />
                 {uploadVideoInfo?.thumbnailUrl && !uploadThumbnailUrl && (
                   <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" /> Miniatura generada automáticamente
+                    <CheckCircle className="w-3 h-3" /> Miniatura generada
+                    automáticamente
                   </p>
                 )}
               </div>
@@ -2008,11 +2299,24 @@ export default function AdminVerticalVideosPage() {
 
               {/* Submit */}
               <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => { setShowUploader(false); resetUploadForm(); }}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowUploader(false);
+                    resetUploadForm();
+                  }}
+                >
                   Cancelar
                 </Button>
-                <Button onClick={submitVideo} disabled={!uploadVideoInfo || uploading}>
-                  {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                <Button
+                  onClick={submitVideo}
+                  disabled={!uploadVideoInfo || uploading}
+                >
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-2" />
+                  )}
                   Agregar Video
                 </Button>
               </div>
@@ -2027,71 +2331,97 @@ export default function AdminVerticalVideosPage() {
           <div className="bg-slc-dark border border-slc-border rounded-xl w-full max-w-lg max-h-[85vh] overflow-auto">
             <div className="flex items-center justify-between p-4 border-b border-slc-border">
               <h2 className="font-oswald text-xl uppercase">Editar Video</h2>
-              <Button variant="ghost" size="icon" onClick={() => setEditingVideo(null)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setEditingVideo(null)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Título</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Título
+                </label>
                 <Input
                   value={editForm.title}
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Descripción</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Descripción
+                </label>
                 <textarea
                   value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, description: e.target.value })
+                  }
                   className="w-full h-20 p-3 bg-slc-card border border-slc-border rounded-lg text-sm resize-none"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Artista</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Artista
+                </label>
                 <select
                   value={editForm.artistId}
-                  onChange={(e) => setEditForm({ ...editForm, artistId: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, artistId: e.target.value })
+                  }
                   className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
                 >
                   <option value="">Sin artista</option>
                   {artists.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Evento</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Evento
+                </label>
                 <select
                   value={editForm.eventId}
-                  onChange={(e) => setEditForm({ ...editForm, eventId: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, eventId: e.target.value })
+                  }
                   className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
                 >
                   <option value="">Sin evento</option>
                   {events.map((ev) => (
-                    <option key={ev.id} value={ev.id}>{ev.title}</option>
+                    <option key={ev.id} value={ev.id}>
+                      {ev.title}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Etiquetas</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Etiquetas
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
                     <button
                       key={tag.id}
                       onClick={() => {
-                        setEditForm(prev => ({
+                        setEditForm((prev) => ({
                           ...prev,
                           tagIds: prev.tagIds.includes(tag.id)
-                            ? prev.tagIds.filter(id => id !== tag.id)
-                            : [...prev.tagIds, tag.id]
+                            ? prev.tagIds.filter((id) => id !== tag.id)
+                            : [...prev.tagIds, tag.id],
                         }));
                       }}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm transition-colors",
                         editForm.tagIds.includes(tag.id)
                           ? "bg-primary text-white"
-                          : "bg-slc-card border border-slc-border hover:border-primary/50"
+                          : "bg-slc-card border border-slc-border hover:border-primary/50",
                       )}
                     >
                       {tag.name}
@@ -2107,13 +2437,16 @@ export default function AdminVerticalVideosPage() {
                 </label>
                 <Input
                   value={editForm.thumbnailUrl}
-                  onChange={(e) => setEditForm({ ...editForm, thumbnailUrl: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, thumbnailUrl: e.target.value })
+                  }
                   placeholder="https://ejemplo.com/thumbnail.jpg"
                   className="text-sm"
                 />
                 {!editForm.thumbnailUrl && editingVideo.thumbnailUrl && (
                   <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Dejar vacío para mantener la miniatura actual
+                    <AlertTriangle className="w-3 h-3" /> Dejar vacío para
+                    mantener la miniatura actual
                   </p>
                 )}
                 {editingVideo.thumbnailUrl && (
@@ -2133,7 +2466,9 @@ export default function AdminVerticalVideosPage() {
                   <input
                     type="checkbox"
                     checked={editForm.isFeatured}
-                    onChange={(e) => setEditForm({ ...editForm, isFeatured: e.target.checked })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, isFeatured: e.target.checked })
+                    }
                     className="w-4 h-4 rounded"
                   />
                   <span className="text-sm">Destacado</span>
@@ -2143,15 +2478,26 @@ export default function AdminVerticalVideosPage() {
                   <input
                     type="checkbox"
                     checked={editForm.isPublished}
-                    onChange={(e) => setEditForm({ ...editForm, isPublished: e.target.checked })}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        isPublished: e.target.checked,
+                      })
+                    }
                     className="w-4 h-4 rounded"
                   />
                   <span className="text-sm">Publicado</span>
-                  {editForm.isPublished ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-red-500" />}
+                  {editForm.isPublished ? (
+                    <Eye className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <EyeOff className="w-4 h-4 text-red-500" />
+                  )}
                 </label>
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setEditingVideo(null)}>Cancelar</Button>
+                <Button variant="outline" onClick={() => setEditingVideo(null)}>
+                  Cancelar
+                </Button>
                 <Button onClick={saveEdit}>
                   <Save className="w-4 h-4 mr-2" />
                   Guardar
@@ -2171,27 +2517,45 @@ export default function AdminVerticalVideosPage() {
                 <FolderOpen className="w-5 h-5 text-primary" />
                 {editingEvent ? "Editar Evento" : "Crear Evento"}
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => { setShowEventModal(false); resetEventForm(); }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowEventModal(false);
+                  resetEventForm();
+                }}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
             <div className="p-6 space-y-4">
               {/* Title */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Título *</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Título *
+                </label>
                 <Input
                   value={eventForm.title}
-                  onChange={(e) => setEventForm(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({ ...prev, title: e.target.value }))
+                  }
                   placeholder="Concierto CDMX 2025..."
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Descripción</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Descripción
+                </label>
                 <textarea
                   value={eventForm.description}
-                  onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   placeholder="Descripción del evento..."
                   className="w-full h-20 p-3 bg-slc-card border border-slc-border rounded-lg text-sm resize-none"
                 />
@@ -2206,7 +2570,12 @@ export default function AdminVerticalVideosPage() {
                   <Input
                     type="date"
                     value={eventForm.eventDate}
-                    onChange={(e) => setEventForm(prev => ({ ...prev, eventDate: e.target.value }))}
+                    onChange={(e) =>
+                      setEventForm((prev) => ({
+                        ...prev,
+                        eventDate: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
@@ -2215,7 +2584,12 @@ export default function AdminVerticalVideosPage() {
                   </label>
                   <Input
                     value={eventForm.location}
-                    onChange={(e) => setEventForm(prev => ({ ...prev, location: e.target.value }))}
+                    onChange={(e) =>
+                      setEventForm((prev) => ({
+                        ...prev,
+                        location: e.target.value,
+                      }))
+                    }
                     placeholder="Ciudad de México..."
                   />
                 </div>
@@ -2223,15 +2597,24 @@ export default function AdminVerticalVideosPage() {
 
               {/* Artist */}
               <div>
-                <label className="block text-sm text-slc-muted mb-1.5">Artista</label>
+                <label className="block text-sm text-slc-muted mb-1.5">
+                  Artista
+                </label>
                 <select
                   value={eventForm.artistId}
-                  onChange={(e) => setEventForm(prev => ({ ...prev, artistId: e.target.value }))}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      artistId: e.target.value,
+                    }))
+                  }
                   className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
                 >
                   <option value="">Sin artista</option>
                   {artists.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -2247,7 +2630,7 @@ export default function AdminVerticalVideosPage() {
                     isDraggingCover
                       ? "border-primary bg-primary/10"
                       : "border-slc-border hover:border-primary/50",
-                    uploadingCover && "opacity-60 pointer-events-none"
+                    uploadingCover && "opacity-60 pointer-events-none",
                   )}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -2269,15 +2652,20 @@ export default function AdminVerticalVideosPage() {
                     e.stopPropagation();
                     setIsDraggingCover(false);
                     const file = e.dataTransfer.files?.[0];
-                    if (file && file.type.startsWith("image/")) {
+                    if (file?.type.startsWith("image/")) {
                       uploadEventCover(file);
                     } else if (file) {
-                      setMessage({ type: "error", text: "Solo se permiten imágenes" });
+                      setMessage({
+                        type: "error",
+                        text: "Solo se permiten imágenes",
+                      });
                       setTimeout(() => setMessage(null), 3000);
                     }
                   }}
                   onClick={() => {
-                    const input = document.getElementById("event-cover-input") as HTMLInputElement;
+                    const input = document.getElementById(
+                      "event-cover-input",
+                    ) as HTMLInputElement;
                     input?.click();
                   }}
                 >
@@ -2295,7 +2683,9 @@ export default function AdminVerticalVideosPage() {
                   {uploadingCover ? (
                     <div className="flex flex-col items-center justify-center py-6">
                       <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                      <p className="text-sm text-primary">Subiendo portada...</p>
+                      <p className="text-sm text-primary">
+                        Subiendo portada...
+                      </p>
                     </div>
                   ) : eventForm.coverImageUrl ? (
                     <div className="flex items-center gap-4 p-3">
@@ -2312,13 +2702,17 @@ export default function AdminVerticalVideosPage() {
                         <p className="text-sm text-green-500 flex items-center gap-1">
                           <CheckCircle className="w-3.5 h-3.5" /> Portada subida
                         </p>
-                        <p className="text-xs text-slc-muted mt-0.5">Arrastra o haz clic para cambiar</p>
+                        <p className="text-xs text-slc-muted mt-0.5">
+                          Arrastra o haz clic para cambiar
+                        </p>
                       </div>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-6">
                       <Upload className="w-8 h-8 text-slc-muted mb-2" />
-                      <p className="text-sm text-slc-muted">Arrastra una imagen aquí o haz clic para seleccionar</p>
+                      <p className="text-sm text-slc-muted">
+                        Arrastra una imagen aquí o haz clic para seleccionar
+                      </p>
                     </div>
                   )}
                 </div>
@@ -2329,7 +2723,12 @@ export default function AdminVerticalVideosPage() {
                 <input
                   type="checkbox"
                   checked={eventForm.isPublished}
-                  onChange={(e) => setEventForm(prev => ({ ...prev, isPublished: e.target.checked }))}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      isPublished: e.target.checked,
+                    }))
+                  }
                   className="w-4 h-4 rounded"
                 />
                 <span className="text-sm">Publicado</span>
@@ -2348,7 +2747,9 @@ export default function AdminVerticalVideosPage() {
                   </label>
                   <div className="max-h-64 overflow-y-auto border border-slc-border rounded-lg bg-slc-card">
                     {videos.length === 0 ? (
-                      <p className="p-3 text-sm text-slc-muted">No hay videos disponibles</p>
+                      <p className="p-3 text-sm text-slc-muted">
+                        No hay videos disponibles
+                      </p>
                     ) : (
                       videos.map((video) => (
                         <label
@@ -2362,8 +2763,12 @@ export default function AdminVerticalVideosPage() {
                             className="w-4 h-4 rounded"
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm truncate">{video.title || "Sin título"}</p>
-                            <p className="text-xs text-slc-muted">{video.platform || "directo"}</p>
+                            <p className="text-sm truncate">
+                              {video.title || "Sin título"}
+                            </p>
+                            <p className="text-xs text-slc-muted">
+                              {video.platform || "directo"}
+                            </p>
                           </div>
                         </label>
                       ))
@@ -2374,7 +2779,13 @@ export default function AdminVerticalVideosPage() {
 
               {/* Submit */}
               <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => { setShowEventModal(false); resetEventForm(); }}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEventModal(false);
+                    resetEventForm();
+                  }}
+                >
                   Cancelar
                 </Button>
                 <Button onClick={saveEvent}>
@@ -2396,17 +2807,28 @@ export default function AdminVerticalVideosPage() {
                 <Share2 className="w-5 h-5 text-primary" />
                 Compartir Video
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => { setShareVideo(null); setCopiedLink(false); }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShareVideo(null);
+                  setCopiedLink(false);
+                }}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-sm text-slc-muted">{shareVideo.title || "Video sin título"}</p>
+              <p className="text-sm text-slc-muted">
+                {shareVideo.title || "Video sin título"}
+              </p>
 
               {/* Share Link */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 p-3 bg-slc-card border border-slc-border rounded-lg text-sm truncate">
-                  {typeof window !== "undefined" ? `${window.location.origin}/reels/${shareVideo.id}` : `/reels/${shareVideo.id}`}
+                  {typeof window !== "undefined"
+                    ? `${window.location.origin}/reels/${shareVideo.id}`
+                    : `/reels/${shareVideo.id}`}
                 </div>
                 <Button
                   variant="outline"
@@ -2414,7 +2836,11 @@ export default function AdminVerticalVideosPage() {
                   onClick={() => copyShareLink(shareVideo.id)}
                   title="Copiar enlace"
                 >
-                  {copiedLink ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  {copiedLink ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
 
@@ -2425,13 +2851,17 @@ export default function AdminVerticalVideosPage() {
                   className="w-full"
                   onClick={async () => {
                     const url = `${window.location.origin}/reels/${shareVideo.id}`;
-                    const text = shareVideo.title || "Mira este video de Sonido Líquido Crew";
+                    const text =
+                      shareVideo.title ||
+                      "Mira este video de Sonido Líquido Crew";
                     if (navigator.share) {
                       try {
                         await navigator.share({ title: text, url });
                       } catch {}
                     } else {
-                      window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`);
+                      window.open(
+                        `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`,
+                      );
                     }
                     fetch(`/api/vertical-videos/${shareVideo.id}`, {
                       method: "POST",
@@ -2440,7 +2870,13 @@ export default function AdminVerticalVideosPage() {
                     });
                   }}
                 >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
                   WhatsApp
                 </Button>
                 <Button
@@ -2449,7 +2885,9 @@ export default function AdminVerticalVideosPage() {
                   onClick={() => {
                     const url = `${window.location.origin}/reels/${shareVideo.id}`;
                     const text = shareVideo.title || "Mira este video";
-                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
+                    window.open(
+                      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+                    );
                     fetch(`/api/vertical-videos/${shareVideo.id}`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -2457,7 +2895,13 @@ export default function AdminVerticalVideosPage() {
                     });
                   }}
                 >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
                   X / Twitter
                 </Button>
                 <Button
@@ -2465,7 +2909,9 @@ export default function AdminVerticalVideosPage() {
                   className="w-full"
                   onClick={() => {
                     const url = `${window.location.origin}/reels/${shareVideo.id}`;
-                    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+                    window.open(
+                      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+                    );
                     fetch(`/api/vertical-videos/${shareVideo.id}`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -2473,7 +2919,13 @@ export default function AdminVerticalVideosPage() {
                     });
                   }}
                 >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
                   Facebook
                 </Button>
                 <Button
@@ -2481,7 +2933,9 @@ export default function AdminVerticalVideosPage() {
                   className="w-full"
                   onClick={async () => {
                     const url = `${window.location.origin}/reels/${shareVideo.id}`;
-                    const text = shareVideo.title || "Mira este video de Sonido Líquido Crew";
+                    const text =
+                      shareVideo.title ||
+                      "Mira este video de Sonido Líquido Crew";
                     if (navigator.share) {
                       try {
                         await navigator.share({ title: text, url });

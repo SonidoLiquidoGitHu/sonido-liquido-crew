@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { syncRosterVideos, getRosterVideosSyncStatus } from "@/lib/sync";
+import { getRosterVideosSyncStatus, syncRosterVideos } from "@/lib/sync";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * POST - Sync 4 random videos from roster members' YouTube channels
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     console.error("Error running roster videos sync:", error);
     return NextResponse.json(
       { success: false, error: "Failed to run roster videos sync" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -51,7 +51,7 @@ export async function GET() {
     console.error("Error fetching roster videos sync status:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch sync status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

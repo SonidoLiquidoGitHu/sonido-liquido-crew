@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Gift, Music, Calendar, Download, Loader2, CheckCircle, Sparkles, Headphones, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Calendar,
+  CheckCircle,
+  Download,
+  Gift,
+  Headphones,
+  Loader2,
+  Music,
+  Sparkles,
+  Star,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSoundEffects } from "./effects/SoundEffects";
 
 // Download file info returned after subscription
@@ -79,7 +90,8 @@ const defaultSettings: PopupSettings = {
   badgeText: "Contenido Exclusivo",
   buttonText: "Suscribirme Gratis",
   successTitle: "¡Bienvenido al Crew!",
-  successMessage: "Revisa tu correo para confirmar tu suscripción y recibir tu contenido exclusivo.",
+  successMessage:
+    "Revisa tu correo para confirmar tu suscripción y recibir tu contenido exclusivo.",
 
   abTestEnabled: false,
 
@@ -93,7 +105,8 @@ const defaultSettings: PopupSettings = {
   downloadFileUrl: "",
   downloadFileName: "",
   downloadButtonText: "Descargar Regalo",
-  downloadDescription: "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
+  downloadDescription:
+    "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
 };
 
 // Icon mapping
@@ -109,7 +122,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 // Color mapping
 const colorMap: Record<string, string> = {
-  "primary": "text-primary",
+  primary: "text-primary",
   "green-500": "text-green-500",
   "cyan-500": "text-cyan-500",
   "yellow-500": "text-yellow-500",
@@ -131,13 +144,19 @@ export function NewsletterPopup({
 }: NewsletterPopupProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [hasShown, setHasShown] = useState(false);
   const [settings, setSettings] = useState<PopupSettings>(defaultSettings);
   const [abVariant, setAbVariant] = useState<"A" | "B">("A");
-  const [triggerSource, setTriggerSource] = useState<"time" | "scroll" | "exit-intent">("time");
-  const [downloadFile, setDownloadFile] = useState<DownloadFileInfo | null>(null);
+  const [triggerSource, setTriggerSource] = useState<
+    "time" | "scroll" | "exit-intent"
+  >("time");
+  const [downloadFile, setDownloadFile] = useState<DownloadFileInfo | null>(
+    null,
+  );
   const { playSound } = useSoundEffects();
   const exitIntentEnabled = useRef(false);
 
@@ -149,17 +168,17 @@ export function NewsletterPopup({
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.settings) {
-            setSettings(prev => ({ ...prev, ...data.settings }));
+            setSettings((prev) => ({ ...prev, ...data.settings }));
 
             // Apply prop overrides
             if (delaySeconds !== undefined) {
-              setSettings(prev => ({ ...prev, delaySeconds }));
+              setSettings((prev) => ({ ...prev, delaySeconds }));
             }
             if (showOnScroll !== undefined) {
-              setSettings(prev => ({ ...prev, showOnScroll }));
+              setSettings((prev) => ({ ...prev, showOnScroll }));
             }
             if (scrollPercentage !== undefined) {
-              setSettings(prev => ({ ...prev, scrollPercentage }));
+              setSettings((prev) => ({ ...prev, scrollPercentage }));
             }
           }
         }
@@ -197,9 +216,9 @@ export function NewsletterPopup({
     }
 
     if (dismissed) {
-      const dismissedTime = parseInt(dismissed, 10);
+      const dismissedTime = Number.parseInt(dismissed, 10);
       const dismissDays = settings.dismissDays || 7;
-      const expiryTime = dismissedTime + (dismissDays * 24 * 60 * 60 * 1000);
+      const expiryTime = dismissedTime + dismissDays * 24 * 60 * 60 * 1000;
 
       if (Date.now() < expiryTime) {
         setHasShown(true);
@@ -211,37 +230,43 @@ export function NewsletterPopup({
   }, [settings.dismissDays]);
 
   // Track A/B test events
-  const trackPopupEvent = useCallback(async (event: string, source?: string) => {
-    try {
-      await fetch("/api/newsletter/popup-analytics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event,
-          variant: abVariant,
-          source,
-          timestamp: new Date().toISOString(),
-        }),
-      });
-    } catch (error) {
-      console.error("Failed to track popup event:", error);
-    }
-  }, [abVariant]);
+  const trackPopupEvent = useCallback(
+    async (event: string, source?: string) => {
+      try {
+        await fetch("/api/newsletter/popup-analytics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event,
+            variant: abVariant,
+            source,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to track popup event:", error);
+      }
+    },
+    [abVariant],
+  );
 
   // Show popup trigger
-  const showPopup = useCallback((source: "time" | "scroll" | "exit-intent") => {
-    if (!hasShown) {
-      setIsOpen(true);
-      setHasShown(true);
-      setTriggerSource(source);
-      playSound("success");
+  const showPopup = useCallback(
+    (source: "time" | "scroll" | "exit-intent") => {
+      if (!hasShown) {
+        setIsOpen(true);
+        setHasShown(true);
+        setTriggerSource(source);
+        playSound("success");
 
-      // Track popup shown for A/B testing
-      if (settings.abTestEnabled) {
-        trackPopupEvent("shown", source);
+        // Track popup shown for A/B testing
+        if (settings.abTestEnabled) {
+          trackPopupEvent("shown", source);
+        }
       }
-    }
-  }, [hasShown, playSound, settings.abTestEnabled, trackPopupEvent]);
+    },
+    [hasShown, playSound, settings.abTestEnabled, trackPopupEvent],
+  );
 
   // Time-based and scroll-based triggers
   useEffect(() => {
@@ -258,7 +283,10 @@ export function NewsletterPopup({
     // Scroll-based trigger
     if (settings.showOnScroll) {
       scrollHandler = () => {
-        const scrolled = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+        const scrolled =
+          (window.scrollY /
+            (document.documentElement.scrollHeight - window.innerHeight)) *
+          100;
         if (scrolled >= settings.scrollPercentage && !hasShown) {
           showPopup("scroll");
           if (scrollHandler) {
@@ -275,7 +303,13 @@ export function NewsletterPopup({
         window.removeEventListener("scroll", scrollHandler);
       }
     };
-  }, [settings.delaySeconds, settings.showOnScroll, settings.scrollPercentage, hasShown, showPopup]);
+  }, [
+    settings.delaySeconds,
+    settings.showOnScroll,
+    settings.scrollPercentage,
+    hasShown,
+    showPopup,
+  ]);
 
   // Exit-intent trigger
   useEffect(() => {
@@ -288,11 +322,7 @@ export function NewsletterPopup({
 
     const handleMouseLeave = (e: MouseEvent) => {
       // Only trigger if mouse leaves through the top of the viewport
-      if (
-        exitIntentEnabled.current &&
-        e.clientY <= 0 &&
-        !hasShown
-      ) {
+      if (exitIntentEnabled.current && e.clientY <= 0 && !hasShown) {
         showPopup("exit-intent");
       }
     };
@@ -321,7 +351,12 @@ export function NewsletterPopup({
       document.removeEventListener("mouseleave", handleMouseLeave);
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [settings.exitIntentEnabled, settings.exitIntentDelay, hasShown, showPopup]);
+  }, [
+    settings.exitIntentEnabled,
+    settings.exitIntentDelay,
+    hasShown,
+    showPopup,
+  ]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -386,20 +421,36 @@ export function NewsletterPopup({
 
   // Get display text based on A/B variant
   const getHeadline = () => {
-    if (settings.abTestEnabled && abVariant === "B" && settings.variantBHeadline) {
+    if (
+      settings.abTestEnabled &&
+      abVariant === "B" &&
+      settings.variantBHeadline
+    ) {
       return settings.variantBHeadline;
     }
-    if (settings.abTestEnabled && abVariant === "A" && settings.variantAHeadline) {
+    if (
+      settings.abTestEnabled &&
+      abVariant === "A" &&
+      settings.variantAHeadline
+    ) {
       return settings.variantAHeadline;
     }
     return settings.headline;
   };
 
   const getButtonText = () => {
-    if (settings.abTestEnabled && abVariant === "B" && settings.variantBButtonText) {
+    if (
+      settings.abTestEnabled &&
+      abVariant === "B" &&
+      settings.variantBButtonText
+    ) {
       return settings.variantBButtonText;
     }
-    if (settings.abTestEnabled && abVariant === "A" && settings.variantAButtonText) {
+    if (
+      settings.abTestEnabled &&
+      abVariant === "A" &&
+      settings.variantAButtonText
+    ) {
       return settings.variantAButtonText;
     }
     return settings.buttonText;
@@ -409,7 +460,10 @@ export function NewsletterPopup({
   const [imageError, setImageError] = useState(false);
 
   // Check if we should show the image
-  const shouldShowImage = settings.popupImageUrl && settings.popupImageUrl.trim() !== "" && !imageError;
+  const shouldShowImage =
+    settings.popupImageUrl &&
+    settings.popupImageUrl.trim() !== "" &&
+    !imageError;
 
   if (!isOpen) return null;
 
@@ -426,7 +480,8 @@ export function NewsletterPopup({
         <div
           className="relative w-full max-w-lg bg-gradient-to-br from-slc-dark via-slc-card to-slc-dark border border-slc-border rounded-2xl shadow-2xl pointer-events-auto animate-in zoom-in-95 fade-in duration-300"
           style={{
-            boxShadow: "0 0 60px rgba(249, 115, 22, 0.2), 0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            boxShadow:
+              "0 0 60px rgba(249, 115, 22, 0.2), 0 25px 50px -12px rgba(0, 0, 0, 0.5)",
           }}
         >
           {/* Close button */}
@@ -443,7 +498,10 @@ export function NewsletterPopup({
             {/* Popup Image or Icon */}
             <div className="flex justify-center mb-4">
               {shouldShowImage ? (
-                <div className="w-32 h-32 sm:w-40 sm:h-40 animate-bounce" style={{ animationDuration: "2s" }}>
+                <div
+                  className="w-32 h-32 sm:w-40 sm:h-40 animate-bounce"
+                  style={{ animationDuration: "2s" }}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={settings.popupImageUrl}
@@ -468,14 +526,15 @@ export function NewsletterPopup({
                 <h3 className="font-oswald text-2xl uppercase text-white mb-2">
                   {settings.successTitle}
                 </h3>
-                <p className="text-slc-muted">
-                  {settings.successMessage}
-                </p>
+                <p className="text-slc-muted">{settings.successMessage}</p>
                 {/* Download reward file */}
-                {(downloadFile || (settings.downloadFileEnabled && settings.downloadFileUrl)) && (
+                {(downloadFile ||
+                  (settings.downloadFileEnabled &&
+                    settings.downloadFileUrl)) && (
                   <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-xl">
                     <p className="text-sm text-slc-muted mb-3">
-                      {downloadFile?.description || settings.downloadDescription}
+                      {downloadFile?.description ||
+                        settings.downloadDescription}
                     </p>
                     <a
                       href={downloadFile?.url || settings.downloadFileUrl}
@@ -488,7 +547,9 @@ export function NewsletterPopup({
                       {downloadFile?.buttonText || settings.downloadButtonText}
                     </a>
                     <p className="text-xs text-slc-muted mt-2">
-                      {downloadFile?.name || settings.downloadFileName || "Archivo exclusivo"}
+                      {downloadFile?.name ||
+                        settings.downloadFileName ||
+                        "Archivo exclusivo"}
                     </p>
                   </div>
                 )}
@@ -539,11 +600,17 @@ export function NewsletterPopup({
                         </div>
                       ) : (
                         // Icon
-                        <span className={`shrink-0 ${colorMap[benefit.color] || "text-primary"}`}>
-                          {iconMap[benefit.icon] || <Gift className="w-5 h-5" />}
+                        <span
+                          className={`shrink-0 ${colorMap[benefit.color] || "text-primary"}`}
+                        >
+                          {iconMap[benefit.icon] || (
+                            <Gift className="w-5 h-5" />
+                          )}
                         </span>
                       )}
-                      <span className="text-xs text-slc-muted">{benefit.title}</span>
+                      <span className="text-xs text-slc-muted">
+                        {benefit.title}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -564,7 +631,9 @@ export function NewsletterPopup({
                   </div>
 
                   {errorMessage && (
-                    <p className="text-red-500 text-sm text-center">{errorMessage}</p>
+                    <p className="text-red-500 text-sm text-center">
+                      {errorMessage}
+                    </p>
                   )}
 
                   <Button

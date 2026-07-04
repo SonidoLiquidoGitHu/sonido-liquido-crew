@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { Play, ChevronLeft, ChevronRight, RefreshCw, Youtube, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Play,
+  RefreshCw,
+  Youtube,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 interface RandomVideo {
   id: string;
@@ -136,7 +143,9 @@ export function RandomVideoCarousel({
               <Youtube className="w-4 h-4" />
               <span>Contenido Aleatorio</span>
             </div>
-            <h2 className="font-oswald text-3xl md:text-4xl uppercase">{title}</h2>
+            <h2 className="font-oswald text-3xl md:text-4xl uppercase">
+              {title}
+            </h2>
             {subtitle && <p className="text-slc-muted mt-2">{subtitle}</p>}
           </div>
 
@@ -196,8 +205,18 @@ export function RandomVideoCarousel({
               onClick={() => setSelectedVideo(null)}
               className="absolute top-4 right-4 text-white hover:text-red-500 transition-colors"
             >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-8 h-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -214,7 +233,9 @@ export function RandomVideoCarousel({
               key={video.id}
               className={cn(
                 "flex-shrink-0 w-[300px] md:w-[350px] snap-start transition-all duration-300",
-                currentIndex === index ? "scale-100 opacity-100" : "scale-95 opacity-70"
+                currentIndex === index
+                  ? "scale-100 opacity-100"
+                  : "scale-95 opacity-70",
               )}
             >
               <div
@@ -253,7 +274,11 @@ export function RandomVideoCarousel({
                   {/* Views Badge */}
                   {video.viewCount && (
                     <div className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
                       </svg>
                       {formatViews(video.viewCount)}
@@ -276,8 +301,6 @@ export function RandomVideoCarousel({
                       {video.artistName}
                     </Link>
                   )}
-
-
                 </div>
               </div>
             </div>
@@ -295,7 +318,7 @@ export function RandomVideoCarousel({
                   "w-2 h-2 rounded-full transition-all",
                   currentIndex === index
                     ? "bg-red-500 w-6"
-                    : "bg-slc-muted/30 hover:bg-slc-muted/50"
+                    : "bg-slc-muted/30 hover:bg-slc-muted/50",
                 )}
               />
             ))}

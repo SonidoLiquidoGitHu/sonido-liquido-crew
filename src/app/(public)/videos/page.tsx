@@ -1,12 +1,13 @@
-import { Suspense } from "react";
 import { VideoCard } from "@/components/public/cards/VideoCard";
-import { videosService } from "@/lib/services";
 import { Skeleton } from "@/components/ui/skeleton";
+import { videosService } from "@/lib/services";
 import { Video } from "lucide-react";
+import { Suspense } from "react";
 
 export const metadata = {
   title: "Videos | Sonido Líquido Crew",
-  description: "Videos oficiales, freestyles y sesiones en vivo de Sonido Líquido Crew.",
+  description:
+    "Videos oficiales, freestyles y sesiones en vivo de Sonido Líquido Crew.",
 };
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,9 @@ async function VideosGrid() {
     return (
       <div className="text-center py-20">
         <Video className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-        <h3 className="text-xl font-oswald uppercase mb-2">Cargando Videos...</h3>
+        <h3 className="text-xl font-oswald uppercase mb-2">
+          Cargando Videos...
+        </h3>
         <p className="text-slc-muted">
           No hay videos disponibles en este momento.
         </p>

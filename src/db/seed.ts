@@ -1,16 +1,16 @@
+import { generateUUID, slugify } from "../lib/utils";
 import { db } from "./client";
 import {
-  users,
-  artists,
-  artistExternalProfiles,
-  releases,
-  releaseArtists,
-  playlists,
-  videos,
   events,
+  artistExternalProfiles,
+  artists,
+  playlists,
+  releaseArtists,
+  releases,
   siteSettings,
+  users,
+  videos,
 } from "./schema";
-import { generateUUID, slugify } from "../lib/utils";
 
 // ===========================================
 // SEED DATA WITH REAL SPOTIFY IDS
@@ -24,7 +24,8 @@ const artistsData = [
     name: "Zaque",
     role: "mc" as const,
     bio: "Fundador de Sonido Líquido Crew. MC y productor con más de 25 años en el Hip Hop mexicano.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5eb8b6d0b8ca8e8b0e7d3e7f8a9",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5eb8b6d0b8ca8e8b0e7d3e7f8a9",
     tintColor: "cyan",
     isFeatured: true,
     sortOrder: 1,
@@ -37,7 +38,8 @@ const artistsData = [
     name: "Brez",
     role: "mc" as const,
     bio: "MC con un estilo lírico distintivo. Sus álbumes conceptuales destacan por su profundidad.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5eba1b2c3d4e5f6a7b8c9d0e1f2",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5eba1b2c3d4e5f6a7b8c9d0e1f2",
     tintColor: "pink",
     isFeatured: true,
     sortOrder: 3,
@@ -50,7 +52,8 @@ const artistsData = [
     name: "Bruno Grasso",
     role: "mc" as const,
     bio: "MC y productor con un sonido fresco que mezcla boom bap con elementos modernos.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebc2d3e4f5a6b7c8d9e0f1a2b3",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebc2d3e4f5a6b7c8d9e0f1a2b3",
     tintColor: "purple",
     isFeatured: false,
     sortOrder: 4,
@@ -63,7 +66,8 @@ const artistsData = [
     name: "Dilema",
     role: "mc" as const,
     bio: "MC con letras introspectivas y un flow característico.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebd3e4f5a6b7c8d9e0f1a2b3c4",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebd3e4f5a6b7c8d9e0f1a2b3c4",
     tintColor: "orange",
     isFeatured: false,
     sortOrder: 5,
@@ -76,7 +80,8 @@ const artistsData = [
     name: "Codak",
     role: "mc" as const,
     bio: "Miembro fundador de Sonido Líquido Crew desde 1999.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebe4f5a6b7c8d9e0f1a2b3c4d5",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebe4f5a6b7c8d9e0f1a2b3c4d5",
     tintColor: "yellow",
     isFeatured: false,
     sortOrder: 6,
@@ -89,7 +94,8 @@ const artistsData = [
     name: "Kev Cabrone",
     role: "mc" as const,
     bio: "MC con un estilo único y presencia escénica notable.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebf5a6b7c8d9e0f1a2b3c4d5e6",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebf5a6b7c8d9e0f1a2b3c4d5e6",
     tintColor: "cyan",
     isFeatured: false,
     sortOrder: 7,
@@ -102,7 +108,8 @@ const artistsData = [
     name: "Hassyel",
     role: "mc" as const,
     bio: "MC del crew con un estilo versátil.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5eba6b7c8d9e0f1a2b3c4d5e6f7",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5eba6b7c8d9e0f1a2b3c4d5e6f7",
     tintColor: "green",
     isFeatured: false,
     sortOrder: 8,
@@ -115,7 +122,8 @@ const artistsData = [
     name: "X Santa-Ana",
     role: "lado_b" as const,
     bio: "DJ de la división Lado B de Sonido Líquido Crew.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebb7c8d9e0f1a2b3c4d5e6f7a8",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebb7c8d9e0f1a2b3c4d5e6f7a8",
     tintColor: "pink",
     isFeatured: true,
     sortOrder: 9,
@@ -128,7 +136,8 @@ const artistsData = [
     name: "Fancy Freak",
     role: "dj" as const,
     bio: "DJ y productor con un estilo que fusiona géneros.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebc8d9e0f1a2b3c4d5e6f7a8b9",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebc8d9e0f1a2b3c4d5e6f7a8b9",
     tintColor: "purple",
     isFeatured: false,
     sortOrder: 10,
@@ -141,7 +150,8 @@ const artistsData = [
     name: "Q Master Weed",
     role: "dj" as const,
     bio: "DJ con un sonido característico y producciones originales.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebd9e0f1a2b3c4d5e6f7a8b9c0",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebd9e0f1a2b3c4d5e6f7a8b9c0",
     tintColor: "orange",
     isFeatured: false,
     sortOrder: 11,
@@ -154,7 +164,8 @@ const artistsData = [
     name: "Chas7p",
     role: "dj" as const,
     bio: "DJ del crew con sets dinámicos.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebe0f1a2b3c4d5e6f7a8b9c0d1",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebe0f1a2b3c4d5e6f7a8b9c0d1",
     tintColor: "yellow",
     isFeatured: false,
     sortOrder: 12,
@@ -167,7 +178,8 @@ const artistsData = [
     name: "Reick One",
     role: "dj" as const,
     bio: "DJ y productor del crew.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebf1a2b3c4d5e6f7a8b9c0d1e2",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebf1a2b3c4d5e6f7a8b9c0d1e2",
     tintColor: "cyan",
     isFeatured: false,
     sortOrder: 13,
@@ -180,7 +192,8 @@ const artistsData = [
     name: "Latin Geisha",
     role: "cantante" as const,
     bio: "Cantante con una voz única que complementa las producciones del crew.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5eba2b3c4d5e6f7a8b9c0d1e2f3",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5eba2b3c4d5e6f7a8b9c0d1e2f3",
     tintColor: "pink",
     isFeatured: false,
     sortOrder: 14,
@@ -193,7 +206,8 @@ const artistsData = [
     name: "Pepe Levine",
     role: "divo" as const,
     bio: "El Divo del crew con un estilo teatral único.",
-    profileImageUrl: "https://i.scdn.co/image/ab6761610000e5ebb3c4d5e6f7a8b9c0d1e2f3a4",
+    profileImageUrl:
+      "https://i.scdn.co/image/ab6761610000e5ebb3c4d5e6f7a8b9c0d1e2f3a4",
     tintColor: "purple",
     isFeatured: false,
     sortOrder: 15,
@@ -240,15 +254,39 @@ const videosData = [
 // Site settings
 const settingsData = [
   { key: "site_name", value: "Sonido Líquido Crew", type: "string" as const },
-  { key: "site_tagline", value: "Hip Hop México desde 1999", type: "string" as const },
-  { key: "contact_email", value: "prensasonidoliquido@gmail.com", type: "string" as const },
+  {
+    key: "site_tagline",
+    value: "Hip Hop México desde 1999",
+    type: "string" as const,
+  },
+  {
+    key: "contact_email",
+    value: "prensasonidoliquido@gmail.com",
+    type: "string" as const,
+  },
   { key: "contact_phone", value: "5528011881", type: "string" as const },
   { key: "location", value: "Ciudad de México, CDMX", type: "string" as const },
   { key: "founded_year", value: "1999", type: "number" as const },
-  { key: "spotify_playlist_url", value: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez", type: "string" as const },
-  { key: "youtube_channel_url", value: "https://www.youtube.com/@sonidoliquidocrew", type: "string" as const },
-  { key: "instagram_url", value: "https://www.instagram.com/sonidoliquido/", type: "string" as const },
-  { key: "facebook_url", value: "https://www.facebook.com/sonidoliquidocrew/", type: "string" as const },
+  {
+    key: "spotify_playlist_url",
+    value: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
+    type: "string" as const,
+  },
+  {
+    key: "youtube_channel_url",
+    value: "https://www.youtube.com/@sonidoliquidocrew",
+    type: "string" as const,
+  },
+  {
+    key: "instagram_url",
+    value: "https://www.instagram.com/sonidoliquido/",
+    type: "string" as const,
+  },
+  {
+    key: "facebook_url",
+    value: "https://www.facebook.com/sonidoliquidocrew/",
+    type: "string" as const,
+  },
 ];
 
 // Sample events - Past and Upcoming
@@ -256,7 +294,8 @@ const eventsData = [
   // Past events
   {
     title: "Aniversario 25 Años SLC",
-    description: "Celebración del 25 aniversario de Sonido Líquido Crew con todos los artistas del roster.",
+    description:
+      "Celebración del 25 aniversario de Sonido Líquido Crew con todos los artistas del roster.",
     venue: "Foro Indie Rocks!",
     city: "Ciudad de México",
     country: "México",
@@ -312,7 +351,8 @@ const eventsData = [
   // Upcoming events
   {
     title: "SLC Tour 2026 - CDMX",
-    description: "Primera fecha del tour nacional 2026. Show completo con todo el roster.",
+    description:
+      "Primera fecha del tour nacional 2026. Show completo con todo el roster.",
     venue: "Teatro Metropólitan",
     city: "Ciudad de México",
     country: "México",
@@ -324,7 +364,8 @@ const eventsData = [
   },
   {
     title: "SLC Tour 2026 - Guadalajara",
-    description: "Segunda fecha del tour nacional. Hip Hop en la perla tapatía.",
+    description:
+      "Segunda fecha del tour nacional. Hip Hop en la perla tapatía.",
     venue: "C3 Stage",
     city: "Guadalajara",
     country: "México",
@@ -531,14 +572,17 @@ async function seed() {
 
     console.log("\n✅ Database seeded successfully!");
     console.log("\n📊 Summary:");
-    console.log(`   • 1 admin user`);
+    console.log("   • 1 admin user");
     console.log(`   • ${artistsData.length} artists with real Spotify IDs`);
-    console.log(`   • ${releasesData.length} releases (sync from Spotify to add more)`);
+    console.log(
+      `   • ${releasesData.length} releases (sync from Spotify to add more)`,
+    );
     console.log(`   • ${videosData.length} videos`);
     console.log(`   • ${eventsData.length} events (past and upcoming)`);
     console.log(`   • ${settingsData.length} site settings`);
-    console.log("\n💡 Tip: Use the admin sync page to fetch releases from Spotify!");
-
+    console.log(
+      "\n💡 Tip: Use the admin sync page to fetch releases from Spotify!",
+    );
   } catch (error) {
     console.error("❌ Seed failed:", error);
     process.exit(1);

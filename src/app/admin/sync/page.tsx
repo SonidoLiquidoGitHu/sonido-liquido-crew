@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  RefreshCw,
-  CheckCircle,
   AlertTriangle,
+  CheckCircle,
   Clock,
-  Play,
   Database,
-  Music,
-  Video,
-  FolderOpen,
-  Plus,
   Disc3,
-  Loader2,
   Eye,
   EyeOff,
-  Save,
+  FolderOpen,
   Link2,
+  Loader2,
+  Music,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  Video,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface SyncService {
   id: string;
@@ -45,7 +45,8 @@ const initialServices: SyncService[] = [
   {
     id: "spotify",
     name: "Spotify",
-    description: "Sincroniza imágenes de artistas y datos de álbumes usando embed API (sin límites de tasa).",
+    description:
+      "Sincroniza imágenes de artistas y datos de álbumes usando embed API (sin límites de tasa).",
     iconId: "spotify",
     status: "idle",
     lastSync: null,
@@ -91,10 +92,17 @@ function ServiceIcon({ iconId }: { iconId: SyncService["iconId"] }) {
 export default function AdminSyncPage() {
   const [services, setServices] = useState<SyncService[]>(initialServices);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
-  const [stats, setStats] = useState<Stats>({ artists: 0, releases: 0, videos: 0 });
+  const [stats, setStats] = useState<Stats>({
+    artists: 0,
+    releases: 0,
+    videos: 0,
+  });
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [isAddingRelease, setIsAddingRelease] = useState(false);
-  const [addMessage, setAddMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [addMessage, setAddMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Spotify releases sync state
@@ -125,10 +133,13 @@ export default function AdminSyncPage() {
   const [showDropboxToken, setShowDropboxToken] = useState(false);
   const [isSavingDropboxToken, setIsSavingDropboxToken] = useState(false);
   const [isTestingDropbox, setIsTestingDropbox] = useState(false);
-  const [dropboxSaveMessage, setDropboxSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [dropboxSaveMessage, setDropboxSaveMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [dropboxStatus, setDropboxStatus] = useState<{
     configured: boolean; // token exists
-    connected: boolean;  // token works
+    connected: boolean; // token works
     oauthConfigured: boolean; // OAuth credentials available
     hasRefreshToken: boolean; // Has refresh token for auto-renewal
     usingEnvToken?: boolean; // Using DROPBOX_ACCESS_TOKEN env var
@@ -145,15 +156,30 @@ export default function AdminSyncPage() {
     async function fetchStats() {
       try {
         const [artistsRes, releasesRes, videosRes] = await Promise.all([
-          fetch("/api/artists").catch(() => ({ ok: false, json: () => Promise.resolve({ data: [] }) })),
-          fetch("/api/releases").catch(() => ({ ok: false, json: () => Promise.resolve({ data: [] }) })),
-          fetch("/api/videos").catch(() => ({ ok: false, json: () => Promise.resolve({ data: [] }) })),
+          fetch("/api/artists").catch(() => ({
+            ok: false,
+            json: () => Promise.resolve({ data: [] }),
+          })),
+          fetch("/api/releases").catch(() => ({
+            ok: false,
+            json: () => Promise.resolve({ data: [] }),
+          })),
+          fetch("/api/videos").catch(() => ({
+            ok: false,
+            json: () => Promise.resolve({ data: [] }),
+          })),
         ]);
 
         const [artistsData, releasesData, videosData] = await Promise.all([
-          artistsRes.ok !== false ? artistsRes.json().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-          releasesRes.ok !== false ? releasesRes.json().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-          videosRes.ok !== false ? videosRes.json().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          artistsRes.ok !== false
+            ? artistsRes.json().catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          releasesRes.ok !== false
+            ? releasesRes.json().catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          videosRes.ok !== false
+            ? videosRes.json().catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
         ]);
 
         setStats({
@@ -170,7 +196,9 @@ export default function AdminSyncPage() {
 
     async function checkDropboxStatus(forceRefresh = false) {
       try {
-        const url = forceRefresh ? "/api/admin/dropbox?refresh=true" : "/api/admin/dropbox";
+        const url = forceRefresh
+          ? "/api/admin/dropbox?refresh=true"
+          : "/api/admin/dropbox";
         const response = await fetch(url);
         const data = await response.json();
         console.log("[Sync] Dropbox status response:", data);
@@ -178,7 +206,10 @@ export default function AdminSyncPage() {
         if (data.success && data.data) {
           // configured = token exists in DB or env
           // connected = token actually works with Dropbox API
-          const hasToken = data.data.configured || data.data.hasDatabaseToken || data.data.hasEnvToken;
+          const hasToken =
+            data.data.configured ||
+            data.data.hasDatabaseToken ||
+            data.data.hasEnvToken;
           const isConnected = data.data.connected === true;
 
           setDropboxStatus({
@@ -201,12 +232,18 @@ export default function AdminSyncPage() {
             oauthConfigured: false,
             hasRefreshToken: false,
             usingEnvToken: false,
-            error: data.error || "Error checking status"
+            error: data.error || "Error checking status",
           });
         }
       } catch (error) {
         console.error("[Sync] Error checking Dropbox status:", error);
-        setDropboxStatus({ configured: false, connected: false, oauthConfigured: false, hasRefreshToken: false, error: "Connection error" });
+        setDropboxStatus({
+          configured: false,
+          connected: false,
+          oauthConfigured: false,
+          hasRefreshToken: false,
+          error: "Connection error",
+        });
       }
     }
 
@@ -219,14 +256,14 @@ export default function AdminSyncPage() {
       if (dropboxSuccess) {
         setDropboxSaveMessage({
           type: "success",
-          text: `¡Conectado exitosamente a Dropbox${dropboxSuccess !== "connected" ? `: ${dropboxSuccess}` : ""}!`
+          text: `¡Conectado exitosamente a Dropbox${dropboxSuccess !== "connected" ? `: ${dropboxSuccess}` : ""}!`,
         });
         // Clean URL
         window.history.replaceState({}, "", window.location.pathname);
       } else if (dropboxError) {
         setDropboxSaveMessage({
           type: "error",
-          text: `Error al conectar: ${dropboxError}`
+          text: `Error al conectar: ${dropboxError}`,
         });
         // Clean URL
         window.history.replaceState({}, "", window.location.pathname);
@@ -241,7 +278,10 @@ export default function AdminSyncPage() {
   // Save Dropbox token
   const handleSaveDropboxToken = async () => {
     if (!dropboxToken.trim()) {
-      setDropboxSaveMessage({ type: "error", text: "Por favor ingresa un token" });
+      setDropboxSaveMessage({
+        type: "error",
+        text: "Por favor ingresa un token",
+      });
       return;
     }
 
@@ -269,7 +309,10 @@ export default function AdminSyncPage() {
           email: data.data?.email,
         });
         setDropboxToken("");
-        setDropboxSaveMessage({ type: "success", text: `¡Conectado! Cuenta: ${data.data?.accountName || data.data?.email || "verificada"}` });
+        setDropboxSaveMessage({
+          type: "success",
+          text: `¡Conectado! Cuenta: ${data.data?.accountName || data.data?.email || "verificada"}`,
+        });
       } else {
         const errorMsg = data.error || "Error desconocido al guardar token";
         setDropboxStatus({
@@ -277,14 +320,20 @@ export default function AdminSyncPage() {
           connected: false,
           oauthConfigured: dropboxStatus?.oauthConfigured || false,
           hasRefreshToken: false,
-          error: errorMsg
+          error: errorMsg,
         });
         setDropboxSaveMessage({ type: "error", text: errorMsg });
       }
     } catch (error) {
       console.error("[Sync] Error saving token:", error);
       const errorMsg = "Error de conexión al servidor";
-      setDropboxStatus({ configured: false, connected: false, oauthConfigured: false, hasRefreshToken: false, error: errorMsg });
+      setDropboxStatus({
+        configured: false,
+        connected: false,
+        oauthConfigured: false,
+        hasRefreshToken: false,
+        error: errorMsg,
+      });
       setDropboxSaveMessage({ type: "error", text: errorMsg });
     } finally {
       setIsSavingDropboxToken(false);
@@ -297,7 +346,9 @@ export default function AdminSyncPage() {
     setDropboxSaveMessage(null);
     try {
       // Always force refresh when testing to get fresh data
-      const url = forceRefresh ? "/api/admin/dropbox?refresh=true" : "/api/admin/dropbox";
+      const url = forceRefresh
+        ? "/api/admin/dropbox?refresh=true"
+        : "/api/admin/dropbox";
       const response = await fetch(url);
       const data = await response.json();
       console.log("[Sync] Test connection response:", data);
@@ -338,7 +389,7 @@ export default function AdminSyncPage() {
           connected: false,
           oauthConfigured: false,
           hasRefreshToken: false,
-          error: data.error || "Error testing connection"
+          error: data.error || "Error testing connection",
         });
         setDropboxSaveMessage({
           type: "error",
@@ -347,18 +398,29 @@ export default function AdminSyncPage() {
       }
     } catch (error) {
       console.error("[Sync] Error testing connection:", error);
-      setDropboxStatus({ configured: false, connected: false, oauthConfigured: false, hasRefreshToken: false, error: "Error de conexión" });
-      setDropboxSaveMessage({ type: "error", text: "Error de conexión al servidor" });
+      setDropboxStatus({
+        configured: false,
+        connected: false,
+        oauthConfigured: false,
+        hasRefreshToken: false,
+        error: "Error de conexión",
+      });
+      setDropboxSaveMessage({
+        type: "error",
+        text: "Error de conexión al servidor",
+      });
     } finally {
       setIsTestingDropbox(false);
     }
   };
 
   const handleSync = async (serviceId: string) => {
-    setServices(prev =>
-      prev.map(s =>
-        s.id === serviceId ? { ...s, status: "running" as const, errorMessage: undefined } : s
-      )
+    setServices((prev) =>
+      prev.map((s) =>
+        s.id === serviceId
+          ? { ...s, status: "running" as const, errorMessage: undefined }
+          : s,
+      ),
     );
 
     try {
@@ -380,22 +442,29 @@ export default function AdminSyncPage() {
 
       if (data.success) {
         // For YouTube, also show errors from the data object
-        const youtubeErrors = serviceId === "youtube" && data.data?.errors?.length > 0
-          ? data.data.errors[0] // Show first error as the status message
-          : undefined;
+        const youtubeErrors =
+          serviceId === "youtube" && data.data?.errors?.length > 0
+            ? data.data.errors[0] // Show first error as the status message
+            : undefined;
 
-        setServices(prev =>
-          prev.map(s =>
+        setServices((prev) =>
+          prev.map((s) =>
             s.id === serviceId
               ? {
                   ...s,
-                  status: youtubeErrors ? "error" as const : "success" as const,
+                  status: youtubeErrors
+                    ? ("error" as const)
+                    : ("success" as const),
                   lastSync: new Date().toISOString(),
-                  itemsProcessed: data.data?.videosProcessed || data.processed || data.count || 0,
+                  itemsProcessed:
+                    data.data?.videosProcessed ||
+                    data.processed ||
+                    data.count ||
+                    0,
                   errorMessage: youtubeErrors,
                 }
-              : s
-          )
+              : s,
+          ),
         );
 
         // Refresh stats
@@ -415,38 +484,39 @@ export default function AdminSyncPage() {
           videos: videosData.data?.length || 0,
         });
       } else {
-        setServices(prev =>
-          prev.map(s =>
+        setServices((prev) =>
+          prev.map((s) =>
             s.id === serviceId
               ? {
                   ...s,
                   status: "error" as const,
-                  errorMessage: data.error || data.data?.errors?.[0] || "Sync failed",
+                  errorMessage:
+                    data.error || data.data?.errors?.[0] || "Sync failed",
                 }
-              : s
-          )
+              : s,
+          ),
         );
       }
     } catch (error) {
-      setServices(prev =>
-        prev.map(s =>
+      setServices((prev) =>
+        prev.map((s) =>
           s.id === serviceId
             ? {
                 ...s,
                 status: "error" as const,
                 errorMessage: "Connection error",
               }
-            : s
-        )
+            : s,
+        ),
       );
     }
 
     // Reset status after 5 seconds
     setTimeout(() => {
-      setServices(prev =>
-        prev.map(s =>
-          s.id === serviceId ? { ...s, status: "idle" as const } : s
-        )
+      setServices((prev) =>
+        prev.map((s) =>
+          s.id === serviceId ? { ...s, status: "idle" as const } : s,
+        ),
       );
     }, 5000);
   };
@@ -476,7 +546,7 @@ export default function AdminSyncPage() {
         // Refresh stats
         const releasesRes = await fetch("/api/releases");
         const releasesData = await releasesRes.json();
-        setStats(prev => ({
+        setStats((prev) => ({
           ...prev,
           releases: releasesData?.data?.length || 0,
         }));
@@ -507,7 +577,11 @@ export default function AdminSyncPage() {
       setStatsSyncResult({
         success: data.success,
         message: data.message,
-        error: typeof data.error === "string" ? data.error : data.error?.message || (data.success ? undefined : "Error desconocido"),
+        error:
+          typeof data.error === "string"
+            ? data.error
+            : data.error?.message ||
+              (data.success ? undefined : "Error desconocido"),
         processed: data.processed,
         failed: data.failed,
       });
@@ -633,7 +707,10 @@ export default function AdminSyncPage() {
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-xl bg-spotify/20 flex items-center justify-center flex-shrink-0">
               <svg className="w-8 h-8 text-spotify" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                <path
+                  fill="currentColor"
+                  d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"
+                />
               </svg>
             </div>
             <div>
@@ -642,8 +719,9 @@ export default function AdminSyncPage() {
                 Sincronizar TODA la Discografía
               </h2>
               <p className="text-slc-muted text-sm mt-1">
-                Descarga automáticamente todos los álbumes, EPs y singles de los 15 artistas del crew desde Spotify.
-                Incluye portadas en alta resolución.
+                Descarga automáticamente todos los álbumes, EPs y singles de los
+                15 artistas del crew desde Spotify. Incluye portadas en alta
+                resolución.
               </p>
             </div>
           </div>
@@ -668,11 +746,13 @@ export default function AdminSyncPage() {
 
         {/* Results */}
         {releasesSyncResult && (
-          <div className={`mt-6 p-4 rounded-lg ${
-            releasesSyncResult.success
-              ? "bg-green-500/10 border border-green-500/30"
-              : "bg-red-500/10 border border-red-500/30"
-          }`}>
+          <div
+            className={`mt-6 p-4 rounded-lg ${
+              releasesSyncResult.success
+                ? "bg-green-500/10 border border-green-500/30"
+                : "bg-red-500/10 border border-red-500/30"
+            }`}
+          >
             {releasesSyncResult.success ? (
               <div>
                 <div className="flex items-center gap-2 text-green-500 font-medium mb-3">
@@ -681,31 +761,51 @@ export default function AdminSyncPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                    <div className="font-oswald text-2xl text-spotify">{releasesSyncResult.totalReleasesFound || 0}</div>
-                    <div className="text-xs text-slc-muted uppercase">Encontrados</div>
-                  </div>
-                  <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                    <div className="font-oswald text-2xl text-green-500">{releasesSyncResult.newReleasesCreated || 0}</div>
-                    <div className="text-xs text-slc-muted uppercase">Nuevos</div>
-                  </div>
-                  <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                    <div className="font-oswald text-2xl text-slc-muted">{releasesSyncResult.existingReleasesSkipped || 0}</div>
-                    <div className="text-xs text-slc-muted uppercase">Ya existentes</div>
-                  </div>
-                </div>
-                {releasesSyncResult.artistBreakdown && releasesSyncResult.artistBreakdown.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm text-slc-muted mb-2">Desglose por artista:</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-xs">
-                      {releasesSyncResult.artistBreakdown.map((artist) => (
-                        <div key={artist.name} className="bg-slc-dark/50 rounded px-2 py-1 flex justify-between">
-                          <span className="truncate">{artist.name}</span>
-                          <span className="text-spotify ml-1">{artist.found}</span>
-                        </div>
-                      ))}
+                    <div className="font-oswald text-2xl text-spotify">
+                      {releasesSyncResult.totalReleasesFound || 0}
+                    </div>
+                    <div className="text-xs text-slc-muted uppercase">
+                      Encontrados
                     </div>
                   </div>
-                )}
+                  <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
+                    <div className="font-oswald text-2xl text-green-500">
+                      {releasesSyncResult.newReleasesCreated || 0}
+                    </div>
+                    <div className="text-xs text-slc-muted uppercase">
+                      Nuevos
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
+                    <div className="font-oswald text-2xl text-slc-muted">
+                      {releasesSyncResult.existingReleasesSkipped || 0}
+                    </div>
+                    <div className="text-xs text-slc-muted uppercase">
+                      Ya existentes
+                    </div>
+                  </div>
+                </div>
+                {releasesSyncResult.artistBreakdown &&
+                  releasesSyncResult.artistBreakdown.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm text-slc-muted mb-2">
+                        Desglose por artista:
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-xs">
+                        {releasesSyncResult.artistBreakdown.map((artist) => (
+                          <div
+                            key={artist.name}
+                            className="bg-slc-dark/50 rounded px-2 py-1 flex justify-between"
+                          >
+                            <span className="truncate">{artist.name}</span>
+                            <span className="text-spotify ml-1">
+                              {artist.found}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             ) : (
               <div>
@@ -730,7 +830,13 @@ export default function AdminSyncPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-              <svg className="w-8 h-8 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                className="w-8 h-8 text-purple-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -742,8 +848,9 @@ export default function AdminSyncPage() {
                 Sincronizar Estadísticas
               </h2>
               <p className="text-slc-muted text-sm mt-1">
-                Actualiza el conteo de seguidores de Spotify para todos los artistas del crew.
-                Requiere credenciales de API de Spotify configuradas.
+                Actualiza el conteo de seguidores de Spotify para todos los
+                artistas del crew. Requiere credenciales de API de Spotify
+                configuradas.
               </p>
             </div>
           </div>
@@ -768,11 +875,13 @@ export default function AdminSyncPage() {
 
         {/* Stats Sync Results */}
         {statsSyncResult && (
-          <div className={`mt-6 p-4 rounded-lg ${
-            statsSyncResult.success
-              ? "bg-green-500/10 border border-green-500/30"
-              : "bg-red-500/10 border border-red-500/30"
-          }`}>
+          <div
+            className={`mt-6 p-4 rounded-lg ${
+              statsSyncResult.success
+                ? "bg-green-500/10 border border-green-500/30"
+                : "bg-red-500/10 border border-red-500/30"
+            }`}
+          >
             {statsSyncResult.success ? (
               <div>
                 <div className="flex items-center gap-2 text-green-500 font-medium mb-3">
@@ -781,12 +890,20 @@ export default function AdminSyncPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                    <div className="font-oswald text-2xl text-purple-500">{statsSyncResult.processed || 0}</div>
-                    <div className="text-xs text-slc-muted uppercase">Actualizados</div>
+                    <div className="font-oswald text-2xl text-purple-500">
+                      {statsSyncResult.processed || 0}
+                    </div>
+                    <div className="text-xs text-slc-muted uppercase">
+                      Actualizados
+                    </div>
                   </div>
                   <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                    <div className="font-oswald text-2xl text-red-500">{statsSyncResult.failed || 0}</div>
-                    <div className="text-xs text-slc-muted uppercase">Fallidos</div>
+                    <div className="font-oswald text-2xl text-red-500">
+                      {statsSyncResult.failed || 0}
+                    </div>
+                    <div className="text-xs text-slc-muted uppercase">
+                      Fallidos
+                    </div>
                   </div>
                 </div>
               </div>
@@ -807,16 +924,23 @@ export default function AdminSyncPage() {
           Agregar Lanzamiento Rápido
         </h2>
         <p className="text-slc-muted text-sm mb-4">
-          Pega la URL de un álbum de Spotify para agregarlo directamente a la discografía.
+          Pega la URL de un álbum de Spotify para agregarlo directamente a la
+          discografía.
         </p>
 
         {addMessage && (
-          <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm ${
-            addMessage.type === "success"
-              ? "bg-green-500/10 border border-green-500/20 text-green-500"
-              : "bg-red-500/10 border border-red-500/20 text-red-500"
-          }`}>
-            {addMessage.type === "success" ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+          <div
+            className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm ${
+              addMessage.type === "success"
+                ? "bg-green-500/10 border border-green-500/20 text-green-500"
+                : "bg-red-500/10 border border-red-500/20 text-red-500"
+            }`}
+          >
+            {addMessage.type === "success" ? (
+              <CheckCircle className="w-4 h-4" />
+            ) : (
+              <AlertTriangle className="w-4 h-4" />
+            )}
             {addMessage.text}
           </div>
         )}
@@ -852,21 +976,34 @@ export default function AdminSyncPage() {
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center`}
+                <div
+                  className={
+                    "w-12 h-12 rounded-lg flex items-center justify-center"
+                  }
                   style={{
-                    backgroundColor: service.id === "spotify" ? "rgba(30, 215, 96, 0.1)" :
-                                    service.id === "youtube" ? "rgba(255, 0, 0, 0.1)" :
-                                    "rgba(59, 130, 246, 0.1)",
-                    color: service.id === "spotify" ? "#1ed760" :
-                           service.id === "youtube" ? "#ff0000" :
-                           "#3b82f6"
+                    backgroundColor:
+                      service.id === "spotify"
+                        ? "rgba(30, 215, 96, 0.1)"
+                        : service.id === "youtube"
+                          ? "rgba(255, 0, 0, 0.1)"
+                          : "rgba(59, 130, 246, 0.1)",
+                    color:
+                      service.id === "spotify"
+                        ? "#1ed760"
+                        : service.id === "youtube"
+                          ? "#ff0000"
+                          : "#3b82f6",
                   }}
                 >
                   <ServiceIcon iconId={service.iconId} />
                 </div>
                 <div>
-                  <h3 className="font-oswald text-lg uppercase">{service.name}</h3>
-                  <p className="text-slc-muted text-sm">{service.description}</p>
+                  <h3 className="font-oswald text-lg uppercase">
+                    {service.name}
+                  </h3>
+                  <p className="text-slc-muted text-sm">
+                    {service.description}
+                  </p>
                 </div>
               </div>
 
@@ -874,11 +1011,14 @@ export default function AdminSyncPage() {
                 <div className="text-right">
                   <div className="flex items-center gap-2 justify-end">
                     {getStatusIcon(service.status)}
-                    <span className="text-sm">{getStatusText(service.status)}</span>
+                    <span className="text-sm">
+                      {getStatusText(service.status)}
+                    </span>
                   </div>
                   {service.lastSync && (
                     <p className="text-xs text-slc-muted mt-1">
-                      Último: {new Date(service.lastSync).toLocaleString("es-MX")}
+                      Último:{" "}
+                      {new Date(service.lastSync).toLocaleString("es-MX")}
                     </p>
                   )}
                 </div>
@@ -901,7 +1041,10 @@ export default function AdminSyncPage() {
             {service.status === "running" && (
               <div className="mt-4">
                 <div className="w-full h-1 bg-slc-border rounded-full overflow-hidden">
-                  <div className="h-full bg-primary animate-pulse" style={{ width: "60%" }} />
+                  <div
+                    className="h-full bg-primary animate-pulse"
+                    style={{ width: "60%" }}
+                  />
                 </div>
               </div>
             )}
@@ -918,9 +1061,7 @@ export default function AdminSyncPage() {
             {/* Error message */}
             {service.status === "error" && service.errorMessage && (
               <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-red-500 text-sm">
-                  ✗ {service.errorMessage}
-                </p>
+                <p className="text-red-500 text-sm">✗ {service.errorMessage}</p>
               </div>
             )}
           </div>
@@ -928,12 +1069,16 @@ export default function AdminSyncPage() {
       </div>
 
       {/* Roster Monthly Videos Sync */}
-      <RosterVideosSync onVideosAdded={() => {
-        // Refresh stats
-        fetch("/api/videos").then(r => r.json()).then(data => {
-          setStats(prev => ({ ...prev, videos: data.data?.length || 0 }));
-        });
-      }} />
+      <RosterVideosSync
+        onVideosAdded={() => {
+          // Refresh stats
+          fetch("/api/videos")
+            .then((r) => r.json())
+            .then((data) => {
+              setStats((prev) => ({ ...prev, videos: data.data?.length || 0 }));
+            });
+        }}
+      />
 
       {/* Dropbox Configuration */}
       <div className="mt-8">
@@ -945,25 +1090,33 @@ export default function AdminSyncPage() {
           <div className="flex flex-col gap-4">
             <div>
               <p className="text-slc-muted text-sm mb-4">
-                Conecta tu cuenta de Dropbox para habilitar la subida de archivos multimedia (beats, imágenes, press kits).
+                Conecta tu cuenta de Dropbox para habilitar la subida de
+                archivos multimedia (beats, imágenes, press kits).
               </p>
 
               {/* Status indicator */}
               {dropboxStatus && (
-                <div className={`mb-4 p-3 rounded-lg text-sm ${
-                  dropboxStatus.connected
-                    ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                    : dropboxStatus.configured
-                    ? "bg-red-500/10 border border-red-500/20 text-red-500"
-                    : "bg-yellow-500/10 border border-yellow-500/20 text-yellow-500"
-                }`}>
+                <div
+                  className={`mb-4 p-3 rounded-lg text-sm ${
+                    dropboxStatus.connected
+                      ? "bg-green-500/10 border border-green-500/20 text-green-500"
+                      : dropboxStatus.configured
+                        ? "bg-red-500/10 border border-red-500/20 text-red-500"
+                        : "bg-yellow-500/10 border border-yellow-500/20 text-yellow-500"
+                  }`}
+                >
                   {dropboxStatus.connected ? (
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <CheckCircle className="w-4 h-4" />
                           <span>
-                            Conectado como <strong>{dropboxStatus.accountName || dropboxStatus.email || "cuenta verificada"}</strong>
+                            Conectado como{" "}
+                            <strong>
+                              {dropboxStatus.accountName ||
+                                dropboxStatus.email ||
+                                "cuenta verificada"}
+                            </strong>
                           </span>
                         </div>
                         <Button
@@ -976,10 +1129,21 @@ export default function AdminSyncPage() {
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ action: "clear" }),
                               });
-                              setDropboxStatus({ configured: false, connected: false, oauthConfigured: dropboxStatus.oauthConfigured, hasRefreshToken: false });
-                              setDropboxSaveMessage({ type: "success", text: "Dropbox desconectado" });
+                              setDropboxStatus({
+                                configured: false,
+                                connected: false,
+                                oauthConfigured: dropboxStatus.oauthConfigured,
+                                hasRefreshToken: false,
+                              });
+                              setDropboxSaveMessage({
+                                type: "success",
+                                text: "Dropbox desconectado",
+                              });
                             } catch (e) {
-                              setDropboxSaveMessage({ type: "error", text: "Error al desconectar" });
+                              setDropboxSaveMessage({
+                                type: "error",
+                                text: "Error al desconectar",
+                              });
                             }
                           }}
                           className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
@@ -990,19 +1154,25 @@ export default function AdminSyncPage() {
                       {/* Token source badges */}
                       <div className="flex flex-wrap gap-2">
                         {dropboxStatus.tokenSource && (
-                          <span className={`text-xs px-2 py-0.5 rounded ${
-                            dropboxStatus.tokenSource === "database"
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-blue-500/20 text-blue-400"
-                          }`}>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              dropboxStatus.tokenSource === "database"
+                                ? "bg-green-500/20 text-green-400"
+                                : "bg-blue-500/20 text-blue-400"
+                            }`}
+                          >
                             Token: {dropboxStatus.tokenSource}
                           </span>
                         )}
                         {dropboxStatus.hasRefreshToken && (
-                          <span className="text-xs bg-green-500/20 px-2 py-0.5 rounded text-green-400">Auto-renovación</span>
+                          <span className="text-xs bg-green-500/20 px-2 py-0.5 rounded text-green-400">
+                            Auto-renovación
+                          </span>
                         )}
                         {dropboxStatus.usingEnvToken && (
-                          <span className="text-xs bg-yellow-500/20 px-2 py-0.5 rounded text-yellow-400">⚠️ Env token (fallback)</span>
+                          <span className="text-xs bg-yellow-500/20 px-2 py-0.5 rounded text-yellow-400">
+                            ⚠️ Env token (fallback)
+                          </span>
                         )}
                       </div>
                       {/* Token preview for debugging */}
@@ -1011,7 +1181,11 @@ export default function AdminSyncPage() {
                           Token: {dropboxStatus.tokenPreview}
                           {dropboxStatus.tokenSavedAt && (
                             <span className="ml-2">
-                              (guardado: {new Date(dropboxStatus.tokenSavedAt).toLocaleString("es-MX")})
+                              (guardado:{" "}
+                              {new Date(
+                                dropboxStatus.tokenSavedAt,
+                              ).toLocaleString("es-MX")}
+                              )
                             </span>
                           )}
                         </div>
@@ -1021,13 +1195,19 @@ export default function AdminSyncPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4" />
-                        <span>{dropboxStatus.error || "Token inválido o expirado"}</span>
+                        <span>
+                          {dropboxStatus.error || "Token inválido o expirado"}
+                        </span>
                       </div>
                       {/* Show token info even when failed */}
                       {dropboxStatus.tokenPreview && (
                         <div className="text-xs text-red-400/60 font-mono mt-2">
                           Token probado: {dropboxStatus.tokenPreview}
-                          {dropboxStatus.tokenSource && <span className="ml-2">(fuente: {dropboxStatus.tokenSource})</span>}
+                          {dropboxStatus.tokenSource && (
+                            <span className="ml-2">
+                              (fuente: {dropboxStatus.tokenSource})
+                            </span>
+                          )}
                         </div>
                       )}
                       <p className="text-xs mt-2 text-red-400/80">
@@ -1039,7 +1219,9 @@ export default function AdminSyncPage() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
-                      <span>No configurado - Conecta tu cuenta de Dropbox abajo</span>
+                      <span>
+                        No configurado - Conecta tu cuenta de Dropbox abajo
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1050,7 +1232,9 @@ export default function AdminSyncPage() {
                 <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                      <h4 className="font-medium text-blue-400 mb-1">Conectar con Dropbox</h4>
+                      <h4 className="font-medium text-blue-400 mb-1">
+                        Conectar con Dropbox
+                      </h4>
                       <p className="text-xs text-slc-muted">
                         {dropboxStatus?.oauthConfigured
                           ? "Conecta con un clic. Los tokens se renuevan automáticamente, sin necesidad de volver a conectar."
@@ -1058,11 +1242,17 @@ export default function AdminSyncPage() {
                       </p>
                     </div>
                     <Button
-                      onClick={() => window.location.href = "/api/dropbox/auth"}
+                      onClick={() =>
+                        (window.location.href = "/api/dropbox/auth")
+                      }
                       className="bg-blue-500 hover:bg-blue-600 font-bold shrink-0"
                     >
-                      <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 6.134L6.069 9.797L12 13.459l5.931-3.662L12 6.134zM6.069 14.797L12 18.459l5.931-3.662L12 11.134l-5.931 3.663zM12 2L2 8.259l5.69 3.519L12 9.253l4.31 2.525L22 8.259 12 2zm0 14.506L7.69 19.03 12 21.555l4.31-2.525L12 16.506z"/>
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M12 6.134L6.069 9.797L12 13.459l5.931-3.662L12 6.134zM6.069 14.797L12 18.459l5.931-3.662L12 11.134l-5.931 3.663zM12 2L2 8.259l5.69 3.519L12 9.253l4.31 2.525L22 8.259 12 2zm0 14.506L7.69 19.03 12 21.555l4.31-2.525L12 16.506z" />
                       </svg>
                       Conectar con Dropbox
                     </Button>
@@ -1072,11 +1262,13 @@ export default function AdminSyncPage() {
 
               {/* Save result message */}
               {dropboxSaveMessage && (
-                <div className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${
-                  dropboxSaveMessage.type === "success"
-                    ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                    : "bg-red-500/10 border border-red-500/20 text-red-500"
-                }`}>
+                <div
+                  className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${
+                    dropboxSaveMessage.type === "success"
+                      ? "bg-green-500/10 border border-green-500/20 text-green-500"
+                      : "bg-red-500/10 border border-red-500/20 text-red-500"
+                  }`}
+                >
                   {dropboxSaveMessage.type === "success" ? (
                     <CheckCircle className="w-4 h-4 flex-shrink-0" />
                   ) : (
@@ -1090,13 +1282,19 @@ export default function AdminSyncPage() {
               {!dropboxStatus?.connected && (
                 <details className="group">
                   <summary className="cursor-pointer text-sm text-slc-muted hover:text-white mb-3 flex items-center gap-2">
-                    <span className="group-open:rotate-90 transition-transform">▶</span>
+                    <span className="group-open:rotate-90 transition-transform">
+                      ▶
+                    </span>
                     Método alternativo: Token manual
                   </summary>
                   <div className="ml-4 mt-3 p-4 bg-slc-card rounded-lg border border-slc-border">
                     <p className="text-xs text-slc-muted mb-3">
-                      Si OAuth no está disponible, puedes ingresar un token manualmente.
-                      <strong className="text-yellow-400"> Los tokens manuales expiran cada 4 horas.</strong>
+                      Si OAuth no está disponible, puedes ingresar un token
+                      manualmente.
+                      <strong className="text-yellow-400">
+                        {" "}
+                        Los tokens manuales expiran cada 4 horas.
+                      </strong>
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-3">
@@ -1113,7 +1311,11 @@ export default function AdminSyncPage() {
                           onClick={() => setShowDropboxToken(!showDropboxToken)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slc-muted hover:text-white"
                         >
-                          {showDropboxToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showDropboxToken ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                       <Button
@@ -1133,9 +1335,22 @@ export default function AdminSyncPage() {
                     <div className="mt-3 text-xs text-slc-muted">
                       <p className="mb-2">Para obtener un token manual:</p>
                       <ol className="list-decimal list-inside space-y-1">
-                        <li>Ve a <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Dropbox App Console</a></li>
+                        <li>
+                          Ve a{" "}
+                          <a
+                            href="https://www.dropbox.com/developers/apps"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:underline"
+                          >
+                            Dropbox App Console
+                          </a>
+                        </li>
                         <li>Selecciona tu app o crea una nueva</li>
-                        <li>En "Settings", haz clic en "Generate" bajo "Generated access token"</li>
+                        <li>
+                          En "Settings", haz clic en "Generate" bajo "Generated
+                          access token"
+                        </li>
                       </ol>
                     </div>
                   </div>
@@ -1171,9 +1386,17 @@ export default function AdminSyncPage() {
               {!dropboxStatus?.oauthConfigured && (
                 <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                   <p className="text-xs text-orange-400">
-                    <strong>Nota:</strong> Para habilitar OAuth (conexión con un clic y renovación automática),
-                    configura las variables de entorno <code className="bg-slc-dark px-1 rounded">DROPBOX_APP_KEY</code> y{" "}
-                    <code className="bg-slc-dark px-1 rounded">DROPBOX_APP_SECRET</code> en Netlify.
+                    <strong>Nota:</strong> Para habilitar OAuth (conexión con un
+                    clic y renovación automática), configura las variables de
+                    entorno{" "}
+                    <code className="bg-slc-dark px-1 rounded">
+                      DROPBOX_APP_KEY
+                    </code>{" "}
+                    y{" "}
+                    <code className="bg-slc-dark px-1 rounded">
+                      DROPBOX_APP_SECRET
+                    </code>{" "}
+                    en Netlify.
                   </p>
                 </div>
               )}
@@ -1184,19 +1407,23 @@ export default function AdminSyncPage() {
 
       {/* API Configuration */}
       <div className="mt-8">
-        <h2 className="font-oswald text-xl uppercase mb-4">Configuración de API</h2>
+        <h2 className="font-oswald text-xl uppercase mb-4">
+          Configuración de API
+        </h2>
         <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="font-medium mb-2 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-spotify"></span>
+                <span className="w-2 h-2 rounded-full bg-spotify" />
                 Spotify API
               </h3>
               <p className="text-slc-muted text-sm mb-3">
-                Usando embed API pública (sin límites de tasa). También se pueden configurar credenciales completas.
+                Usando embed API pública (sin límites de tasa). También se
+                pueden configurar credenciales completas.
               </p>
               <code className="block p-3 bg-slc-card rounded text-xs text-slc-muted">
-                SPOTIFY_CLIENT_ID=d43c...68<br />
+                SPOTIFY_CLIENT_ID=d43c...68
+                <br />
                 SPOTIFY_CLIENT_SECRET=d3c...b6
               </code>
               <div className="mt-2 flex items-center gap-2 text-xs text-green-500">
@@ -1206,7 +1433,7 @@ export default function AdminSyncPage() {
             </div>
             <div>
               <h3 className="font-medium mb-2 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-youtube"></span>
+                <span className="w-2 h-2 rounded-full bg-youtube" />
                 YouTube API
               </h3>
               <p className="text-slc-muted text-sm mb-3">
@@ -1231,19 +1458,37 @@ export default function AdminSyncPage() {
           <ul className="space-y-3 text-sm text-slc-muted">
             <li className="flex items-start gap-2">
               <span className="text-primary">•</span>
-              <span>El sync de <strong>Spotify</strong> usa el embed API que no tiene límites de tasa.</span>
+              <span>
+                El sync de <strong>Spotify</strong> usa el embed API que no
+                tiene límites de tasa.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary">•</span>
-              <span>Puedes agregar releases manualmente desde la página de <a href="/admin/releases/new" className="text-primary hover:underline">nuevo lanzamiento</a>.</span>
+              <span>
+                Puedes agregar releases manualmente desde la página de{" "}
+                <a
+                  href="/admin/releases/new"
+                  className="text-primary hover:underline"
+                >
+                  nuevo lanzamiento
+                </a>
+                .
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary">•</span>
-              <span>Los videos se pueden agregar desde URLs de YouTube sin necesidad de API key.</span>
+              <span>
+                Los videos se pueden agregar desde URLs de YouTube sin necesidad
+                de API key.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary">•</span>
-              <span>Sincroniza regularmente para mantener las imágenes y conteos actualizados.</span>
+              <span>
+                Sincroniza regularmente para mantener las imágenes y conteos
+                actualizados.
+              </span>
             </li>
           </ul>
         </div>
@@ -1352,13 +1597,18 @@ function RosterVideosSync({ onVideosAdded }: RosterVideosSyncProps) {
               Videos Mensuales del Roster
             </h2>
             <p className="text-slc-muted text-sm mt-1">
-              Carga videos aleatorios de los canales de YouTube de los {status?.totalChannels || 14} artistas del crew.
-              Solo se cargan videos que no existan ya en la base de datos.
+              Carga videos aleatorios de los canales de YouTube de los{" "}
+              {status?.totalChannels || 14} artistas del crew. Solo se cargan
+              videos que no existan ya en la base de datos.
             </p>
             {status && (
               <div className="flex flex-wrap gap-3 mt-2 text-xs">
-                <span className={`px-2 py-1 rounded ${status.canSyncThisMonth ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                  {status.canSyncThisMonth ? "Disponible para sincronizar" : "Ya sincronizado este mes"}
+                <span
+                  className={`px-2 py-1 rounded ${status.canSyncThisMonth ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}
+                >
+                  {status.canSyncThisMonth
+                    ? "Disponible para sincronizar"
+                    : "Ya sincronizado este mes"}
                 </span>
                 <span className="px-2 py-1 rounded bg-slc-card text-slc-muted">
                   Última: {formatDate(status.lastSync)}
@@ -1370,7 +1620,9 @@ function RosterVideosSync({ onVideosAdded }: RosterVideosSyncProps) {
         <div className="flex flex-col gap-3">
           {/* Video count selector */}
           <div className="flex items-center gap-2">
-            <label className="text-sm text-slc-muted whitespace-nowrap">Videos a cargar:</label>
+            <label className="text-sm text-slc-muted whitespace-nowrap">
+              Videos a cargar:
+            </label>
             <select
               value={videosPerMonth}
               onChange={(e) => setVideosPerMonth(Number(e.target.value))}
@@ -1378,7 +1630,9 @@ function RosterVideosSync({ onVideosAdded }: RosterVideosSyncProps) {
               disabled={isSyncing}
             >
               {[1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((n) => (
-                <option key={n} value={n}>{n} video{n !== 1 ? "s" : ""}</option>
+                <option key={n} value={n}>
+                  {n} video{n !== 1 ? "s" : ""}
+                </option>
               ))}
             </select>
           </div>
@@ -1417,13 +1671,15 @@ function RosterVideosSync({ onVideosAdded }: RosterVideosSyncProps) {
 
       {/* Results */}
       {result && (
-        <div className={`mt-6 p-4 rounded-lg ${
-          result.success && !result.alreadySyncedThisMonth
-            ? "bg-green-500/10 border border-green-500/30"
-            : result.alreadySyncedThisMonth
-            ? "bg-yellow-500/10 border border-yellow-500/30"
-            : "bg-red-500/10 border border-red-500/30"
-        }`}>
+        <div
+          className={`mt-6 p-4 rounded-lg ${
+            result.success && !result.alreadySyncedThisMonth
+              ? "bg-green-500/10 border border-green-500/30"
+              : result.alreadySyncedThisMonth
+                ? "bg-yellow-500/10 border border-yellow-500/30"
+                : "bg-red-500/10 border border-red-500/30"
+          }`}
+        >
           {result.success && !result.alreadySyncedThisMonth ? (
             <div>
               <div className="flex items-center gap-2 text-green-500 font-medium mb-3">
@@ -1432,20 +1688,36 @@ function RosterVideosSync({ onVideosAdded }: RosterVideosSyncProps) {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                 <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                  <div className="font-oswald text-2xl text-green-500">{result.videosSynced || 0}</div>
-                  <div className="text-xs text-slc-muted uppercase">Nuevos Videos</div>
+                  <div className="font-oswald text-2xl text-green-500">
+                    {result.videosSynced || 0}
+                  </div>
+                  <div className="text-xs text-slc-muted uppercase">
+                    Nuevos Videos
+                  </div>
                 </div>
                 <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                  <div className="font-oswald text-2xl text-blue-500">{result.newVideosAvailable || 0}</div>
-                  <div className="text-xs text-slc-muted uppercase">Disponibles</div>
+                  <div className="font-oswald text-2xl text-blue-500">
+                    {result.newVideosAvailable || 0}
+                  </div>
+                  <div className="text-xs text-slc-muted uppercase">
+                    Disponibles
+                  </div>
                 </div>
                 <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                  <div className="font-oswald text-2xl text-slc-muted">{result.videosSkipped || 0}</div>
-                  <div className="text-xs text-slc-muted uppercase">Ya Existentes</div>
+                  <div className="font-oswald text-2xl text-slc-muted">
+                    {result.videosSkipped || 0}
+                  </div>
+                  <div className="text-xs text-slc-muted uppercase">
+                    Ya Existentes
+                  </div>
                 </div>
                 <div className="text-center p-3 bg-slc-dark/50 rounded-lg">
-                  <div className="font-oswald text-2xl text-youtube">{result.channelsProcessed || 0}</div>
-                  <div className="text-xs text-slc-muted uppercase">Canales</div>
+                  <div className="font-oswald text-2xl text-youtube">
+                    {result.channelsProcessed || 0}
+                  </div>
+                  <div className="text-xs text-slc-muted uppercase">
+                    Canales
+                  </div>
                 </div>
               </div>
             </div>
@@ -1453,8 +1725,9 @@ function RosterVideosSync({ onVideosAdded }: RosterVideosSyncProps) {
             <div className="flex items-center gap-2 text-yellow-500">
               <AlertTriangle className="w-5 h-5" />
               <span>
-                Ya se sincronizaron videos este mes ({formatDate(result.lastSyncDate || null)}).
-                Usa el botón "Forzar" para cargar más videos.
+                Ya se sincronizaron videos este mes (
+                {formatDate(result.lastSyncDate || null)}). Usa el botón
+                "Forzar" para cargar más videos.
               </span>
             </div>
           ) : (
@@ -1478,8 +1751,9 @@ function RosterVideosSync({ onVideosAdded }: RosterVideosSyncProps) {
       {/* Info */}
       <div className="mt-4 p-3 bg-slc-card/50 rounded-lg text-xs text-slc-muted">
         <p>
-          <strong>Nota:</strong> Requiere que la API de YouTube esté configurada (YOUTUBE_API_KEY).
-          Los videos se seleccionan aleatoriamente entre los canales del roster para mostrar variedad en el contenido.
+          <strong>Nota:</strong> Requiere que la API de YouTube esté configurada
+          (YOUTUBE_API_KEY). Los videos se seleccionan aleatoriamente entre los
+          canales del roster para mostrar variedad en el contenido.
         </p>
       </div>
     </div>

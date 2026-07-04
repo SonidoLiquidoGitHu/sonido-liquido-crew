@@ -1,18 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Bell,
-  BellOff,
-  Check,
-  Loader2,
-  Mail,
-  X,
-  Sparkles,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Bell, BellOff, Check, Loader2, Mail, Sparkles, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ReleaseNotifyButtonProps {
   releaseId: string;
@@ -52,7 +44,7 @@ export function ReleaseNotifyButton({
     setChecking(true);
     try {
       const res = await fetch(
-        `/api/upcoming-releases/subscribe?email=${encodeURIComponent(emailToCheck)}&releaseId=${releaseId}`
+        `/api/upcoming-releases/subscribe?email=${encodeURIComponent(emailToCheck)}&releaseId=${releaseId}`,
       );
       const data = await res.json();
       setIsSubscribed(data.subscribed);
@@ -118,7 +110,7 @@ export function ReleaseNotifyButton({
     try {
       const res = await fetch(
         `/api/upcoming-releases/subscribe?email=${encodeURIComponent(email)}&releaseId=${releaseId}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       );
 
       const data = await res.json();
@@ -149,7 +141,7 @@ export function ReleaseNotifyButton({
           isSubscribed
             ? "bg-green-500/10 text-green-500 border border-green-500/30"
             : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20",
-          className
+          className,
         )}
       >
         {loading || checking ? (
@@ -173,7 +165,12 @@ export function ReleaseNotifyButton({
   if (variant === "inline") {
     if (isSubscribed) {
       return (
-        <div className={cn("flex items-center gap-2 text-sm text-green-500", className)}>
+        <div
+          className={cn(
+            "flex items-center gap-2 text-sm text-green-500",
+            className,
+          )}
+        >
           <Check className="w-4 h-4" />
           Te notificaremos cuando salga
         </div>
@@ -192,7 +189,11 @@ export function ReleaseNotifyButton({
           aria-label="Email para notificación"
         />
         <Button type="submit" disabled={loading} size="sm">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Bell className="w-4 h-4" />
+          )}
         </Button>
       </form>
     );
@@ -204,12 +205,15 @@ export function ReleaseNotifyButton({
       {/* Main Button */}
       {!showForm && (
         <Button
-          onClick={() => (isSubscribed ? handleUnsubscribe() : setShowForm(true))}
+          onClick={() =>
+            isSubscribed ? handleUnsubscribe() : setShowForm(true)
+          }
           disabled={loading || checking}
           variant={isSubscribed ? "outline" : "default"}
           className={cn(
             "gap-2",
-            isSubscribed && "border-green-500/50 text-green-500 hover:bg-green-500/10"
+            isSubscribed &&
+              "border-green-500/50 text-green-500 hover:bg-green-500/10",
           )}
         >
           {loading || checking ? (
@@ -251,7 +255,9 @@ export function ReleaseNotifyButton({
           </div>
 
           <p className="text-sm text-slc-muted mb-3">
-            Te avisaremos cuando <span className="text-white font-medium">{releaseTitle}</span> esté disponible.
+            Te avisaremos cuando{" "}
+            <span className="text-white font-medium">{releaseTitle}</span> esté
+            disponible.
           </p>
 
           <form onSubmit={handleSubscribe} className="space-y-3">
@@ -272,9 +278,7 @@ export function ReleaseNotifyButton({
               />
             </div>
 
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
             <div className="flex gap-2">
               <Button

@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Youtube,
-  Play,
-  ExternalLink,
   AlertTriangle,
-  Loader2,
-  X,
   Clock,
+  ExternalLink,
   Eye,
+  Loader2,
+  Play,
   ThumbsUp,
+  X,
+  Youtube,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface YouTubePreviewProps {
   videoUrl: string | null | undefined;
@@ -56,7 +56,7 @@ function extractYouTubeId(input: string): string | null {
 
   for (const pattern of patterns) {
     const match = input.match(pattern);
-    if (match && match[1]) {
+    if (match?.[1]) {
       return match[1];
     }
   }
@@ -198,12 +198,7 @@ export function YouTubePreview({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                asChild
-              >
+              <Button type="button" variant="ghost" size="sm" asChild>
                 <a
                   href={`https://www.youtube.com/watch?v=${videoInfo.id}`}
                   target="_blank"

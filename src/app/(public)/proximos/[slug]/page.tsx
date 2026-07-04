@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { upcomingReleases } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import ProximosDetailClient from "./ProximosDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,9 @@ export async function generateMetadata({ params }: PageProps) {
 
   return {
     title: `${release.title} - Presave | Sonido Líquido Crew`,
-    description: release.description || `Haz presave de ${release.title} por ${release.artistName}. Próximamente en todas las plataformas.`,
+    description:
+      release.description ||
+      `Haz presave de ${release.title} por ${release.artistName}. Próximamente en todas las plataformas.`,
     openGraph: {
       images: release.coverImageUrl ? [release.coverImageUrl] : [],
     },

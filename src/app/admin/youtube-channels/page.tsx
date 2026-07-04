@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Plus,
-  Trash2,
-  Youtube,
-  ExternalLink,
-  GripVertical,
-  Check,
-  X,
-  Loader2,
   AlertTriangle,
+  Check,
+  ExternalLink,
   Eye,
   EyeOff,
+  GripVertical,
+  Loader2,
+  Plus,
+  Trash2,
+  X,
+  Youtube,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface YoutubeChannel {
   id: string;
@@ -110,9 +110,11 @@ export default function YoutubeChannelsPage() {
       const data = await response.json();
 
       if (data.success) {
-        setChannels(channels.map(c =>
-          c.id === channel.id ? { ...c, isActive: !c.isActive } : c
-        ));
+        setChannels(
+          channels.map((c) =>
+            c.id === channel.id ? { ...c, isActive: !c.isActive } : c,
+          ),
+        );
       }
     } catch (error) {
       console.error("Failed to toggle channel:", error);
@@ -123,14 +125,17 @@ export default function YoutubeChannelsPage() {
     if (!confirm("¿Estás seguro de eliminar este canal?")) return;
 
     try {
-      const response = await fetch(`/api/admin/youtube-channels?id=${channelId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/admin/youtube-channels?id=${channelId}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const data = await response.json();
 
       if (data.success) {
-        setChannels(channels.filter(c => c.id !== channelId));
+        setChannels(channels.filter((c) => c.id !== channelId));
         setSuccess("Canal eliminado");
         setTimeout(() => setSuccess(null), 3000);
       }
@@ -204,7 +209,8 @@ export default function YoutubeChannelsPage() {
         </div>
 
         <p className="text-xs text-slc-muted mt-3">
-          Formatos aceptados: youtube.com/@nombre, youtube.com/channel/UC..., youtube.com/c/nombre
+          Formatos aceptados: youtube.com/@nombre, youtube.com/channel/UC...,
+          youtube.com/c/nombre
         </p>
       </div>
 
@@ -212,10 +218,19 @@ export default function YoutubeChannelsPage() {
       <div className="bg-gradient-to-r from-red-500/10 to-transparent border border-red-500/30 rounded-xl p-6 mb-8">
         <h3 className="font-oswald text-lg uppercase mb-2">¿Cómo funciona?</h3>
         <ul className="text-sm text-slc-muted space-y-2">
-          <li>• Los videos de estos canales aparecerán en el carrusel de la página principal</li>
-          <li>• Los videos se muestran aleatoriamente y cambian cada vez que recargas la página</li>
+          <li>
+            • Los videos de estos canales aparecerán en el carrusel de la página
+            principal
+          </li>
+          <li>
+            • Los videos se muestran aleatoriamente y cambian cada vez que
+            recargas la página
+          </li>
           <li>• Puedes activar/desactivar canales sin eliminarlos</li>
-          <li>• Primero debes agregar videos desde la sección "Videos" para que aparezcan</li>
+          <li>
+            • Primero debes agregar videos desde la sección "Videos" para que
+            aparezcan
+          </li>
         </ul>
       </div>
 
@@ -258,14 +273,18 @@ export default function YoutubeChannelsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Youtube className="w-5 h-5 text-red-500 shrink-0" />
-                    <h3 className="font-medium truncate">{channel.channelName}</h3>
+                    <h3 className="font-medium truncate">
+                      {channel.channelName}
+                    </h3>
                     {!channel.isActive && (
                       <span className="text-xs bg-slc-muted/20 text-slc-muted px-2 py-0.5 rounded">
                         Inactivo
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-slc-muted truncate">{channel.channelUrl}</p>
+                  <p className="text-sm text-slc-muted truncate">
+                    {channel.channelUrl}
+                  </p>
                 </div>
 
                 {/* Actions */}
@@ -283,11 +302,7 @@ export default function YoutubeChannelsPage() {
                     )}
                   </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    asChild
-                  >
+                  <Button variant="ghost" size="icon" asChild>
                     <a
                       href={channel.channelUrl}
                       target="_blank"

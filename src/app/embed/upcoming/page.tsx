@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import type { UpcomingRelease } from "@/db/schema/upcoming";
+import { cn } from "@/lib/utils";
+import { Bell, Calendar, Clock, ExternalLink, Rocket } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Rocket, Calendar, Clock, Bell, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { UpcomingRelease } from "@/db/schema/upcoming";
+import { useEffect, useState } from "react";
 
 // =============================================
 // EMBED CONFIGURATION FROM URL PARAMS
@@ -36,7 +36,7 @@ function useEmbedConfig(): EmbedConfig {
     setConfig({
       theme: (params.get("theme") as "dark" | "light") || "dark",
       accentColor: params.get("accent") || "#f97316",
-      limit: parseInt(params.get("limit") || "4", 10),
+      limit: Number.parseInt(params.get("limit") || "4", 10),
       showCountdown: params.get("countdown") !== "false",
       showPresaveButton: params.get("presave") !== "false",
       compact: params.get("compact") === "true",
@@ -84,7 +84,13 @@ function useCountdown(releaseDate: Date | string): TimeRemaining {
       const total = release.getTime() - now.getTime();
 
       if (total <= 0) {
-        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 });
+        setTimeRemaining({
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+          total: 0,
+        });
         clearInterval(interval);
         return;
       }
@@ -115,12 +121,18 @@ function EmbedReleaseCard({
   config: EmbedConfig;
 }) {
   const timeRemaining = useCountdown(release.releaseDate);
-  const hasPresave = Boolean(release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl);
+  const hasPresave = Boolean(
+    release.rpmPresaveUrl ||
+      release.spotifyPresaveUrl ||
+      release.appleMusicPresaveUrl,
+  );
 
   const formatTime = () => {
     if (timeRemaining.total <= 0) return "¡Ya disponible!";
-    if (timeRemaining.days > 0) return `${timeRemaining.days}d ${timeRemaining.hours}h`;
-    if (timeRemaining.hours > 0) return `${timeRemaining.hours}h ${timeRemaining.minutes}m`;
+    if (timeRemaining.days > 0)
+      return `${timeRemaining.days}d ${timeRemaining.hours}h`;
+    if (timeRemaining.hours > 0)
+      return `${timeRemaining.hours}h ${timeRemaining.minutes}m`;
     return `${timeRemaining.minutes}m ${timeRemaining.seconds}s`;
   };
 
@@ -151,9 +163,14 @@ function EmbedReleaseCard({
           ) : (
             <div
               className="w-full h-full flex items-center justify-center"
-              style={{ backgroundColor: release.backgroundColor || config.accentColor }}
+              style={{
+                backgroundColor: release.backgroundColor || config.accentColor,
+              }}
             >
-              <Rocket className="w-5 h-5" style={{ color: textColor, opacity: 0.5 }} />
+              <Rocket
+                className="w-5 h-5"
+                style={{ color: textColor, opacity: 0.5 }}
+              />
             </div>
           )}
         </div>
@@ -202,9 +219,14 @@ function EmbedReleaseCard({
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
-            style={{ backgroundColor: release.backgroundColor || config.accentColor }}
+            style={{
+              backgroundColor: release.backgroundColor || config.accentColor,
+            }}
           >
-            <Rocket className="w-10 h-10" style={{ color: textColor, opacity: 0.3 }} />
+            <Rocket
+              className="w-10 h-10"
+              style={{ color: textColor, opacity: 0.3 }}
+            />
           </div>
         )}
 
@@ -222,7 +244,12 @@ function EmbedReleaseCard({
         {/* Presave overlay */}
         {config.showPresaveButton && hasPresave && (
           <a
-            href={release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl || "#"}
+            href={
+              release.rpmPresaveUrl ||
+              release.spotifyPresaveUrl ||
+              release.appleMusicPresaveUrl ||
+              "#"
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 hover:opacity-100 transition-opacity"
@@ -249,7 +276,10 @@ function EmbedReleaseCard({
         <p className="text-xs truncate mb-2" style={{ color: mutedColor }}>
           {release.artistName}
         </p>
-        <div className="flex items-center gap-1 text-xs" style={{ color: mutedColor }}>
+        <div
+          className="flex items-center gap-1 text-xs"
+          style={{ color: mutedColor }}
+        >
           <Calendar className="w-3 h-3" />
           <span>
             {new Date(release.releaseDate).toLocaleDateString("es-MX", {
@@ -360,26 +390,37 @@ export default function UpcomingReleasesEmbed() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className={cn(
-          "grid gap-4",
-          config.compact ? "grid-cols-1" : "grid-cols-2"
-        )}>
+        <div
+          className={cn(
+            "grid gap-4",
+            config.compact ? "grid-cols-1" : "grid-cols-2",
+          )}
+        >
           {Array.from({ length: config.limit }).map((_, i) => (
             <EmbedSkeleton key={i} config={config} />
           ))}
         </div>
       ) : releases.length > 0 ? (
-        <div className={cn(
-          "grid gap-4",
-          config.compact ? "grid-cols-1" : "grid-cols-2"
-        )}>
+        <div
+          className={cn(
+            "grid gap-4",
+            config.compact ? "grid-cols-1" : "grid-cols-2",
+          )}
+        >
           {releases.map((release) => (
-            <EmbedReleaseCard key={release.id} release={release} config={config} />
+            <EmbedReleaseCard
+              key={release.id}
+              release={release}
+              config={config}
+            />
           ))}
         </div>
       ) : (
         <div className="text-center py-8">
-          <Rocket className="w-8 h-8 mx-auto mb-2" style={{ color: mutedColor }} />
+          <Rocket
+            className="w-8 h-8 mx-auto mb-2"
+            style={{ color: mutedColor }}
+          />
           <p className="text-sm" style={{ color: mutedColor }}>
             No hay próximos lanzamientos
           </p>

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
 import { spotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
+import { eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -33,13 +33,16 @@ async function getExistingTrackIds(trackIds: string[]): Promise<Set<string>> {
 // and the top-tracks endpoint (1 API call with fallback)
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     // Get the channel
@@ -52,7 +55,7 @@ export async function POST(
     if (!channel) {
       return NextResponse.json(
         { success: false, error: "Channel not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -81,27 +84,37 @@ export async function POST(
         // Step 2: Fetch each album's tracks (up to 5 API calls)
         for (const album of albumsResponse.items) {
           try {
-            const fullAlbum = await spotifyClient.getAlbum(album.id) as any;
+            const fullAlbum = (await spotifyClient.getAlbum(album.id)) as any;
             if (fullAlbum?.tracks?.items) {
               for (const track of fullAlbum.tracks.items) {
                 if (!track?.id) continue;
                 // Only include tracks where this artist is credited
-                const isByArtist = track.artists?.some((a: any) => a.id === artistId);
+                const isByArtist = track.artists?.some(
+                  (a: any) => a.id === artistId,
+                );
                 if (!isByArtist) continue;
 
                 allNewTracks.push({
                   id: generateUUID(),
                   spotifyTrackId: track.id as string,
-                  spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+                  spotifyTrackUrl:
+                    track.external_urls?.spotify ||
+                    `https://open.spotify.com/track/${track.id}`,
                   spotifyAlbumId: fullAlbum.id as string,
                   name: (track.name || "Unknown") as string,
-                  artistName: track.artists?.map((a: any) => a.name).join(", ") || channel.name,
-                  artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
+                  artistName:
+                    track.artists?.map((a: any) => a.name).join(", ") ||
+                    channel.name,
+                  artistIds: JSON.stringify(
+                    track.artists?.map((a: any) => a.id) || [],
+                  ),
                   albumName: (fullAlbum.name || null) as string | null,
                   albumImageUrl: fullAlbum.images?.[0]?.url ?? null,
                   durationMs: (track.duration_ms ?? null) as number | null,
                   previewUrl: (track.preview_url ?? null) as string | null,
-                  releaseDate: (fullAlbum.release_date ?? null) as string | null,
+                  releaseDate: (fullAlbum.release_date ?? null) as
+                    | string
+                    | null,
                   popularity: (track.popularity ?? null) as number | null,
                   explicit: Boolean(track.explicit),
                   curatedChannelId: id,
@@ -111,12 +124,18 @@ export async function POST(
               }
             }
           } catch (albumErr) {
-            console.warn(`[Top Tracks] Could not fetch album ${album.name}:`, (albumErr as Error).message);
+            console.warn(
+              `[Top Tracks] Could not fetch album ${album.name}:`,
+              (albumErr as Error).message,
+            );
           }
         }
       }
     } catch (albumsErr) {
-      console.warn(`[Top Tracks] Could not fetch recent albums for ${channel.name}:`, (albumsErr as Error).message);
+      console.warn(
+        `[Top Tracks] Could not fetch recent albums for ${channel.name}:`,
+        (albumsErr as Error).message,
+      );
     }
 
     // If we got no tracks from albums, try the search API as a last resort
@@ -127,28 +146,43 @@ export async function POST(
           const searchResult = await spotifyClient.search(
             `artist:"${artist.name}"`,
             ["track"],
-            10
+            10,
           );
           if (searchResult.tracks?.items) {
             for (const track of searchResult.tracks.items) {
               if (!track?.id) continue;
-              const isByArtist = (track as any).artists?.some((a: any) => a.id === artistId);
+              const isByArtist = (track as any).artists?.some(
+                (a: any) => a.id === artistId,
+              );
               if (!isByArtist) continue;
 
               allNewTracks.push({
                 id: generateUUID(),
                 spotifyTrackId: track.id as string,
-                spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+                spotifyTrackUrl:
+                  (track as any).external_urls?.spotify ||
+                  `https://open.spotify.com/track/${track.id}`,
                 spotifyAlbumId: (track as any).album?.id || null,
                 name: (track.name || "Unknown") as string,
-                artistName: (track as any).artists?.map((a: any) => a.name).join(", ") || channel.name,
-                artistIds: JSON.stringify((track as any).artists?.map((a: any) => a.id) || []),
-                albumName: ((track as any).album?.name || null) as string | null,
-                albumImageUrl: ((track as any).album?.images?.[0]?.url ?? null) as string | null,
+                artistName:
+                  (track as any).artists?.map((a: any) => a.name).join(", ") ||
+                  channel.name,
+                artistIds: JSON.stringify(
+                  (track as any).artists?.map((a: any) => a.id) || [],
+                ),
+                albumName: ((track as any).album?.name || null) as
+                  | string
+                  | null,
+                albumImageUrl: ((track as any).album?.images?.[0]?.url ??
+                  null) as string | null,
                 durationMs: (track.duration_ms ?? null) as number | null,
                 previewUrl: (track.preview_url ?? null) as string | null,
-                releaseDate: ((track as any).album?.release_date ?? null) as string | null,
-                popularity: ((track as any).popularity ?? null) as number | null,
+                releaseDate: ((track as any).album?.release_date ?? null) as
+                  | string
+                  | null,
+                popularity: ((track as any).popularity ?? null) as
+                  | number
+                  | null,
                 explicit: Boolean((track as any).explicit),
                 curatedChannelId: id,
                 isAvailableForPlaylist: true,
@@ -158,21 +192,28 @@ export async function POST(
           }
         }
       } catch (searchErr) {
-        console.warn(`[Top Tracks] Search fallback failed for ${channel.name}:`, (searchErr as Error).message);
+        console.warn(
+          `[Top Tracks] Search fallback failed for ${channel.name}:`,
+          (searchErr as Error).message,
+        );
       }
     }
 
     // Bulk check: which tracks already exist?
-    const trackIds = allNewTracks.map(t => t.spotifyTrackId);
+    const trackIds = allNewTracks.map((t) => t.spotifyTrackId);
     const existingIds = await getExistingTrackIds(trackIds);
 
     // Filter out existing tracks; mark existing ones as featured
-    const trulyNew = allNewTracks.filter(t => !existingIds.has(t.spotifyTrackId));
-    const alreadyExist = allNewTracks.filter(t => existingIds.has(t.spotifyTrackId));
+    const trulyNew = allNewTracks.filter(
+      (t) => !existingIds.has(t.spotifyTrackId),
+    );
+    const alreadyExist = allNewTracks.filter((t) =>
+      existingIds.has(t.spotifyTrackId),
+    );
 
     // Mark existing tracks as featured
     if (alreadyExist.length > 0) {
-      const existingTrackIds = alreadyExist.map(t => t.spotifyTrackId);
+      const existingTrackIds = alreadyExist.map((t) => t.spotifyTrackId);
       try {
         // Update in chunks
         for (let i = 0; i < existingTrackIds.length; i += 50) {
@@ -183,7 +224,10 @@ export async function POST(
             .where(inArray(curatedTracks.spotifyTrackId, chunk));
         }
       } catch (updateErr) {
-        console.warn("[Top Tracks] Could not update featured status:", updateErr);
+        console.warn(
+          "[Top Tracks] Could not update featured status:",
+          updateErr,
+        );
       }
     }
 
@@ -195,7 +239,10 @@ export async function POST(
         addedCount = trulyNew.length;
       } catch (batchErr) {
         // Fallback to one-by-one if batch fails
-        console.warn("[Top Tracks] Batch insert failed, trying one-by-one:", batchErr);
+        console.warn(
+          "[Top Tracks] Batch insert failed, trying one-by-one:",
+          batchErr,
+        );
         for (const track of trulyNew) {
           try {
             await db.insert(curatedTracks).values(track);
@@ -208,16 +255,20 @@ export async function POST(
     }
 
     // Update channel sync metadata
-    await db.update(curatedSpotifyChannels).set({
-      lastSyncedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(curatedSpotifyChannels.id, id));
+    await db
+      .update(curatedSpotifyChannels)
+      .set({
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(curatedSpotifyChannels.id, id));
 
-    const message = addedCount > 0
-      ? `${addedCount} tracks nuevos de ${albumsFetched} lanzamientos recientes`
-      : alreadyExist.length > 0
-        ? `Todos los tracks recientes ya estaban sincronizados (${alreadyExist.length} marcados como destacados)`
-        : "No se encontraron tracks recientes para este artista";
+    const message =
+      addedCount > 0
+        ? `${addedCount} tracks nuevos de ${albumsFetched} lanzamientos recientes`
+        : alreadyExist.length > 0
+          ? `Todos los tracks recientes ya estaban sincronizados (${alreadyExist.length} marcados como destacados)`
+          : "No se encontraron tracks recientes para este artista";
 
     return NextResponse.json({
       success: true,
@@ -230,11 +281,15 @@ export async function POST(
       message,
     });
   } catch (error) {
-    console.error("[Curated Channels API] Error fetching recent tracks:", error);
-    const errorMsg = error instanceof Error ? error.message : "Error fetching recent tracks";
+    console.error(
+      "[Curated Channels API] Error fetching recent tracks:",
+      error,
+    );
+    const errorMsg =
+      error instanceof Error ? error.message : "Error fetching recent tracks";
     return NextResponse.json(
       { success: false, error: errorMsg },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

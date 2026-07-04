@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
-import { Play, Pause, Music, Download, Lock, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
+import { Download, Lock, Music, Pause, Play, Volume2 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 interface Beat {
   id: string;
@@ -85,13 +85,17 @@ export function BeatCard({
           <button
             onClick={handlePlayPause}
             className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-all duration-300"
-            aria-label={isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
+            aria-label={
+              isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`
+            }
           >
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-              isPlaying
-                ? "bg-primary scale-100"
-                : "bg-primary/80 scale-90 opacity-0 group-hover:opacity-100 group-hover:scale-100"
-            }`}>
+            <div
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
+                isPlaying
+                  ? "bg-primary scale-100"
+                  : "bg-primary/80 scale-90 opacity-0 group-hover:opacity-100 group-hover:scale-100"
+              }`}
+            >
               {isPlaying ? (
                 <Pause className="w-7 h-7 text-white" />
               ) : (
@@ -136,9 +140,7 @@ export function BeatCard({
         </Link>
 
         {beat.producerName && (
-          <p className="text-sm text-slc-muted mt-1">
-            by {beat.producerName}
-          </p>
+          <p className="text-sm text-slc-muted mt-1">by {beat.producerName}</p>
         )}
 
         {/* Tags */}
@@ -164,13 +166,20 @@ export function BeatCard({
         <div className="flex items-center justify-between mt-4">
           <div className="flex items-center gap-2 text-slc-muted text-sm">
             {isPlaying ? (
-              <span>{formatDuration(currentTime)} / {formatDuration(duration || beat.duration || 0)}</span>
+              <span>
+                {formatDuration(currentTime)} /{" "}
+                {formatDuration(duration || beat.duration || 0)}
+              </span>
             ) : (
               beat.duration && <span>{formatDuration(beat.duration)}</span>
             )}
           </div>
 
-          <Button asChild size="sm" variant={beat.gateEnabled ? "outline" : "default"}>
+          <Button
+            asChild
+            size="sm"
+            variant={beat.gateEnabled ? "outline" : "default"}
+          >
             <Link href={`/beats/${beat.slug}`}>
               {beat.gateEnabled ? (
                 <>
@@ -222,11 +231,13 @@ export function BeatCardCompact({
   };
 
   return (
-    <div className={`group flex items-center gap-4 p-3 rounded-lg border transition-all duration-300 ${
-      isPlaying
-        ? "bg-primary/10 border-primary/30"
-        : "bg-slc-card border-slc-border hover:border-primary/30"
-    }`}>
+    <div
+      className={`group flex items-center gap-4 p-3 rounded-lg border transition-all duration-300 ${
+        isPlaying
+          ? "bg-primary/10 border-primary/30"
+          : "bg-slc-card border-slc-border hover:border-primary/30"
+      }`}
+    >
       {/* Cover Image */}
       <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-slc-dark">
         {beat.coverImageUrl ? (
@@ -256,7 +267,9 @@ export function BeatCardCompact({
               : "bg-slc-dark hover:bg-primary text-white"
             : "bg-slc-dark text-slc-muted cursor-not-allowed"
         }`}
-        aria-label={isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
+        aria-label={
+          isPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`
+        }
       >
         {isPlaying ? (
           <Pause className="w-4 h-4" />
@@ -299,7 +312,9 @@ export function BeatCardCompact({
       {/* Duration / Action */}
       <div className="flex-shrink-0 text-right">
         {!isPlaying && beat.duration && (
-          <span className="text-sm text-slc-muted">{formatDuration(beat.duration)}</span>
+          <span className="text-sm text-slc-muted">
+            {formatDuration(beat.duration)}
+          </span>
         )}
       </div>
     </div>

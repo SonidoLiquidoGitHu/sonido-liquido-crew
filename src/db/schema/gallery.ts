@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { sql, relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { artists } from "./artists";
 import { tags } from "./tags";
 
@@ -14,9 +14,15 @@ export const galleryAlbums = sqliteTable("gallery_albums", {
   description: text("description"),
   coverPhotoId: text("cover_photo_id"),
   sortOrder: integer("sort_order").notNull().default(0),
-  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  isPublished: integer("is_published", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -35,10 +41,14 @@ export const galleryPhotos = sqliteTable("gallery_photos", {
   mimeType: text("mime_type"),
 
   // Album association (optional)
-  albumId: text("album_id").references(() => galleryAlbums.id, { onDelete: "set null" }),
+  albumId: text("album_id").references(() => galleryAlbums.id, {
+    onDelete: "set null",
+  }),
 
   // Artist association (optional - for tagging which artist is in the photo)
-  artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
+  artistId: text("artist_id").references(() => artists.id, {
+    onDelete: "set null",
+  }),
 
   // Metadata
   photographer: text("photographer"),
@@ -46,15 +56,23 @@ export const galleryPhotos = sqliteTable("gallery_photos", {
   takenAt: integer("taken_at", { mode: "timestamp" }),
 
   // Display settings
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
-  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(true),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isPublished: integer("is_published", { mode: "boolean" })
+    .notNull()
+    .default(true),
   sortOrder: integer("sort_order").notNull().default(0),
 
   // Alt text for accessibility
   altText: text("alt_text"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -63,9 +81,15 @@ export const galleryPhotos = sqliteTable("gallery_photos", {
 
 export const photoTags = sqliteTable("photo_tags", {
   id: text("id").primaryKey(),
-  photoId: text("photo_id").notNull().references(() => galleryPhotos.id, { onDelete: "cascade" }),
-  tagId: text("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  photoId: text("photo_id")
+    .notNull()
+    .references(() => galleryPhotos.id, { onDelete: "cascade" }),
+  tagId: text("tag_id")
+    .notNull()
+    .references(() => tags.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -76,17 +100,20 @@ export const galleryAlbumsRelations = relations(galleryAlbums, ({ many }) => ({
   photos: many(galleryPhotos),
 }));
 
-export const galleryPhotosRelations = relations(galleryPhotos, ({ one, many }) => ({
-  album: one(galleryAlbums, {
-    fields: [galleryPhotos.albumId],
-    references: [galleryAlbums.id],
+export const galleryPhotosRelations = relations(
+  galleryPhotos,
+  ({ one, many }) => ({
+    album: one(galleryAlbums, {
+      fields: [galleryPhotos.albumId],
+      references: [galleryAlbums.id],
+    }),
+    artist: one(artists, {
+      fields: [galleryPhotos.artistId],
+      references: [artists.id],
+    }),
+    photoTags: many(photoTags),
   }),
-  artist: one(artists, {
-    fields: [galleryPhotos.artistId],
-    references: [artists.id],
-  }),
-  photoTags: many(photoTags),
-}));
+);
 
 export const photoTagsRelations = relations(photoTags, ({ one }) => ({
   photo: one(galleryPhotos, {

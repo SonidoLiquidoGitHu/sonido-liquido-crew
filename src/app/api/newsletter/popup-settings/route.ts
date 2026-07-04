@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Default settings
 const defaultSettings = {
@@ -23,7 +23,8 @@ const defaultSettings = {
   badgeText: "Contenido Exclusivo",
   buttonText: "Suscribirme Gratis",
   successTitle: "¡Bienvenido al Crew!",
-  successMessage: "Revisa tu correo para confirmar tu suscripción y recibir tu contenido exclusivo.",
+  successMessage:
+    "Revisa tu correo para confirmar tu suscripción y recibir tu contenido exclusivo.",
 
   abTestEnabled: false,
   variantAHeadline: "",
@@ -40,7 +41,8 @@ const defaultSettings = {
   downloadFileUrl: "",
   downloadFileName: "",
   downloadButtonText: "Descargar Regalo",
-  downloadDescription: "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
+  downloadDescription:
+    "Descarga tu archivo exclusivo como agradecimiento por suscribirte.",
 };
 
 // GET - Fetch popup settings (public)
@@ -50,7 +52,7 @@ export async function GET() {
       where: (s, { eq }) => eq(s.key, "newsletter_popup_settings"),
     });
 
-    if (setting && setting.value) {
+    if (setting?.value) {
       try {
         const parsedSettings = JSON.parse(setting.value);
         return NextResponse.json({
@@ -87,8 +89,10 @@ export async function POST(request: NextRequest) {
     const settings = {
       delaySeconds: body.delaySeconds ?? defaultSettings.delaySeconds,
       showOnScroll: body.showOnScroll ?? defaultSettings.showOnScroll,
-      scrollPercentage: body.scrollPercentage ?? defaultSettings.scrollPercentage,
-      exitIntentEnabled: body.exitIntentEnabled ?? defaultSettings.exitIntentEnabled,
+      scrollPercentage:
+        body.scrollPercentage ?? defaultSettings.scrollPercentage,
+      exitIntentEnabled:
+        body.exitIntentEnabled ?? defaultSettings.exitIntentEnabled,
       exitIntentDelay: body.exitIntentDelay ?? defaultSettings.exitIntentDelay,
       benefits: body.benefits ?? defaultSettings.benefits,
       headline: body.headline ?? defaultSettings.headline,
@@ -98,17 +102,25 @@ export async function POST(request: NextRequest) {
       successTitle: body.successTitle ?? defaultSettings.successTitle,
       successMessage: body.successMessage ?? defaultSettings.successMessage,
       abTestEnabled: body.abTestEnabled ?? defaultSettings.abTestEnabled,
-      variantAHeadline: body.variantAHeadline ?? defaultSettings.variantAHeadline,
-      variantBHeadline: body.variantBHeadline ?? defaultSettings.variantBHeadline,
-      variantAButtonText: body.variantAButtonText ?? defaultSettings.variantAButtonText,
-      variantBButtonText: body.variantBButtonText ?? defaultSettings.variantBButtonText,
+      variantAHeadline:
+        body.variantAHeadline ?? defaultSettings.variantAHeadline,
+      variantBHeadline:
+        body.variantBHeadline ?? defaultSettings.variantBHeadline,
+      variantAButtonText:
+        body.variantAButtonText ?? defaultSettings.variantAButtonText,
+      variantBButtonText:
+        body.variantBButtonText ?? defaultSettings.variantBButtonText,
       popupImageUrl: body.popupImageUrl ?? defaultSettings.popupImageUrl,
       dismissDays: body.dismissDays ?? defaultSettings.dismissDays,
-      downloadFileEnabled: body.downloadFileEnabled ?? defaultSettings.downloadFileEnabled,
+      downloadFileEnabled:
+        body.downloadFileEnabled ?? defaultSettings.downloadFileEnabled,
       downloadFileUrl: body.downloadFileUrl ?? defaultSettings.downloadFileUrl,
-      downloadFileName: body.downloadFileName ?? defaultSettings.downloadFileName,
-      downloadButtonText: body.downloadButtonText ?? defaultSettings.downloadButtonText,
-      downloadDescription: body.downloadDescription ?? defaultSettings.downloadDescription,
+      downloadFileName:
+        body.downloadFileName ?? defaultSettings.downloadFileName,
+      downloadButtonText:
+        body.downloadButtonText ?? defaultSettings.downloadButtonText,
+      downloadDescription:
+        body.downloadDescription ?? defaultSettings.downloadDescription,
     };
 
     // Check if setting exists
@@ -117,7 +129,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      await db.update(siteSettings)
+      await db
+        .update(siteSettings)
         .set({
           value: JSON.stringify(settings),
           type: "json",
@@ -139,7 +152,7 @@ export async function POST(request: NextRequest) {
     console.error("Failed to save popup settings:", error);
     return NextResponse.json(
       { success: false, error: "Failed to save popup settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

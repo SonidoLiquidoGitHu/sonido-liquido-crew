@@ -1,36 +1,36 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Share2,
-  RefreshCw,
-  Play,
-  SkipForward,
+  Activity,
   AlertTriangle,
+  Calendar,
   CheckCircle2,
-  XCircle,
   Clock,
-  Image as ImageIcon,
-  Music,
-  Users,
-  Loader2,
-  ExternalLink,
-  RotateCcw,
-  Key,
-  Facebook,
-  Instagram,
-  Disc3,
   Database,
-  Trash2,
-  Save,
+  Disc3,
+  ExternalLink,
   Eye,
   EyeOff,
+  Facebook,
+  Image as ImageIcon,
+  Instagram,
+  Key,
+  Loader2,
+  Music,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Share2,
+  SkipForward,
+  Trash2,
+  Users,
   Video,
+  XCircle,
   Youtube,
-  Calendar,
-  Activity,
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 // ===========================================
 // TYPES
@@ -48,7 +48,14 @@ interface QueueSummary {
 
 interface QueueItem {
   id: string;
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event";
+  contentType:
+    | "gallery_photo"
+    | "spotify_track"
+    | "artist_profile"
+    | "curated_track"
+    | "vertical_video"
+    | "youtube_video"
+    | "event";
   sourceId: string;
   artistId: string | null;
   releaseId: string | null;
@@ -69,7 +76,14 @@ interface PostLog {
   id: string;
   queueId: string;
   platform: "facebook" | "instagram";
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event";
+  contentType:
+    | "gallery_photo"
+    | "spotify_track"
+    | "artist_profile"
+    | "curated_track"
+    | "vertical_video"
+    | "youtube_video"
+    | "event";
   sourceId: string;
   imageUrl: string;
   caption: string | null;
@@ -145,7 +159,7 @@ function getProxiedImageUrl(url: string): string {
       "ucarecdn.com",
     ].some(
       (host) =>
-        parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+        parsed.hostname === host || parsed.hostname.endsWith(`.${host}`),
     );
     if (needsProxy) {
       return `/api/image-proxy?url=${encodeURIComponent(url)}`;
@@ -223,7 +237,7 @@ function formatDate(dateStr: string | null): string {
 
 function truncate(str: string | null, max: number): string {
   if (!str) return "—";
-  return str.length > max ? str.substring(0, max) + "..." : str;
+  return str.length > max ? `${str.substring(0, max)}...` : str;
 }
 
 // ===========================================
@@ -235,33 +249,54 @@ export default function AdminSocialPage() {
   const [nextPending, setNextPending] = useState<QueueItem[]>([]);
   const [recentLogs, setRecentLogs] = useState<PostLog[]>([]);
   const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
-  const [contentCounts, setContentCounts] = useState<ContentCounts | null>(null);
+  const [contentCounts, setContentCounts] = useState<ContentCounts | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [populating, setPopulating] = useState(false);
   const [validating, setValidating] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<any>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"queue" | "history" | "schedule" | "config">("queue");
+  const [activeTab, setActiveTab] = useState<
+    "queue" | "history" | "schedule" | "config"
+  >("queue");
 
   // Schedule config state
-  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(
+    null,
+  );
   const [editScheduleHours, setEditScheduleHours] = useState<number[]>([]);
-  const [editStoryScheduleHours, setEditStoryScheduleHours] = useState<number[]>([]);
+  const [editStoryScheduleHours, setEditStoryScheduleHours] = useState<
+    number[]
+  >([]);
   const [editPostsPerRun, setEditPostsPerRun] = useState(1);
   const [editMaxPostsPerDay, setEditMaxPostsPerDay] = useState(4);
   const [editMaxStoriesPerDay, setEditMaxStoriesPerDay] = useState(3);
   const [savingSchedule, setSavingSchedule] = useState(false);
-  const [scheduleSaveResult, setScheduleSaveResult] = useState<string | null>(null);
-  const [debugResult, setDebugResult] = useState<Record<string, any> | null>(null);
+  const [scheduleSaveResult, setScheduleSaveResult] = useState<string | null>(
+    null,
+  );
+  const [debugResult, setDebugResult] = useState<Record<string, any> | null>(
+    null,
+  );
   const [debugLoading, setDebugLoading] = useState(false);
 
   // Credentials state
-  const [credentialInfo, setCredentialInfo] = useState<Record<string, CredentialInfo> | null>(null);
-  const [credentialEdits, setCredentialEdits] = useState<Record<string, string>>({});
+  const [credentialInfo, setCredentialInfo] = useState<Record<
+    string,
+    CredentialInfo
+  > | null>(null);
+  const [credentialEdits, setCredentialEdits] = useState<
+    Record<string, string>
+  >({});
   const [savingCredentials, setSavingCredentials] = useState(false);
-  const [showCredentialValues, setShowCredentialValues] = useState<Record<string, boolean>>({});
-  const [credentialSaveResult, setCredentialSaveResult] = useState<string | null>(null);
+  const [showCredentialValues, setShowCredentialValues] = useState<
+    Record<string, boolean>
+  >({});
+  const [credentialSaveResult, setCredentialSaveResult] = useState<
+    string | null
+  >(null);
 
   // Populate options
   const [populateOptions, setPopulateOptions] = useState({
@@ -291,10 +326,15 @@ export default function AdminSocialPage() {
         if (data.data.scheduleConfig) {
           setScheduleConfig(data.data.scheduleConfig);
           setEditScheduleHours(data.data.scheduleConfig.scheduleHours);
-          setEditStoryScheduleHours(data.data.scheduleConfig.storyScheduleHours || data.data.scheduleConfig.scheduleHours);
+          setEditStoryScheduleHours(
+            data.data.scheduleConfig.storyScheduleHours ||
+              data.data.scheduleConfig.scheduleHours,
+          );
           setEditPostsPerRun(data.data.scheduleConfig.postsPerRun);
           setEditMaxPostsPerDay(data.data.scheduleConfig.maxPostsPerDay);
-          setEditMaxStoriesPerDay(data.data.scheduleConfig.maxStoriesPerDay ?? 3);
+          setEditMaxStoriesPerDay(
+            data.data.scheduleConfig.maxStoriesPerDay ?? 3,
+          );
         }
       }
     } catch (error) {
@@ -376,7 +416,12 @@ export default function AdminSocialPage() {
   };
 
   const resetCycle = async () => {
-    if (!confirm("Reiniciar todos los items publicados a pendientes para un nuevo ciclo?")) return;
+    if (
+      !confirm(
+        "Reiniciar todos los items publicados a pendientes para un nuevo ciclo?",
+      )
+    )
+      return;
     try {
       const res = await fetch("/api/admin/social", {
         method: "POST",
@@ -408,7 +453,12 @@ export default function AdminSocialPage() {
   };
 
   const clearQueue = async () => {
-    if (!confirm("Eliminar todos los items pendientes de la cola? Esta accion no se puede deshacer.")) return;
+    if (
+      !confirm(
+        "Eliminar todos los items pendientes de la cola? Esta accion no se puede deshacer.",
+      )
+    )
+      return;
     try {
       const res = await fetch("/api/admin/social", {
         method: "POST",
@@ -457,7 +507,7 @@ export default function AdminSocialPage() {
     setEditScheduleHours((prev) =>
       prev.includes(hour)
         ? prev.filter((h) => h !== hour)
-        : [...prev, hour].sort((a, b) => a - b)
+        : [...prev, hour].sort((a, b) => a - b),
     );
   };
 
@@ -465,7 +515,7 @@ export default function AdminSocialPage() {
     setEditStoryScheduleHours((prev) =>
       prev.includes(hour)
         ? prev.filter((h) => h !== hour)
-        : [...prev, hour].sort((a, b) => a - b)
+        : [...prev, hour].sort((a, b) => a - b),
     );
   };
 
@@ -490,7 +540,9 @@ export default function AdminSocialPage() {
         setDebugResult({ error: data.error || "Unknown error" });
       }
     } catch (err) {
-      setDebugResult({ error: err instanceof Error ? err.message : "Request failed" });
+      setDebugResult({
+        error: err instanceof Error ? err.message : "Request failed",
+      });
     } finally {
       setDebugLoading(false);
     }
@@ -606,8 +658,11 @@ export default function AdminSocialPage() {
             Social Auto-Post
           </h1>
           <p className="text-slc-muted mt-1">
-            Publicación automática a Facebook e Instagram — {scheduleConfig?.scheduleHours?.length || 3}x al día
-            <span className="text-slc-muted/60 ml-2">(Eventos: FB feed + IG Story, 2x/día, 3x/día la semana del evento)</span>
+            Publicación automática a Facebook e Instagram —{" "}
+            {scheduleConfig?.scheduleHours?.length || 3}x al día
+            <span className="text-slc-muted/60 ml-2">
+              (Eventos: FB feed + IG Story, 2x/día, 3x/día la semana del evento)
+            </span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -650,7 +705,8 @@ export default function AdminSocialPage() {
           <div className="text-sm">
             <p className="text-red-300 font-medium">Meta API no configurada</p>
             <p className="text-red-300/70 mt-1">
-              Agrega tus credenciales en la seccion &quot;Credenciales&quot; abajo, o configura las variables de entorno en Netlify:
+              Agrega tus credenciales en la seccion &quot;Credenciales&quot;
+              abajo, o configura las variables de entorno en Netlify:
               META_SYSTEM_USER_TOKEN, FACEBOOK_PAGE_ID
             </p>
           </div>
@@ -718,7 +774,12 @@ export default function AdminSocialPage() {
           )}
           Poblar Cola
         </Button>
-        <Button variant="outline" size="sm" onClick={retryFailed} disabled={!queueSummary?.failed}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={retryFailed}
+          disabled={!queueSummary?.failed}
+        >
           <RefreshCw className="w-4 h-4 mr-2" />
           Reintentar Fallidos ({queueSummary?.failed || 0})
         </Button>
@@ -726,7 +787,12 @@ export default function AdminSocialPage() {
           <RotateCcw className="w-4 h-4 mr-2" />
           Reiniciar Ciclo
         </Button>
-        <Button variant="outline" size="sm" onClick={clearQueue} className="text-red-400 hover:text-red-300">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearQueue}
+          className="text-red-400 hover:text-red-300"
+        >
           <Trash2 className="w-4 h-4 mr-2" />
           Limpiar Pendientes
         </Button>
@@ -760,15 +826,18 @@ export default function AdminSocialPage() {
               <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h3 className="text-xl font-medium mb-2">Cola vacía</h3>
               <p className="text-slc-muted mb-4">
-                Todos los items han sido publicados o la cola está vacía.
-                Haz clic en &quot;Poblar Cola&quot; para agregar contenido.
+                Todos los items han sido publicados o la cola está vacía. Haz
+                clic en &quot;Poblar Cola&quot; para agregar contenido.
               </p>
               <div className="flex gap-3 justify-center">
                 <Button variant="outline" onClick={resetCycle}>
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reiniciar Ciclo
                 </Button>
-                <Button onClick={populateQueue} className="bg-green-600 hover:bg-green-700">
+                <Button
+                  onClick={populateQueue}
+                  className="bg-green-600 hover:bg-green-700"
+                >
                   <Database className="w-4 h-4 mr-2" />
                   Poblar Cola
                 </Button>
@@ -800,17 +869,20 @@ export default function AdminSocialPage() {
                         // Fallback: try original URL if proxy fails, then show icon
                         const img = e.currentTarget;
                         if (!img.dataset.retried) {
-                          img.dataset.retried = 'true';
+                          img.dataset.retried = "true";
                           img.src = item.imageUrl;
                         } else {
                           // Both proxy and original failed — hide img and show icon
-                          img.style.display = 'none';
+                          img.style.display = "none";
                           const sibling = img.nextElementSibling as HTMLElement;
-                          if (sibling) sibling.style.display = 'flex';
+                          if (sibling) sibling.style.display = "flex";
                         }
                       }}
                     />
-                    <div className="absolute inset-0 items-center justify-center hidden" style={{ display: 'none' }}>
+                    <div
+                      className="absolute inset-0 items-center justify-center hidden"
+                      style={{ display: "none" }}
+                    >
                       <IconComp className="w-6 h-6 text-slc-muted" />
                     </div>
                   </div>
@@ -820,12 +892,17 @@ export default function AdminSocialPage() {
                     <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
                       <IconComp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                       <span className="text-xs sm:text-sm font-medium">
-                        {contentTypeLabels[item.contentType] || item.contentType}
+                        {contentTypeLabels[item.contentType] ||
+                          item.contentType}
                       </span>
-                      <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${statusColors[item.status]}`}>
+                      <span
+                        className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${statusColors[item.status]}`}
+                      >
                         {item.status}
                       </span>
-                      <span className="text-[10px] sm:text-xs text-slc-muted">Ciclo {item.cycleNumber}</span>
+                      <span className="text-[10px] sm:text-xs text-slc-muted">
+                        Ciclo {item.cycleNumber}
+                      </span>
                     </div>
                     <p className="text-xs sm:text-sm text-slc-muted truncate">
                       {truncate(item.caption, 80)}
@@ -834,7 +911,10 @@ export default function AdminSocialPage() {
                       {platforms.map((p) => {
                         const PIcon = platformIcons[p] || Music;
                         return (
-                          <span key={p} className="flex items-center gap-1 text-xs text-slc-muted">
+                          <span
+                            key={p}
+                            className="flex items-center gap-1 text-xs text-slc-muted"
+                          >
                             <PIcon className="w-3 h-3" />
                             {platformLabels[p]}
                           </span>
@@ -857,13 +937,23 @@ export default function AdminSocialPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                     {index === 0 && (
-                      <Button size="sm" onClick={processNext} disabled={processing} className="hidden sm:inline-flex">
+                      <Button
+                        size="sm"
+                        onClick={processNext}
+                        disabled={processing}
+                        className="hidden sm:inline-flex"
+                      >
                         <Play className="w-3 h-3 mr-1" />
                         Publicar
                       </Button>
                     )}
                     {index === 0 && (
-                      <Button size="sm" onClick={processNext} disabled={processing} className="sm:hidden">
+                      <Button
+                        size="sm"
+                        onClick={processNext}
+                        disabled={processing}
+                        className="sm:hidden"
+                      >
                         <Play className="w-3 h-3" />
                       </Button>
                     )}
@@ -889,7 +979,9 @@ export default function AdminSocialPage() {
             <div className="text-center py-12">
               <Clock className="w-16 h-16 text-slc-muted mx-auto mb-4" />
               <h3 className="text-xl font-medium mb-2">Sin historial</h3>
-              <p className="text-slc-muted">Aún no se han realizado publicaciones.</p>
+              <p className="text-slc-muted">
+                Aún no se han realizado publicaciones.
+              </p>
             </div>
           ) : (
             recentLogs.map((log) => (
@@ -900,8 +992,16 @@ export default function AdminSocialPage() {
                 {/* Platform icon */}
                 <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slc-dark flex-shrink-0">
                   {(() => {
-                    const Icon = platformIcons[log.platform] || (log.platform.startsWith("facebook") ? Facebook : Instagram);
-                    return <Icon className={`w-4 h-4 ${log.platform.startsWith("facebook") ? "text-blue-400" : "text-pink-400"}`} />;
+                    const Icon =
+                      platformIcons[log.platform] ||
+                      (log.platform.startsWith("facebook")
+                        ? Facebook
+                        : Instagram);
+                    return (
+                      <Icon
+                        className={`w-4 h-4 ${log.platform.startsWith("facebook") ? "text-blue-400" : "text-pink-400"}`}
+                      />
+                    );
                   })()}
                 </div>
 
@@ -911,7 +1011,9 @@ export default function AdminSocialPage() {
                     <span className="text-xs sm:text-sm font-medium">
                       {contentTypeLabels[log.contentType] || log.contentType}
                     </span>
-                    <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${logStatusColors[log.status]}`}>
+                    <span
+                      className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${logStatusColors[log.status]}`}
+                    >
                       {log.status}
                     </span>
                     <span className="text-[10px] sm:text-xs text-slc-muted">
@@ -922,7 +1024,9 @@ export default function AdminSocialPage() {
                     {truncate(log.caption, 80)}
                   </p>
                   {log.errorMessage && (
-                    <p className="text-xs text-red-400 truncate mt-0.5">{log.errorMessage}</p>
+                    <p className="text-xs text-red-400 truncate mt-0.5">
+                      {log.errorMessage}
+                    </p>
                   )}
                 </div>
 
@@ -964,13 +1068,16 @@ export default function AdminSocialPage() {
               Horario de Publicación
             </h2>
             <p className="text-sm text-slc-muted mb-6">
-              Configura a qué horas se publican los posts automáticamente (hora de Ciudad de México / CST).
-              El sistema revisa la cola cada hora y publica los items pendientes en los horarios seleccionados.
+              Configura a qué horas se publican los posts automáticamente (hora
+              de Ciudad de México / CST). El sistema revisa la cola cada hora y
+              publica los items pendientes en los horarios seleccionados.
             </p>
 
             {/* Schedule Hours Grid */}
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-3">Horas de publicación (hora México)</label>
+              <label className="block text-sm font-medium mb-3">
+                Horas de publicación (hora México)
+              </label>
               <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2">
                 {Array.from({ length: 24 }, (_, h) => (
                   <button
@@ -987,12 +1094,16 @@ export default function AdminSocialPage() {
                 ))}
               </div>
               <p className="text-xs text-slc-muted mt-2">
-                Seleccionadas: {editScheduleHours.length > 0
-                  ? editScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
+                Seleccionadas:{" "}
+                {editScheduleHours.length > 0
+                  ? editScheduleHours
+                      .map((h) => `${h.toString().padStart(2, "0")}:00`)
+                      .join(", ")
                   : "Ninguna — se usarán las horas por defecto (04:00, 10:00, 15:00)"}
               </p>
               <p className="text-xs text-slc-muted mt-1">
-                <span className="text-white font-medium">Posts en feed:</span> Facebook (muro) + Instagram (feed). No incluye Stories.
+                <span className="text-white font-medium">Posts en feed:</span>{" "}
+                Facebook (muro) + Instagram (feed). No incluye Stories.
               </p>
             </div>
 
@@ -1012,8 +1123,12 @@ export default function AdminSocialPage() {
                 </button>
               </div>
               <p className="text-xs text-slc-muted mb-3">
-                En estas horas, el item de la cola también se publica como <span className="text-white font-medium">Story de Instagram</span> (además del feed).
-                Las Stories desaparecen en 24h — ideal para contenido "throwback" sin saturar el feed.
+                En estas horas, el item de la cola también se publica como{" "}
+                <span className="text-white font-medium">
+                  Story de Instagram
+                </span>{" "}
+                (además del feed). Las Stories desaparecen en 24h — ideal para
+                contenido "throwback" sin saturar el feed.
               </p>
               <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2">
                 {Array.from({ length: 24 }, (_, h) => (
@@ -1031,130 +1146,207 @@ export default function AdminSocialPage() {
                 ))}
               </div>
               <p className="text-xs text-slc-muted mt-2">
-                Seleccionadas: {editStoryScheduleHours.length > 0
-                  ? editStoryScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
+                Seleccionadas:{" "}
+                {editStoryScheduleHours.length > 0
+                  ? editStoryScheduleHours
+                      .map((h) => `${h.toString().padStart(2, "0")}:00`)
+                      .join(", ")
                   : "Ninguna — se usarán las mismas horas que el feed"}
               </p>
               <p className="text-xs text-slc-muted mt-1">
-                <span className="text-white font-medium">Stories/día:</span> {editStoryScheduleHours.length} de throwback
+                <span className="text-white font-medium">Stories/día:</span>{" "}
+                {editStoryScheduleHours.length} de throwback
                 <span className="text-slc-muted"> + </span>
-                <span className="text-white font-medium">2–3</span> de evento (autopost independiente)
+                <span className="text-white font-medium">2–3</span> de evento
+                (autopost independiente)
               </p>
             </div>
 
             {/* Posts Per Run */}
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Posts por ejecución</label>
+              <label className="block text-sm font-medium mb-2">
+                Posts por ejecución
+              </label>
               <p className="text-xs text-slc-muted mb-3">
-                Cuántos items de la cola se procesan cada vez que el cron corre (cada hora en los horarios seleccionados).
-                Más items = más posts por día.
+                Cuántos items de la cola se procesan cada vez que el cron corre
+                (cada hora en los horarios seleccionados). Más items = más posts
+                por día.
               </p>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setEditPostsPerRun(Math.max(1, editPostsPerRun - 1))}
+                  onClick={() =>
+                    setEditPostsPerRun(Math.max(1, editPostsPerRun - 1))
+                  }
                   className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
                 >
                   −
                 </button>
-                <span className="text-2xl font-oswald w-12 text-center">{editPostsPerRun}</span>
+                <span className="text-2xl font-oswald w-12 text-center">
+                  {editPostsPerRun}
+                </span>
                 <button
-                  onClick={() => setEditPostsPerRun(Math.min(10, editPostsPerRun + 1))}
+                  onClick={() =>
+                    setEditPostsPerRun(Math.min(10, editPostsPerRun + 1))
+                  }
                   className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
                 >
                   +
                 </button>
                 <span className="text-sm text-slc-muted ml-2">
-                  ({editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} por hora en horarios seleccionados)
+                  ({editPostsPerRun} post{editPostsPerRun > 1 ? "s" : ""} por
+                  hora en horarios seleccionados)
                 </span>
               </div>
             </div>
 
             {/* Max Posts Per Day */}
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Máximo de posts por día</label>
+              <label className="block text-sm font-medium mb-2">
+                Máximo de posts por día
+              </label>
               <p className="text-xs text-slc-muted mb-3">
-                Límite diario de publicaciones. Si el cron intenta pasar este límite, se detiene.
+                Límite diario de publicaciones. Si el cron intenta pasar este
+                límite, se detiene.
               </p>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setEditMaxPostsPerDay(Math.max(1, editMaxPostsPerDay - 1))}
+                  onClick={() =>
+                    setEditMaxPostsPerDay(Math.max(1, editMaxPostsPerDay - 1))
+                  }
                   className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
                 >
                   −
                 </button>
-                <span className="text-2xl font-oswald w-12 text-center">{editMaxPostsPerDay}</span>
+                <span className="text-2xl font-oswald w-12 text-center">
+                  {editMaxPostsPerDay}
+                </span>
                 <button
-                  onClick={() => setEditMaxPostsPerDay(Math.min(24, editMaxPostsPerDay + 1))}
+                  onClick={() =>
+                    setEditMaxPostsPerDay(Math.min(24, editMaxPostsPerDay + 1))
+                  }
                   className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-primary/50 text-lg font-bold"
                 >
                   +
                 </button>
                 <span className="text-sm text-slc-muted ml-2">
-                  (máximo {editMaxPostsPerDay} publicación{editMaxPostsPerDay > 1 ? "es" : ""} por día en FB + IG)
+                  (máximo {editMaxPostsPerDay} publicación
+                  {editMaxPostsPerDay > 1 ? "es" : ""} por día en FB + IG)
                 </span>
               </div>
             </div>
 
             {/* Max Stories Per Day */}
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Máximo de Stories por día</label>
+              <label className="block text-sm font-medium mb-2">
+                Máximo de Stories por día
+              </label>
               <p className="text-xs text-slc-muted mb-3">
-                Límite diario de Instagram Stories (throwback). Independiente del límite de feed.
-                Si el cron intenta pasar este límite, se detiene la publicación de Stories.
+                Límite diario de Instagram Stories (throwback). Independiente
+                del límite de feed. Si el cron intenta pasar este límite, se
+                detiene la publicación de Stories.
               </p>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setEditMaxStoriesPerDay(Math.max(0, editMaxStoriesPerDay - 1))}
+                  onClick={() =>
+                    setEditMaxStoriesPerDay(
+                      Math.max(0, editMaxStoriesPerDay - 1),
+                    )
+                  }
                   className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-pink-500/50 text-lg font-bold"
                 >
                   −
                 </button>
-                <span className="text-2xl font-oswald w-12 text-center">{editMaxStoriesPerDay}</span>
+                <span className="text-2xl font-oswald w-12 text-center">
+                  {editMaxStoriesPerDay}
+                </span>
                 <button
-                  onClick={() => setEditMaxStoriesPerDay(Math.min(24, editMaxStoriesPerDay + 1))}
+                  onClick={() =>
+                    setEditMaxStoriesPerDay(
+                      Math.min(24, editMaxStoriesPerDay + 1),
+                    )
+                  }
                   className="w-10 h-10 rounded-lg bg-slc-dark border border-slc-border flex items-center justify-center hover:border-pink-500/50 text-lg font-bold"
                 >
                   +
                 </button>
                 <span className="text-sm text-slc-muted ml-2">
-                  (máximo {editMaxStoriesPerDay} Stor{editMaxStoriesPerDay === 1 ? "y" : "ies"} por día en Instagram)
+                  (máximo {editMaxStoriesPerDay} Stor
+                  {editMaxStoriesPerDay === 1 ? "y" : "ies"} por día en
+                  Instagram)
                 </span>
               </div>
             </div>
 
             {/* Summary */}
             <div className="p-4 bg-slc-dark rounded-lg border border-slc-border mb-6">
-              <h3 className="text-sm font-medium mb-2">Resumen de tu configuración</h3>
+              <h3 className="text-sm font-medium mb-2">
+                Resumen de tu configuración
+              </h3>
               <div className="space-y-1 text-sm text-slc-muted">
                 <p>
-                  <span className="text-white font-medium">Horarios (feed):</span>{" "}
+                  <span className="text-white font-medium">
+                    Horarios (feed):
+                  </span>{" "}
                   {editScheduleHours.length > 0
-                    ? editScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
-                    : "04:00, 10:00, 15:00 (por defecto)"} (hora México)
+                    ? editScheduleHours
+                        .map((h) => `${h.toString().padStart(2, "0")}:00`)
+                        .join(", ")
+                    : "04:00, 10:00, 15:00 (por defecto)"}{" "}
+                  (hora México)
                 </p>
                 <p>
-                  <span className="text-white font-medium">Horarios (Stories):</span>{" "}
+                  <span className="text-white font-medium">
+                    Horarios (Stories):
+                  </span>{" "}
                   {editStoryScheduleHours.length > 0
-                    ? editStoryScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")
-                    : "Iguales que el feed"} (hora México)
+                    ? editStoryScheduleHours
+                        .map((h) => `${h.toString().padStart(2, "0")}:00`)
+                        .join(", ")
+                    : "Iguales que el feed"}{" "}
+                  (hora México)
                 </p>
                 <p>
-                  <span className="text-white font-medium">Posts por ejecución:</span> {editPostsPerRun}
+                  <span className="text-white font-medium">
+                    Posts por ejecución:
+                  </span>{" "}
+                  {editPostsPerRun}
                 </p>
                 <p>
-                  <span className="text-white font-medium">Máximo diario (feed):</span> {editMaxPostsPerDay} posts
+                  <span className="text-white font-medium">
+                    Máximo diario (feed):
+                  </span>{" "}
+                  {editMaxPostsPerDay} posts
                 </p>
                 <p>
-                  <span className="text-white font-medium">Máximo diario (Stories):</span> {editMaxStoriesPerDay} Stories
+                  <span className="text-white font-medium">
+                    Máximo diario (Stories):
+                  </span>{" "}
+                  {editMaxStoriesPerDay} Stories
                 </p>
                 <p>
                   <span className="text-white font-medium">Feed/día:</span>{" "}
-                  {Math.min((editScheduleHours.length || 3) * editPostsPerRun, editMaxPostsPerDay)} posts × 2 plataformas ={" "}
-                  {Math.min((editScheduleHours.length || 3) * editPostsPerRun, editMaxPostsPerDay) * 2} publicaciones
+                  {Math.min(
+                    (editScheduleHours.length || 3) * editPostsPerRun,
+                    editMaxPostsPerDay,
+                  )}{" "}
+                  posts × 2 plataformas ={" "}
+                  {Math.min(
+                    (editScheduleHours.length || 3) * editPostsPerRun,
+                    editMaxPostsPerDay,
+                  ) * 2}{" "}
+                  publicaciones
                 </p>
                 <p>
-                  <span className="text-white font-medium">Stories throwback/día:</span>{" "}
-                  {Math.min(editStoryScheduleHours.length || editScheduleHours.length || 3, editMaxStoriesPerDay)} Stories
+                  <span className="text-white font-medium">
+                    Stories throwback/día:
+                  </span>{" "}
+                  {Math.min(
+                    editStoryScheduleHours.length ||
+                      editScheduleHours.length ||
+                      3,
+                    editMaxStoriesPerDay,
+                  )}{" "}
+                  Stories
                 </p>
               </div>
             </div>
@@ -1167,19 +1359,28 @@ export default function AdminSocialPage() {
               </h3>
               <div className="space-y-1 text-sm text-slc-muted">
                 <p>
-                  <span className="text-white font-medium">Facebook:</span> Post en el muro (feed)
+                  <span className="text-white font-medium">Facebook:</span> Post
+                  en el muro (feed)
                 </p>
                 <p>
-                  <span className="text-white font-medium">Instagram:</span> Story (no feed, no Reel) — desaparece en 24h
+                  <span className="text-white font-medium">Instagram:</span>{" "}
+                  Story (no feed, no Reel) — desaparece en 24h
                 </p>
                 <p>
-                  <span className="text-white font-medium">Más de 1 semana antes:</span> 2 publicaciones/día (cada 12 horas)
+                  <span className="text-white font-medium">
+                    Más de 1 semana antes:
+                  </span>{" "}
+                  2 publicaciones/día (cada 12 horas)
                 </p>
                 <p>
-                  <span className="text-white font-medium">La semana del evento:</span> 3 publicaciones/día (cada 8 horas)
+                  <span className="text-white font-medium">
+                    La semana del evento:
+                  </span>{" "}
+                  3 publicaciones/día (cada 8 horas)
                 </p>
                 <p className="text-xs mt-2">
-                  Los posts de eventos son independientes y no cuentan contra el límite diario de la cola regular.
+                  Los posts de eventos son independientes y no cuentan contra el
+                  límite diario de la cola regular.
                 </p>
               </div>
             </div>
@@ -1199,7 +1400,9 @@ export default function AdminSocialPage() {
                 Guardar Horario
               </Button>
               {scheduleSaveResult && (
-                <span className={`text-sm ${scheduleSaveResult.includes("Error") ? "text-red-400" : "text-green-400"}`}>
+                <span
+                  className={`text-sm ${scheduleSaveResult.includes("Error") ? "text-red-400" : "text-green-400"}`}
+                >
                   {scheduleSaveResult}
                 </span>
               )}
@@ -1213,7 +1416,8 @@ export default function AdminSocialPage() {
               Diagnóstico de Autopost
             </h2>
             <p className="text-sm text-slc-muted mb-4">
-              Verifica por qué no se están publicando los posts automáticos. Revisa configuración, cola, token y horarios.
+              Verifica por qué no se están publicando los posts automáticos.
+              Revisa configuración, cola, token y horarios.
             </p>
             <Button
               onClick={runDiagnostics}
@@ -1233,19 +1437,30 @@ export default function AdminSocialPage() {
               <div className="space-y-4">
                 {/* Likely Issues */}
                 {((debugResult.likelyIssues as string[]) || []).length > 0 && (
-                  <div className={`p-4 rounded-lg border ${
-                    (debugResult.likelyIssues as string[]).some(i => i.includes("No obvious"))
-                      ? "bg-green-500/10 border-green-500/20"
-                      : "bg-red-500/10 border-red-500/20"
-                  }`}>
-                    <h3 className="text-sm font-medium mb-2">Problemas encontrados:</h3>
+                  <div
+                    className={`p-4 rounded-lg border ${
+                      (debugResult.likelyIssues as string[]).some((i) =>
+                        i.includes("No obvious"),
+                      )
+                        ? "bg-green-500/10 border-green-500/20"
+                        : "bg-red-500/10 border-red-500/20"
+                    }`}
+                  >
+                    <h3 className="text-sm font-medium mb-2">
+                      Problemas encontrados:
+                    </h3>
                     <ul className="space-y-1">
-                      {(debugResult.likelyIssues as string[]).map((issue, i) => (
-                        <li key={i} className="text-sm text-slc-muted flex items-start gap-2">
-                          <span className="text-red-400 mt-0.5">•</span>
-                          {issue}
-                        </li>
-                      ))}
+                      {(debugResult.likelyIssues as string[]).map(
+                        (issue, i) => (
+                          <li
+                            key={i}
+                            className="text-sm text-slc-muted flex items-start gap-2"
+                          >
+                            <span className="text-red-400 mt-0.5">•</span>
+                            {issue}
+                          </li>
+                        ),
+                      )}
                     </ul>
                   </div>
                 )}
@@ -1262,7 +1477,7 @@ export default function AdminSocialPage() {
                     label="Token"
                     ok={debugResult.tokenValid as boolean}
                     okText="Válido"
-                    failText={debugResult.tokenError as string || "Inválido"}
+                    failText={(debugResult.tokenError as string) || "Inválido"}
                   />
                   <StatusBadge
                     label="Cola pendiente"
@@ -1273,26 +1488,80 @@ export default function AdminSocialPage() {
                   <StatusBadge
                     label="Horario en DB"
                     ok={debugResult.hasAutopostScheduleHours as boolean}
-                    okText={debugResult.autopostScheduleHoursValue as string || "Guardado"}
+                    okText={
+                      (debugResult.autopostScheduleHoursValue as string) ||
+                      "Guardado"
+                    }
                     failText="No guardado"
                   />
                 </div>
 
                 {/* Schedule Debug */}
                 <div className="p-3 bg-slc-dark rounded-lg text-sm space-y-1">
-                  <p><span className="text-slc-muted">Hora actual (CST):</span> <span className="text-white font-mono">{debugResult.currentTimeCST}:00</span></p>
-                  <p><span className="text-slc-muted">Hora actual (UTC):</span> <span className="text-white font-mono">{debugResult.currentTimeUTC}:00</span></p>
-                  <p><span className="text-slc-muted">Horarios CST:</span> <span className="text-white font-mono">{(debugResult.scheduleConfig as any)?.scheduleHours?.join(", ") || "N/A"}</span></p>
-                  <p><span className="text-slc-muted">Horarios UTC:</span> <span className="text-white font-mono">{(debugResult.utcScheduleHours as number[])?.join(", ") || "N/A"}</span></p>
-                  <p><span className="text-slc-muted">¿Debería publicar ahora?</span> <span className={debugResult.shouldPostNow ? "text-green-400" : "text-red-400"}>{debugResult.shouldPostNow ? "Sí" : "No"}</span></p>
-                  <p><span className="text-slc-muted">Próximo horario (CST):</span> <span className="text-white font-mono">{debugResult.nextScheduledCST}:00</span></p>
-                  <p><span className="text-slc-muted">Posts hoy:</span> <span className="text-white font-mono">{debugResult.todayPostsCount as number}</span></p>
+                  <p>
+                    <span className="text-slc-muted">Hora actual (CST):</span>{" "}
+                    <span className="text-white font-mono">
+                      {debugResult.currentTimeCST}:00
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slc-muted">Hora actual (UTC):</span>{" "}
+                    <span className="text-white font-mono">
+                      {debugResult.currentTimeUTC}:00
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slc-muted">Horarios CST:</span>{" "}
+                    <span className="text-white font-mono">
+                      {(debugResult.scheduleConfig as any)?.scheduleHours?.join(
+                        ", ",
+                      ) || "N/A"}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slc-muted">Horarios UTC:</span>{" "}
+                    <span className="text-white font-mono">
+                      {(debugResult.utcScheduleHours as number[])?.join(", ") ||
+                        "N/A"}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slc-muted">
+                      ¿Debería publicar ahora?
+                    </span>{" "}
+                    <span
+                      className={
+                        debugResult.shouldPostNow
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }
+                    >
+                      {debugResult.shouldPostNow ? "Sí" : "No"}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slc-muted">
+                      Próximo horario (CST):
+                    </span>{" "}
+                    <span className="text-white font-mono">
+                      {debugResult.nextScheduledCST}:00
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slc-muted">Posts hoy:</span>{" "}
+                    <span className="text-white font-mono">
+                      {debugResult.todayPostsCount as number}
+                    </span>
+                  </p>
                 </div>
 
                 {/* Stuck items warning */}
                 {(debugResult.stuckProcessingItems as number) > 0 && (
                   <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm text-yellow-300">
-                    <span className="font-medium">Atención:</span> {debugResult.stuckProcessingItems} items están atascados en estado "processing". Prueba "Reiniciar Ciclo" para resetearlos.
+                    <span className="font-medium">Atención:</span>{" "}
+                    {debugResult.stuckProcessingItems} items están atascados en
+                    estado "processing". Prueba "Reiniciar Ciclo" para
+                    resetearlos.
                   </div>
                 )}
               </div>
@@ -1310,33 +1579,44 @@ export default function AdminSocialPage() {
                 <div>
                   <p className="text-xs text-slc-muted">Último post exitoso</p>
                   <p className="font-medium text-sm">
-                    {recentLogs.find(l => l.status === "success")
-                      ? formatDate(recentLogs.find(l => l.status === "success")!.postedAt)
-                      : "—"}
+                    {(() => {
+                      const successLog = recentLogs.find((l) => l.status === "success");
+                      return successLog ? formatDate(successLog.postedAt ?? null) : "—";
+                    })()}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slc-muted">Plataforma</p>
                   <p className="font-medium text-sm">
-                    {recentLogs.find(l => l.status === "success")
-                      ? platformLabels[recentLogs.find(l => l.status === "success")!.platform] || recentLogs.find(l => l.status === "success")!.platform
-                      : "—"}
+                    {(() => {
+                      const successLog = recentLogs.find((l) => l.status === "success");
+                      return successLog
+                        ? platformLabels[successLog.platform] || successLog.platform
+                        : "—";
+                    })()}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slc-muted">Posts hoy</p>
                   <p className="font-medium text-sm">
-                    {recentLogs.filter(l => {
-                      if (!l.postedAt) return false;
-                      const postDate = new Date(l.postedAt);
-                      const today = new Date();
-                      return postDate.toDateString() === today.toDateString() && l.status === "success";
-                    }).length}
+                    {
+                      recentLogs.filter((l) => {
+                        if (!l.postedAt) return false;
+                        const postDate = new Date(l.postedAt);
+                        const today = new Date();
+                        return (
+                          postDate.toDateString() === today.toDateString() &&
+                          l.status === "success"
+                        );
+                      }).length
+                    }
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slc-muted">Pendientes en cola</p>
-                  <p className="font-medium text-sm">{queueSummary?.pending || 0}</p>
+                  <p className="font-medium text-sm">
+                    {queueSummary?.pending || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1353,8 +1633,8 @@ export default function AdminSocialPage() {
               Poblar Cola
             </h2>
             <p className="text-sm text-slc-muted mb-4">
-              Selecciona el contenido que quieres agregar a la cola de publicación.
-              Solo se agregarán items nuevos (no duplicados).
+              Selecciona el contenido que quieres agregar a la cola de
+              publicación. Solo se agregarán items nuevos (no duplicados).
             </p>
 
             {/* Content Sources */}
@@ -1363,13 +1643,20 @@ export default function AdminSocialPage() {
                 <input
                   type="checkbox"
                   checked={populateOptions.includeGallery}
-                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeGallery: e.target.checked }))}
+                  onChange={(e) =>
+                    setPopulateOptions((prev) => ({
+                      ...prev,
+                      includeGallery: e.target.checked,
+                    }))
+                  }
                   className="rounded border-slc-border"
                 />
                 <ImageIcon className="w-4 h-4 text-purple-400" />
                 <div>
                   <p className="text-sm font-medium">Galería</p>
-                  <p className="text-xs text-slc-muted">{contentCounts?.galleryPhotos || 0} fotos</p>
+                  <p className="text-xs text-slc-muted">
+                    {contentCounts?.galleryPhotos || 0} fotos
+                  </p>
                 </div>
               </label>
 
@@ -1377,13 +1664,20 @@ export default function AdminSocialPage() {
                 <input
                   type="checkbox"
                   checked={populateOptions.includeReleases}
-                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeReleases: e.target.checked }))}
+                  onChange={(e) =>
+                    setPopulateOptions((prev) => ({
+                      ...prev,
+                      includeReleases: e.target.checked,
+                    }))
+                  }
                   className="rounded border-slc-border"
                 />
                 <Music className="w-4 h-4 text-green-400" />
                 <div>
                   <p className="text-sm font-medium">Lanzamientos</p>
-                  <p className="text-xs text-slc-muted">{contentCounts?.releases || 0} releases</p>
+                  <p className="text-xs text-slc-muted">
+                    {contentCounts?.releases || 0} releases
+                  </p>
                 </div>
               </label>
 
@@ -1391,13 +1685,20 @@ export default function AdminSocialPage() {
                 <input
                   type="checkbox"
                   checked={populateOptions.includeArtists}
-                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeArtists: e.target.checked }))}
+                  onChange={(e) =>
+                    setPopulateOptions((prev) => ({
+                      ...prev,
+                      includeArtists: e.target.checked,
+                    }))
+                  }
                   className="rounded border-slc-border"
                 />
                 <Users className="w-4 h-4 text-blue-400" />
                 <div>
                   <p className="text-sm font-medium">Artistas</p>
-                  <p className="text-xs text-slc-muted">{contentCounts?.artists || 0} perfiles</p>
+                  <p className="text-xs text-slc-muted">
+                    {contentCounts?.artists || 0} perfiles
+                  </p>
                 </div>
               </label>
 
@@ -1405,13 +1706,20 @@ export default function AdminSocialPage() {
                 <input
                   type="checkbox"
                   checked={populateOptions.includeCuratedTracks}
-                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeCuratedTracks: e.target.checked }))}
+                  onChange={(e) =>
+                    setPopulateOptions((prev) => ({
+                      ...prev,
+                      includeCuratedTracks: e.target.checked,
+                    }))
+                  }
                   className="rounded border-slc-border"
                 />
                 <Disc3 className="w-4 h-4 text-cyan-400" />
                 <div>
                   <p className="text-sm font-medium">Tracks Curados</p>
-                  <p className="text-xs text-slc-muted">{contentCounts?.curatedTracks || 0} tracks</p>
+                  <p className="text-xs text-slc-muted">
+                    {contentCounts?.curatedTracks || 0} tracks
+                  </p>
                 </div>
               </label>
 
@@ -1419,13 +1727,20 @@ export default function AdminSocialPage() {
                 <input
                   type="checkbox"
                   checked={populateOptions.includeVerticalVideos}
-                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeVerticalVideos: e.target.checked }))}
+                  onChange={(e) =>
+                    setPopulateOptions((prev) => ({
+                      ...prev,
+                      includeVerticalVideos: e.target.checked,
+                    }))
+                  }
                   className="rounded border-slc-border"
                 />
                 <Video className="w-4 h-4 text-red-400" />
                 <div>
                   <p className="text-sm font-medium">Reels / Videos</p>
-                  <p className="text-xs text-slc-muted">{contentCounts?.verticalVideos || 0} videos</p>
+                  <p className="text-xs text-slc-muted">
+                    {contentCounts?.verticalVideos || 0} videos
+                  </p>
                 </div>
               </label>
 
@@ -1433,13 +1748,20 @@ export default function AdminSocialPage() {
                 <input
                   type="checkbox"
                   checked={populateOptions.includeYoutubeVideos}
-                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeYoutubeVideos: e.target.checked }))}
+                  onChange={(e) =>
+                    setPopulateOptions((prev) => ({
+                      ...prev,
+                      includeYoutubeVideos: e.target.checked,
+                    }))
+                  }
                   className="rounded border-slc-border"
                 />
                 <Youtube className="w-4 h-4 text-red-500" />
                 <div>
                   <p className="text-sm font-medium">Videos YouTube</p>
-                  <p className="text-xs text-slc-muted">{contentCounts?.youtubeVideos || 0} videos</p>
+                  <p className="text-xs text-slc-muted">
+                    {contentCounts?.youtubeVideos || 0} videos
+                  </p>
                 </div>
               </label>
 
@@ -1447,20 +1769,29 @@ export default function AdminSocialPage() {
                 <input
                   type="checkbox"
                   checked={populateOptions.includeEvents}
-                  onChange={(e) => setPopulateOptions((prev) => ({ ...prev, includeEvents: e.target.checked }))}
+                  onChange={(e) =>
+                    setPopulateOptions((prev) => ({
+                      ...prev,
+                      includeEvents: e.target.checked,
+                    }))
+                  }
                   className="rounded border-slc-border"
                 />
                 <Calendar className="w-4 h-4 text-amber-400" />
                 <div>
                   <p className="text-sm font-medium">Eventos</p>
-                  <p className="text-xs text-slc-muted">{contentCounts?.events || 0} próximos</p>
+                  <p className="text-xs text-slc-muted">
+                    {contentCounts?.events || 0} próximos
+                  </p>
                 </div>
               </label>
             </div>
 
             {/* Platform Selection */}
             <div className="mb-4">
-              <p className="text-sm text-slc-muted mb-2">Plataformas destino:</p>
+              <p className="text-sm text-slc-muted mb-2">
+                Plataformas destino:
+              </p>
               <div className="flex gap-3">
                 {(["facebook", "instagram"] as const).map((platform) => (
                   <label
@@ -1506,12 +1837,20 @@ export default function AdminSocialPage() {
               <input
                 type="checkbox"
                 checked={populateOptions.force}
-                onChange={(e) => setPopulateOptions((prev) => ({ ...prev, force: e.target.checked }))}
+                onChange={(e) =>
+                  setPopulateOptions((prev) => ({
+                    ...prev,
+                    force: e.target.checked,
+                  }))
+                }
                 className="rounded border-slc-border"
               />
-              <span className="text-sm text-yellow-400">Forzar re-agregado</span>
+              <span className="text-sm text-yellow-400">
+                Forzar re-agregado
+              </span>
               <span className="text-xs text-slc-muted">
-                (Re-agregar items que ya existen en la cola — útil si los tracks curados no se agregaron antes)
+                (Re-agregar items que ya existen en la cola — útil si los tracks
+                curados no se agregaron antes)
               </span>
             </label>
           </div>
@@ -1523,8 +1862,9 @@ export default function AdminSocialPage() {
               Meta API (Facebook + Instagram)
             </h2>
             <p className="text-sm text-slc-muted mb-4">
-              Ingresa las credenciales de Meta para publicar en Facebook e Instagram.
-              Los valores guardados aquí tienen prioridad sobre las variables de entorno de Netlify.
+              Ingresa las credenciales de Meta para publicar en Facebook e
+              Instagram. Los valores guardados aquí tienen prioridad sobre las
+              variables de entorno de Netlify.
             </p>
             <div className="space-y-3">
               <CredentialInput
@@ -1536,11 +1876,19 @@ export default function AdminSocialPage() {
                     const { META_APP_ID, ...rest } = credentialEdits;
                     setCredentialEdits(rest);
                   } else {
-                    setCredentialEdits((prev) => ({ ...prev, META_APP_ID: val }));
+                    setCredentialEdits((prev) => ({
+                      ...prev,
+                      META_APP_ID: val,
+                    }));
                   }
                 }}
                 showValue={showCredentialValues.META_APP_ID}
-                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, META_APP_ID: !prev.META_APP_ID }))}
+                onToggleShow={() =>
+                  setShowCredentialValues((prev) => ({
+                    ...prev,
+                    META_APP_ID: !prev.META_APP_ID,
+                  }))
+                }
               />
               <CredentialInput
                 label="META_APP_SECRET"
@@ -1551,11 +1899,19 @@ export default function AdminSocialPage() {
                     const { META_APP_SECRET, ...rest } = credentialEdits;
                     setCredentialEdits(rest);
                   } else {
-                    setCredentialEdits((prev) => ({ ...prev, META_APP_SECRET: val }));
+                    setCredentialEdits((prev) => ({
+                      ...prev,
+                      META_APP_SECRET: val,
+                    }));
                   }
                 }}
                 showValue={showCredentialValues.META_APP_SECRET}
-                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, META_APP_SECRET: !prev.META_APP_SECRET }))}
+                onToggleShow={() =>
+                  setShowCredentialValues((prev) => ({
+                    ...prev,
+                    META_APP_SECRET: !prev.META_APP_SECRET,
+                  }))
+                }
               />
               <CredentialInput
                 label="META_SYSTEM_USER_TOKEN"
@@ -1566,11 +1922,19 @@ export default function AdminSocialPage() {
                     const { META_SYSTEM_USER_TOKEN, ...rest } = credentialEdits;
                     setCredentialEdits(rest);
                   } else {
-                    setCredentialEdits((prev) => ({ ...prev, META_SYSTEM_USER_TOKEN: val }));
+                    setCredentialEdits((prev) => ({
+                      ...prev,
+                      META_SYSTEM_USER_TOKEN: val,
+                    }));
                   }
                 }}
                 showValue={showCredentialValues.META_SYSTEM_USER_TOKEN}
-                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, META_SYSTEM_USER_TOKEN: !prev.META_SYSTEM_USER_TOKEN }))}
+                onToggleShow={() =>
+                  setShowCredentialValues((prev) => ({
+                    ...prev,
+                    META_SYSTEM_USER_TOKEN: !prev.META_SYSTEM_USER_TOKEN,
+                  }))
+                }
               />
               <CredentialInput
                 label="FACEBOOK_PAGE_ID"
@@ -1581,11 +1945,19 @@ export default function AdminSocialPage() {
                     const { FACEBOOK_PAGE_ID, ...rest } = credentialEdits;
                     setCredentialEdits(rest);
                   } else {
-                    setCredentialEdits((prev) => ({ ...prev, FACEBOOK_PAGE_ID: val }));
+                    setCredentialEdits((prev) => ({
+                      ...prev,
+                      FACEBOOK_PAGE_ID: val,
+                    }));
                   }
                 }}
                 showValue={showCredentialValues.FACEBOOK_PAGE_ID}
-                onToggleShow={() => setShowCredentialValues((prev) => ({ ...prev, FACEBOOK_PAGE_ID: !prev.FACEBOOK_PAGE_ID }))}
+                onToggleShow={() =>
+                  setShowCredentialValues((prev) => ({
+                    ...prev,
+                    FACEBOOK_PAGE_ID: !prev.FACEBOOK_PAGE_ID,
+                  }))
+                }
                 placeholder="163429477044436"
               />
             </div>
@@ -1613,10 +1985,14 @@ export default function AdminSocialPage() {
                         <CheckCircle2 className="w-4 h-4 text-green-400" />
                         <span className="text-green-400">Token valido</span>
                         <span className="text-slc-muted">
-                          — FB Page: {tokenInfo.pageAccessible ? "✓" : "✗"} | IG: {tokenInfo.igAccountAccessible ? "✓" : "✗"}
+                          — FB Page: {tokenInfo.pageAccessible ? "✓" : "✗"} |
+                          IG: {tokenInfo.igAccountAccessible ? "✓" : "✗"}
                         </span>
                         <span className="text-slc-muted">
-                          — Expira: {tokenInfo.expiresAt ? formatDate(tokenInfo.expiresAt) : "Nunca"}
+                          — Expira:{" "}
+                          {tokenInfo.expiresAt
+                            ? formatDate(tokenInfo.expiresAt)
+                            : "Nunca"}
                         </span>
                       </>
                     ) : (
@@ -1636,7 +2012,13 @@ export default function AdminSocialPage() {
             <div className="flex items-center gap-4">
               <Button
                 onClick={saveCredentials}
-                disabled={savingCredentials || Object.keys(credentialEdits).filter(k => credentialEdits[k] && credentialEdits[k] !== "__CANCEL__").length === 0}
+                disabled={
+                  savingCredentials ||
+                  Object.keys(credentialEdits).filter(
+                    (k) =>
+                      credentialEdits[k] && credentialEdits[k] !== "__CANCEL__",
+                  ).length === 0
+                }
                 className="bg-primary hover:bg-primary/90"
               >
                 {savingCredentials ? (
@@ -1647,13 +2029,25 @@ export default function AdminSocialPage() {
                 Guardar Credenciales
               </Button>
               {credentialSaveResult && (
-                <span className={`text-sm ${credentialSaveResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>
+                <span
+                  className={`text-sm ${credentialSaveResult.startsWith("Error") ? "text-red-400" : "text-green-400"}`}
+                >
                   {credentialSaveResult}
                 </span>
               )}
-              {Object.keys(credentialEdits).filter(k => credentialEdits[k] && credentialEdits[k] !== "__CANCEL__").length > 0 && (
+              {Object.keys(credentialEdits).filter(
+                (k) =>
+                  credentialEdits[k] && credentialEdits[k] !== "__CANCEL__",
+              ).length > 0 && (
                 <span className="text-xs text-slc-muted">
-                  {Object.keys(credentialEdits).filter(k => credentialEdits[k] && credentialEdits[k] !== "__CANCEL__").length} cambio(s) pendiente(s)
+                  {
+                    Object.keys(credentialEdits).filter(
+                      (k) =>
+                        credentialEdits[k] &&
+                        credentialEdits[k] !== "__CANCEL__",
+                    ).length
+                  }{" "}
+                  cambio(s) pendiente(s)
                 </span>
               )}
             </div>
@@ -1668,12 +2062,30 @@ export default function AdminSocialPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {(scheduleConfig?.scheduleHours || [4, 10, 15]).map((h) => {
                 const labels: Record<number, string> = {
-                  0: "Medianoche", 1: "Madrugada", 2: "Madrugada", 3: "Madrugada",
-                  4: "Mañana temprano", 5: "Mañana temprano", 6: "Mañana", 7: "Mañana",
-                  8: "Mañana", 9: "Media mañana", 10: "Media mañana", 11: "Mediodía",
-                  12: "Mediodía", 13: "Tarde", 14: "Tarde", 15: "Tarde",
-                  16: "Atardecer", 17: "Atardecer", 18: "Anochecer", 19: "Anochecer",
-                  20: "Noche", 21: "Noche", 22: "Noche", 23: "Noche",
+                  0: "Medianoche",
+                  1: "Madrugada",
+                  2: "Madrugada",
+                  3: "Madrugada",
+                  4: "Mañana temprano",
+                  5: "Mañana temprano",
+                  6: "Mañana",
+                  7: "Mañana",
+                  8: "Mañana",
+                  9: "Media mañana",
+                  10: "Media mañana",
+                  11: "Mediodía",
+                  12: "Mediodía",
+                  13: "Tarde",
+                  14: "Tarde",
+                  15: "Tarde",
+                  16: "Atardecer",
+                  17: "Atardecer",
+                  18: "Anochecer",
+                  19: "Anochecer",
+                  20: "Noche",
+                  21: "Noche",
+                  22: "Noche",
+                  23: "Noche",
                 };
                 const ampm = h < 12 ? "AM" : "PM";
                 const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
@@ -1688,11 +2100,20 @@ export default function AdminSocialPage() {
               })}
             </div>
             <p className="text-sm text-slc-muted mt-4">
-              El sistema revisa la cola cada hora y publica {scheduleConfig?.postsPerRun || 1} item(s) por ejecución en los horarios seleccionados.
-              Con {(scheduleConfig?.scheduleHours?.length || 3)} ejecuciones/día,
-              se publican {(scheduleConfig?.scheduleHours?.length || 3) * (scheduleConfig?.postsPerRun || 1)} items/día (máximo {scheduleConfig?.maxPostsPerDay || 3}).
-              Cada item se publica en todas las plataformas configuradas
-              (FB + IG = hasta {(scheduleConfig?.scheduleHours?.length || 3) * (scheduleConfig?.postsPerRun || 1) * 2} publicaciones totales/día).
+              El sistema revisa la cola cada hora y publica{" "}
+              {scheduleConfig?.postsPerRun || 1} item(s) por ejecución en los
+              horarios seleccionados. Con{" "}
+              {scheduleConfig?.scheduleHours?.length || 3} ejecuciones/día, se
+              publican{" "}
+              {(scheduleConfig?.scheduleHours?.length || 3) *
+                (scheduleConfig?.postsPerRun || 1)}{" "}
+              items/día (máximo {scheduleConfig?.maxPostsPerDay || 3}). Cada
+              item se publica en todas las plataformas configuradas (FB + IG =
+              hasta{" "}
+              {(scheduleConfig?.scheduleHours?.length || 3) *
+                (scheduleConfig?.postsPerRun || 1) *
+                2}{" "}
+              publicaciones totales/día).
             </p>
             <div className="mt-4 p-3 rounded-lg border border-pink-500/20 bg-pink-500/5">
               <p className="text-sm text-slc-muted">
@@ -1700,15 +2121,24 @@ export default function AdminSocialPage() {
                   <Instagram className="w-4 h-4 text-pink-500" />
                   Horario de Stories:
                 </span>
-                {scheduleConfig?.storyScheduleHours && scheduleConfig.storyScheduleHours.length > 0 ? (
+                {scheduleConfig?.storyScheduleHours &&
+                scheduleConfig.storyScheduleHours.length > 0 ? (
                   <>
-                    {scheduleConfig.storyScheduleHours.map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")} (hora México)
+                    {scheduleConfig.storyScheduleHours
+                      .map((h) => `${h.toString().padStart(2, "0")}:00`)
+                      .join(", ")}{" "}
+                    (hora México)
                     {" — "}
-                    {scheduleConfig.storyScheduleHours.length} Stories throwback/día + 2–3 de evento
+                    {scheduleConfig.storyScheduleHours.length} Stories
+                    throwback/día + 2–3 de evento
                   </>
                 ) : (
                   <>
-                    Iguales que el feed ({(scheduleConfig?.scheduleHours || [4, 10, 15]).map(h => `${h.toString().padStart(2, "0")}:00`).join(", ")})
+                    Iguales que el feed (
+                    {(scheduleConfig?.scheduleHours || [4, 10, 15])
+                      .map((h) => `${h.toString().padStart(2, "0")}:00`)
+                      .join(", ")}
+                    )
                   </>
                 )}
               </p>
@@ -1743,7 +2173,9 @@ function StatCard({
         <span className={color}>{icon}</span>
         <span className="text-xs text-slc-muted">{label}</span>
       </div>
-      <div className={`font-oswald ${small ? "text-lg" : "text-2xl"} ${color}`}>{value}</div>
+      <div className={`font-oswald ${small ? "text-lg" : "text-2xl"} ${color}`}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -1800,11 +2232,13 @@ function CredentialInput({
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium">{label}</p>
           {hasValue ? (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              source === "db"
-                ? "bg-blue-500/20 text-blue-400"
-                : "bg-green-500/20 text-green-400"
-            }`}>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full ${
+                source === "db"
+                  ? "bg-blue-500/20 text-blue-400"
+                  : "bg-green-500/20 text-green-400"
+              }`}
+            >
               {source === "db" ? "DB" : "Env Var"}
             </span>
           ) : (
@@ -1820,7 +2254,11 @@ function CredentialInput({
               className="p-1 text-slc-muted hover:text-white transition-colors"
               title={showValue ? "Ocultar valor" : "Mostrar valor"}
             >
-              {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showValue ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
           )}
           {!isEditing ? (
@@ -1854,7 +2292,12 @@ function CredentialInput({
           type={showValue ? "text" : "password"}
           value={editValue}
           onChange={(e) => onEdit(e.target.value)}
-          placeholder={placeholder || (hasValue ? "Dejar vacio para mantener el valor actual" : `Ingresa ${label}`)}
+          placeholder={
+            placeholder ||
+            (hasValue
+              ? "Dejar vacio para mantener el valor actual"
+              : `Ingresa ${label}`)
+          }
           className="w-full mt-1 px-3 py-2 bg-slc-card border border-slc-border rounded text-sm text-white placeholder:text-slc-muted focus:outline-none focus:border-primary"
         />
       )}
@@ -1862,7 +2305,11 @@ function CredentialInput({
   );
 }
 
-function ScheduleCard({ time, label, tz }: { time: string; label: string; tz: string }) {
+function ScheduleCard({
+  time,
+  label,
+  tz,
+}: { time: string; label: string; tz: string }) {
   return (
     <div className="bg-slc-dark rounded-lg p-4 text-center">
       <p className="font-oswald text-2xl text-primary">{time}</p>
@@ -1872,11 +2319,22 @@ function ScheduleCard({ time, label, tz }: { time: string; label: string; tz: st
   );
 }
 
-function StatusBadge({ label, ok, okText, failText }: { label: string; ok: boolean; okText: string; failText: string }) {
+function StatusBadge({
+  label,
+  ok,
+  okText,
+  failText,
+}: { label: string; ok: boolean; okText: string; failText: string }) {
   return (
-    <div className={`p-3 rounded-lg border ${ok ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20"}`}>
+    <div
+      className={`p-3 rounded-lg border ${ok ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20"}`}
+    >
       <p className="text-xs text-slc-muted">{label}</p>
-      <p className={`text-sm font-medium ${ok ? "text-green-400" : "text-red-400"}`}>{ok ? okText : failText}</p>
+      <p
+        className={`text-sm font-medium ${ok ? "text-green-400" : "text-red-400"}`}
+      >
+        {ok ? okText : failText}
+      </p>
     </div>
   );
 }

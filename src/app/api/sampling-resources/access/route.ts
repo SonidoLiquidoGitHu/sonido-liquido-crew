@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { subscribersService } from "@/lib/services";
 import { subscribeSchema } from "@/lib/validations";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // Sampling Resources Access Endpoint
@@ -11,7 +11,10 @@ import { subscribeSchema } from "@/lib/validations";
 // flows through the same pipeline (Mailchimp sync, etc).
 
 // Rate limiting: track IPs in memory (resets on serverless cold start)
-const submitAttempts = new Map<string, { count: number; firstAttempt: number }>();
+const submitAttempts = new Map<
+  string,
+  { count: number; firstAttempt: number }
+>();
 const MAX_ATTEMPTS = 10; // Max 10 attempts per IP per window
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
       } else if (attempts.count >= MAX_ATTEMPTS) {
         return NextResponse.json(
           { success: false, error: "Demasiados intentos. Intenta más tarde." },
-          { status: 429 }
+          { status: 429 },
         );
       } else {
         attempts.count++;
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
           error: "Email no válido.",
           details: parsed.error.flatten().fieldErrors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -111,17 +114,24 @@ export async function POST(request: NextRequest) {
     if (isSpamEmail(email)) {
       return NextResponse.json(
         { success: false, error: "Email no válido." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Subscribe with the dedicated source and Mailchimp tag
     try {
-      await subscribersService.subscribe(email, name || undefined, "sampling-resources");
+      await subscribersService.subscribe(
+        email,
+        name || undefined,
+        "sampling-resources",
+      );
     } catch (err) {
       // If it's a duplicate-email error, that's fine — they're already on the list.
       // Log but don't fail the request, since we still want to grant access.
-      console.warn("[sampling-resources] subscribe() returned an error (likely duplicate):", err);
+      console.warn(
+        "[sampling-resources] subscribe() returned an error (likely duplicate):",
+        err,
+      );
     }
 
     // Ensure the "sampling-resources" tag is applied in Mailchimp for segmentation
@@ -129,11 +139,16 @@ export async function POST(request: NextRequest) {
       const { mailchimpClient } = await import("@/lib/clients");
       if (mailchimpClient.isConfigured()) {
         await mailchimpClient.addTagsToMember(email, ["sampling-resources"]);
-        console.log(`[sampling-resources] Applied "sampling-resources" Mailchimp tag to ${email.substring(0, 3)}***`);
+        console.log(
+          `[sampling-resources] Applied "sampling-resources" Mailchimp tag to ${email.substring(0, 3)}***`,
+        );
       }
     } catch (tagErr) {
       // Non-critical: subscriber is already in Mailchimp, just the tag failed
-      console.warn("[sampling-resources] Failed to apply Mailchimp tag:", tagErr);
+      console.warn(
+        "[sampling-resources] Failed to apply Mailchimp tag:",
+        tagErr,
+      );
     }
 
     return NextResponse.json({
@@ -148,7 +163,7 @@ export async function POST(request: NextRequest) {
     console.error("Error in sampling-resources access endpoint:", error);
     return NextResponse.json(
       { success: false, error: "Error al procesar la solicitud." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

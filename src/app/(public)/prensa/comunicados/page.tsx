@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  Newspaper,
-  Calendar,
   ArrowRight,
-  Tag,
-  Eye,
+  Calendar,
   Download,
-  Music,
-  Video,
-  Loader2,
+  Eye,
   Filter,
+  Loader2,
+  Music,
+  Newspaper,
+  Tag,
   Users,
+  Video,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface MediaRelease {
   id: string;
@@ -84,12 +84,13 @@ export default function ComunicadosPage() {
     }
   };
 
-  const filteredReleases = selectedCategory === "all"
-    ? releases
-    : releases.filter(r => r.category === selectedCategory);
+  const filteredReleases =
+    selectedCategory === "all"
+      ? releases
+      : releases.filter((r) => r.category === selectedCategory);
 
-  const featuredReleases = releases.filter(r => r.isFeatured);
-  const categories = [...new Set(releases.map(r => r.category))];
+  const featuredReleases = releases.filter((r) => r.isFeatured);
+  const categories = [...new Set(releases.map((r) => r.category))];
 
   return (
     <div className="min-h-screen bg-slc-black">
@@ -143,26 +144,36 @@ export default function ComunicadosPage() {
                       )}
                     </div>
                     <div className="p-6 flex-1">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium border mb-3 ${categoryColors[release.category] || "bg-slc-card"}`}>
+                      <span
+                        className={`inline-block px-2 py-1 rounded text-xs font-medium border mb-3 ${categoryColors[release.category] || "bg-slc-card"}`}
+                      >
                         {categoryLabels[release.category] || release.category}
                       </span>
                       <h3 className="font-oswald text-xl uppercase mb-2 group-hover:text-primary transition-colors">
                         {release.title}
                       </h3>
                       {release.subtitle && (
-                        <p className="text-sm text-primary mb-2">{release.subtitle}</p>
+                        <p className="text-sm text-primary mb-2">
+                          {release.subtitle}
+                        </p>
                       )}
                       {release.summary && (
-                        <p className="text-sm text-slc-muted line-clamp-2">{release.summary}</p>
+                        <p className="text-sm text-slc-muted line-clamp-2">
+                          {release.summary}
+                        </p>
                       )}
                       <div className="flex items-center gap-4 mt-4 text-xs text-slc-muted">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(release.publishDate).toLocaleDateString("es-MX")}
+                          {new Date(release.publishDate).toLocaleDateString(
+                            "es-MX",
+                          )}
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="w-3 h-3" />
-                          {release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
+                          {release.resolvedArtistName ||
+                            release.mainArtistName ||
+                            "Sonido Líquido Crew"}
                         </span>
                         <span className="flex items-center gap-1">
                           <Eye className="w-3 h-3" />
@@ -216,7 +227,9 @@ export default function ComunicadosPage() {
           ) : filteredReleases.length === 0 ? (
             <div className="text-center py-16">
               <Newspaper className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-              <h3 className="text-xl font-oswald uppercase mb-2">No hay comunicados</h3>
+              <h3 className="text-xl font-oswald uppercase mb-2">
+                No hay comunicados
+              </h3>
               <p className="text-slc-muted">
                 {selectedCategory === "all"
                   ? "Aún no hay comunicados publicados."
@@ -245,7 +258,9 @@ export default function ComunicadosPage() {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <span className={`absolute top-3 left-3 px-2 py-1 rounded text-xs font-medium border ${categoryColors[release.category] || "bg-slc-card"}`}>
+                    <span
+                      className={`absolute top-3 left-3 px-2 py-1 rounded text-xs font-medium border ${categoryColors[release.category] || "bg-slc-card"}`}
+                    >
                       {categoryLabels[release.category] || release.category}
                     </span>
                   </div>
@@ -254,15 +269,21 @@ export default function ComunicadosPage() {
                       {release.title}
                     </h3>
                     <p className="text-xs text-primary mb-2">
-                      {release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
+                      {release.resolvedArtistName ||
+                        release.mainArtistName ||
+                        "Sonido Líquido Crew"}
                     </p>
                     {release.summary && (
-                      <p className="text-sm text-slc-muted line-clamp-2 mb-3">{release.summary}</p>
+                      <p className="text-sm text-slc-muted line-clamp-2 mb-3">
+                        {release.summary}
+                      </p>
                     )}
                     <div className="flex items-center justify-between text-xs text-slc-muted">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {new Date(release.publishDate).toLocaleDateString("es-MX")}
+                        {new Date(release.publishDate).toLocaleDateString(
+                          "es-MX",
+                        )}
                       </span>
                       <span className="flex items-center gap-1">
                         <ArrowRight className="w-3 h-3" />
@@ -284,12 +305,11 @@ export default function ComunicadosPage() {
             ¿Necesitas más información?
           </h2>
           <p className="text-slc-muted mb-6">
-            Contacta a nuestro equipo de prensa para entrevistas y material adicional.
+            Contacta a nuestro equipo de prensa para entrevistas y material
+            adicional.
           </p>
           <Button asChild>
-            <a href="mailto:prensasonidoliquido@gmail.com">
-              Contactar Prensa
-            </a>
+            <a href="mailto:prensasonidoliquido@gmail.com">Contactar Prensa</a>
           </Button>
         </div>
       </section>

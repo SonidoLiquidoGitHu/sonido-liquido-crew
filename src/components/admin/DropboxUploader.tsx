@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Cloud,
-  Upload,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  X,
+  CheckCircle,
+  Cloud,
   File,
-  Image as ImageIcon,
-  Music,
   FileText,
+  Image as ImageIcon,
+  Loader2,
+  Music,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface DropboxUploaderProps {
   onUploadComplete: (url: string, filename: string, fileSize: number) => void;
@@ -48,7 +48,9 @@ export function DropboxUploader({
     progress: 0,
   });
   const [isDragOver, setIsDragOver] = useState(false);
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check Dropbox configuration on mount
@@ -63,12 +65,23 @@ export function DropboxUploader({
         // Must check BOTH configured AND connected
         // configured = token exists in DB or env
         // connected = token actually works with Dropbox API
-        const hasToken = data?.data?.configured === true || data?.data?.hasDatabaseToken === true;
+        const hasToken =
+          data?.data?.configured === true ||
+          data?.data?.hasDatabaseToken === true;
         const isConnected = data?.data?.connected === true;
         const hasRefreshToken = data?.data?.hasRefreshToken === true;
         const hasError = data?.data?.error;
 
-        console.log("[DropboxUploader] Has token:", hasToken, "Connected:", isConnected, "Has refresh:", hasRefreshToken, "Error:", hasError);
+        console.log(
+          "[DropboxUploader] Has token:",
+          hasToken,
+          "Connected:",
+          isConnected,
+          "Has refresh:",
+          hasRefreshToken,
+          "Error:",
+          hasError,
+        );
 
         // Only mark as configured if BOTH token exists AND connection works
         if (hasToken && isConnected) {
@@ -77,19 +90,27 @@ export function DropboxUploader({
         } else if (hasToken && !isConnected && hasRefreshToken) {
           // Token exists but is expired — we have a refresh token, so auto-refresh should work
           // Try the token endpoint which auto-refreshes
-          console.log("[DropboxUploader] Token expired but refresh_token exists, trying token endpoint...");
+          console.log(
+            "[DropboxUploader] Token expired but refresh_token exists, trying token endpoint...",
+          );
           const tokenRes = await fetch("/api/admin/dropbox/token");
           const tokenData = await tokenRes.json();
           if (tokenData.success && tokenData.data?.token) {
             console.log("[DropboxUploader] ✓ Token refreshed successfully");
             setDropboxConfigured(true);
           } else {
-            console.error("[DropboxUploader] ✗ Token refresh failed:", tokenData.error);
+            console.error(
+              "[DropboxUploader] ✗ Token refresh failed:",
+              tokenData.error,
+            );
             setDropboxConfigured(false);
           }
         } else if (hasToken && !isConnected) {
           // Token exists but is invalid/expired
-          console.error("[DropboxUploader] ✗ Token exists but connection failed:", hasError);
+          console.error(
+            "[DropboxUploader] ✗ Token exists but connection failed:",
+            hasError,
+          );
           setDropboxConfigured(false);
         } else {
           console.log("[DropboxUploader] ✗ No token configured");
@@ -107,7 +128,8 @@ export function DropboxUploader({
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) return <ImageIcon className="w-5 h-5" />;
     if (mimeType.startsWith("audio/")) return <Music className="w-5 h-5" />;
-    if (mimeType.startsWith("application/pdf")) return <FileText className="w-5 h-5" />;
+    if (mimeType.startsWith("application/pdf"))
+      return <FileText className="w-5 h-5" />;
     return <File className="w-5 h-5" />;
   };
 
@@ -116,7 +138,7 @@ export function DropboxUploader({
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   const handleFileSelect = async (file: File) => {
@@ -133,11 +155,14 @@ export function DropboxUploader({
     // Warning for large files (>25MB) - might timeout on Netlify free tier
     const fileSizeMB = file.size / (1024 * 1024);
     const isLargeFile = fileSizeMB > 25;
-    const isAudioFile = file.type.startsWith("audio/") ||
+    const isAudioFile =
+      file.type.startsWith("audio/") ||
       /\.(mp3|wav|flac|m4a|aac|ogg)$/i.test(file.name);
 
     if (isLargeFile && isAudioFile) {
-      console.warn(`[DropboxUploader] Large audio file detected: ${fileSizeMB.toFixed(1)}MB`);
+      console.warn(
+        `[DropboxUploader] Large audio file detected: ${fileSizeMB.toFixed(1)}MB`,
+      );
     }
 
     setUploadState({
@@ -175,7 +200,9 @@ export function DropboxUploader({
       } catch (fetchError) {
         clearTimeout(timeoutId);
         if ((fetchError as Error).name === "AbortError") {
-          throw new Error("Timeout: El archivo es muy grande. Sube el archivo a Dropbox manualmente y usa la URL directa.");
+          throw new Error(
+            "Timeout: El archivo es muy grande. Sube el archivo a Dropbox manualmente y usa la URL directa.",
+          );
         }
         throw fetchError;
       }
@@ -187,17 +214,28 @@ export function DropboxUploader({
         console.error("[DropboxUploader] Non-JSON response:", text);
 
         // Parse common error patterns
-        if (text.includes("Internal Error") || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
-          throw new Error("Tiempo de espera agotado. El archivo es muy grande. Usa un archivo más pequeño o ingresa la URL directamente.");
+        if (
+          text.includes("Internal Error") ||
+          text.includes("FUNCTION_INVOCATION_TIMEOUT")
+        ) {
+          throw new Error(
+            "Tiempo de espera agotado. El archivo es muy grande. Usa un archivo más pequeño o ingresa la URL directamente.",
+          );
         }
         if (text.includes("401") || text.includes("Unauthorized")) {
-          throw new Error("Token de Dropbox expirado. Ve a Admin > Sincronización > Dropbox para reconectar.");
+          throw new Error(
+            "Token de Dropbox expirado. Ve a Admin > Sincronización > Dropbox para reconectar.",
+          );
         }
         if (text.includes("503") || text.includes("Service Unavailable")) {
-          throw new Error("Dropbox no está disponible. Intenta de nuevo en unos minutos.");
+          throw new Error(
+            "Dropbox no está disponible. Intenta de nuevo en unos minutos.",
+          );
         }
 
-        throw new Error("Error del servidor. Por favor intenta de nuevo o usa la URL directa.");
+        throw new Error(
+          "Error del servidor. Por favor intenta de nuevo o usa la URL directa.",
+        );
       }
 
       const data = await response.json();
@@ -216,7 +254,6 @@ export function DropboxUploader({
 
       // Notify parent component
       onUploadComplete(data.data.url, data.data.filename, data.data.fileSize);
-
     } catch (error) {
       console.error("Upload error:", error);
       setUploadState({
@@ -268,9 +305,15 @@ export function DropboxUploader({
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="text-yellow-500 font-medium">Dropbox no configurado</p>
+              <p className="text-yellow-500 font-medium">
+                Dropbox no configurado
+              </p>
               <p className="text-yellow-500/80 text-xs mt-1">
-                Ve a <a href="/admin/sync" className="underline hover:no-underline">Sincronización</a> para configurar tu Access Token de Dropbox.
+                Ve a{" "}
+                <a href="/admin/sync" className="underline hover:no-underline">
+                  Sincronización
+                </a>{" "}
+                para configurar tu Access Token de Dropbox.
               </p>
             </div>
           </div>
@@ -304,10 +347,10 @@ export function DropboxUploader({
           isDragOver
             ? "border-primary bg-primary/5"
             : uploadState.status === "error"
-            ? "border-red-500/50 bg-red-500/5"
-            : uploadState.status === "success"
-            ? "border-green-500/50 bg-green-500/5"
-            : "border-slc-border hover:border-primary/50"
+              ? "border-red-500/50 bg-red-500/5"
+              : uploadState.status === "success"
+                ? "border-green-500/50 bg-green-500/5"
+                : "border-slc-border hover:border-primary/50"
         }`}
       >
         <input
@@ -316,7 +359,9 @@ export function DropboxUploader({
           accept={accept}
           onChange={handleInputChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          disabled={uploadState.status === "uploading" || dropboxConfigured === false}
+          disabled={
+            uploadState.status === "uploading" || dropboxConfigured === false
+          }
         />
 
         {uploadState.status === "idle" && (
@@ -326,12 +371,11 @@ export function DropboxUploader({
             <p className="text-xs text-slc-muted">
               Arrastra un archivo o haz clic para seleccionar
             </p>
-            <p className="text-xs text-slc-muted mt-1">
-              Máximo {maxSize}MB
-            </p>
+            <p className="text-xs text-slc-muted mt-1">Máximo {maxSize}MB</p>
             {accept?.includes("audio") && (
               <p className="text-xs text-yellow-500/80 mt-2">
-                💡 Archivos grandes (&gt;25MB) pueden fallar. Usa la URL directa si hay timeout.
+                💡 Archivos grandes (&gt;25MB) pueden fallar. Usa la URL directa
+                si hay timeout.
               </p>
             )}
           </>
@@ -420,16 +464,20 @@ export function DropboxUploadButton({
   folder = "/uploads",
   label = "Subir a Dropbox",
   disabled = false,
-}: Omit<DropboxUploaderProps, "currentUrl" | "className"> & { disabled?: boolean }) {
+}: Omit<DropboxUploaderProps, "currentUrl" | "className"> & {
+  disabled?: boolean;
+}) {
   const [isUploading, setIsUploading] = useState(false);
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check Dropbox configuration on mount
   useEffect(() => {
     fetch("/api/admin/dropbox")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setDropboxConfigured(data?.data?.configured ?? false);
       })
       .catch(() => setDropboxConfigured(false));
@@ -492,14 +540,22 @@ export function DropboxUploadButton({
         size="sm"
         onClick={() => fileInputRef.current?.click()}
         disabled={isDisabled}
-        title={dropboxConfigured === false ? "Dropbox no configurado. Ve a Configuración." : undefined}
+        title={
+          dropboxConfigured === false
+            ? "Dropbox no configurado. Ve a Configuración."
+            : undefined
+        }
       >
         {isUploading ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         ) : (
           <Upload className="w-4 h-4 mr-2" />
         )}
-        {dropboxConfigured === false ? "Dropbox no configurado" : isUploading ? "Subiendo..." : label}
+        {dropboxConfigured === false
+          ? "Dropbox no configurado"
+          : isUploading
+            ? "Subiendo..."
+            : label}
       </Button>
     </>
   );

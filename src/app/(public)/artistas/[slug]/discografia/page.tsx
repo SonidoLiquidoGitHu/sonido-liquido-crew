@@ -1,10 +1,10 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { artistsService } from "@/lib/services";
-import { getArtistBySlug, getArtistByName } from "@/lib/data/artists-roster";
 import { Button } from "@/components/ui/button";
+import { getArtistByName, getArtistBySlug } from "@/lib/data/artists-roster";
+import { artistsService } from "@/lib/services";
 import { ArrowLeft, Disc3, ExternalLink, Music2, Play } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,9 @@ export async function generateMetadata({ params }: DiscographyPageProps) {
     // DB error — fall through to roster lookup
   }
 
-  const rosterArtist = getArtistBySlug(slug) || (artist ? getArtistByName(artist.name) : undefined);
+  const rosterArtist =
+    getArtistBySlug(slug) ||
+    (artist ? getArtistByName(artist.name) : undefined);
   const name = artist?.name || rosterArtist?.name || "Artista";
 
   return {
@@ -31,7 +33,9 @@ export async function generateMetadata({ params }: DiscographyPageProps) {
   };
 }
 
-export default async function ArtistDiscographyPage({ params }: DiscographyPageProps) {
+export default async function ArtistDiscographyPage({
+  params,
+}: DiscographyPageProps) {
   const { slug } = await params;
 
   // Try DB lookup first, gracefully handle errors by falling back to roster
@@ -40,18 +44,26 @@ export default async function ArtistDiscographyPage({ params }: DiscographyPageP
     artist = await artistsService.getBySlug(slug);
   } catch (error) {
     // DB error — fall through to roster lookup
-    console.warn(`[Discografia] DB lookup failed for slug "${slug}", using roster fallback:`, error instanceof Error ? error.message : error);
+    console.warn(
+      `[Discografia] DB lookup failed for slug "${slug}", using roster fallback:`,
+      error instanceof Error ? error.message : error,
+    );
   }
 
-  const rosterArtist = getArtistBySlug(slug) || (artist ? getArtistByName(artist.name) : undefined);
+  const rosterArtist =
+    getArtistBySlug(slug) ||
+    (artist ? getArtistByName(artist.name) : undefined);
 
   if (!artist && !rosterArtist) {
     notFound();
   }
 
   const artistName = artist?.name || rosterArtist?.name || "Artista";
-  const spotifyId = rosterArtist?.spotifyId || artist?.externalProfiles?.find(p => p.platform === "spotify")?.externalId;
-  const spotifyUrl = rosterArtist?.spotifyUrl || `https://open.spotify.com/artist/${spotifyId}`;
+  const spotifyId =
+    rosterArtist?.spotifyId ||
+    artist?.externalProfiles?.find((p) => p.platform === "spotify")?.externalId;
+  const spotifyUrl =
+    rosterArtist?.spotifyUrl || `https://open.spotify.com/artist/${spotifyId}`;
   const profileImage = artist?.profileImageUrl;
 
   if (!spotifyId) {
@@ -59,7 +71,9 @@ export default async function ArtistDiscographyPage({ params }: DiscographyPageP
       <div className="min-h-screen py-12">
         <div className="section-container text-center">
           <Disc3 className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-          <h1 className="font-oswald text-3xl uppercase mb-4">Discografía no disponible</h1>
+          <h1 className="font-oswald text-3xl uppercase mb-4">
+            Discografía no disponible
+          </h1>
           <p className="text-slc-muted mb-8">
             No se encontró información de Spotify para este artista.
           </p>
@@ -113,22 +127,37 @@ export default async function ArtistDiscographyPage({ params }: DiscographyPageP
 
             {/* Info */}
             <div className="text-center md:text-left flex-1">
-              <p className="text-primary uppercase tracking-widest text-sm mb-2">Discografía</p>
+              <p className="text-primary uppercase tracking-widest text-sm mb-2">
+                Discografía
+              </p>
               <h1 className="font-oswald text-4xl md:text-5xl lg:text-6xl uppercase text-white mb-4">
                 {artistName}
               </h1>
               <p className="text-gray-400 mb-6 max-w-xl">
-                Explora todos los álbumes, singles y colaboraciones de {artistName} disponibles en Spotify.
+                Explora todos los álbumes, singles y colaboraciones de{" "}
+                {artistName} disponibles en Spotify.
               </p>
               <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 <Button asChild className="bg-spotify hover:bg-spotify/90">
-                  <a href={spotifyUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={spotifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Play className="w-4 h-4 mr-2" fill="white" />
                     Reproducir en Spotify
                   </a>
                 </Button>
-                <Button asChild variant="outline" className="border-white/20 hover:bg-white/10">
-                  <a href={spotifyUrl} target="_blank" rel="noopener noreferrer">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-white/20 hover:bg-white/10"
+                >
+                  <a
+                    href={spotifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Abrir perfil
                   </a>
@@ -145,7 +174,9 @@ export default async function ArtistDiscographyPage({ params }: DiscographyPageP
               <div className="w-8 h-8 rounded-full bg-spotify flex items-center justify-center">
                 <Music2 className="w-4 h-4 text-white" />
               </div>
-              <span className="font-medium text-white">Discografía completa en Spotify</span>
+              <span className="font-medium text-white">
+                Discografía completa en Spotify
+              </span>
             </div>
             <a
               href={spotifyUrl}
@@ -160,6 +191,7 @@ export default async function ArtistDiscographyPage({ params }: DiscographyPageP
 
           {/* Main Spotify Embed - Artist Overview */}
           <iframe
+            title={`Reproductor de Spotify - ${artistName}`}
             src={`https://open.spotify.com/embed/artist/${spotifyId}?utm_source=generator&theme=0`}
             width="100%"
             height="500"
@@ -176,15 +208,19 @@ export default async function ArtistDiscographyPage({ params }: DiscographyPageP
               Discografía Destacada
             </h3>
             <p className="text-gray-400 text-sm mb-6">
-              Usa el reproductor de arriba para explorar todos los lanzamientos, o visita el perfil completo en Spotify.
+              Usa el reproductor de arriba para explorar todos los lanzamientos,
+              o visita el perfil completo en Spotify.
             </p>
 
             {/* Grid of Spotify Follow/Save Buttons */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Top Tracks Embed */}
               <div className="bg-black/30 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-400 mb-3">Canciones Populares</h4>
+                <h4 className="text-sm font-medium text-gray-400 mb-3">
+                  Canciones Populares
+                </h4>
                 <iframe
+                  title={`Canciones populares de ${artistName}`}
                   src={`https://open.spotify.com/embed/artist/${spotifyId}/top-tracks?utm_source=generator&theme=0`}
                   width="100%"
                   height="180"
@@ -197,8 +233,11 @@ export default async function ArtistDiscographyPage({ params }: DiscographyPageP
 
               {/* This Month's Listeners */}
               <div className="bg-black/30 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-400 mb-3">Artista Relacionado</h4>
+                <h4 className="text-sm font-medium text-gray-400 mb-3">
+                  Artista Relacionado
+                </h4>
                 <iframe
+                  title={`Artista relacionado - ${artistName}`}
                   src={`https://open.spotify.com/embed/artist/${spotifyId}?utm_source=generator&theme=0`}
                   width="100%"
                   height="180"

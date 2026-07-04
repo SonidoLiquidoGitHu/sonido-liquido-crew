@@ -5,16 +5,16 @@
 // falls back to Client Credentials for public playlists.
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { curatedPlaylists, playlistTracks, curatedTracks } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { generateUUID, slugify } from "@/lib/utils";
+import { curatedPlaylists, curatedTracks, playlistTracks } from "@/db/schema";
 import { SpotifyClient } from "@/lib/clients/spotify";
 import {
-  getSpotifyUserAccessToken,
   getClientCredentialsToken,
+  getSpotifyUserAccessToken,
 } from "@/lib/clients/spotify-tokens";
+import { generateUUID, slugify } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -27,30 +27,39 @@ export const maxDuration = 60;
 async function spotifyRequestWithAuth<T>(
   endpoint: string,
   userAccessToken: string | null,
-  ctx: { forcedRefreshAttempted: boolean; lastError?: string }
+  ctx: { forcedRefreshAttempted: boolean; lastError?: string },
 ): Promise<T> {
   const url = `https://api.spotify.com/v1${endpoint}`;
 
   // Attempt 1: Use user access token if available
   if (userAccessToken) {
-    console.log(`[Spotify Import API] Requesting ${endpoint} with user token...`);
+    console.log(
+      `[Spotify Import API] Requesting ${endpoint} with user token...`,
+    );
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${userAccessToken}` },
       signal: AbortSignal.timeout(10_000),
     });
 
     if (response.ok) {
-      console.log(`[Spotify Import API] Request succeeded with user token`);
+      console.log("[Spotify Import API] Request succeeded with user token");
       return response.json();
     }
 
     const errorBody = await response.text().catch(() => "");
     ctx.lastError = `User token: ${response.status} — ${errorBody.slice(0, 300)}`;
-    console.error(`[Spotify Import API] User token request failed ${response.status}: ${errorBody.slice(0, 500)}`);
+    console.error(
+      `[Spotify Import API] User token request failed ${response.status}: ${errorBody.slice(0, 500)}`,
+    );
 
     // On 401 OR 403, try forced token refresh once
-    if ((response.status === 401 || response.status === 403) && !ctx.forcedRefreshAttempted) {
-      console.log(`[Spotify Import] Got ${response.status}, attempting forced token refresh...`);
+    if (
+      (response.status === 401 || response.status === 403) &&
+      !ctx.forcedRefreshAttempted
+    ) {
+      console.log(
+        `[Spotify Import] Got ${response.status}, attempting forced token refresh...`,
+      );
       ctx.forcedRefreshAttempted = true;
 
       const refreshedToken = await getSpotifyUserAccessToken(true);
@@ -68,7 +77,9 @@ async function spotifyRequestWithAuth<T>(
 
         const retryErrorBody = await retryResponse.text().catch(() => "");
         ctx.lastError = `Refreshed token: ${retryResponse.status} — ${retryErrorBody.slice(0, 300)}`;
-        console.error(`[Spotify Import API] Retry with refreshed token failed ${retryResponse.status}: ${retryErrorBody.slice(0, 500)}`);
+        console.error(
+          `[Spotify Import API] Retry with refreshed token failed ${retryResponse.status}: ${retryErrorBody.slice(0, 500)}`,
+        );
 
         // Second refresh attempt on 401
         if (retryResponse.status === 401) {
@@ -88,10 +99,14 @@ async function spotifyRequestWithAuth<T>(
 
     // Non-retriable errors
     if (response.status === 404) {
-      throw new Error("Spotify playlist not found (404). Verifica que la URL sea correcta.");
+      throw new Error(
+        "Spotify playlist not found (404). Verifica que la URL sea correcta.",
+      );
     }
     if (response.status === 429) {
-      throw new Error("Spotify API rate limit reached (429). Intenta de nuevo en unos momentos.");
+      throw new Error(
+        "Spotify API rate limit reached (429). Intenta de nuevo en unos momentos.",
+      );
     }
   }
 
@@ -110,23 +125,25 @@ async function spotifyRequestWithAuth<T>(
     }
 
     const ccErrorBody = await ccResponse.text().catch(() => "");
-    console.error(`[Spotify Import API] Client credentials fallback failed ${ccResponse.status}: ${ccErrorBody.slice(0, 500)}`);
+    console.error(
+      `[Spotify Import API] Client credentials fallback failed ${ccResponse.status}: ${ccErrorBody.slice(0, 500)}`,
+    );
 
     if (ccResponse.status === 403) {
       if (!userAccessToken) {
         throw new Error(
-          "NO_SPOTIFY_TOKEN: Esta playlist requiere una cuenta de Spotify conectada. Las credenciales del servidor no pueden acceder a ella. Conecta tu cuenta de Spotify primero (botón 'Conectar Spotify' en la página de playlists)."
+          "NO_SPOTIFY_TOKEN: Esta playlist requiere una cuenta de Spotify conectada. Las credenciales del servidor no pueden acceder a ella. Conecta tu cuenta de Spotify primero (botón 'Conectar Spotify' en la página de playlists).",
         );
       }
       // Check if this is a Development Mode restriction (can't access playlists you don't own)
       const isItemsEndpoint = endpoint.includes("/items");
       if (isItemsEndpoint) {
         throw new Error(
-          `DEVMODE_PLAYLIST: Spotify en modo Desarrollo no permite acceder a los tracks de playlists que no son tuyas. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, cópiala a tu cuenta de Spotify primero. Detalle: ${ccErrorBody.slice(0, 200)}`
+          `DEVMODE_PLAYLIST: Spotify en modo Desarrollo no permite acceder a los tracks de playlists que no son tuyas. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, cópiala a tu cuenta de Spotify primero. Detalle: ${ccErrorBody.slice(0, 200)}`,
         );
       }
       throw new Error(
-        `PRIVATE_PLAYLIST: No se pudo acceder a esta playlist. Tu token de Spotify no tiene permisos suficientes o está expirado. Intenta reconectar tu cuenta de Spotify (botón 'Conectar Spotify'). Detalle: ${ccErrorBody.slice(0, 200)}`
+        `PRIVATE_PLAYLIST: No se pudo acceder a esta playlist. Tu token de Spotify no tiene permisos suficientes o está expirado. Intenta reconectar tu cuenta de Spotify (botón 'Conectar Spotify'). Detalle: ${ccErrorBody.slice(0, 200)}`,
       );
     }
   }
@@ -134,12 +151,12 @@ async function spotifyRequestWithAuth<T>(
   // All methods failed
   if (!userAccessToken) {
     throw new Error(
-      "NO_SPOTIFY_TOKEN: No hay token de Spotify disponible. Conecta tu cuenta de Spotify primero (botón 'Conectar Spotify' en la página de playlists)."
+      "NO_SPOTIFY_TOKEN: No hay token de Spotify disponible. Conecta tu cuenta de Spotify primero (botón 'Conectar Spotify' en la página de playlists).",
     );
   }
 
   throw new Error(
-    `Spotify API request failed for ${endpoint}. Last error: ${ctx.lastError || "unknown"}. Intenta reconectar tu cuenta de Spotify.`
+    `Spotify API request failed for ${endpoint}. Last error: ${ctx.lastError || "unknown"}. Intenta reconectar tu cuenta de Spotify.`,
   );
 }
 
@@ -149,7 +166,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -159,7 +176,7 @@ export async function POST(request: NextRequest) {
     if (!spotifyUrl || !spotifyUrl.trim()) {
       return NextResponse.json(
         { success: false, error: "Spotify playlist URL is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -172,7 +189,7 @@ export async function POST(request: NextRequest) {
           error:
             "No se pudo extraer el ID de la playlist de la URL. Usa una URL válida de Spotify (ej. https://open.spotify.com/playlist/...)",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -183,13 +200,17 @@ export async function POST(request: NextRequest) {
     let userAccessToken: string | null = frontendAccessToken || null;
 
     if (userAccessToken) {
-      console.log("[Spotify Import] Using Spotify access token from frontend (avoids DB read lag)");
+      console.log(
+        "[Spotify Import] Using Spotify access token from frontend (avoids DB read lag)",
+      );
     } else {
       userAccessToken = await getSpotifyUserAccessToken();
       if (userAccessToken) {
         console.log("[Spotify Import] Using Spotify user OAuth token from DB");
       } else {
-        console.log("[Spotify Import] No user OAuth token available, will try client credentials");
+        console.log(
+          "[Spotify Import] No user OAuth token available, will try client credentials",
+        );
       }
     }
     const requestCtx = { forcedRefreshAttempted: false };
@@ -209,14 +230,17 @@ export async function POST(request: NextRequest) {
     }>(
       `/playlists/${playlistId}?fields=id,name,description,images,items.total,tracks.total,external_urls,owner`,
       userAccessToken,
-      requestCtx
+      requestCtx,
     );
 
     const playlistName = playlistMeta.name;
     // Spotify API 2025+: total is under "items" (not "tracks")
-    const totalTracks = playlistMeta.items?.total || playlistMeta.tracks?.total || 0;
+    const totalTracks =
+      playlistMeta.items?.total || playlistMeta.tracks?.total || 0;
 
-    console.log(`[Spotify Import] Playlist: "${playlistName}" (${totalTracks} tracks)`);
+    console.log(
+      `[Spotify Import] Playlist: "${playlistName}" (${totalTracks} tracks)`,
+    );
 
     // Step 2: Fetch all tracks using the NEW /playlists/{id}/items endpoint
     // IMPORTANT: Spotify deprecated /playlists/{id}/tracks (returns 403).
@@ -245,66 +269,80 @@ export async function POST(request: NextRequest) {
         limit: String(limit),
         offset: String(offset),
         market: "MX",
-        fields: "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
+        fields:
+          "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
       });
 
-      console.log(`[Spotify Import] Fetching tracks page: offset=${offset}, limit=${limit}`);
+      console.log(
+        `[Spotify Import] Fetching tracks page: offset=${offset}, limit=${limit}`,
+      );
 
       let response;
       try {
         response = await spotifyRequestWithAuth<{
-        items: Array<{
-          is_local: boolean;
-          // Spotify API 2025+: track data is under "item" (singular)
-          item: {
-            id: string;
-            name: string;
-            artists: Array<{ id: string; name: string }>;
-            album: {
+          items: Array<{
+            is_local: boolean;
+            // Spotify API 2025+: track data is under "item" (singular)
+            item: {
               id: string;
               name: string;
-              images: Array<{ url: string }>;
-              release_date: string;
-            };
-            duration_ms: number;
-            preview_url: string | null;
-            popularity: number;
-            explicit: boolean;
-            is_local?: boolean;
-          } | null;
-          // Legacy: some API versions still return "track" key
-          track?: {
-            id: string;
-            name: string;
-            artists: Array<{ id: string; name: string }>;
-            album: {
+              artists: Array<{ id: string; name: string }>;
+              album: {
+                id: string;
+                name: string;
+                images: Array<{ url: string }>;
+                release_date: string;
+              };
+              duration_ms: number;
+              preview_url: string | null;
+              popularity: number;
+              explicit: boolean;
+              is_local?: boolean;
+            } | null;
+            // Legacy: some API versions still return "track" key
+            track?: {
               id: string;
               name: string;
-              images: Array<{ url: string }>;
-              release_date: string;
-            };
-            duration_ms: number;
-            preview_url: string | null;
-            popularity: number;
-            explicit: boolean;
-          } | null;
-        }>;
-        total: number;
-        next: string | null;
-      }>(`/playlists/${playlistId}/items?${params.toString()}`, userAccessToken, requestCtx);
+              artists: Array<{ id: string; name: string }>;
+              album: {
+                id: string;
+                name: string;
+                images: Array<{ url: string }>;
+                release_date: string;
+              };
+              duration_ms: number;
+              preview_url: string | null;
+              popularity: number;
+              explicit: boolean;
+            } | null;
+          }>;
+          total: number;
+          next: string | null;
+        }>(
+          `/playlists/${playlistId}/items?${params.toString()}`,
+          userAccessToken,
+          requestCtx,
+        );
       } catch (itemsError) {
         // If the /items endpoint returns 403, it's likely a Development Mode restriction
         // (Spotify only allows access to tracks in playlists the user OWNS in Dev Mode)
         const errMsg = (itemsError as Error).message || "";
-        if (errMsg.includes("403") || errMsg.includes("PRIVATE_PLAYLIST") || errMsg.includes("DEVMODE_PLAYLIST")) {
-          const playlistOwner = playlistMeta.owner?.display_name || playlistMeta.owner?.id || "otro usuario";
+        if (
+          errMsg.includes("403") ||
+          errMsg.includes("PRIVATE_PLAYLIST") ||
+          errMsg.includes("DEVMODE_PLAYLIST")
+        ) {
+          const playlistOwner =
+            playlistMeta.owner?.display_name ||
+            playlistMeta.owner?.id ||
+            "otro usuario";
           return NextResponse.json(
             {
               success: false,
               error: `No se pudieron obtener los tracks de esta playlist. Spotify en modo Desarrollo solo permite acceder a los tracks de playlists que tú creaste. Esta playlist pertenece a "${playlistOwner}". Para importar playlists de otros, cópiala primero a tu cuenta de Spotify y luego importa tu copia.`,
               errorType: "DEVMODE_PLAYLIST",
             },
-            { status: 403 }
+            { status: 403 },
           );
         }
         throw itemsError; // Re-throw non-403 errors
@@ -323,7 +361,8 @@ export async function POST(request: NextRequest) {
         tracks.push({
           spotifyTrackId: trackData.id,
           trackName: trackData.name,
-          artistName: trackData.artists?.map((a) => a.name).join(", ") || "Unknown",
+          artistName:
+            trackData.artists?.map((a) => a.name).join(", ") || "Unknown",
           artistIds: trackData.artists?.map((a) => a.id) || [],
           albumName: trackData.album?.name || "",
           albumImageUrl: trackData.album?.images?.[0]?.url || null,
@@ -346,7 +385,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Spotify Import] Fetched ${tracks.length} tracks from playlist ${playlistId}`);
+    console.log(
+      `[Spotify Import] Fetched ${tracks.length} tracks from playlist ${playlistId}`,
+    );
 
     if (tracks.length === 0) {
       // Provide a specific error message based on the situation
@@ -356,9 +397,11 @@ export async function POST(request: NextRequest) {
 
       // If we got metadata but no tracks, it's likely a Development Mode restriction
       if (playlistName) {
-        errorMsg = "No se pudieron obtener los tracks de esta playlist. Si no es tu propia playlist (es decir, solo la sigues), Spotify en modo Desarrollo no permite acceder a sus tracks. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, copia la playlist a tu cuenta primero.";
+        errorMsg =
+          "No se pudieron obtener los tracks de esta playlist. Si no es tu propia playlist (es decir, solo la sigues), Spotify en modo Desarrollo no permite acceder a sus tracks. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, copia la playlist a tu cuenta primero.";
       } else {
-        errorMsg += " Puede ser privada o estar vacía. Asegúrate de que la playlist exista y sea accesible.";
+        errorMsg +=
+          " Puede ser privada o estar vacía. Asegúrate de que la playlist exista y sea accesible.";
       }
 
       return NextResponse.json(
@@ -367,7 +410,7 @@ export async function POST(request: NextRequest) {
           error: errorMsg,
           errorType: playlistName ? "DEVMODE_RESTRICTION" : "EMPTY_PLAYLIST",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -387,13 +430,14 @@ export async function POST(request: NextRequest) {
           success: false,
           error: `Ya existe una playlist con el slug "${playlistSlug}". Intenta con un nombre personalizado diferente.`,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     // Use Spotify's playlist cover image if available
     const coverImageUrl = playlistMeta.images?.[0]?.url || null;
-    const spotifyPlaylistUrl = playlistMeta.external_urls?.spotify || spotifyUrl.trim();
+    const spotifyPlaylistUrl =
+      playlistMeta.external_urls?.spotify || spotifyUrl.trim();
 
     // Create the curated playlist
     const newPlaylistId = generateUUID();
@@ -401,7 +445,8 @@ export async function POST(request: NextRequest) {
       id: newPlaylistId,
       name: finalPlaylistName,
       slug: playlistSlug,
-      description: playlistMeta.description || `Imported from Spotify: ${playlistName}`,
+      description:
+        playlistMeta.description || `Imported from Spotify: ${playlistName}`,
       coverImageUrl,
       coverColor: "#1DB954", // Spotify green as default
       spotifyPlaylistId: playlistId,
@@ -415,7 +460,7 @@ export async function POST(request: NextRequest) {
     await db.insert(curatedPlaylists).values(newPlaylist);
 
     console.log(
-      `[Spotify Import] Created playlist "${playlistName}" (${newPlaylistId}) with ${tracks.length} tracks`
+      `[Spotify Import] Created playlist "${playlistName}" (${newPlaylistId}) with ${tracks.length} tracks`,
     );
 
     // Insert playlist_tracks entries
@@ -476,13 +521,13 @@ export async function POST(request: NextRequest) {
       }
       if (linkedCount > 0) {
         console.log(
-          `[Spotify Import] Linked ${linkedCount} playlist tracks to existing curated tracks`
+          `[Spotify Import] Linked ${linkedCount} playlist tracks to existing curated tracks`,
         );
       }
     } catch (linkErr) {
       console.warn(
         "[Spotify Import] Could not link playlist tracks to curated tracks:",
-        linkErr
+        linkErr,
       );
     }
 
@@ -494,13 +539,17 @@ export async function POST(request: NextRequest) {
         tracksSkipped,
       },
       message: `Playlist "${playlistName}" importada exitosamente con ${tracksAdded} tracks desde Spotify.${
-        tracksSkipped > 0 ? ` (${tracksSkipped} tracks omitidos por datos incompletos)` : ""
+        tracksSkipped > 0
+          ? ` (${tracksSkipped} tracks omitidos por datos incompletos)`
+          : ""
       }`,
     });
   } catch (error) {
     console.error("[Spotify Import] Error:", error);
     const message =
-      error instanceof Error ? error.message : "Error importing Spotify playlist";
+      error instanceof Error
+        ? error.message
+        : "Error importing Spotify playlist";
 
     // Check for our custom error types
     if (message.includes("NO_SPOTIFY_TOKEN")) {
@@ -511,7 +560,7 @@ export async function POST(request: NextRequest) {
             "Se requiere conectar tu cuenta de Spotify para importar playlists. Haz clic en 'Conectar Spotify' en la página de playlists y vuelve a intentarlo.",
           errorType: "NO_SPOTIFY_TOKEN",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -523,7 +572,7 @@ export async function POST(request: NextRequest) {
             "No se pudo acceder a esta playlist de Spotify. Puede ser privada o tu conexión de Spotify expiró. Intenta reconectar tu cuenta con el botón 'Conectar Spotify'.",
           errorType: "PRIVATE_PLAYLIST",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -535,7 +584,7 @@ export async function POST(request: NextRequest) {
             "No se pudieron obtener los tracks de esta playlist. Si no es una playlist que tú creaste (solo la sigues), Spotify no permite acceder a sus tracks en modo Desarrollo. Solo puedes importar playlists que tú creaste. Para importar playlists de otros, cópiala a tu cuenta de Spotify primero.",
           errorType: "DEVMODE_PLAYLIST",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -550,7 +599,7 @@ export async function POST(request: NextRequest) {
               "No se pudieron obtener los tracks de esta playlist. Spotify en modo Desarrollo solo permite acceder a los tracks de playlists que tú creaste. Si esta playlist no es tuya, cópiala primero a tu cuenta de Spotify y luego importa tu copia.",
             errorType: "DEVMODE_PLAYLIST",
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
       return NextResponse.json(
@@ -560,7 +609,7 @@ export async function POST(request: NextRequest) {
             "No se pudo acceder a esta playlist de Spotify. Puede ser privada o tu conexión de Spotify expiró. Intenta reconectar tu cuenta con el botón 'Conectar Spotify'.",
           errorType: "AUTH_FAILED",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -572,13 +621,13 @@ export async function POST(request: NextRequest) {
             "Playlist no encontrada en Spotify. Verifica que la URL sea correcta.",
           errorType: "NOT_FOUND",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     return NextResponse.json(
       { success: false, error: `Error al importar playlist: ${message}` },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

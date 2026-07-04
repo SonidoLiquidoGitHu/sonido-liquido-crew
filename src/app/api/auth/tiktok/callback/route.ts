@@ -5,11 +5,11 @@
 // Exchanges the authorization code for access + refresh tokens,
 // saves them to the DB, then redirects to the admin page.
 
-import { NextRequest, NextResponse } from "next/server";
-import { exchangeTikTokCode } from "@/lib/clients/tiktok";
 import { db } from "@/db/client";
 import { socialCredentials } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { exchangeTikTokCode } from "@/lib/clients/tiktok";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 const REDIRECT_URI =
   process.env.TIKTOK_REDIRECT_URI ||
@@ -18,11 +18,20 @@ const REDIRECT_URI =
 /**
  * Save a credential to the DB, upserting if it already exists.
  */
-async function saveCredential(platform: "meta" | "tiktok", key: string, value: string) {
+async function saveCredential(
+  platform: "meta" | "tiktok",
+  key: string,
+  value: string,
+) {
   const existing = await db
     .select()
     .from(socialCredentials)
-    .where(and(eq(socialCredentials.platform, platform), eq(socialCredentials.key, key)))
+    .where(
+      and(
+        eq(socialCredentials.platform, platform),
+        eq(socialCredentials.key, key),
+      ),
+    )
     .limit(1);
 
   if (existing.length > 0) {
@@ -52,9 +61,7 @@ export async function GET(request: NextRequest) {
   let returnUrl = "/admin/social";
   try {
     if (state) {
-      const stateData = JSON.parse(
-        Buffer.from(state, "base64").toString()
-      );
+      const stateData = JSON.parse(Buffer.from(state, "base64").toString());
       returnUrl = stateData.returnUrl || "/admin/social";
     }
   } catch {
@@ -65,14 +72,17 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error("[TikTok OAuth] Error:", error, errorDescription);
     return NextResponse.redirect(
-      new URL(`${returnUrl}?tiktok_error=${encodeURIComponent(errorDescription || error)}`, request.url)
+      new URL(
+        `${returnUrl}?tiktok_error=${encodeURIComponent(errorDescription || error)}`,
+        request.url,
+      ),
     );
   }
 
   if (!code) {
     console.error("[TikTok OAuth] No authorization code received");
     return NextResponse.redirect(
-      new URL(`${returnUrl}?tiktok_error=no_code`, request.url)
+      new URL(`${returnUrl}?tiktok_error=no_code`, request.url),
     );
   }
 
@@ -83,16 +93,23 @@ export async function GET(request: NextRequest) {
     if (!tokens) {
       console.error("[TikTok OAuth] Token exchange failed");
       return NextResponse.redirect(
-        new URL(`${returnUrl}?tiktok_error=token_exchange_failed`, request.url)
+        new URL(`${returnUrl}?tiktok_error=token_exchange_failed`, request.url),
       );
     }
 
-    console.log("[TikTok OAuth] Token exchange successful! Open ID:", tokens.openId);
+    console.log(
+      "[TikTok OAuth] Token exchange successful! Open ID:",
+      tokens.openId,
+    );
 
     // Save tokens to DB so they're available immediately (no need for env vars)
     try {
       await saveCredential("tiktok", "TIKTOK_ACCESS_TOKEN", tokens.accessToken);
-      await saveCredential("tiktok", "TIKTOK_REFRESH_TOKEN", tokens.refreshToken);
+      await saveCredential(
+        "tiktok",
+        "TIKTOK_REFRESH_TOKEN",
+        tokens.refreshToken,
+      );
       await saveCredential("tiktok", "TIKTOK_OPEN_ID", tokens.openId);
       console.log("[TikTok OAuth] Tokens saved to DB");
     } catch (dbErr) {
@@ -110,7 +127,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error("[TikTok OAuth] Callback exception:", err);
     return NextResponse.redirect(
-      new URL(`${returnUrl}?tiktok_error=callback_exception`, request.url)
+      new URL(`${returnUrl}?tiktok_error=callback_exception`, request.url),
     );
   }
 }

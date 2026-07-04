@@ -12,7 +12,7 @@ import { generateUUID, slugify } from "../lib/utils";
 
 // Database connection
 const client = createClient({
-  url: process.env.DATABASE_URL!,
+  url: process.env.DATABASE_URL as string,
   authToken: process.env.DATABASE_AUTH_TOKEN,
 });
 
@@ -25,15 +25,18 @@ const db = drizzle(client);
 const sampleBeats = [
   {
     title: "Barrio Underground",
-    description: "Beat de boom bap clásico con samples de vinilo. Perfecto para flows callejeros y letras con contenido.",
+    description:
+      "Beat de boom bap clásico con samples de vinilo. Perfecto para flows callejeros y letras con contenido.",
     producerName: "Codak",
     bpm: 90,
     key: "A minor",
     genre: "Boom Bap",
     tags: ["boom bap", "classic", "vinyl", "underground"],
     duration: 180,
-    previewAudioUrl: "https://cdn.pixabay.com/audio/2024/02/14/audio_8e2e1c12a8.mp3",
-    coverImageUrl: "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=400&h=400&fit=crop",
+    previewAudioUrl:
+      "https://cdn.pixabay.com/audio/2024/02/14/audio_8e2e1c12a8.mp3",
+    coverImageUrl:
+      "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=400&h=400&fit=crop",
     isFree: true,
     gateEnabled: true,
     requireEmail: true,
@@ -42,30 +45,36 @@ const sampleBeats = [
   },
   {
     title: "Noche de Freestyle",
-    description: "Instrumental para sesiones de freestyle. Tempo medio con espacio para improvisar.",
+    description:
+      "Instrumental para sesiones de freestyle. Tempo medio con espacio para improvisar.",
     producerName: "Fancy Freak",
     bpm: 95,
     key: "D minor",
     genre: "Hip Hop",
     tags: ["freestyle", "cyphers", "practice"],
     duration: 240,
-    previewAudioUrl: "https://cdn.pixabay.com/audio/2024/03/12/audio_b35a86e84f.mp3",
-    coverImageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
+    previewAudioUrl:
+      "https://cdn.pixabay.com/audio/2024/03/12/audio_b35a86e84f.mp3",
+    coverImageUrl:
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
     isFree: true,
     gateEnabled: true,
     requireEmail: true,
   },
   {
     title: "Trap Mexicano",
-    description: "Beat de trap con influencias mexicanas. 808s pesados y hi-hats rápidos.",
+    description:
+      "Beat de trap con influencias mexicanas. 808s pesados y hi-hats rápidos.",
     producerName: "Codak",
     bpm: 140,
     key: "F minor",
     genre: "Trap",
     tags: ["trap", "mexican", "808", "hard"],
     duration: 195,
-    previewAudioUrl: "https://cdn.pixabay.com/audio/2024/01/17/audio_ef85f92d31.mp3",
-    coverImageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop",
+    previewAudioUrl:
+      "https://cdn.pixabay.com/audio/2024/01/17/audio_ef85f92d31.mp3",
+    coverImageUrl:
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop",
     isFree: false,
     price: 29.99,
     currency: "USD",
@@ -73,15 +82,18 @@ const sampleBeats = [
   },
   {
     title: "Jazz en la Calle",
-    description: "Instrumental jazzy con samples de piano y saxofón. Vibes relajadas para el atardecer.",
+    description:
+      "Instrumental jazzy con samples de piano y saxofón. Vibes relajadas para el atardecer.",
     producerName: "Fancy Freak",
     bpm: 85,
     key: "G major",
     genre: "Jazz Rap",
     tags: ["jazz", "chill", "piano", "sax"],
     duration: 210,
-    previewAudioUrl: "https://cdn.pixabay.com/audio/2024/02/28/audio_a8f6b4c3f1.mp3",
-    coverImageUrl: "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=400&h=400&fit=crop",
+    previewAudioUrl:
+      "https://cdn.pixabay.com/audio/2024/02/28/audio_a8f6b4c3f1.mp3",
+    coverImageUrl:
+      "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=400&h=400&fit=crop",
     isFree: true,
     gateEnabled: true,
     requireEmail: true,
@@ -90,15 +102,18 @@ const sampleBeats = [
   },
   {
     title: "Revolución",
-    description: "Beat épico con cuerdas orquestales y drums agresivos. Para temas de protesta y consciencia social.",
+    description:
+      "Beat épico con cuerdas orquestales y drums agresivos. Para temas de protesta y consciencia social.",
     producerName: "Codak",
     bpm: 100,
     key: "C minor",
     genre: "Conscious Hip Hop",
     tags: ["epic", "orchestral", "protest", "conscious"],
     duration: 225,
-    previewAudioUrl: "https://cdn.pixabay.com/audio/2024/03/05/audio_c2b9e4d8a1.mp3",
-    coverImageUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=400&fit=crop",
+    previewAudioUrl:
+      "https://cdn.pixabay.com/audio/2024/03/05/audio_c2b9e4d8a1.mp3",
+    coverImageUrl:
+      "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&h=400&fit=crop",
     isFree: true,
     gateEnabled: true,
     requireEmail: true,
@@ -162,8 +177,10 @@ const sampleVideos = [
 const samplePhotos = [
   {
     title: "Concierto Vive Latino 2024",
-    imageUrl: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400",
     photographer: "Carlos Mendoza",
     location: "Foro Sol, CDMX",
     isFeatured: true,
@@ -171,8 +188,10 @@ const samplePhotos = [
   },
   {
     title: "Sesión de Grabación - Zaque",
-    imageUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400",
     photographer: "Studio SLC",
     location: "Estudio Sonido Líquido",
     isFeatured: true,
@@ -180,8 +199,10 @@ const samplePhotos = [
   },
   {
     title: "Freestyle en la Plaza",
-    imageUrl: "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400",
     photographer: "Crew SLC",
     location: "Plaza de la Constitución",
     isFeatured: false,
@@ -189,8 +210,10 @@ const samplePhotos = [
   },
   {
     title: "Backstage - Tour 2023",
-    imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
     photographer: "Ana García",
     location: "Monterrey",
     isFeatured: true,
@@ -198,8 +221,10 @@ const samplePhotos = [
   },
   {
     title: "Cypher Nocturno",
-    imageUrl: "https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400",
     photographer: "DJ Fancy",
     location: "CDMX",
     isFeatured: false,
@@ -207,8 +232,10 @@ const samplePhotos = [
   },
   {
     title: "Equipo de Producción",
-    imageUrl: "https://images.unsplash.com/photo-1598653222000-6b7b7a552625?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1598653222000-6b7b7a552625?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1598653222000-6b7b7a552625?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1598653222000-6b7b7a552625?w=400",
     photographer: "Codak",
     location: "Estudio",
     isFeatured: true,
@@ -217,7 +244,8 @@ const samplePhotos = [
   {
     title: "Graffiti Mural SLC",
     imageUrl: "https://images.unsplash.com/photo-1561059488-916d69792237?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1561059488-916d69792237?w=400",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1561059488-916d69792237?w=400",
     photographer: "Street Artist",
     location: "Tepito, CDMX",
     isFeatured: false,
@@ -225,8 +253,10 @@ const samplePhotos = [
   },
   {
     title: "Firma de Autógrafos",
-    imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
     photographer: "Prensa SLC",
     location: "Mixup Insurgentes",
     isFeatured: false,
@@ -235,8 +265,10 @@ const samplePhotos = [
 
   {
     title: "Hip Hop al Parque 2023",
-    imageUrl: "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800",
-    thumbnailUrl: "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=400",
+    imageUrl:
+      "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800",
+    thumbnailUrl:
+      "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=400",
     photographer: "Festival",
     location: "Bogotá, Colombia",
     isFeatured: true,
@@ -328,14 +360,18 @@ async function seedGalleryPhotos() {
   // First, create some tags
   const tagIds: Record<string, string> = {};
   const allTags = new Set<string>();
-  samplePhotos.forEach(photo => photo.tags.forEach(tag => allTags.add(tag)));
+  for (const photo of samplePhotos) {
+    for (const tag of photo.tags) {
+      allTags.add(tag);
+    }
+  }
 
   for (const tagName of allTags) {
     const tagId = generateUUID();
     tagIds[tagName] = tagId;
 
     await client.execute({
-      sql: `INSERT OR IGNORE INTO tags (id, name, slug, category) VALUES (?, ?, ?, ?)`,
+      sql: "INSERT OR IGNORE INTO tags (id, name, slug, category) VALUES (?, ?, ?, ?)",
       args: [tagId, tagName, slugify(tagName), "gallery"],
     });
   }
@@ -367,7 +403,7 @@ async function seedGalleryPhotos() {
       const tagId = tagIds[tag];
       if (tagId) {
         await client.execute({
-          sql: `INSERT OR IGNORE INTO photo_tags (id, photo_id, tag_id) VALUES (?, ?, ?)`,
+          sql: "INSERT OR IGNORE INTO photo_tags (id, photo_id, tag_id) VALUES (?, ?, ?)",
           args: [generateUUID(), photoId, tagId],
         });
       }

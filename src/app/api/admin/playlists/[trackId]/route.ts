@@ -1,21 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { playlistTracks } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 // PUT - Update a playlist track (position, active status)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ trackId: string }> }
+  { params }: { params: Promise<{ trackId: string }> },
 ) {
   try {
     const { trackId } = await params;
     const body = await request.json();
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     const { position, isActive } = body;
@@ -30,7 +33,7 @@ export async function PUT(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Track not found in playlist" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -55,7 +58,7 @@ export async function PUT(
     console.error("[Playlists API] Error updating track:", error);
     return NextResponse.json(
       { success: false, error: "Error updating track" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -63,13 +66,16 @@ export async function PUT(
 // DELETE - Remove a track from playlist
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ trackId: string }> }
+  { params }: { params: Promise<{ trackId: string }> },
 ) {
   try {
     const { trackId } = await params;
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     // Check if exists
@@ -82,14 +88,12 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Track not found in playlist" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Delete
-    await db
-      .delete(playlistTracks)
-      .where(eq(playlistTracks.id, trackId));
+    await db.delete(playlistTracks).where(eq(playlistTracks.id, trackId));
 
     return NextResponse.json({
       success: true,
@@ -99,7 +103,7 @@ export async function DELETE(
     console.error("[Playlists API] Error removing track:", error);
     return NextResponse.json(
       { success: false, error: "Error removing track" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

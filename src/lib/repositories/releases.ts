@@ -1,14 +1,26 @@
 import { db, isDatabaseConfigured } from "@/db/client";
 import {
-  releases,
-  releaseArtists,
-  artists,
-  upcomingReleases,
-  type Release,
   type NewRelease,
+  type Release,
+  artists,
+  releaseArtists,
+  releases,
+  upcomingReleases,
 } from "@/db/schema";
-import { eq, and, or, desc, asc, gte, lte, sql, like, lt, isNotNull } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  isNotNull,
+  like,
+  lt,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 
 // ===========================================
 // RELEASES REPOSITORY
@@ -18,15 +30,17 @@ export const releasesRepository = {
   /**
    * Get all releases
    */
-  async findAll(options: {
-    type?: Release["releaseType"];
-    artistId?: string;
-    year?: number;
-    isUpcoming?: boolean;
-    isFeatured?: boolean;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<Release[]> {
+  async findAll(
+    options: {
+      type?: Release["releaseType"];
+      artistId?: string;
+      year?: number;
+      isUpcoming?: boolean;
+      isFeatured?: boolean;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<Release[]> {
     const conditions = [];
 
     if (options.type) {
@@ -43,7 +57,7 @@ export const releasesRepository = {
       const endDate = new Date(options.year, 11, 31);
       conditions.push(
         gte(releases.releaseDate, startDate),
-        lte(releases.releaseDate, endDate)
+        lte(releases.releaseDate, endDate),
       );
     }
 
@@ -116,7 +130,8 @@ export const releasesRepository = {
       .innerJoin(artists, eq(releaseArtists.artistId, artists.id))
       .where(eq(releaseArtists.releaseId, release.id));
 
-    const primaryArtist = releaseArtistsData.find((ra) => ra.isPrimary)?.artist || null;
+    const primaryArtist =
+      releaseArtistsData.find((ra) => ra.isPrimary)?.artist || null;
 
     return {
       ...release,
@@ -133,10 +148,7 @@ export const releasesRepository = {
     return db
       .select()
       .from(releases)
-      .where(and(
-        eq(releases.isUpcoming, true),
-        gte(releases.releaseDate, now)
-      ))
+      .where(and(eq(releases.isUpcoming, true), gte(releases.releaseDate, now)))
       .orderBy(asc(releases.releaseDate))
       .limit(limit);
   },
@@ -218,7 +230,9 @@ export const releasesRepository = {
   /**
    * Get releases per artist
    */
-  async countByArtist(): Promise<{ artistId: string; artistName: string; count: number }[]> {
+  async countByArtist(): Promise<
+    { artistId: string; artistName: string; count: number }[]
+  > {
     const results = await db
       .select({
         artistId: artists.id,
@@ -239,7 +253,7 @@ export const releasesRepository = {
   async create(
     data: Omit<NewRelease, "id" | "createdAt" | "updatedAt">,
     artistIds: string[],
-    primaryArtistId?: string
+    primaryArtistId?: string,
   ): Promise<Release> {
     const id = generateUUID();
     const slug = data.slug || slugify(data.title);
@@ -261,7 +275,7 @@ export const releasesRepository = {
           releaseId: id,
           artistId,
           isPrimary: artistId === primaryArtistId,
-        }))
+        })),
       );
     }
 
@@ -288,9 +302,7 @@ export const releasesRepository = {
    * Delete release
    */
   async delete(id: string): Promise<boolean> {
-    const result = await db
-      .delete(releases)
-      .where(eq(releases.id, id));
+    const result = await db.delete(releases).where(eq(releases.id, id));
 
     return (result.rowsAffected ?? 0) > 0;
   },
@@ -313,7 +325,10 @@ export const releasesRepository = {
    * into the releases table so they appear in discografía.
    * Returns count of newly converted releases.
    */
-  async autoConvertUpcomingReleases(): Promise<{ converted: number; fixed: number }> {
+  async autoConvertUpcomingReleases(): Promise<{
+    converted: number;
+    fixed: number;
+  }> {
     if (!isDatabaseConfigured()) return { converted: 0, fixed: 0 };
 
     const now = new Date();
@@ -329,8 +344,8 @@ export const releasesRepository = {
           and(
             eq(upcomingReleases.isActive, true),
             lt(upcomingReleases.releaseDate, now),
-            sql`${upcomingReleases.releasedReleaseId} IS NULL`
-          )
+            sql`${upcomingReleases.releasedReleaseId} IS NULL`,
+          ),
         );
 
       for (const upcoming of pastDue) {
@@ -349,7 +364,8 @@ export const releasesRepository = {
               .update(upcomingReleases)
               .set({
                 releasedReleaseId: existing.id,
-                releaseType: existing.releaseType as typeof upcoming.releaseType,
+                releaseType:
+                  existing.releaseType as typeof upcoming.releaseType,
                 isActive: false,
                 updatedAt: new Date(),
               })
@@ -382,7 +398,13 @@ export const releasesRepository = {
 
           // Create a new release from the upcoming release
           const releaseId = generateUUID();
-          const releaseType = upcoming.releaseType as "album" | "ep" | "single" | "maxi-single" | "compilation" | "mixtape";
+          const releaseType = upcoming.releaseType as
+            | "album"
+            | "ep"
+            | "single"
+            | "maxi-single"
+            | "compilation"
+            | "mixtape";
 
           await db.insert(releases).values({
             id: releaseId,
@@ -403,8 +425,8 @@ export const releasesRepository = {
             .where(
               or(
                 eq(artists.name, upcoming.artistName),
-                like(artists.name, `%${upcoming.artistName}%`)
-              )
+                like(artists.name, `%${upcoming.artistName}%`),
+              ),
             )
             .limit(1);
 
@@ -420,7 +442,9 @@ export const releasesRepository = {
           // Handle featured artists
           if (upcoming.featuredArtists) {
             try {
-              const featuredNames = JSON.parse(upcoming.featuredArtists) as string[];
+              const featuredNames = JSON.parse(
+                upcoming.featuredArtists,
+              ) as string[];
               for (const featName of featuredNames) {
                 const [featArtist] = await db
                   .select()
@@ -428,8 +452,8 @@ export const releasesRepository = {
                   .where(
                     or(
                       eq(artists.name, featName),
-                      like(artists.name, `%${featName}%`)
-                    )
+                      like(artists.name, `%${featName}%`),
+                    ),
                   )
                   .limit(1);
 
@@ -440,8 +464,8 @@ export const releasesRepository = {
                     .where(
                       and(
                         eq(releaseArtists.releaseId, releaseId),
-                        eq(releaseArtists.artistId, featArtist.id)
-                      )
+                        eq(releaseArtists.artistId, featArtist.id),
+                      ),
                     )
                     .limit(1);
 
@@ -455,7 +479,9 @@ export const releasesRepository = {
                   }
                 }
               }
-            } catch { /* featured artists JSON parse error, skip */ }
+            } catch {
+              /* featured artists JSON parse error, skip */
+            }
           }
 
           // Mark the upcoming release as converted
@@ -470,7 +496,10 @@ export const releasesRepository = {
 
           converted++;
         } catch (err) {
-          console.error(`[autoConvert] Failed to convert "${upcoming.title}":`, err);
+          console.error(
+            `[autoConvert] Failed to convert "${upcoming.title}":`,
+            err,
+          );
         }
       }
 
@@ -479,10 +508,7 @@ export const releasesRepository = {
         .select({ id: releases.id })
         .from(releases)
         .where(
-          and(
-            eq(releases.isUpcoming, true),
-            lt(releases.releaseDate, now)
-          )
+          and(eq(releases.isUpcoming, true), lt(releases.releaseDate, now)),
         );
 
       if (staleUpcoming.length > 0) {
@@ -490,10 +516,7 @@ export const releasesRepository = {
           .update(releases)
           .set({ isUpcoming: false, updatedAt: new Date() })
           .where(
-            and(
-              eq(releases.isUpcoming, true),
-              lt(releases.releaseDate, now)
-            )
+            and(eq(releases.isUpcoming, true), lt(releases.releaseDate, now)),
           );
         fixed = staleUpcoming.length;
       }
@@ -519,18 +542,26 @@ export const releasesRepository = {
             .where(eq(releases.id, linked.releasedReleaseId!))
             .limit(1);
 
-          if (linkedRelease && linkedRelease.releaseType !== linked.upcomingType) {
+          if (
+            linkedRelease &&
+            linkedRelease.releaseType !== linked.upcomingType
+          ) {
             await db
               .update(upcomingReleases)
               .set({
-                releaseType: linkedRelease.releaseType as typeof upcomingReleases.$inferInsert.releaseType,
+                releaseType:
+                  linkedRelease.releaseType as typeof upcomingReleases.$inferInsert.releaseType,
                 updatedAt: new Date(),
               })
               .where(eq(upcomingReleases.id, linked.upcomingId));
             typeSynced++;
-            console.log(`[autoConvert] Synced releaseType for "${linked.upcomingId}": ${linked.upcomingType} → ${linkedRelease.releaseType}`);
+            console.log(
+              `[autoConvert] Synced releaseType for "${linked.upcomingId}": ${linked.upcomingType} → ${linkedRelease.releaseType}`,
+            );
           }
-        } catch { /* non-critical */ }
+        } catch {
+          /* non-critical */
+        }
       }
 
       // 4. Sync releaseType for active upcoming releases that have a match in releases table
@@ -549,28 +580,39 @@ export const releasesRepository = {
             .where(eq(releases.slug, active.slug))
             .limit(1);
 
-          const match = matchBySlug || (await db
-            .select({ id: releases.id, releaseType: releases.releaseType })
-            .from(releases)
-            .where(like(releases.title, `%${active.title}%`))
-            .limit(1))[0];
+          const match =
+            matchBySlug ||
+            (
+              await db
+                .select({ id: releases.id, releaseType: releases.releaseType })
+                .from(releases)
+                .where(like(releases.title, `%${active.title}%`))
+                .limit(1)
+            )[0];
 
           if (match && match.releaseType !== active.releaseType) {
             await db
               .update(upcomingReleases)
               .set({
-                releaseType: match.releaseType as typeof upcomingReleases.$inferInsert.releaseType,
+                releaseType:
+                  match.releaseType as typeof upcomingReleases.$inferInsert.releaseType,
                 updatedAt: new Date(),
               })
               .where(eq(upcomingReleases.id, active.id));
             typeSynced++;
-            console.log(`[autoConvert] Synced active upcoming releaseType for "${active.title}": ${active.releaseType} → ${match.releaseType}`);
+            console.log(
+              `[autoConvert] Synced active upcoming releaseType for "${active.title}": ${active.releaseType} → ${match.releaseType}`,
+            );
           }
-        } catch { /* non-critical */ }
+        } catch {
+          /* non-critical */
+        }
       }
 
       if (converted > 0 || fixed > 0 || typeSynced > 0) {
-        console.log(`[autoConvert] Converted ${converted} upcoming → releases, fixed ${fixed} isUpcoming flags, synced ${typeSynced} releaseTypes`);
+        console.log(
+          `[autoConvert] Converted ${converted} upcoming → releases, fixed ${fixed} isUpcoming flags, synced ${typeSynced} releaseTypes`,
+        );
       }
 
       // 5. Deduplicate releases whose titles differ only by minor variations
@@ -589,9 +631,10 @@ export const releasesRepository = {
 
         // Build a normalized-title map to find duplicates
         const normalize = (t: string) =>
-          t.toLowerCase()
-            .replace(/&/g, "y")           // "Beats, Donas & Café" → "beats, donas y café"
-            .replace(/\s+/g, " ")          // collapse whitespace
+          t
+            .toLowerCase()
+            .replace(/&/g, "y") // "Beats, Donas & Café" → "beats, donas y café"
+            .replace(/\s+/g, " ") // collapse whitespace
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "") // strip diacritics
             .trim();
@@ -600,7 +643,7 @@ export const releasesRepository = {
         for (const r of allReleases) {
           const key = normalize(r.title);
           if (!byNormTitle.has(key)) byNormTitle.set(key, []);
-          byNormTitle.get(key)!.push(r);
+          byNormTitle.get(key)?.push(r);
         }
 
         for (const [, group] of byNormTitle) {
@@ -608,8 +651,8 @@ export const releasesRepository = {
 
           // Prefer the one that has a spotifyId (Spotify-synced = canonical)
           // If both have spotifyId, prefer the one with "&" in the title
-          const keep = group.find(r => r.spotifyId) || group[0];
-          const toRemove = group.filter(r => r.id !== keep.id);
+          const keep = group.find((r) => r.spotifyId) || group[0];
+          const toRemove = group.filter((r) => r.id !== keep.id);
 
           for (const dup of toRemove) {
             try {
@@ -624,10 +667,12 @@ export const releasesRepository = {
                 const [existingLink] = await db
                   .select()
                   .from(releaseArtists)
-                  .where(and(
-                    eq(releaseArtists.releaseId, keep.id),
-                    eq(releaseArtists.artistId, link.artistId)
-                  ))
+                  .where(
+                    and(
+                      eq(releaseArtists.releaseId, keep.id),
+                      eq(releaseArtists.artistId, link.artistId),
+                    ),
+                  )
                   .limit(1);
 
                 if (!existingLink) {
@@ -648,15 +693,24 @@ export const releasesRepository = {
                   .update(upcomingReleases)
                   .set({ releasedReleaseId: keep.id })
                   .where(eq(upcomingReleases.releasedReleaseId, dup.id));
-              } catch { /* non-critical */ }
+              } catch {
+                /* non-critical */
+              }
 
               // Delete the duplicate release
-              await db.delete(releaseArtists).where(eq(releaseArtists.releaseId, dup.id));
+              await db
+                .delete(releaseArtists)
+                .where(eq(releaseArtists.releaseId, dup.id));
               await db.delete(releases).where(eq(releases.id, dup.id));
               deduped++;
-              console.log(`[autoConvert] Deduplicated: removed "${dup.title}" (keeping "${keep.title}")`);
+              console.log(
+                `[autoConvert] Deduplicated: removed "${dup.title}" (keeping "${keep.title}")`,
+              );
             } catch (dedupErr) {
-              console.error(`[autoConvert] Failed to dedup "${dup.title}":`, dedupErr);
+              console.error(
+                `[autoConvert] Failed to dedup "${dup.title}":`,
+                dedupErr,
+              );
             }
           }
         }

@@ -1,33 +1,33 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import * as musicMetadata from "music-metadata-browser";
 import {
-  Upload,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  X,
-  Music,
-  FolderUp,
-  FileAudio,
-  Trash2,
-  Play,
-  Pause,
-  RefreshCw,
-  GripVertical,
-  ChevronUp,
-  ChevronDown,
-  Copy,
-  FileText,
-  Wand2,
-  User,
   Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
   Cloud,
+  Copy,
+  FileAudio,
+  FileText,
+  FolderUp,
+  GripVertical,
+  Loader2,
+  Music,
+  Pause,
+  Play,
+  RefreshCw,
+  Trash2,
+  Upload,
+  User,
+  Wand2,
+  X,
   Zap,
 } from "lucide-react";
+import * as musicMetadata from "music-metadata-browser";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AudioFileInfo {
   id: string;
@@ -44,7 +44,15 @@ interface AudioFileInfo {
 }
 
 interface BulkAudioUploaderProps {
-  onUploadComplete: (tracks: { title: string; artist?: string; url: string; duration: string; trackNumber?: number }[]) => void;
+  onUploadComplete: (
+    tracks: {
+      title: string;
+      artist?: string;
+      url: string;
+      duration: string;
+      trackNumber?: number;
+    }[],
+  ) => void;
   folder?: string;
   maxSize?: number;
   maxFiles?: number;
@@ -66,7 +74,7 @@ function getAudioDuration(file: File): Promise<string> {
     audio.preload = "metadata";
     audio.onloadedmetadata = () => {
       URL.revokeObjectURL(audio.src);
-      if (audio.duration && isFinite(audio.duration)) {
+      if (audio.duration && Number.isFinite(audio.duration)) {
         resolve(formatDuration(audio.duration));
       } else {
         resolve("");
@@ -105,7 +113,10 @@ function cleanFilename(filename: string): string {
   return filename
     .replace(/\.[^/.]+$/, "")
     .replace(/^(mp3|wav|flac|m4a|aac|ogg|wma|aiff)[\s_-]*/gi, "")
-    .replace(/^(mp3|wav|flac|m4a)[_\s-]*(mp3|wav|flac|m4a)[_\s-]*(mp3|wav|flac|m4a)[_\s-]*/gi, "")
+    .replace(
+      /^(mp3|wav|flac|m4a)[_\s-]*(mp3|wav|flac|m4a)[_\s-]*(mp3|wav|flac|m4a)[_\s-]*/gi,
+      "",
+    )
     .replace(/\b(\w+)(\s+\1)+\b/gi, "$1")
     .replace(/^\d+[\s._-]+/, "")
     .replace(/[\s_-]*(master|final|mix|mastered|v\d+)[\s_-]*$/gi, "")
@@ -135,7 +146,9 @@ export function BulkAudioUploader({
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
   // Dropbox direct upload state
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   // Initialize Dropbox direct upload on mount
@@ -166,60 +179,71 @@ export function BulkAudioUploader({
     initDropbox();
   }, []);
 
-  const processFiles = useCallback(async (selectedFiles: FileList | File[]) => {
-    const audioFiles = Array.from(selectedFiles).filter(
-      (f) => f.type.startsWith("audio/") ||
-             /\.(mp3|wav|flac|m4a|aac|ogg|wma|aiff|opus|weba)$/i.test(f.name)
-    );
+  const processFiles = useCallback(
+    async (selectedFiles: FileList | File[]) => {
+      const audioFiles = Array.from(selectedFiles).filter(
+        (f) =>
+          f.type.startsWith("audio/") ||
+          /\.(mp3|wav|flac|m4a|aac|ogg|wma|aiff|opus|weba)$/i.test(f.name),
+      );
 
-    if (audioFiles.length === 0) {
-      alert("No se encontraron archivos de audio válidos");
-      return;
-    }
+      if (audioFiles.length === 0) {
+        alert("No se encontraron archivos de audio válidos");
+        return;
+      }
 
-    if (files.length + audioFiles.length > maxFiles) {
-      alert(`Máximo ${maxFiles} archivos permitidos`);
-      return;
-    }
+      if (files.length + audioFiles.length > maxFiles) {
+        alert(`Máximo ${maxFiles} archivos permitidos`);
+        return;
+      }
 
-    // Sort files by name first
-    audioFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      // Sort files by name first
+      audioFiles.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true }),
+      );
 
-    // Process files with ID3 tags
-    const newFiles: AudioFileInfo[] = await Promise.all(
-      audioFiles.map(async (file, index) => {
-        const [duration, id3] = await Promise.all([
-          getAudioDuration(file),
-          readID3Tags(file),
-        ]);
+      // Process files with ID3 tags
+      const newFiles: AudioFileInfo[] = await Promise.all(
+        audioFiles.map(async (file, index) => {
+          const [duration, id3] = await Promise.all([
+            getAudioDuration(file),
+            readID3Tags(file),
+          ]);
 
-        // Extract track number from filename if not in ID3
-        const filenameMatch = file.name.match(/^(\d+)/);
-        const trackNum = id3.track ? parseInt(id3.track) : (filenameMatch ? parseInt(filenameMatch[1]) : undefined);
+          // Extract track number from filename if not in ID3
+          const filenameMatch = file.name.match(/^(\d+)/);
+          const trackNum = id3.track
+            ? Number.parseInt(id3.track)
+            : filenameMatch
+              ? Number.parseInt(filenameMatch[1])
+              : undefined;
 
-        return {
-          id: generateId(),
-          file,
-          title: id3.title || cleanFilename(file.name),
-          artist: id3.artist || "",
-          duration,
-          status: "pending" as const,
-          progress: 0,
-          trackNumber: trackNum,
-        };
-      })
-    );
+          return {
+            id: generateId(),
+            file,
+            title: id3.title || cleanFilename(file.name),
+            artist: id3.artist || "",
+            duration,
+            status: "pending" as const,
+            progress: 0,
+            trackNumber: trackNum,
+          };
+        }),
+      );
 
-    // Sort by track number if available
-    newFiles.sort((a, b) => {
-      if (a.trackNumber && b.trackNumber) return a.trackNumber - b.trackNumber;
-      if (a.trackNumber) return -1;
-      if (b.trackNumber) return 1;
-      return 0;
-    });
+      // Sort by track number if available
+      newFiles.sort((a, b) => {
+        if (a.trackNumber && b.trackNumber)
+          return a.trackNumber - b.trackNumber;
+        if (a.trackNumber) return -1;
+        if (b.trackNumber) return 1;
+        return 0;
+      });
 
-    setFiles((prev) => [...prev, ...newFiles]);
-  }, [files.length, maxFiles]);
+      setFiles((prev) => [...prev, ...newFiles]);
+    },
+    [files.length, maxFiles],
+  );
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -244,7 +268,7 @@ export function BulkAudioUploader({
 
   const updateFile = (id: string, updates: Partial<AudioFileInfo>) => {
     setFiles((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ...updates } : f))
+      prev.map((f) => (f.id === id ? { ...f, ...updates } : f)),
     );
   };
 
@@ -284,7 +308,10 @@ export function BulkAudioUploader({
 
       const newFiles = [...prev];
       const newIndex = direction === "up" ? index - 1 : index + 1;
-      [newFiles[index], newFiles[newIndex]] = [newFiles[newIndex], newFiles[index]];
+      [newFiles[index], newFiles[newIndex]] = [
+        newFiles[newIndex],
+        newFiles[index],
+      ];
       return newFiles;
     });
   };
@@ -322,7 +349,7 @@ export function BulkAudioUploader({
       prev.map((f, index) => {
         if (f.status !== "pending") return f;
 
-        let newTitle = renamePattern
+        const newTitle = renamePattern
           .replace("{n}", String(index + 1).padStart(2, "0"))
           .replace("{N}", String(index + 1))
           .replace("{title}", f.title)
@@ -330,7 +357,7 @@ export function BulkAudioUploader({
           .replace("{filename}", cleanFilename(f.file.name));
 
         return { ...f, title: newTitle.trim() };
-      })
+      }),
     );
     setShowRenameModal(false);
   };
@@ -357,15 +384,14 @@ export function BulkAudioUploader({
   };
 
   // Helper to add delay between uploads
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const delay = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
   // Convert Dropbox shared link to direct link with ?raw=1
   const convertToDirectLink = (url: string): string => {
-    const result = url
-      .replace("?dl=0", "?raw=1")
-      .replace("&dl=0", "&raw=1");
+    const result = url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
     if (!result.includes("raw=1")) {
-      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+      return `${result + (result.includes("?") ? "&" : "?")}raw=1`;
     }
     return result;
   };
@@ -375,17 +401,24 @@ export function BulkAudioUploader({
     if (!accessToken) throw new Error("No hay token de Dropbox");
 
     try {
-      const response = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            path,
+            settings: {
+              access: "viewer",
+              audience: "public",
+              requested_visibility: "public",
+            },
+          }),
         },
-        body: JSON.stringify({
-          path,
-          settings: { access: "viewer", audience: "public", requested_visibility: "public" },
-        }),
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -394,15 +427,21 @@ export function BulkAudioUploader({
 
       // Link might already exist
       const errorData = await response.json().catch(() => ({}));
-      if (errorData.error_summary?.includes("shared_link_already_exists") || response.status === 409) {
-        const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
+      if (
+        errorData.error_summary?.includes("shared_link_already_exists") ||
+        response.status === 409
+      ) {
+        const listResponse = await fetch(
+          "https://api.dropboxapi.com/2/sharing/list_shared_links",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ path, direct_only: true }),
           },
-          body: JSON.stringify({ path, direct_only: true }),
-        });
+        );
         if (listResponse.ok) {
           const listData = await listResponse.json();
           if (listData.links && listData.links.length > 0) {
@@ -410,7 +449,9 @@ export function BulkAudioUploader({
           }
         }
       }
-      throw new Error(errorData.error_summary || "Failed to create shared link");
+      throw new Error(
+        errorData.error_summary || "Failed to create shared link",
+      );
     } catch (error) {
       console.error("[BulkAudio] Create link error:", error);
       throw error;
@@ -418,13 +459,19 @@ export function BulkAudioUploader({
   };
 
   // Upload a file directly to Dropbox from the browser (bypasses server size limits)
-  const uploadDirectToDropbox = async (fileInfo: AudioFileInfo): Promise<{ url: string; filename: string } | null> => {
+  const uploadDirectToDropbox = async (
+    fileInfo: AudioFileInfo,
+  ): Promise<{ url: string; filename: string } | null> => {
     if (!accessToken) {
-      throw new Error("No hay token de Dropbox disponible. Reconecta en Sincronización.");
+      throw new Error(
+        "No hay token de Dropbox disponible. Reconecta en Sincronización.",
+      );
     }
 
     const ext = fileInfo.file.name.split(".").pop() || "";
-    const baseName = fileInfo.file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const baseName = fileInfo.file.name
+      .replace(`.${ext}`, "")
+      .replace(/[^a-zA-Z0-9-_]/g, "_");
     const uniqueId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const filename = `${baseName}_${uniqueId}.${ext}`;
     const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
@@ -439,15 +486,18 @@ export function BulkAudioUploader({
       const totalChunks = Math.ceil(fileInfo.file.size / CHUNK_SIZE);
 
       // Start session
-      const startResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/start", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/octet-stream",
-          "Dropbox-API-Arg": JSON.stringify({ close: false }),
+      const startResponse = await fetch(
+        "https://content.dropboxapi.com/2/files/upload_session/start",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream",
+            "Dropbox-API-Arg": JSON.stringify({ close: false }),
+          },
+          body: new ArrayBuffer(0),
         },
-        body: new ArrayBuffer(0),
-      });
+      );
       if (!startResponse.ok) throw new Error("Failed to start upload session");
       const { session_id } = await startResponse.json();
 
@@ -458,38 +508,54 @@ export function BulkAudioUploader({
         const isLastChunk = i === totalChunks - 1;
 
         const progress = Math.round(30 + ((i + 1) / totalChunks) * 50);
-        updateFile(fileInfo.id, { progress, message: `Subiendo parte ${i + 1} de ${totalChunks}...` });
+        updateFile(fileInfo.id, {
+          progress,
+          message: `Subiendo parte ${i + 1} de ${totalChunks}...`,
+        });
 
         if (isLastChunk) {
-          const finishResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/finish", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/octet-stream",
-              "Dropbox-API-Arg": JSON.stringify({
-                cursor: { session_id, offset },
-                commit: { path: dropboxPath, mode: "overwrite", autorename: false, mute: false },
-              }),
+          const finishResponse = await fetch(
+            "https://content.dropboxapi.com/2/files/upload_session/finish",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/octet-stream",
+                "Dropbox-API-Arg": JSON.stringify({
+                  cursor: { session_id, offset },
+                  commit: {
+                    path: dropboxPath,
+                    mode: "overwrite",
+                    autorename: false,
+                    mute: false,
+                  },
+                }),
+              },
+              body: chunkBuffer,
             },
-            body: chunkBuffer,
-          });
+          );
           if (!finishResponse.ok) {
             const errorData = await finishResponse.json().catch(() => ({}));
-            throw new Error(errorData.error_summary || "Failed to finish upload");
+            throw new Error(
+              errorData.error_summary || "Failed to finish upload",
+            );
           }
         } else {
-          const appendResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/append_v2", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/octet-stream",
-              "Dropbox-API-Arg": JSON.stringify({
-                cursor: { session_id, offset },
-                close: false,
-              }),
+          const appendResponse = await fetch(
+            "https://content.dropboxapi.com/2/files/upload_session/append_v2",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/octet-stream",
+                "Dropbox-API-Arg": JSON.stringify({
+                  cursor: { session_id, offset },
+                  close: false,
+                }),
+              },
+              body: chunkBuffer,
             },
-            body: chunkBuffer,
-          });
+          );
           if (!appendResponse.ok) throw new Error("Failed to append chunk");
         }
         offset += chunkBuffer.byteLength;
@@ -498,29 +564,39 @@ export function BulkAudioUploader({
       // Single-request upload for files <= 150MB
       const arrayBuffer = await fileInfo.file.arrayBuffer();
 
-      updateFile(fileInfo.id, { progress: 40, message: "Subiendo a Dropbox..." });
-
-      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/octet-stream",
-          "Dropbox-API-Arg": JSON.stringify({
-            path: dropboxPath,
-            mode: "overwrite",
-            autorename: false,
-            mute: false,
-          }),
-        },
-        body: arrayBuffer,
+      updateFile(fileInfo.id, {
+        progress: 40,
+        message: "Subiendo a Dropbox...",
       });
+
+      const uploadResponse = await fetch(
+        "https://content.dropboxapi.com/2/files/upload",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream",
+            "Dropbox-API-Arg": JSON.stringify({
+              path: dropboxPath,
+              mode: "overwrite",
+              autorename: false,
+              mute: false,
+            }),
+          },
+          body: arrayBuffer,
+        },
+      );
 
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json().catch(() => ({}));
         if (uploadResponse.status === 401) {
-          throw new Error("Token de Dropbox expirado. Reconecta en Sincronización → Dropbox.");
+          throw new Error(
+            "Token de Dropbox expirado. Reconecta en Sincronización → Dropbox.",
+          );
         }
-        throw new Error(errorData.error_summary || `Error HTTP ${uploadResponse.status}`);
+        throw new Error(
+          errorData.error_summary || `Error HTTP ${uploadResponse.status}`,
+        );
       }
     }
 
@@ -532,9 +608,21 @@ export function BulkAudioUploader({
     return { url: sharedUrl, filename };
   };
 
-  const uploadFile = async (fileInfo: AudioFileInfo, retryCount = 0): Promise<{ title: string; artist?: string; url: string; duration: string; trackNumber?: number } | null> => {
+  const uploadFile = async (
+    fileInfo: AudioFileInfo,
+    retryCount = 0,
+  ): Promise<{
+    title: string;
+    artist?: string;
+    url: string;
+    duration: string;
+    trackNumber?: number;
+  } | null> => {
     if (fileInfo.file.size > maxSize * 1024 * 1024) {
-      updateFile(fileInfo.id, { status: "error", error: `Archivo excede ${maxSize}MB` });
+      updateFile(fileInfo.id, {
+        status: "error",
+        error: `Archivo excede ${maxSize}MB`,
+      });
       return null;
     }
 
@@ -550,7 +638,11 @@ export function BulkAudioUploader({
           throw new Error("No se pudo subir el archivo a Dropbox");
         }
 
-        updateFile(fileInfo.id, { status: "success", progress: 100, url: result.url });
+        updateFile(fileInfo.id, {
+          status: "success",
+          progress: 100,
+          url: result.url,
+        });
 
         return {
           title: fileInfo.title,
@@ -563,7 +655,9 @@ export function BulkAudioUploader({
 
       // Fallback: Server-side upload (for when Dropbox is not configured for direct upload)
       // NOTE: This path has body size limits (~10MB on Netlify) and should rarely be used
-      console.warn("[BulkAudio] No direct Dropbox token, falling back to server upload (may fail for large files)");
+      console.warn(
+        "[BulkAudio] No direct Dropbox token, falling back to server upload (may fail for large files)",
+      );
       const formData = new FormData();
       formData.append("file", fileInfo.file);
       formData.append("folder", folder);
@@ -596,9 +690,16 @@ export function BulkAudioUploader({
         }
 
         // Retry on server errors
-        if ((response.status === 429 || response.status >= 500) && retryCount < 3) {
-          const delayMs = Math.pow(2, retryCount) * 4000;
-          updateFile(fileInfo.id, { status: "uploading", progress: 5, error: undefined });
+        if (
+          (response.status === 429 || response.status >= 500) &&
+          retryCount < 3
+        ) {
+          const delayMs = 2 ** retryCount * 4000;
+          updateFile(fileInfo.id, {
+            status: "uploading",
+            progress: 5,
+            error: undefined,
+          });
           await delay(delayMs);
           return uploadFile(fileInfo, retryCount + 1);
         }
@@ -611,7 +712,11 @@ export function BulkAudioUploader({
         throw new Error(data.error || "Error al subir archivo");
       }
 
-      updateFile(fileInfo.id, { status: "success", progress: 100, url: data.data.url });
+      updateFile(fileInfo.id, {
+        status: "success",
+        progress: 100,
+        url: data.data.url,
+      });
 
       return {
         title: fileInfo.title,
@@ -624,28 +729,52 @@ export function BulkAudioUploader({
       const errMsg = (error as Error).message;
 
       // Retry on token expiry (after refreshing)
-      if ((errMsg.includes("401") || errMsg.includes("expired") || errMsg.includes("expirado")) && retryCount < 1) {
+      if (
+        (errMsg.includes("401") ||
+          errMsg.includes("expired") ||
+          errMsg.includes("expirado")) &&
+        retryCount < 1
+      ) {
         console.log("[BulkAudio] Token expired, refreshing and retrying");
         try {
           const tokenRes = await fetch("/api/admin/dropbox/token");
           const tokenData = await tokenRes.json();
           if (tokenData.success && tokenData.data?.token) {
             setAccessToken(tokenData.data.token);
-            updateFile(fileInfo.id, { status: "pending", progress: 0, error: undefined });
+            updateFile(fileInfo.id, {
+              status: "pending",
+              progress: 0,
+              error: undefined,
+            });
             return uploadFile(fileInfo, retryCount + 1);
           }
         } catch {
           // Refresh failed
         }
-        updateFile(fileInfo.id, { status: "error", error: "Token de Dropbox expirado. Reconecta en Sincronización → Dropbox." });
+        updateFile(fileInfo.id, {
+          status: "error",
+          error:
+            "Token de Dropbox expirado. Reconecta en Sincronización → Dropbox.",
+        });
         return null;
       }
 
       // Retry on rate limiting or server errors
-      if ((errMsg.includes("429") || errMsg.includes("rate") || errMsg.includes("500")) && retryCount < 3) {
-        const delayMs = Math.pow(2, retryCount) * 3000;
-        console.log(`[BulkAudio] Error, retrying ${fileInfo.file.name} in ${delayMs}ms (attempt ${retryCount + 1}/3)`);
-        updateFile(fileInfo.id, { status: "pending", progress: 0, error: `Reintentando en ${delayMs/1000}s...` });
+      if (
+        (errMsg.includes("429") ||
+          errMsg.includes("rate") ||
+          errMsg.includes("500")) &&
+        retryCount < 3
+      ) {
+        const delayMs = 2 ** retryCount * 3000;
+        console.log(
+          `[BulkAudio] Error, retrying ${fileInfo.file.name} in ${delayMs}ms (attempt ${retryCount + 1}/3)`,
+        );
+        updateFile(fileInfo.id, {
+          status: "pending",
+          progress: 0,
+          error: `Reintentando en ${delayMs / 1000}s...`,
+        });
         await delay(delayMs);
         return uploadFile(fileInfo, retryCount + 1);
       }
@@ -661,10 +790,18 @@ export function BulkAudioUploader({
 
   const uploadAll = async () => {
     setIsUploading(true);
-    const results: { title: string; artist?: string; url: string; duration: string; trackNumber?: number }[] = [];
+    const results: {
+      title: string;
+      artist?: string;
+      url: string;
+      duration: string;
+      trackNumber?: number;
+    }[] = [];
 
-    const pendingFiles = files.filter(f => f.status === "pending");
-    console.log(`[BulkAudioUploader] Starting upload of ${pendingFiles.length} files`);
+    const pendingFiles = files.filter((f) => f.status === "pending");
+    console.log(
+      `[BulkAudioUploader] Starting upload of ${pendingFiles.length} files`,
+    );
 
     for (let i = 0; i < pendingFiles.length; i++) {
       const fileInfo = pendingFiles[i];
@@ -675,10 +812,15 @@ export function BulkAudioUploader({
         await delay(2500);
       }
 
-      console.log(`[BulkAudioUploader] Uploading file ${i + 1}/${pendingFiles.length}: ${fileInfo.file.name}`);
+      console.log(
+        `[BulkAudioUploader] Uploading file ${i + 1}/${pendingFiles.length}: ${fileInfo.file.name}`,
+      );
       const result = await uploadFile(fileInfo);
       if (result) {
-        console.log(`[BulkAudioUploader] File ${i + 1} uploaded successfully:`, result.title);
+        console.log(
+          `[BulkAudioUploader] File ${i + 1} uploaded successfully:`,
+          result.title,
+        );
         results.push(result);
       } else {
         console.log(`[BulkAudioUploader] File ${i + 1} failed to upload`);
@@ -686,13 +828,18 @@ export function BulkAudioUploader({
     }
 
     setIsUploading(false);
-    console.log(`[BulkAudioUploader] Upload complete. ${results.length}/${pendingFiles.length} successful`);
+    console.log(
+      `[BulkAudioUploader] Upload complete. ${results.length}/${pendingFiles.length} successful`,
+    );
 
     if (results.length > 0) {
-      console.log(`[BulkAudioUploader] Calling onUploadComplete with ${results.length} tracks:`, results);
+      console.log(
+        `[BulkAudioUploader] Calling onUploadComplete with ${results.length} tracks:`,
+        results,
+      );
       onUploadComplete(results);
     } else {
-      console.warn(`[BulkAudioUploader] No tracks to add - all uploads failed`);
+      console.warn("[BulkAudioUploader] No tracks to add - all uploads failed");
     }
   };
 
@@ -709,8 +856,10 @@ export function BulkAudioUploader({
     // Reset all failed files to pending
     setFiles((prev) =>
       prev.map((f) =>
-        f.status === "error" ? { ...f, status: "pending" as const, error: undefined, progress: 0 } : f
-      )
+        f.status === "error"
+          ? { ...f, status: "pending" as const, error: undefined, progress: 0 }
+          : f,
+      ),
     );
     // Then trigger upload
     setTimeout(() => {
@@ -727,7 +876,10 @@ export function BulkAudioUploader({
       {/* Drop zone */}
       <div
         onDrop={handleDrop}
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
         onDragLeave={() => setIsDragOver(false)}
         className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
           isDragOver
@@ -753,7 +905,8 @@ export function BulkAudioUploader({
           Arrastra archivos de audio o haz clic para seleccionar
         </p>
         <p className="text-xs text-slc-muted">
-          MP3, WAV, FLAC, M4A, AAC • Máximo {maxSize}MB • Hasta {maxFiles} archivos
+          MP3, WAV, FLAC, M4A, AAC • Máximo {maxSize}MB • Hasta {maxFiles}{" "}
+          archivos
         </p>
         <p className="text-xs text-primary mt-2">
           Los metadatos ID3 (título, artista) se detectan automáticamente
@@ -761,13 +914,20 @@ export function BulkAudioUploader({
         {dropboxConfigured && (
           <div className="flex items-center gap-1.5 justify-center mt-2">
             <Zap className="w-3 h-3 text-emerald-500" />
-            <span className="text-xs text-emerald-500">Upload directo a Dropbox desde tu navegador</span>
+            <span className="text-xs text-emerald-500">
+              Upload directo a Dropbox desde tu navegador
+            </span>
           </div>
         )}
         {dropboxConfigured === false && (
           <div className="flex items-center gap-1.5 justify-center mt-2">
             <AlertTriangle className="w-3 h-3 text-yellow-500" />
-            <span className="text-xs text-yellow-500">Dropbox no configurado. <a href="/admin/sync" className="underline">Conectar</a></span>
+            <span className="text-xs text-yellow-500">
+              Dropbox no configurado.{" "}
+              <a href="/admin/sync" className="underline">
+                Conectar
+              </a>
+            </span>
           </div>
         )}
       </div>
@@ -782,10 +942,14 @@ export function BulkAudioUploader({
                 {files.length} Track{files.length !== 1 ? "s" : ""}
               </span>
               {successCount > 0 && (
-                <span className="text-sm text-green-500">{successCount} subido{successCount !== 1 ? "s" : ""}</span>
+                <span className="text-sm text-green-500">
+                  {successCount} subido{successCount !== 1 ? "s" : ""}
+                </span>
               )}
               {errorCount > 0 && (
-                <span className="text-sm text-red-500">{errorCount} error{errorCount !== 1 ? "es" : ""}</span>
+                <span className="text-sm text-red-500">
+                  {errorCount} error{errorCount !== 1 ? "es" : ""}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -825,11 +989,22 @@ export function BulkAudioUploader({
                 Exportar
               </Button>
               {successCount > 0 && (
-                <Button type="button" variant="ghost" size="sm" onClick={clearCompleted}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearCompleted}
+                >
                   Limpiar completados
                 </Button>
               )}
-              <Button type="button" variant="ghost" size="sm" onClick={clearAll} disabled={isUploading}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearAll}
+                disabled={isUploading}
+              >
                 <Trash2 className="w-4 h-4 mr-1" />
                 Limpiar
               </Button>
@@ -849,10 +1024,12 @@ export function BulkAudioUploader({
                   fileInfo.status === "success"
                     ? "bg-green-500/5"
                     : fileInfo.status === "error"
-                    ? "bg-red-500/5"
-                    : ""
+                      ? "bg-red-500/5"
+                      : ""
                 } ${draggedId === fileInfo.id ? "opacity-50 bg-primary/10" : ""} ${
-                  fileInfo.status === "pending" ? "cursor-grab active:cursor-grabbing" : ""
+                  fileInfo.status === "pending"
+                    ? "cursor-grab active:cursor-grabbing"
+                    : ""
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -888,10 +1065,18 @@ export function BulkAudioUploader({
 
                   {/* Status icon */}
                   <div className="w-8 flex-shrink-0 pt-2">
-                    {fileInfo.status === "pending" && <FileAudio className="w-6 h-6 text-slc-muted" />}
-                    {fileInfo.status === "uploading" && <Loader2 className="w-6 h-6 text-spotify animate-spin" />}
-                    {fileInfo.status === "success" && <CheckCircle className="w-6 h-6 text-green-500" />}
-                    {fileInfo.status === "error" && <AlertTriangle className="w-6 h-6 text-red-500" />}
+                    {fileInfo.status === "pending" && (
+                      <FileAudio className="w-6 h-6 text-slc-muted" />
+                    )}
+                    {fileInfo.status === "uploading" && (
+                      <Loader2 className="w-6 h-6 text-spotify animate-spin" />
+                    )}
+                    {fileInfo.status === "success" && (
+                      <CheckCircle className="w-6 h-6 text-green-500" />
+                    )}
+                    {fileInfo.status === "error" && (
+                      <AlertTriangle className="w-6 h-6 text-red-500" />
+                    )}
                   </div>
 
                   {/* File info & editable fields */}
@@ -901,18 +1086,28 @@ export function BulkAudioUploader({
                       <Input
                         type="text"
                         value={fileInfo.title}
-                        onChange={(e) => updateFile(fileInfo.id, { title: e.target.value })}
+                        onChange={(e) =>
+                          updateFile(fileInfo.id, { title: e.target.value })
+                        }
                         className="flex-1 h-9 text-sm font-medium bg-slc-card"
                         placeholder="Título del track"
-                        disabled={fileInfo.status === "uploading" || fileInfo.status === "success"}
+                        disabled={
+                          fileInfo.status === "uploading" ||
+                          fileInfo.status === "success"
+                        }
                       />
                       <Input
                         type="text"
                         value={fileInfo.duration}
-                        onChange={(e) => updateFile(fileInfo.id, { duration: e.target.value })}
+                        onChange={(e) =>
+                          updateFile(fileInfo.id, { duration: e.target.value })
+                        }
                         className="w-16 h-9 text-sm text-center bg-slc-card"
                         placeholder="0:00"
-                        disabled={fileInfo.status === "uploading" || fileInfo.status === "success"}
+                        disabled={
+                          fileInfo.status === "uploading" ||
+                          fileInfo.status === "success"
+                        }
                       />
                     </div>
 
@@ -924,22 +1119,33 @@ export function BulkAudioUploader({
                       <Input
                         type="text"
                         value={fileInfo.artist}
-                        onChange={(e) => updateFile(fileInfo.id, { artist: e.target.value })}
+                        onChange={(e) =>
+                          updateFile(fileInfo.id, { artist: e.target.value })
+                        }
                         className="flex-1 h-8 text-xs bg-slc-card"
                         placeholder="Artista / Featuring (opcional)"
-                        disabled={fileInfo.status === "uploading" || fileInfo.status === "success"}
+                        disabled={
+                          fileInfo.status === "uploading" ||
+                          fileInfo.status === "success"
+                        }
                       />
                     </div>
 
                     {/* Original filename & size */}
                     <div className="flex items-center gap-2 text-xs text-slc-muted">
-                      <span className="truncate max-w-[250px]">{fileInfo.file.name}</span>
+                      <span className="truncate max-w-[250px]">
+                        {fileInfo.file.name}
+                      </span>
                       <span>•</span>
-                      <span>{(fileInfo.file.size / 1024 / 1024).toFixed(1)} MB</span>
+                      <span>
+                        {(fileInfo.file.size / 1024 / 1024).toFixed(1)} MB
+                      </span>
                       {fileInfo.trackNumber && (
                         <>
                           <span>•</span>
-                          <span className="text-primary">Track #{fileInfo.trackNumber}</span>
+                          <span className="text-primary">
+                            Track #{fileInfo.trackNumber}
+                          </span>
                         </>
                       )}
                     </div>
@@ -969,7 +1175,9 @@ export function BulkAudioUploader({
                           />
                         </div>
                         {fileInfo.message && (
-                          <p className="text-xs text-slc-muted">{fileInfo.message}</p>
+                          <p className="text-xs text-slc-muted">
+                            {fileInfo.message}
+                          </p>
                         )}
                       </div>
                     )}
@@ -979,7 +1187,9 @@ export function BulkAudioUploader({
                   {fileInfo.status === "pending" && (
                     <div className="flex-shrink-0">
                       <audio
-                        ref={(el) => { audioRefs.current[fileInfo.id] = el; }}
+                        ref={(el) => {
+                          audioRefs.current[fileInfo.id] = el;
+                        }}
                         src={URL.createObjectURL(fileInfo.file)}
                         onEnded={() => setPlayingId(null)}
                         className="hidden"
@@ -991,14 +1201,22 @@ export function BulkAudioUploader({
                         onClick={() => togglePlay(fileInfo.id)}
                         className="text-slc-muted hover:text-spotify"
                       >
-                        {playingId === fileInfo.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        {playingId === fileInfo.id ? (
+                          <Pause className="w-4 h-4" />
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
                   )}
 
                   {/* Audio player for successful uploads */}
                   {fileInfo.status === "success" && fileInfo.url && (
-                    <audio controls src={fileInfo.url} className="h-8 w-36 flex-shrink-0" />
+                    <audio
+                      controls
+                      src={fileInfo.url}
+                      className="h-8 w-36 flex-shrink-0"
+                    />
                   )}
 
                   {/* Remove button */}
@@ -1057,8 +1275,14 @@ export function BulkAudioUploader({
 
       {/* Rename Pattern Modal */}
       {showRenameModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowRenameModal(false)}>
-          <div className="bg-slc-dark border border-slc-border rounded-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setShowRenameModal(false)}
+        >
+          <div
+            className="bg-slc-dark border border-slc-border rounded-xl p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
               <Wand2 className="w-5 h-5 text-primary" />
               Renombrar Tracks
@@ -1074,21 +1298,38 @@ export function BulkAudioUploader({
                 className="bg-slc-card"
               />
               <div className="text-xs text-slc-muted space-y-1">
-                <p><code className="text-primary">{"{n}"}</code> - Número con cero (01, 02...)</p>
-                <p><code className="text-primary">{"{N}"}</code> - Número sin cero (1, 2...)</p>
-                <p><code className="text-primary">{"{title}"}</code> - Título actual</p>
-                <p><code className="text-primary">{"{artist}"}</code> - Artista</p>
-                <p><code className="text-primary">{"{filename}"}</code> - Nombre de archivo limpio</p>
+                <p>
+                  <code className="text-primary">{"{n}"}</code> - Número con
+                  cero (01, 02...)
+                </p>
+                <p>
+                  <code className="text-primary">{"{N}"}</code> - Número sin
+                  cero (1, 2...)
+                </p>
+                <p>
+                  <code className="text-primary">{"{title}"}</code> - Título
+                  actual
+                </p>
+                <p>
+                  <code className="text-primary">{"{artist}"}</code> - Artista
+                </p>
+                <p>
+                  <code className="text-primary">{"{filename}"}</code> - Nombre
+                  de archivo limpio
+                </p>
               </div>
               <div className="p-3 bg-slc-card rounded-lg">
-                <p className="text-xs text-slc-muted mb-1">Vista previa (primer track):</p>
+                <p className="text-xs text-slc-muted mb-1">
+                  Vista previa (primer track):
+                </p>
                 <p className="text-sm font-medium">
-                  {files[0] && renamePattern
-                    .replace("{n}", "01")
-                    .replace("{N}", "1")
-                    .replace("{title}", files[0].title)
-                    .replace("{artist}", files[0].artist || "")
-                    .replace("{filename}", cleanFilename(files[0].file.name))}
+                  {files[0] &&
+                    renamePattern
+                      .replace("{n}", "01")
+                      .replace("{N}", "1")
+                      .replace("{title}", files[0].title)
+                      .replace("{artist}", files[0].artist || "")
+                      .replace("{filename}", cleanFilename(files[0].file.name))}
                 </p>
               </div>
             </div>
@@ -1097,7 +1338,10 @@ export function BulkAudioUploader({
                 <Check className="w-4 h-4 mr-2" />
                 Aplicar
               </Button>
-              <Button variant="outline" onClick={() => setShowRenameModal(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowRenameModal(false)}
+              >
                 Cancelar
               </Button>
             </div>
@@ -1107,8 +1351,14 @@ export function BulkAudioUploader({
 
       {/* Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowExportModal(false)}>
-          <div className="bg-slc-dark border border-slc-border rounded-xl p-6 w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setShowExportModal(false)}
+        >
+          <div
+            className="bg-slc-dark border border-slc-border rounded-xl p-6 w-full max-w-lg mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
               Exportar Tracklist
@@ -1132,7 +1382,10 @@ export function BulkAudioUploader({
                   </>
                 )}
               </Button>
-              <Button variant="outline" onClick={() => setShowExportModal(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowExportModal(false)}
+              >
                 Cerrar
               </Button>
             </div>

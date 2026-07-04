@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistEpk, artistExternalProfiles } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { artistEpk, artistExternalProfiles, artists } from "@/db/schema";
 import {
-  generateMediaReleaseEpkPDF,
   generateMediaReleaseEpkFilename,
+  generateMediaReleaseEpkPDF,
 } from "@/lib/pdf/media-release-epk-generator";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 function parseJson<T>(value: string | null | undefined, defaultValue: T): T {
   if (!value) return defaultValue;
@@ -18,7 +18,7 @@ function parseJson<T>(value: string | null | undefined, defaultValue: T): T {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -26,7 +26,7 @@ export async function GET(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -40,7 +40,7 @@ export async function GET(
     if (!artist) {
       return NextResponse.json(
         { success: false, error: "Artist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -55,7 +55,7 @@ export async function GET(
     if (epk && !epk.isPublic) {
       return NextResponse.json(
         { success: false, error: "EPK is not public" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -80,17 +80,29 @@ export async function GET(
       subgenres: parseJson<string[]>(epk?.subgenres, []),
       artistType: epk?.artistType,
 
-      spotifyMonthlyListeners: epk?.spotifyMonthlyListeners || artist.monthlyListeners,
+      spotifyMonthlyListeners:
+        epk?.spotifyMonthlyListeners || artist.monthlyListeners,
       spotifyFollowers: epk?.spotifyFollowers,
       youtubeSubscribers: epk?.youtubeSubscribers,
       instagramFollowers: epk?.instagramFollowers,
       totalStreams: epk?.totalStreams,
 
-      pressQuotes: parseJson<{ quote: string; source: string; sourceUrl?: string }[]>(epk?.pressQuotes, []),
-      pressFeatures: parseJson<{ outlet: string; title: string; url?: string; date?: string }[]>(epk?.pressFeatures, []),
-      topTracks: parseJson<{ title: string; url?: string; platform: string }[]>(epk?.topTracks, []),
-      collaborations: parseJson<{ artistName: string; trackName: string; year: number; type: string }[]>(epk?.collaborations, []),
-      pastShows: parseJson<{ venue: string; city: string; date: string; type: string }[]>(epk?.pastShows, []),
+      pressQuotes: parseJson<
+        { quote: string; source: string; sourceUrl?: string }[]
+      >(epk?.pressQuotes, []),
+      pressFeatures: parseJson<
+        { outlet: string; title: string; url?: string; date?: string }[]
+      >(epk?.pressFeatures, []),
+      topTracks: parseJson<{ title: string; url?: string; platform: string }[]>(
+        epk?.topTracks,
+        [],
+      ),
+      collaborations: parseJson<
+        { artistName: string; trackName: string; year: number; type: string }[]
+      >(epk?.collaborations, []),
+      pastShows: parseJson<
+        { venue: string; city: string; date: string; type: string }[]
+      >(epk?.pastShows, []),
       festivalAppearances: parseJson<string[]>(epk?.festivalAppearances, []),
       notableVenues: parseJson<string[]>(epk?.notableVenues, []),
 
@@ -100,7 +112,7 @@ export async function GET(
       publicistEmail: epk?.publicistEmail,
       publicistName: epk?.publicistName,
 
-      socialProfiles: profiles.map((p: typeof profiles[0]) => ({
+      socialProfiles: profiles.map((p: (typeof profiles)[0]) => ({
         platform: p.platform,
         url: p.externalUrl,
         handle: p.handle,
@@ -111,27 +123,32 @@ export async function GET(
     // This creates a PDF focused on the artist without a specific release
     const mediaReleaseData = {
       id: artist.id,
-      title: `Electronic Press Kit`,
+      title: "Electronic Press Kit",
       slug: artist.slug,
       subtitle: artistEpkData.tagline || `${artist.name} - Sonido Liquido Crew`,
       category: "announcement",
-      summary: artistEpkData.shortBio || artistEpkData.bio?.slice(0, 200) || null,
+      summary:
+        artistEpkData.shortBio || artistEpkData.bio?.slice(0, 200) || null,
       content: artistEpkData.bio || null,
       pullQuote: artistEpkData.pressQuotes?.[0]?.quote || null,
       pullQuoteAttribution: artistEpkData.pressQuotes?.[0]?.source || null,
       coverImageUrl: artist.profileImageUrl,
       bannerImageUrl: artist.bannerImageUrl,
-      audioTracks: artistEpkData.topTracks?.map((t, i) => ({
-        title: t.title,
-        url: t.url,
-        duration: "--:--",
-        trackNumber: i + 1,
-      })) || [],
+      audioTracks:
+        artistEpkData.topTracks?.map((t, i) => ({
+          title: t.title,
+          url: t.url,
+          duration: "--:--",
+          trackNumber: i + 1,
+        })) || [],
       spotifyEmbedUrl: null,
       youtubeVideoId: null,
       youtubeVideoTitle: null,
       credits: null,
-      tags: [artistEpkData.genreSpecific, ...(artistEpkData.subgenres || [])].filter((t): t is string => Boolean(t)),
+      tags: [
+        artistEpkData.genreSpecific,
+        ...(artistEpkData.subgenres || []),
+      ].filter((t): t is string => Boolean(t)),
       publishDate: new Date().toISOString(),
       releaseDate: null,
       prContactName: null,
@@ -141,13 +158,17 @@ export async function GET(
       artist: artistEpkData,
     };
 
-    console.log(`[API] Generating standalone EPK PDF for artist: ${artist.name}`);
+    console.log(
+      `[API] Generating standalone EPK PDF for artist: ${artist.name}`,
+    );
 
     // Generate PDF
     const pdfBuffer = await generateMediaReleaseEpkPDF(mediaReleaseData);
     const filename = generateMediaReleaseEpkFilename("EPK", artist.name);
 
-    console.log(`[API] EPK PDF generated: ${filename} (${pdfBuffer.length} bytes)`);
+    console.log(
+      `[API] EPK PDF generated: ${filename} (${pdfBuffer.length} bytes)`,
+    );
 
     // Increment EPK download count
     if (epk) {
@@ -178,7 +199,7 @@ export async function GET(
     console.error("[API] Error generating artist EPK PDF:", error);
     return NextResponse.json(
       { success: false, error: "Failed to generate EPK PDF" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -2,8 +2,8 @@
 // MAILCHIMP STUDIO API
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { mailchimpClient } from "@/lib/clients/mailchimp";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +32,11 @@ export async function GET(request: NextRequest) {
         });
       }
       const result = await mailchimpClient.testConnection();
-      return NextResponse.json({ success: result.success, data: result, error: result.error });
+      return NextResponse.json({
+        success: result.success,
+        data: result,
+        error: result.error,
+      });
     }
 
     // Get audience info
@@ -41,14 +45,22 @@ export async function GET(request: NextRequest) {
       if (!configured) {
         return NextResponse.json(
           { success: false, error: "Mailchimp not configured" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       const audience = await mailchimpClient.getAudience();
-      const growthHistory = await mailchimpClient.getGrowthHistory().catch(() => ({ history: [] }));
-      const activity = await mailchimpClient.getActivity().catch(() => ({ activity: [] }));
-      const tags = await mailchimpClient.getTags().catch(() => ({ tags: [], total_items: 0 }));
-      const segments = await mailchimpClient.getSegments().catch(() => ({ segments: [], total_items: 0 }));
+      const growthHistory = await mailchimpClient
+        .getGrowthHistory()
+        .catch(() => ({ history: [] }));
+      const activity = await mailchimpClient
+        .getActivity()
+        .catch(() => ({ activity: [] }));
+      const tags = await mailchimpClient
+        .getTags()
+        .catch(() => ({ tags: [], total_items: 0 }));
+      const segments = await mailchimpClient
+        .getSegments()
+        .catch(() => ({ segments: [], total_items: 0 }));
 
       return NextResponse.json({
         success: true,
@@ -68,11 +80,11 @@ export async function GET(request: NextRequest) {
       if (!configured) {
         return NextResponse.json(
           { success: false, error: "Mailchimp not configured" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       const status = searchParams.get("status") || undefined;
-      const count = parseInt(searchParams.get("count") || "20");
+      const count = Number.parseInt(searchParams.get("count") || "20");
       const result = await mailchimpClient.getCampaigns({ status, count });
 
       return NextResponse.json({
@@ -90,13 +102,17 @@ export async function GET(request: NextRequest) {
       if (!configured) {
         return NextResponse.json(
           { success: false, error: "Mailchimp not configured" },
-          { status: 400 }
+          { status: 400 },
         );
       }
-      const count = parseInt(searchParams.get("count") || "50");
-      const offset = parseInt(searchParams.get("offset") || "0");
+      const count = Number.parseInt(searchParams.get("count") || "50");
+      const offset = Number.parseInt(searchParams.get("offset") || "0");
       const status = searchParams.get("status") || undefined;
-      const result = await mailchimpClient.getSubscribers({ count, offset, status });
+      const result = await mailchimpClient.getSubscribers({
+        count,
+        offset,
+        status,
+      });
 
       return NextResponse.json({
         success: true,
@@ -120,7 +136,7 @@ export async function GET(request: NextRequest) {
     console.error("[Mailchimp API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -136,8 +152,11 @@ export async function POST(request: NextRequest) {
 
       if (!apiKey || !serverPrefix || !audienceId) {
         return NextResponse.json(
-          { success: false, error: "API Key, Server Prefix, y Audience ID son requeridos" },
-          { status: 400 }
+          {
+            success: false,
+            error: "API Key, Server Prefix, y Audience ID son requeridos",
+          },
+          { status: 400 },
         );
       }
 
@@ -150,7 +169,7 @@ export async function POST(request: NextRequest) {
         if (!isDatabaseConfigured()) {
           return NextResponse.json(
             { success: false, error: "Database not configured" },
-            { status: 500 }
+            { status: 500 },
           );
         }
 
@@ -200,8 +219,11 @@ export async function POST(request: NextRequest) {
       } catch (dbError) {
         console.error("[Mailchimp API] Error saving credentials:", dbError);
         return NextResponse.json(
-          { success: false, error: `Error saving credentials: ${(dbError as Error).message}` },
-          { status: 500 }
+          {
+            success: false,
+            error: `Error saving credentials: ${(dbError as Error).message}`,
+          },
+          { status: 500 },
         );
       }
     }
@@ -210,19 +232,34 @@ export async function POST(request: NextRequest) {
     const isConfigured = await mailchimpClient.isConfiguredAsync();
     if (!isConfigured) {
       return NextResponse.json(
-        { success: false, error: "Mailchimp not configured. Configúralas en Email Studio → Config." },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            "Mailchimp not configured. Configúralas en Email Studio → Config.",
+        },
+        { status: 400 },
       );
     }
 
     // Create and send/schedule a campaign
     if (action === "create-campaign") {
-      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, scheduleTime, tags, styleSettings } = body;
+      const {
+        subject,
+        previewText,
+        title,
+        body: emailBody,
+        ctaText,
+        ctaUrl,
+        coverImageUrl,
+        scheduleTime,
+        tags,
+        styleSettings,
+      } = body;
 
       if (!subject || !title || !emailBody) {
         return NextResponse.json(
           { success: false, error: "Subject, title, and body are required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -265,12 +302,22 @@ export async function POST(request: NextRequest) {
 
     // Create a draft campaign (don't send)
     if (action === "create-draft") {
-      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, tags, styleSettings } = body;
+      const {
+        subject,
+        previewText,
+        title,
+        body: emailBody,
+        ctaText,
+        ctaUrl,
+        coverImageUrl,
+        tags,
+        styleSettings,
+      } = body;
 
       if (!subject || !title || !emailBody) {
         return NextResponse.json(
           { success: false, error: "Subject, title, and body are required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -294,7 +341,9 @@ export async function POST(request: NextRequest) {
       // Set content
       await mailchimpClient.setCampaignContent(campaign.id, htmlContent);
 
-      console.log(`[Mailchimp] Draft campaign created: id=${campaign.id}, web_id=${campaign.web_id}`);
+      console.log(
+        `[Mailchimp] Draft campaign created: id=${campaign.id}, web_id=${campaign.web_id}`,
+      );
 
       // Construct the Mailchimp campaign URL from web_id
       const campaignUrl = campaign.web_id
@@ -313,14 +362,17 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: "Invalid action. Use 'create-campaign' or 'create-draft'." },
-      { status: 400 }
+      {
+        success: false,
+        error: "Invalid action. Use 'create-campaign' or 'create-draft'.",
+      },
+      { status: 400 },
     );
   } catch (error) {
     console.error("[Mailchimp API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

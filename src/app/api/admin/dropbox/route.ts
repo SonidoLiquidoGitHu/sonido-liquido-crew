@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
 import {
-  testDropboxConnection,
-  saveDropboxToken,
   clearDropboxTokenCache,
-  refreshDropboxToken,
   dropboxClient,
-  isOAuthConfigured,
   getOAuthStatus,
+  isOAuthConfigured,
+  refreshDropboxToken,
+  saveDropboxToken,
+  testDropboxConnection,
 } from "@/lib/clients/dropbox";
+import { eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * GET - Get Dropbox connection status
@@ -20,7 +20,10 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const forceRefresh = url.searchParams.get("refresh") === "true";
 
-    console.log("[Dropbox API] Checking Dropbox status...", forceRefresh ? "(force refresh)" : "");
+    console.log(
+      "[Dropbox API] Checking Dropbox status...",
+      forceRefresh ? "(force refresh)" : "",
+    );
 
     // If force refresh requested, clear cache first
     if (forceRefresh) {
@@ -37,7 +40,9 @@ export async function GET(request: NextRequest) {
     const hasEnvToken = Boolean(envToken);
 
     if (!isDatabaseConfigured()) {
-      console.warn("[Dropbox API] Database not configured, checking env token...");
+      console.warn(
+        "[Dropbox API] Database not configured, checking env token...",
+      );
 
       // If we have an env token, test it
       if (hasEnvToken) {
@@ -71,14 +76,20 @@ export async function GET(request: NextRequest) {
           hasRefreshToken: false,
           oauthConfigured: oauthStatus.configured,
           tokenSource: "none",
-          debug: "Database not configured and no DROPBOX_ACCESS_TOKEN in environment",
+          debug:
+            "Database not configured and no DROPBOX_ACCESS_TOKEN in environment",
         },
       });
     }
 
     // Fetch all Dropbox-related settings from database
     console.log("[Dropbox API] Querying database for tokens...");
-    let tokens: { accessToken: string | null; refreshToken: string | null; expiry: string | null; updatedAt: Date | null } = {
+    const tokens: {
+      accessToken: string | null;
+      refreshToken: string | null;
+      expiry: string | null;
+      updatedAt: Date | null;
+    } = {
       accessToken: null,
       refreshToken: null,
       expiry: null,
@@ -93,8 +104,8 @@ export async function GET(request: NextRequest) {
           inArray(siteSettings.key, [
             "dropbox_access_token",
             "dropbox_refresh_token",
-            "dropbox_token_expiry"
-          ])
+            "dropbox_token_expiry",
+          ]),
         );
 
       for (const row of results) {
@@ -102,13 +113,16 @@ export async function GET(request: NextRequest) {
           tokens.accessToken = row.value;
           tokens.updatedAt = row.updatedAt;
         }
-        if (row.key === "dropbox_refresh_token") tokens.refreshToken = row.value;
+        if (row.key === "dropbox_refresh_token")
+          tokens.refreshToken = row.value;
         if (row.key === "dropbox_token_expiry") tokens.expiry = row.value;
       }
 
       console.log("[Dropbox API] Database tokens found:", {
         hasAccessToken: !!tokens.accessToken,
-        tokenPreview: tokens.accessToken ? `${tokens.accessToken.slice(0, 15)}...` : null,
+        tokenPreview: tokens.accessToken
+          ? `${tokens.accessToken.slice(0, 15)}...`
+          : null,
         hasRefreshToken: !!tokens.refreshToken,
         expiry: tokens.expiry,
         updatedAt: tokens.updatedAt?.toISOString(),
@@ -159,12 +173,16 @@ export async function GET(request: NextRequest) {
 
     // IMPORTANT: Database token has priority over environment token
     const configured = hasDatabaseToken || hasEnvToken;
-    const tokenSource = hasDatabaseToken ? "database" : hasEnvToken ? "environment" : "none";
+    const tokenSource = hasDatabaseToken
+      ? "database"
+      : hasEnvToken
+        ? "environment"
+        : "none";
 
     // Check if token is expired (only relevant for OAuth tokens with expiry)
     let isExpired = false;
     if (tokens.expiry) {
-      const expiryTime = parseInt(tokens.expiry, 10);
+      const expiryTime = Number.parseInt(tokens.expiry, 10);
       isExpired = Date.now() > expiryTime;
     }
 
@@ -172,22 +190,27 @@ export async function GET(request: NextRequest) {
     // refresh it BEFORE testing the connection. This prevents the user from
     // seeing "not connected" when the access token naturally expires (every ~4hrs).
     if (isExpired && hasRefreshTokenInDb && tokens.refreshToken) {
-      console.log("[Dropbox API] Access token expired, auto-refreshing before status check...");
+      console.log(
+        "[Dropbox API] Access token expired, auto-refreshing before status check...",
+      );
       const DROPBOX_APP_KEY = (process.env.DROPBOX_APP_KEY || "").trim();
       const DROPBOX_APP_SECRET = (process.env.DROPBOX_APP_SECRET || "").trim();
 
       if (DROPBOX_APP_KEY && DROPBOX_APP_SECRET) {
         try {
-          const refreshResponse = await fetch("https://api.dropboxapi.com/oauth2/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              grant_type: "refresh_token",
-              refresh_token: tokens.refreshToken,
-              client_id: DROPBOX_APP_KEY,
-              client_secret: DROPBOX_APP_SECRET,
-            }),
-          });
+          const refreshResponse = await fetch(
+            "https://api.dropboxapi.com/oauth2/token",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({
+                grant_type: "refresh_token",
+                refresh_token: tokens.refreshToken,
+                client_id: DROPBOX_APP_KEY,
+                client_secret: DROPBOX_APP_SECRET,
+              }),
+            },
+          );
 
           if (refreshResponse.ok) {
             const tokenData = await refreshResponse.json();
@@ -197,9 +220,15 @@ export async function GET(request: NextRequest) {
 
             // Save refreshed token to DB
             await upsertDbSetting("dropbox_access_token", newAccessToken);
-            await upsertDbSetting("dropbox_token_expiry", newExpiryTime.toString());
+            await upsertDbSetting(
+              "dropbox_token_expiry",
+              newExpiryTime.toString(),
+            );
             if (tokenData.refresh_token) {
-              await upsertDbSetting("dropbox_refresh_token", tokenData.refresh_token);
+              await upsertDbSetting(
+                "dropbox_refresh_token",
+                tokenData.refresh_token,
+              );
             }
 
             // Update local variables so the connection test below uses the new token
@@ -210,11 +239,17 @@ export async function GET(request: NextRequest) {
             console.log("[Dropbox API] Token auto-refreshed successfully");
           } else {
             const errorBody = await refreshResponse.text();
-            console.error("[Dropbox API] Auto-refresh failed:", refreshResponse.status, errorBody);
+            console.error(
+              "[Dropbox API] Auto-refresh failed:",
+              refreshResponse.status,
+              errorBody,
+            );
 
             // If refresh token is invalid (400), clear tokens — user must re-auth
             if (refreshResponse.status === 400) {
-              console.error("[Dropbox API] Refresh token invalid — clearing tokens");
+              console.error(
+                "[Dropbox API] Refresh token invalid — clearing tokens",
+              );
               await clearDbDropboxTokens();
               tokens.accessToken = null;
               tokens.refreshToken = null;
@@ -225,7 +260,9 @@ export async function GET(request: NextRequest) {
           console.error("[Dropbox API] Auto-refresh error:", refreshError);
         }
       } else {
-        console.warn("[Dropbox API] Cannot auto-refresh: missing DROPBOX_APP_KEY or DROPBOX_APP_SECRET");
+        console.warn(
+          "[Dropbox API] Cannot auto-refresh: missing DROPBOX_APP_KEY or DROPBOX_APP_SECRET",
+        );
       }
     }
 
@@ -246,11 +283,17 @@ export async function GET(request: NextRequest) {
         if (hasDatabaseTokenAfterRefresh && tokens.accessToken) {
           tokenToTest = tokens.accessToken;
           testedTokenSource = "database";
-          console.log("[Dropbox API] Testing DATABASE token:", tokenToTest.slice(0, 15) + "...");
+          console.log(
+            "[Dropbox API] Testing DATABASE token:",
+            `${tokenToTest.slice(0, 15)}...`,
+          );
         } else if (hasEnvToken) {
           tokenToTest = envToken;
           testedTokenSource = "environment";
-          console.log("[Dropbox API] Testing ENVIRONMENT token (fallback):", tokenToTest.slice(0, 15) + "...");
+          console.log(
+            "[Dropbox API] Testing ENVIRONMENT token (fallback):",
+            `${tokenToTest.slice(0, 15)}...`,
+          );
         } else {
           tokenToTest = "";
         }
@@ -264,23 +307,37 @@ export async function GET(request: NextRequest) {
 
           // If connection test failed with the DB token but we have a refresh_token,
           // try refreshing one more time and retesting
-          if (!result.success && testedTokenSource === "database" && hasRefreshTokenInDb && tokens.refreshToken) {
-            console.log("[Dropbox API] Connection test failed, attempting token refresh...");
+          if (
+            !result.success &&
+            testedTokenSource === "database" &&
+            hasRefreshTokenInDb &&
+            tokens.refreshToken
+          ) {
+            console.log(
+              "[Dropbox API] Connection test failed, attempting token refresh...",
+            );
             const DROPBOX_APP_KEY = (process.env.DROPBOX_APP_KEY || "").trim();
-            const DROPBOX_APP_SECRET = (process.env.DROPBOX_APP_SECRET || "").trim();
+            const DROPBOX_APP_SECRET = (
+              process.env.DROPBOX_APP_SECRET || ""
+            ).trim();
 
             if (DROPBOX_APP_KEY && DROPBOX_APP_SECRET) {
               try {
-                const refreshResponse = await fetch("https://api.dropboxapi.com/oauth2/token", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                  body: new URLSearchParams({
-                    grant_type: "refresh_token",
-                    refresh_token: tokens.refreshToken,
-                    client_id: DROPBOX_APP_KEY,
-                    client_secret: DROPBOX_APP_SECRET,
-                  }),
-                });
+                const refreshResponse = await fetch(
+                  "https://api.dropboxapi.com/oauth2/token",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({
+                      grant_type: "refresh_token",
+                      refresh_token: tokens.refreshToken,
+                      client_id: DROPBOX_APP_KEY,
+                      client_secret: DROPBOX_APP_SECRET,
+                    }),
+                  },
+                );
 
                 if (refreshResponse.ok) {
                   const tokenData = await refreshResponse.json();
@@ -289,19 +346,28 @@ export async function GET(request: NextRequest) {
                   const newExpiryTime = Date.now() + newExpiresIn * 1000;
 
                   await upsertDbSetting("dropbox_access_token", newAccessToken);
-                  await upsertDbSetting("dropbox_token_expiry", newExpiryTime.toString());
+                  await upsertDbSetting(
+                    "dropbox_token_expiry",
+                    newExpiryTime.toString(),
+                  );
                   if (tokenData.refresh_token) {
-                    await upsertDbSetting("dropbox_refresh_token", tokenData.refresh_token);
+                    await upsertDbSetting(
+                      "dropbox_refresh_token",
+                      tokenData.refresh_token,
+                    );
                   }
 
                   // Re-test with the new token
-                  const retryResult = await testDropboxConnection(newAccessToken);
+                  const retryResult =
+                    await testDropboxConnection(newAccessToken);
                   if (retryResult.success) {
                     connected = true;
                     accountName = retryResult.accountName;
                     email = retryResult.email;
                     error = undefined;
-                    console.log("[Dropbox API] Reconnected successfully after refresh");
+                    console.log(
+                      "[Dropbox API] Reconnected successfully after refresh",
+                    );
                   }
                 } else if (refreshResponse.status === 400) {
                   // Refresh token invalid — clear tokens
@@ -313,9 +379,15 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          if (!result.success && testedTokenSource === "database" && hasEnvToken) {
+          if (
+            !result.success &&
+            testedTokenSource === "database" &&
+            hasEnvToken
+          ) {
             // If database token failed and we have env token, note it
-            console.log("[Dropbox API] Database token failed, env token available as backup");
+            console.log(
+              "[Dropbox API] Database token failed, env token available as backup",
+            );
           }
         }
       } catch (err) {
@@ -355,8 +427,8 @@ export async function GET(request: NextRequest) {
         tokenPreview: tokens.accessToken
           ? `${tokens.accessToken.slice(0, 10)}...${tokens.accessToken.slice(-4)}`
           : hasEnvToken
-          ? `ENV:${envToken.slice(0, 10)}...`
-          : undefined,
+            ? `ENV:${envToken.slice(0, 10)}...`
+            : undefined,
         // Show when token was saved
         tokenSavedAt: tokens.updatedAt?.toISOString(),
       },
@@ -365,7 +437,7 @@ export async function GET(request: NextRequest) {
     console.error("[API] Error getting Dropbox status:", error);
     return NextResponse.json(
       { success: false, error: "Failed to get Dropbox status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -383,7 +455,7 @@ export async function POST(request: NextRequest) {
       if (!token) {
         return NextResponse.json(
           { success: false, error: "Token is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -405,7 +477,7 @@ export async function POST(request: NextRequest) {
       if (!token) {
         return NextResponse.json(
           { success: false, error: "Token is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -416,10 +488,13 @@ export async function POST(request: NextRequest) {
       const testResult = await testDropboxConnection(cleanToken);
       if (!testResult.success) {
         console.log("[API] Token test failed:", testResult.error);
-        return NextResponse.json({
-          success: false,
-          error: testResult.error || "Token inválido",
-        }, { status: 400 });
+        return NextResponse.json(
+          {
+            success: false,
+            error: testResult.error || "Token inválido",
+          },
+          { status: 400 },
+        );
       }
 
       console.log("[API] Token test passed, saving to database...");
@@ -429,20 +504,28 @@ export async function POST(request: NextRequest) {
         const saved = await saveDropboxToken(cleanToken);
         if (!saved) {
           console.error("[API] saveDropboxToken returned false");
-          return NextResponse.json({
-            success: false,
-            error: "Failed to save token to database - check server logs",
-          }, { status: 500 });
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Failed to save token to database - check server logs",
+            },
+            { status: 500 },
+          );
         }
       } catch (saveError) {
         console.error("[API] Exception saving token:", saveError);
-        return NextResponse.json({
-          success: false,
-          error: `Database error: ${(saveError as Error).message}`,
-        }, { status: 500 });
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Database error: ${(saveError as Error).message}`,
+          },
+          { status: 500 },
+        );
       }
 
-      console.log(`[API] Dropbox token saved for account: ${testResult.accountName}`);
+      console.log(
+        `[API] Dropbox token saved for account: ${testResult.accountName}`,
+      );
 
       return NextResponse.json({
         success: true,
@@ -458,20 +541,25 @@ export async function POST(request: NextRequest) {
     // Action: clear - Remove the database token
     if (action === "clear") {
       if (!isDatabaseConfigured()) {
-        return NextResponse.json({
-          success: false,
-          error: "Database not configured",
-        }, { status: 503 });
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Database not configured",
+          },
+          { status: 503 },
+        );
       }
 
       // Delete all Dropbox settings
       await db
         .delete(siteSettings)
-        .where(inArray(siteSettings.key, [
-          "dropbox_access_token",
-          "dropbox_refresh_token",
-          "dropbox_token_expiry"
-        ]));
+        .where(
+          inArray(siteSettings.key, [
+            "dropbox_access_token",
+            "dropbox_refresh_token",
+            "dropbox_token_expiry",
+          ]),
+        );
 
       clearDropboxTokenCache();
 
@@ -485,13 +573,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { success: false, error: "Invalid action" },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     console.error("[API] Error managing Dropbox token:", error);
     return NextResponse.json(
       { success: false, error: "Failed to manage Dropbox token" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -531,7 +619,11 @@ async function upsertDbSetting(key: string, value: string): Promise<void> {
  */
 async function clearDbDropboxTokens(): Promise<void> {
   try {
-    const keys = ["dropbox_access_token", "dropbox_token_expiry", "dropbox_refresh_token"];
+    const keys = [
+      "dropbox_access_token",
+      "dropbox_token_expiry",
+      "dropbox_refresh_token",
+    ];
     for (const key of keys) {
       await db
         .update(siteSettings)

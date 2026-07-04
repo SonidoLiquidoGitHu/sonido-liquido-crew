@@ -1,11 +1,21 @@
-import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/db/client";
-import { createClient } from "@libsql/client/web";
 import { generateUUID, slugify } from "@/lib/utils";
+import { createClient } from "@libsql/client/web";
+import { NextResponse } from "next/server";
 
 function getRawClient() {
-  const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-  const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
+  const url = (
+    process.env.DATABASE_URL ||
+    process.env.TURSO_DATABASE_URL ||
+    process.env.LIBSQL_URL ||
+    ""
+  ).trim();
+  const token = (
+    process.env.DATABASE_AUTH_TOKEN ||
+    process.env.TURSO_AUTH_TOKEN ||
+    process.env.LIBSQL_AUTH_TOKEN ||
+    ""
+  ).trim();
 
   if (!url || !token) return null;
 
@@ -22,15 +32,24 @@ export async function GET() {
 
   try {
     // Step 1: Check environment variables
-    const hasDbUrl = !!(process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL);
-    const hasDbToken = !!(process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN);
+    const hasDbUrl = !!(
+      process.env.DATABASE_URL ||
+      process.env.TURSO_DATABASE_URL ||
+      process.env.LIBSQL_URL
+    );
+    const hasDbToken = !!(
+      process.env.DATABASE_AUTH_TOKEN ||
+      process.env.TURSO_AUTH_TOKEN ||
+      process.env.LIBSQL_AUTH_TOKEN
+    );
 
     results.push({
       step: "1. Variables de entorno",
       success: hasDbUrl && hasDbToken,
-      message: hasDbUrl && hasDbToken
-        ? "✅ DATABASE_URL y AUTH_TOKEN configuradas"
-        : `❌ Falta: ${!hasDbUrl ? "DATABASE_URL " : ""}${!hasDbToken ? "AUTH_TOKEN" : ""}`,
+      message:
+        hasDbUrl && hasDbToken
+          ? "✅ DATABASE_URL y AUTH_TOKEN configuradas"
+          : `❌ Falta: ${!hasDbUrl ? "DATABASE_URL " : ""}${!hasDbToken ? "AUTH_TOKEN" : ""}`,
     });
 
     if (!hasDbUrl || !hasDbToken) {
@@ -46,7 +65,9 @@ export async function GET() {
     results.push({
       step: "2. isDatabaseConfigured()",
       success: isConfigured,
-      message: isConfigured ? "✅ Función retorna true" : "❌ Función retorna false",
+      message: isConfigured
+        ? "✅ Función retorna true"
+        : "❌ Función retorna false",
     });
 
     // Step 3: Try to get raw client
@@ -54,7 +75,9 @@ export async function GET() {
     results.push({
       step: "3. Crear cliente de base de datos",
       success: !!client,
-      message: client ? "✅ Cliente creado exitosamente" : "❌ No se pudo crear el cliente",
+      message: client
+        ? "✅ Cliente creado exitosamente"
+        : "❌ No se pudo crear el cliente",
     });
 
     if (!client) {
@@ -67,13 +90,17 @@ export async function GET() {
 
     // Step 4: Test simple query
     try {
-      const tableCheck = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='campaigns'");
+      const tableCheck = await client.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='campaigns'",
+      );
       const tableExists = tableCheck.rows.length > 0;
 
       results.push({
         step: "4. Verificar tabla campaigns",
         success: tableExists,
-        message: tableExists ? "✅ Tabla 'campaigns' existe" : "❌ Tabla 'campaigns' no existe - ¿ejecutaste las migraciones?",
+        message: tableExists
+          ? "✅ Tabla 'campaigns' existe"
+          : "❌ Tabla 'campaigns' no existe - ¿ejecutaste las migraciones?",
       });
 
       if (!tableExists) {
@@ -188,7 +215,6 @@ export async function GET() {
         success: true,
         message: "✅ Campaña de prueba eliminada (limpieza)",
       });
-
     } catch (error: any) {
       results.push({
         step: "6. Insertar campaña de prueba",
@@ -215,7 +241,9 @@ export async function GET() {
 
     // Step 9: Count existing campaigns
     try {
-      const countResult = await client.execute("SELECT COUNT(*) as count FROM campaigns");
+      const countResult = await client.execute(
+        "SELECT COUNT(*) as count FROM campaigns",
+      );
       const count = countResult.rows[0]?.count || 0;
 
       results.push({
@@ -234,10 +262,10 @@ export async function GET() {
     // All tests passed!
     return NextResponse.json({
       success: true,
-      message: "🎉 Todas las pruebas pasaron correctamente. La API de campañas está lista.",
+      message:
+        "🎉 Todas las pruebas pasaron correctamente. La API de campañas está lista.",
       results,
     });
-
   } catch (error: any) {
     results.push({
       step: "Error general",

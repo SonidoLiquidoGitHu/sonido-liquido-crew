@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { artistsService } from "@/lib/services";
-import { artistFilterSchema } from "@/lib/validations";
 import {
   AppError,
+  ErrorCode,
   ValidationError,
+  createErrorResponse,
   errorLogger,
   getErrorMessage,
-  createErrorResponse,
-  ErrorCode,
 } from "@/lib/errors";
+import { artistsService } from "@/lib/services";
+import { artistFilterSchema } from "@/lib/validations";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
 
-    errorLogger.info(`Fetching artists`, {
+    errorLogger.info("Fetching artists", {
       requestId,
       params: {
         role: searchParams.get("role"),
@@ -31,8 +31,12 @@ export async function GET(request: NextRequest) {
     // Parse and validate query params
     const rawParams = {
       role: searchParams.get("role") || undefined,
-      isActive: searchParams.get("isActive") === "true" ? true :
-                searchParams.get("isActive") === "false" ? false : undefined,
+      isActive:
+        searchParams.get("isActive") === "true"
+          ? true
+          : searchParams.get("isActive") === "false"
+            ? false
+            : undefined,
       isFeatured: searchParams.get("isFeatured") === "true" ? true : undefined,
       page: searchParams.get("page") || 1,
       pageSize: searchParams.get("pageSize") || 50,
@@ -46,15 +50,15 @@ export async function GET(request: NextRequest) {
         .map(([field, errors]) => `${field}: ${errors?.join(", ")}`)
         .join("; ");
 
-      errorLogger.warn(`Validation failed for artists query`, {
+      errorLogger.warn("Validation failed for artists query", {
         requestId,
         errors: validationErrors,
       });
 
       throw ValidationError.schemaValidation(
         Object.fromEntries(
-          Object.entries(validationErrors).map(([k, v]) => [k, v || []])
-        )
+          Object.entries(validationErrors).map(([k, v]) => [k, v || []]),
+        ),
       );
     }
 
@@ -75,7 +79,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    errorLogger.info(`Artists fetched successfully`, {
+    errorLogger.info("Artists fetched successfully", {
       requestId,
       count: artists.length,
       total,
@@ -108,7 +112,7 @@ export async function GET(request: NextRequest) {
           },
           requestId,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -121,8 +125,8 @@ export async function GET(request: NextRequest) {
             ErrorCode.UNKNOWN_ERROR,
             500,
             context,
-            error as Error
-          )
+            error as Error,
+          ),
     );
 
     return NextResponse.json(
@@ -131,7 +135,7 @@ export async function GET(request: NextRequest) {
         requestId,
         help: "Check database connection and try again. If the problem persists, contact support.",
       },
-      { status: error instanceof AppError ? error.statusCode : 500 }
+      { status: error instanceof AppError ? error.statusCode : 500 },
     );
   }
 }

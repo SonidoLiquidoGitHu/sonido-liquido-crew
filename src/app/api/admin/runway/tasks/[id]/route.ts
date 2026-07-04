@@ -4,13 +4,13 @@
 // GET: Poll task status and return output URLs when complete
 // DELETE: Cancel a running task
 
-import { NextRequest, NextResponse } from "next/server";
-import { getTaskStatus, cancelTask } from "@/lib/clients/runway";
+import { cancelTask, getTaskStatus } from "@/lib/clients/runway";
 import { getTask, updateTask } from "@/lib/clients/runway-task-store";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -20,7 +20,12 @@ export async function GET(
 
     // Update our database store — only pass output/error if they have values
     // to prevent overwriting valid data with null during intermediate polling
-    const updates: Partial<Pick<import("@/lib/clients/runway-task-store").RunwayTaskInfo, "status" | "output" | "error">> = {
+    const updates: Partial<
+      Pick<
+        import("@/lib/clients/runway-task-store").RunwayTaskInfo,
+        "status" | "output" | "error"
+      >
+    > = {
       status: task.status,
     };
 
@@ -41,9 +46,13 @@ export async function GET(
 
     // Log status changes for debugging
     if (task.status === "FAILED") {
-      console.error(`[Runway API] Task ${id} FAILED: ${task.error || "No error message"}`);
+      console.error(
+        `[Runway API] Task ${id} FAILED: ${task.error || "No error message"}`,
+      );
     } else if (task.status === "SUCCEEDED") {
-      console.log(`[Runway API] Task ${id} SUCCEEDED with ${task.output?.length || 0} output(s)`);
+      console.log(
+        `[Runway API] Task ${id} SUCCEEDED with ${task.output?.length || 0} output(s)`,
+      );
     }
 
     return NextResponse.json({
@@ -74,23 +83,26 @@ export async function GET(
     // Provide more user-friendly error messages
     let friendlyError = errMsg;
     if (errMsg.includes("401") || errMsg.includes("Unauthorized")) {
-      friendlyError = "API key de Runway inválida o expirada. Verifica RUNWAYML_API_SECRET en Netlify.";
+      friendlyError =
+        "API key de Runway inválida o expirada. Verifica RUNWAYML_API_SECRET en Netlify.";
     } else if (errMsg.includes("404") || errMsg.includes("not found")) {
-      friendlyError = "Tarea no encontrada en Runway. Puede haber expirado o el ID es incorrecto.";
+      friendlyError =
+        "Tarea no encontrada en Runway. Puede haber expirado o el ID es incorrecto.";
     } else if (errMsg.includes("429") || errMsg.includes("rate_limit")) {
-      friendlyError = "Rate limit alcanzado en Runway. Espera un momento e intenta de nuevo.";
+      friendlyError =
+        "Rate limit alcanzado en Runway. Espera un momento e intenta de nuevo.";
     }
 
     return NextResponse.json(
       { success: false, error: friendlyError },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -108,7 +120,7 @@ export async function DELETE(
     const errMsg = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { success: false, error: errMsg },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

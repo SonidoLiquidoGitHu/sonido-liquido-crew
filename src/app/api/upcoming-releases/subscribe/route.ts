@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { presaveSubscribers, upcomingReleases } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { and, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // POST - Subscribe to a specific release's notifications
 export async function POST(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Servicio no disponible" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (!email || (!releaseId && !releaseSlug)) {
       return NextResponse.json(
         { success: false, error: "Email y release son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { success: false, error: "Email inválido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (!release) {
       return NextResponse.json(
         { success: false, error: "Lanzamiento no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (new Date(release.releaseDate) <= new Date()) {
       return NextResponse.json(
         { success: false, error: "Este lanzamiento ya fue publicado" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
       .where(
         and(
           eq(presaveSubscribers.upcomingReleaseId, release.id),
-          eq(presaveSubscribers.email, email.toLowerCase().trim())
-        )
+          eq(presaveSubscribers.email, email.toLowerCase().trim()),
+        ),
       )
       .limit(1);
 
@@ -102,7 +102,9 @@ export async function POST(request: NextRequest) {
       })
       .where(eq(upcomingReleases.id, release.id));
 
-    console.log(`[Release Subscribe] New subscription: ${email} for "${release.title}"`);
+    console.log(
+      `[Release Subscribe] New subscription: ${email} for "${release.title}"`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
     console.error("[Release Subscribe] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error al suscribirse" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -135,7 +137,7 @@ export async function GET(request: NextRequest) {
     if (!email || !releaseId) {
       return NextResponse.json(
         { success: false, error: "Email y releaseId son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -145,8 +147,8 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           eq(presaveSubscribers.upcomingReleaseId, releaseId),
-          eq(presaveSubscribers.email, email.toLowerCase().trim())
-        )
+          eq(presaveSubscribers.email, email.toLowerCase().trim()),
+        ),
       )
       .limit(1);
 
@@ -166,7 +168,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Servicio no disponible" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -177,7 +179,7 @@ export async function DELETE(request: NextRequest) {
     if (!email || !releaseId) {
       return NextResponse.json(
         { success: false, error: "Email y releaseId son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -187,8 +189,8 @@ export async function DELETE(request: NextRequest) {
       .where(
         and(
           eq(presaveSubscribers.upcomingReleaseId, releaseId),
-          eq(presaveSubscribers.email, email.toLowerCase().trim())
-        )
+          eq(presaveSubscribers.email, email.toLowerCase().trim()),
+        ),
       );
 
     // Decrement presave count
@@ -209,7 +211,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Release Subscribe] Error unsubscribing:", error);
     return NextResponse.json(
       { success: false, error: "Error al cancelar suscripción" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

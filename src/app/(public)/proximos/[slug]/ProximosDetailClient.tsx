@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { CountdownTimer } from "@/components/public/CountdownTimer";
+import { DownloadGate } from "@/components/public/DownloadGate";
+import { PresaveButtons } from "@/components/public/PresaveButtons";
+import { Button } from "@/components/ui/button";
+import { ShareButtons } from "@/components/ui/share-button";
+import {
+  ArrowLeft,
+  Calendar,
+  ExternalLink,
+  Rocket,
+  Share2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, ExternalLink, Rocket, Share2 } from "lucide-react";
-import { CountdownTimer } from "@/components/public/CountdownTimer";
-import { PresaveButtons } from "@/components/public/PresaveButtons";
-import { DownloadGate } from "@/components/public/DownloadGate";
-import { ShareButtons } from "@/components/ui/share-button";
-import { UpcomingReleaseStoryCard, type UpcomingReleaseShareData } from "./UpcomingReleaseStoryCard";
+import { useState } from "react";
+import {
+  type UpcomingReleaseShareData,
+  UpcomingReleaseStoryCard,
+} from "./UpcomingReleaseStoryCard";
 
 const releaseTypeLabels: Record<string, string> = {
   "maxi-single": "Maxi-Single",
@@ -52,7 +61,9 @@ interface ProximosDetailClientProps {
   release: UpcomingRelease;
 }
 
-export default function ProximosDetailClient({ release }: ProximosDetailClientProps) {
+export default function ProximosDetailClient({
+  release,
+}: ProximosDetailClientProps) {
   const [showStoryCard, setShowStoryCard] = useState(false);
 
   const isReleased = new Date(release.releaseDate).getTime() <= Date.now();
@@ -86,10 +97,7 @@ export default function ProximosDetailClient({ release }: ProximosDetailClientPr
   };
 
   return (
-    <div
-      className="min-h-screen relative"
-      style={{ backgroundColor: bgColor }}
-    >
+    <div className="min-h-screen relative" style={{ backgroundColor: bgColor }}>
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80 pointer-events-none" />
 
@@ -110,7 +118,11 @@ export default function ProximosDetailClient({ release }: ProximosDetailClientPr
       <div className="relative z-10 py-12">
         <div className="section-container">
           {/* Back Button */}
-          <Button asChild variant="ghost" className="mb-8 text-white/60 hover:text-white hover:bg-white/10">
+          <Button
+            asChild
+            variant="ghost"
+            className="mb-8 text-white/60 hover:text-white hover:bg-white/10"
+          >
             <Link href="/proximos">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Más Lanzamientos
@@ -162,14 +174,19 @@ export default function ProximosDetailClient({ release }: ProximosDetailClientPr
               <p className="text-2xl sm:text-3xl text-white/80 mb-6">
                 {release.artistName}
                 {release.featuredArtists && (
-                  <span className="text-white/50"> ft. {release.featuredArtists}</span>
+                  <span className="text-white/50">
+                    {" "}
+                    ft. {release.featuredArtists}
+                  </span>
                 )}
               </p>
 
               {/* Release Date */}
               <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 mb-6">
                 <Calendar className="w-5 h-5" />
-                <span className="text-lg">{formatDate(release.releaseDate)}</span>
+                <span className="text-lg">
+                  {formatDate(release.releaseDate)}
+                </span>
               </div>
 
               {/* Share Buttons — mirrors the beat detail page layout:
@@ -216,7 +233,11 @@ export default function ProximosDetailClient({ release }: ProximosDetailClientPr
               {release.rpmPresaveUrl && !isReleased && (
                 <div className="mt-8">
                   <Button asChild size="lg" className="text-lg px-8 py-6">
-                    <a href={release.rpmPresaveUrl} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={release.rpmPresaveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Hacer Presave
                       <ExternalLink className="w-5 h-5 ml-2" />
                     </a>
@@ -225,18 +246,37 @@ export default function ProximosDetailClient({ release }: ProximosDetailClientPr
               )}
 
               {/* Download Gate */}
-              {release.downloadGateEnabled && release.downloadGateFiles && Array.isArray(release.downloadGateFiles) && release.downloadGateFiles.length > 0 && (
-                <DownloadGate
-                  releaseId={release.id}
-                  releaseTitle={release.title}
-                  files={release.downloadGateFiles as Array<{name: string; type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other"; url: string; fileName: string; fileSize?: string}>}
-                  spotifyPresaveUrl={release.spotifyPresaveUrl}
-                  hyperfollowUrl={release.distrokidHyperfollowUrl}
-                  requirePresave={release.requirePresaveForDownload ?? true}
-                  requireHyperfollow={release.requireHyperfollowForDownload ?? false}
-                  requireEmail={release.requireEmailForDownload ?? true}
-                />
-              )}
+              {release.downloadGateEnabled &&
+                release.downloadGateFiles &&
+                Array.isArray(release.downloadGateFiles) &&
+                release.downloadGateFiles.length > 0 && (
+                  <DownloadGate
+                    releaseId={release.id}
+                    releaseTitle={release.title}
+                    files={
+                      release.downloadGateFiles as Array<{
+                        name: string;
+                        type:
+                          | "remix"
+                          | "wallpaper"
+                          | "acapella"
+                          | "beat"
+                          | "stems"
+                          | "other";
+                        url: string;
+                        fileName: string;
+                        fileSize?: string;
+                      }>
+                    }
+                    spotifyPresaveUrl={release.spotifyPresaveUrl}
+                    hyperfollowUrl={release.distrokidHyperfollowUrl}
+                    requirePresave={release.requirePresaveForDownload ?? true}
+                    requireHyperfollow={
+                      release.requireHyperfollowForDownload ?? false
+                    }
+                    requireEmail={release.requireEmailForDownload ?? true}
+                  />
+                )}
             </div>
           </div>
 

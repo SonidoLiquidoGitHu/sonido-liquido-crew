@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { galleryPhotos, photoTags, tags, galleryAlbums } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { galleryAlbums, galleryPhotos, photoTags, tags } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - Public gallery photos
 export async function GET(request: NextRequest) {
@@ -15,9 +15,9 @@ export async function GET(request: NextRequest) {
     const tagSlug = searchParams.get("tag");
     const artistId = searchParams.get("artistId");
     const featured = searchParams.get("featured") === "true";
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = Number.parseInt(searchParams.get("limit") || "50");
 
-    let conditions = [eq(galleryPhotos.isPublished, true)];
+    const conditions = [eq(galleryPhotos.isPublished, true)];
 
     // Filter by artist ID
     if (artistId) {
@@ -29,7 +29,12 @@ export async function GET(request: NextRequest) {
       const [album] = await db
         .select()
         .from(galleryAlbums)
-        .where(and(eq(galleryAlbums.slug, albumSlug), eq(galleryAlbums.isPublished, true)))
+        .where(
+          and(
+            eq(galleryAlbums.slug, albumSlug),
+            eq(galleryAlbums.isPublished, true),
+          ),
+        )
         .limit(1);
 
       if (album) {
@@ -87,7 +92,7 @@ export async function GET(request: NextRequest) {
           ...photo,
           tags: photoTagsList,
         };
-      })
+      }),
     );
 
     // Get published albums
@@ -106,7 +111,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching gallery:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch gallery" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

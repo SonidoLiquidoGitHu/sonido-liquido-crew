@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { analytics } from "@/db/schema";
-import { sql, desc, and, gte, eq } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get("days") || "30", 10);
+    const days = Number.parseInt(searchParams.get("days") || "30", 10);
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json({
@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
     }
 
     const since = Math.floor(Date.now() / 1000) - days * 86400;
-    const todayStart = Math.floor(new Date(new Date().toISOString().split("T")[0]).getTime() / 1000);
+    const todayStart = Math.floor(
+      new Date(new Date().toISOString().split("T")[0]).getTime() / 1000,
+    );
     const yesterdayStart = todayStart - 86400;
     const prevPeriodStart = since - days * 86400;
 
@@ -44,21 +46,23 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
 
       // Unique sessions in period
       db
-        .select({ count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)` })
+        .select({
+          count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)`,
+        })
         .from(analytics)
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
@@ -70,21 +74,23 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(todayStart * 1000))
-          )
+            gte(analytics.createdAt, new Date(todayStart * 1000)),
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
 
       // Today's unique sessions
       db
-        .select({ count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)` })
+        .select({
+          count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)`,
+        })
         .from(analytics)
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(todayStart * 1000))
-          )
+            gte(analytics.createdAt, new Date(todayStart * 1000)),
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
@@ -97,22 +103,24 @@ export async function GET(request: NextRequest) {
           and(
             eq(analytics.eventType, "page_view"),
             gte(analytics.createdAt, new Date(yesterdayStart * 1000)),
-            sql`${analytics.createdAt} < ${new Date(todayStart * 1000)}`
-          )
+            sql`${analytics.createdAt} < ${new Date(todayStart * 1000)}`,
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
 
       // Yesterday's unique sessions
       db
-        .select({ count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)` })
+        .select({
+          count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)`,
+        })
         .from(analytics)
         .where(
           and(
             eq(analytics.eventType, "page_view"),
             gte(analytics.createdAt, new Date(yesterdayStart * 1000)),
-            sql`${analytics.createdAt} < ${new Date(todayStart * 1000)}`
-          )
+            sql`${analytics.createdAt} < ${new Date(todayStart * 1000)}`,
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
@@ -125,22 +133,24 @@ export async function GET(request: NextRequest) {
           and(
             eq(analytics.eventType, "page_view"),
             gte(analytics.createdAt, new Date(prevPeriodStart * 1000)),
-            sql`${analytics.createdAt} < ${new Date(since * 1000)}`
-          )
+            sql`${analytics.createdAt} < ${new Date(since * 1000)}`,
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
 
       // Previous period unique sessions
       db
-        .select({ count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)` })
+        .select({
+          count: sql<number>`cast(count(distinct ${analytics.sessionId}) as integer)`,
+        })
         .from(analytics)
         .where(
           and(
             eq(analytics.eventType, "page_view"),
             gte(analytics.createdAt, new Date(prevPeriodStart * 1000)),
-            sql`${analytics.createdAt} < ${new Date(since * 1000)}`
-          )
+            sql`${analytics.createdAt} < ${new Date(since * 1000)}`,
+          ),
         )
         .then((r) => Number(r[0]?.count || 0))
         .catch(() => 0),
@@ -155,8 +165,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
         .groupBy(analytics.entityId)
         .orderBy(desc(sql`count(*)`))
@@ -165,7 +175,7 @@ export async function GET(request: NextRequest) {
           rows.map((r) => ({
             page: r.page || "/",
             views: Number(r.views),
-          }))
+          })),
         )
         .catch(() => []),
 
@@ -180,8 +190,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
         .groupBy(sql`date(${analytics.createdAt}, 'unixepoch')`)
         .orderBy(sql`date(${analytics.createdAt}, 'unixepoch')`)
@@ -191,7 +201,7 @@ export async function GET(request: NextRequest) {
             date: r.date,
             views: Number(r.views),
             uniqueVisitors: Number(r.uniqueVisitors),
-          }))
+          })),
         )
         .catch(() => []),
 
@@ -208,8 +218,8 @@ export async function GET(request: NextRequest) {
             gte(analytics.createdAt, new Date(since * 1000)),
             sql`${analytics.referrer} IS NOT NULL`,
             sql`${analytics.referrer} != ''`,
-            sql`${analytics.referrer} != 'unknown'`
-          )
+            sql`${analytics.referrer} != 'unknown'`,
+          ),
         )
         .groupBy(analytics.referrer)
         .orderBy(desc(sql`count(*)`))
@@ -218,7 +228,7 @@ export async function GET(request: NextRequest) {
           rows.map((r) => ({
             referrer: extractDomain(r.referrer || "direct"),
             count: Number(r.count),
-          }))
+          })),
         )
         .catch(() => []),
 
@@ -236,15 +246,15 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(analytics.eventType, "page_view"),
-            gte(analytics.createdAt, new Date(since * 1000))
-          )
+            gte(analytics.createdAt, new Date(since * 1000)),
+          ),
         )
         .groupBy(
           sql`CASE 
             WHEN ${analytics.userAgent} LIKE '%Mobile%' OR ${analytics.userAgent} LIKE '%Android%' AND ${analytics.userAgent} NOT LIKE '%bot%' OR ${analytics.userAgent} LIKE '%iPhone%' THEN 'mobile'
             WHEN ${analytics.userAgent} LIKE '%bot%' OR ${analytics.userAgent} LIKE '%Spider%' OR ${analytics.userAgent} LIKE '%crawler%' THEN 'bot'
             ELSE 'desktop'
-          END`
+          END`,
         )
         .then((rows) => {
           const result = { mobile: 0, desktop: 0, bot: 0 };
@@ -274,27 +284,36 @@ export async function GET(request: NextRequest) {
             referrer: r.referrer || null,
             isMobile: /Mobile|Android|iPhone/.test(r.userAgent || ""),
             time: r.createdAt?.toISOString?.() || String(r.createdAt),
-          }))
+          })),
         )
         .catch(() => []),
     ]);
 
     // Calculate trends
-    const viewsTrend = prevPeriodViews > 0
-      ? Math.round(((totalViews - prevPeriodViews) / prevPeriodViews) * 100)
-      : totalViews > 0 ? 100 : 0;
+    const viewsTrend =
+      prevPeriodViews > 0
+        ? Math.round(((totalViews - prevPeriodViews) / prevPeriodViews) * 100)
+        : totalViews > 0
+          ? 100
+          : 0;
 
-    const sessionsTrend = prevPeriodSessions > 0
-      ? Math.round(((uniqueSessions - prevPeriodSessions) / prevPeriodSessions) * 100)
-      : uniqueSessions > 0 ? 100 : 0;
+    const sessionsTrend =
+      prevPeriodSessions > 0
+        ? Math.round(
+            ((uniqueSessions - prevPeriodSessions) / prevPeriodSessions) * 100,
+          )
+        : uniqueSessions > 0
+          ? 100
+          : 0;
 
     // Calculate bounce rate (sessions with only 1 page view)
     const bounceRate = 0; // Would need more complex query; placeholder
 
     // Calculate avg pages per session
-    const avgPagesPerSession = uniqueSessions > 0
-      ? Math.round((totalViews / uniqueSessions) * 10) / 10
-      : 0;
+    const avgPagesPerSession =
+      uniqueSessions > 0
+        ? Math.round((totalViews / uniqueSessions) * 10) / 10
+        : 0;
 
     return NextResponse.json({
       success: true,

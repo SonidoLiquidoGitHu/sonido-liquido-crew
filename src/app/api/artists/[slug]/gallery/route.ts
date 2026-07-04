@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistGalleryAssets, galleryPhotos, photoTags, tags } from "@/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import {
+  artistGalleryAssets,
+  artists,
+  galleryPhotos,
+  photoTags,
+  tags,
+} from "@/db/schema";
+import { and, asc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +38,7 @@ interface GalleryPhotoWithTags {
 // GET - Fetch all gallery images for an artist (combines artist_gallery_assets + gallery_photos)
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
@@ -40,7 +46,9 @@ export async function GET(
     }
 
     const { slug } = await params;
-    const limit = parseInt(new URL(request.url).searchParams.get("limit") || "20");
+    const limit = Number.parseInt(
+      new URL(request.url).searchParams.get("limit") || "20",
+    );
 
     // Find the artist by slug
     const [artist] = await db
@@ -60,8 +68,8 @@ export async function GET(
       .where(
         and(
           eq(artistGalleryAssets.artistId, artist.id),
-          eq(artistGalleryAssets.isPublic, true)
-        )
+          eq(artistGalleryAssets.isPublic, true),
+        ),
       )
       .orderBy(asc(artistGalleryAssets.sortOrder));
 
@@ -83,8 +91,8 @@ export async function GET(
       .where(
         and(
           eq(galleryPhotos.artistId, artist.id),
-          eq(galleryPhotos.isPublished, true)
-        )
+          eq(galleryPhotos.isPublished, true),
+        ),
       )
       .orderBy(galleryPhotos.sortOrder, galleryPhotos.createdAt)
       .limit(limit);
@@ -114,7 +122,7 @@ export async function GET(
           tags: photoTagsList,
           source: "gallery" as const,
         };
-      })
+      }),
     );
 
     // Combine both sources, artist assets first
@@ -134,7 +142,7 @@ export async function GET(
     console.error("[Artist Gallery] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching artist gallery" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

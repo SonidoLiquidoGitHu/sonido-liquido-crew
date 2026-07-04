@@ -1,19 +1,19 @@
-import Link from "next/link";
-import Image from "next/image";
-import { releasesService } from "@/lib/services";
-import { formatDate, getReleaseTypeDisplay } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { DeduplicateButton } from "@/components/admin/DeduplicateButton";
 import { ReleaseDeleteButton } from "@/components/admin/ReleaseDeleteButton";
+import { Button } from "@/components/ui/button";
+import { releasesService } from "@/lib/services";
+import { formatDate, getReleaseTypeDisplay } from "@/lib/utils";
 import {
-  Plus,
-  Search,
+  Calendar,
+  Disc3,
   Edit,
   ExternalLink,
-  Disc3,
-  Calendar,
+  Plus,
+  Search,
   Star,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +93,9 @@ export default async function AdminReleasesPage() {
           <div className="text-xs text-slc-muted uppercase">Total</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-blue-500">{stats.albums}</div>
+          <div className="font-oswald text-2xl text-blue-500">
+            {stats.albums}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Álbumes</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
@@ -101,19 +103,27 @@ export default async function AdminReleasesPage() {
           <div className="text-xs text-slc-muted uppercase">EPs</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-purple-500">{stats.singles}</div>
+          <div className="font-oswald text-2xl text-purple-500">
+            {stats.singles}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Singles</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-cyan-500">{stats.maxiSingles}</div>
+          <div className="font-oswald text-2xl text-cyan-500">
+            {stats.maxiSingles}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Maxi-Singles</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-orange-500">{stats.compilations}</div>
+          <div className="font-oswald text-2xl text-orange-500">
+            {stats.compilations}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Compilaciones</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-pink-500">{stats.mixtapes}</div>
+          <div className="font-oswald text-2xl text-pink-500">
+            {stats.mixtapes}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Mixtapes</div>
         </div>
       </div>
@@ -171,14 +181,20 @@ export default async function AdminReleasesPage() {
                         >
                           {release.title}
                         </Link>
-                        <p className="text-xs text-slc-muted">/{release.slug}</p>
+                        <p className="text-xs text-slc-muted">
+                          /{release.slug}
+                        </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      releaseTypeColors[release.releaseType as keyof typeof releaseTypeColors] || "bg-slc-card text-slc-muted"
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                        releaseTypeColors[
+                          release.releaseType as keyof typeof releaseTypeColors
+                        ] || "bg-slc-card text-slc-muted"
+                      }`}
+                    >
                       {getReleaseTypeDisplay(release.releaseType)}
                     </span>
                   </td>
@@ -186,7 +202,11 @@ export default async function AdminReleasesPage() {
                     <div className="flex items-center gap-1 text-sm text-slc-muted">
                       <Calendar className="w-3 h-3" />
                       <span suppressHydrationWarning>
-                        {formatDate(release.releaseDate, { year: "numeric", month: "short", day: "numeric" })}
+                        {formatDate(release.releaseDate, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </span>
                     </div>
                   </td>
@@ -214,7 +234,10 @@ export default async function AdminReleasesPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button asChild variant="ghost" size="icon">
-                        <Link href={`/lanzamientos/${release.slug}`} target="_blank">
+                        <Link
+                          href={`/lanzamientos/${release.slug}`}
+                          target="_blank"
+                        >
                           <ExternalLink className="w-4 h-4" />
                         </Link>
                       </Button>

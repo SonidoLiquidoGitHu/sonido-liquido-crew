@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { videoAnalytics, videoAnalyticsAggregates } from "@/db/schema/analytics";
-import { eq, and, sql } from "drizzle-orm";
+import {
+  videoAnalytics,
+  videoAnalyticsAggregates,
+} from "@/db/schema/analytics";
 import { generateUUID } from "@/lib/utils";
+import { and, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Generate a session ID for anonymous tracking
 function getSessionId(request: NextRequest): string {
@@ -26,20 +29,21 @@ export async function POST(request: NextRequest) {
       duration,
       percentWatched,
       maxPercentWatched,
-      totalWatchTime
+      totalWatchTime,
     } = body;
 
     if (!contentId || !contentType || !eventType) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const sessionId = getSessionId(request);
-    const ipAddress = request.headers.get("x-forwarded-for") ||
-                      request.headers.get("x-real-ip") ||
-                      "unknown";
+    const ipAddress =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
     // Record the analytics event
@@ -75,15 +79,18 @@ export async function POST(request: NextRequest) {
         await db
           .update(videoAnalyticsAggregates)
           .set({
-            totalPlays: eventType === "play"
-              ? sql`${videoAnalyticsAggregates.totalPlays} + 1`
-              : existing.totalPlays,
-            completionCount: eventType === "complete"
-              ? sql`${videoAnalyticsAggregates.completionCount} + 1`
-              : existing.completionCount,
-            completed: eventType === "complete"
-              ? sql`${videoAnalyticsAggregates.completed} + 1`
-              : existing.completed,
+            totalPlays:
+              eventType === "play"
+                ? sql`${videoAnalyticsAggregates.totalPlays} + 1`
+                : existing.totalPlays,
+            completionCount:
+              eventType === "complete"
+                ? sql`${videoAnalyticsAggregates.completionCount} + 1`
+                : existing.completionCount,
+            completed:
+              eventType === "complete"
+                ? sql`${videoAnalyticsAggregates.completed} + 1`
+                : existing.completed,
             totalWatchTimeSeconds: sql`${videoAnalyticsAggregates.totalWatchTimeSeconds} + ${totalWatchTime || 0}`,
             updatedAt: new Date(),
           })
@@ -141,7 +148,7 @@ export async function GET(request: NextRequest) {
     if (!contentId || !contentType) {
       return NextResponse.json(
         { success: false, error: "Missing contentId or contentType" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -152,8 +159,11 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           eq(videoAnalyticsAggregates.contentId, contentId),
-          eq(videoAnalyticsAggregates.contentType, contentType as "campaign" | "beat")
-        )
+          eq(
+            videoAnalyticsAggregates.contentType,
+            contentType as "campaign" | "beat",
+          ),
+        ),
       );
 
     // Calculate totals
@@ -164,22 +174,23 @@ export async function GET(request: NextRequest) {
         completions: acc.completions + curr.completionCount,
         avgPercent: acc.avgPercent + curr.avgWatchPercent,
       }),
-      { totalPlays: 0, totalWatchTime: 0, completions: 0, avgPercent: 0 }
+      { totalPlays: 0, totalWatchTime: 0, completions: 0, avgPercent: 0 },
     );
 
-    const avgWatchPercent = aggregates.length > 0
-      ? Math.round(totals.avgPercent / aggregates.length)
-      : 0;
-    const completionRate = totals.totalPlays > 0
-      ? Math.round((totals.completions / totals.totalPlays) * 100)
-      : 0;
+    const avgWatchPercent =
+      aggregates.length > 0
+        ? Math.round(totals.avgPercent / aggregates.length)
+        : 0;
+    const completionRate =
+      totals.totalPlays > 0
+        ? Math.round((totals.completions / totals.totalPlays) * 100)
+        : 0;
 
     // Format watch time
     const hours = Math.floor(totals.totalWatchTime / 3600);
     const minutes = Math.floor((totals.totalWatchTime % 3600) / 60);
-    const formattedWatchTime = hours > 0
-      ? `${hours}h ${minutes}m`
-      : `${minutes}m`;
+    const formattedWatchTime =
+      hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
     return NextResponse.json({
       success: true,
@@ -190,7 +201,7 @@ export async function GET(request: NextRequest) {
         avgWatchPercent,
         completionRate,
         completions: totals.completions,
-        dailyStats: aggregates.map(a => ({
+        dailyStats: aggregates.map((a) => ({
           date: a.date,
           plays: a.totalPlays,
           completions: a.completionCount,
@@ -201,7 +212,7 @@ export async function GET(request: NextRequest) {
     console.error("[Video Analytics] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch analytics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

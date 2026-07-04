@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, Download, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Check,
+  Copy,
+  Download,
+  Pause,
+  Play,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface CompactAudioPlayerProps {
   src: string;
@@ -113,7 +121,7 @@ export function CompactAudioPlayer({
   };
 
   const formatTime = (time: number) => {
-    if (isNaN(time)) return "0:00";
+    if (Number.isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -126,7 +134,7 @@ export function CompactAudioPlayer({
       className={cn(
         "group flex items-center gap-3 p-2 rounded-lg bg-slc-dark/50 hover:bg-slc-dark transition-colors",
         isPlaying && "bg-primary/5 border border-primary/20",
-        className
+        className,
       )}
     >
       <audio ref={audioRef} src={src} preload="metadata" />
@@ -145,7 +153,7 @@ export function CompactAudioPlayer({
           "w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-all",
           isPlaying
             ? "bg-primary text-white"
-            : "bg-slc-card text-slc-muted hover:text-white hover:bg-primary/20"
+            : "bg-slc-card text-slc-muted hover:text-white hover:bg-primary/20",
         )}
       >
         {isPlaying ? (
@@ -158,9 +166,7 @@ export function CompactAudioPlayer({
       {/* Track Info & Progress */}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 mb-1">
-          <span className="text-sm font-medium truncate">
-            {title}
-          </span>
+          <span className="text-sm font-medium truncate">{title}</span>
           {artist && (
             <span className="text-xs text-slc-muted truncate hidden sm:inline">
               {artist}
@@ -264,7 +270,10 @@ export function CompactTracklist({
   const handleCopyAllLinks = async () => {
     try {
       const links = tracks
-        .map((t, i) => `${i + 1}. ${t.title}${t.artist ? ` - ${t.artist}` : ""}\n   ${t.url}`)
+        .map(
+          (t, i) =>
+            `${i + 1}. ${t.title}${t.artist ? ` - ${t.artist}` : ""}\n   ${t.url}`,
+        )
         .join("\n\n");
       await navigator.clipboard.writeText(links);
       setCopiedAll(true);
@@ -277,7 +286,7 @@ export function CompactTracklist({
   const totalDuration = tracks.reduce((acc, track) => {
     const parts = track.duration.split(":");
     if (parts.length === 2) {
-      return acc + parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      return acc + Number.parseInt(parts[0]) * 60 + Number.parseInt(parts[1]);
     }
     return acc;
   }, 0);
@@ -298,35 +307,35 @@ export function CompactTracklist({
           <span>{formatTotalDuration(totalDuration)} total</span>
         </div>
         {(showCopyLink || showDownloadAll) && (
-        <div className="flex items-center gap-2">
-          {showCopyLink && (
-          <button
-            onClick={handleCopyAllLinks}
-            className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-slc-muted hover:text-white hover:bg-slc-card transition-colors"
-          >
-            {copiedAll ? (
-              <>
-                <Check className="w-3 h-3 text-green-500" />
-                Copiado
-              </>
-            ) : (
-              <>
-                <Copy className="w-3 h-3" />
-                Copiar Links
-              </>
+          <div className="flex items-center gap-2">
+            {showCopyLink && (
+              <button
+                onClick={handleCopyAllLinks}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-slc-muted hover:text-white hover:bg-slc-card transition-colors"
+              >
+                {copiedAll ? (
+                  <>
+                    <Check className="w-3 h-3 text-green-500" />
+                    Copiado
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    Copiar Links
+                  </>
+                )}
+              </button>
             )}
-          </button>
-          )}
-          {showDownloadAll && onDownloadAll && (
-            <button
-              onClick={onDownloadAll}
-              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-            >
-              <Download className="w-3 h-3" />
-              Descargar Todo
-            </button>
-          )}
-        </div>
+            {showDownloadAll && onDownloadAll && (
+              <button
+                onClick={onDownloadAll}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                <Download className="w-3 h-3" />
+                Descargar Todo
+              </button>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import Image, { ImageProps } from "next/image";
 import { cn } from "@/lib/utils";
+import Image, { type ImageProps } from "next/image";
+import { useEffect, useMemo, useState } from "react";
 
 /**
  * Route Dropbox URLs through the image proxy to fix content-type issues on mobile.
@@ -24,7 +24,7 @@ interface OptimizedImageProps extends Omit<ImageProps, "onError" | "onLoad"> {
 const shimmerBlur = `data:image/svg+xml,${encodeURIComponent(
   `<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
     <rect width="400" height="400" fill="#1a1a1a"/>
-  </svg>`
+  </svg>`,
 )}`;
 
 // Default fallback image - inline SVG to avoid missing file issues
@@ -32,7 +32,7 @@ const defaultFallback = `data:image/svg+xml,${encodeURIComponent(
   `<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
     <rect width="400" height="400" fill="#1a1a1a"/>
     <text x="200" y="210" text-anchor="middle" fill="#555" font-family="sans-serif" font-size="14">Sin imagen</text>
-  </svg>`
+  </svg>`,
 )}`;
 
 export function OptimizedImage({
@@ -55,7 +55,9 @@ export function OptimizedImage({
     return proxyDropboxUrl(src);
   }, [src]);
 
-  const isDropbox = typeof src === "string" && (src.includes("dropbox.com") || src.includes("dropboxusercontent.com"));
+  const isDropbox =
+    typeof src === "string" &&
+    (src.includes("dropbox.com") || src.includes("dropboxusercontent.com"));
 
   // Reset state when src changes
   useEffect(() => {
@@ -83,7 +85,9 @@ export function OptimizedImage({
   }[aspectRatio];
 
   return (
-    <div className={cn("relative overflow-hidden", aspectRatioClass, className)}>
+    <div
+      className={cn("relative overflow-hidden", aspectRatioClass, className)}
+    >
       {/* Loading shimmer */}
       {showLoadingState && isLoading && !hasError && (
         <div className="absolute inset-0 bg-slc-dark animate-pulse" />
@@ -96,7 +100,7 @@ export function OptimizedImage({
         className={cn(
           "transition-opacity duration-300",
           isLoading ? "opacity-0" : "opacity-100",
-          props.fill ? "object-cover" : ""
+          props.fill ? "object-cover" : "",
         )}
         onError={handleError}
         onLoad={handleLoad}

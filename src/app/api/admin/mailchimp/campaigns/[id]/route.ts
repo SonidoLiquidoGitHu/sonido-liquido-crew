@@ -2,12 +2,12 @@
 // MAILCHIMP CAMPAIGN DETAIL API
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { mailchimpClient } from "@/lib/clients/mailchimp";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -15,7 +15,7 @@ export async function GET(
     if (!(await mailchimpClient.isConfiguredAsync())) {
       return NextResponse.json(
         { success: false, error: "Mailchimp not configured" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -41,14 +41,14 @@ export async function GET(
     console.error("[Mailchimp Campaign API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -56,7 +56,7 @@ export async function POST(
     if (!(await mailchimpClient.isConfiguredAsync())) {
       return NextResponse.json(
         { success: false, error: "Mailchimp not configured" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,14 +69,23 @@ export async function POST(
         const details = await mailchimpClient.getCampaignDetails(id);
         if (details.status === "sending") {
           return NextResponse.json(
-            { success: false, error: `La campana ya se esta enviando. Usa "Cancelar envio" para detenerla y luego duplica la campana para reintentar.`, data: { status: details.status } },
-            { status: 400 }
+            {
+              success: false,
+              error: `La campana ya se esta enviando. Usa "Cancelar envio" para detenerla y luego duplica la campana para reintentar.`,
+              data: { status: details.status },
+            },
+            { status: 400 },
           );
         }
         if (details.status === "sent") {
           return NextResponse.json(
-            { success: false, error: `Esta campana ya fue enviada. Duplica la campana para crear una nueva copia.`, data: { status: details.status } },
-            { status: 400 }
+            {
+              success: false,
+              error:
+                "Esta campana ya fue enviada. Duplica la campana para crear una nueva copia.",
+              data: { status: details.status },
+            },
+            { status: 400 },
           );
         }
       } catch {
@@ -88,7 +97,10 @@ export async function POST(
 
     if (action === "cancel") {
       await mailchimpClient.cancelCampaign(id);
-      return NextResponse.json({ success: true, data: { status: "cancelled" } });
+      return NextResponse.json({
+        success: true,
+        data: { status: "cancelled" },
+      });
     }
 
     if (action === "schedule") {
@@ -96,11 +108,14 @@ export async function POST(
       if (!scheduleTime) {
         return NextResponse.json(
           { success: false, error: "scheduleTime is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       await mailchimpClient.scheduleCampaign(id, new Date(scheduleTime));
-      return NextResponse.json({ success: true, data: { status: "scheduled" } });
+      return NextResponse.json({
+        success: true,
+        data: { status: "scheduled" },
+      });
     }
 
     if (action === "unschedule") {
@@ -110,11 +125,23 @@ export async function POST(
 
     if (action === "replicate") {
       const newCampaign = await mailchimpClient.replicateCampaign(id);
-      return NextResponse.json({ success: true, data: { campaignId: newCampaign.id } });
+      return NextResponse.json({
+        success: true,
+        data: { campaignId: newCampaign.id },
+      });
     }
 
     if (action === "update") {
-      const { subject, previewText, title, body: emailBody, ctaText, ctaUrl, coverImageUrl, styleSettings } = body;
+      const {
+        subject,
+        previewText,
+        title,
+        body: emailBody,
+        ctaText,
+        ctaUrl,
+        coverImageUrl,
+        styleSettings,
+      } = body;
 
       // Update settings if any settings fields provided
       if (subject || title || previewText) {
@@ -138,25 +165,32 @@ export async function POST(
         await mailchimpClient.setCampaignContent(id, htmlContent);
       }
 
-      return NextResponse.json({ success: true, data: { campaignId: id, status: "updated" } });
+      return NextResponse.json({
+        success: true,
+        data: { campaignId: id, status: "updated" },
+      });
     }
 
     return NextResponse.json(
-      { success: false, error: "Invalid action. Use: send, cancel, schedule, unschedule, replicate, update" },
-      { status: 400 }
+      {
+        success: false,
+        error:
+          "Invalid action. Use: send, cancel, schedule, unschedule, replicate, update",
+      },
+      { status: 400 },
     );
   } catch (error) {
     console.error("[Mailchimp Campaign API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -164,7 +198,7 @@ export async function DELETE(
     if (!(await mailchimpClient.isConfiguredAsync())) {
       return NextResponse.json(
         { success: false, error: "Mailchimp not configured" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -174,7 +208,7 @@ export async function DELETE(
     console.error("[Mailchimp Campaign API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

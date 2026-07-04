@@ -1,13 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Package,
-  Check,
-  Loader2,
-  Users,
-  FileDown,
-} from "lucide-react";
+import { Check, FileDown, Loader2, Package, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface PressKit {
   id: string;
@@ -24,7 +18,10 @@ interface PressKitMultiSelectorProps {
   onChange: (ids: string[]) => void;
 }
 
-export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelectorProps) {
+export function PressKitMultiSelector({
+  value,
+  onChange,
+}: PressKitMultiSelectorProps) {
   const [pressKits, setPressKits] = useState<PressKit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,20 +50,26 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
 
   const toggleKit = (kitId: string) => {
     if (value.includes(kitId)) {
-      onChange(value.filter(id => id !== kitId));
+      onChange(value.filter((id) => id !== kitId));
     } else {
       onChange([...value, kitId]);
     }
   };
 
   // Group press kits by artist
-  const groupedByArtist: Record<string, { artistName: string; kits: PressKit[] }> = {};
+  const groupedByArtist: Record<
+    string,
+    { artistName: string; kits: PressKit[] }
+  > = {};
   const ungrouped: PressKit[] = [];
 
   for (const kit of pressKits) {
     if (kit.artistId && kit.artistName) {
       if (!groupedByArtist[kit.artistId]) {
-        groupedByArtist[kit.artistId] = { artistName: kit.artistName, kits: [] };
+        groupedByArtist[kit.artistId] = {
+          artistName: kit.artistName,
+          kits: [],
+        };
       }
       groupedByArtist[kit.artistId].kits.push(kit);
     } else {
@@ -91,15 +94,14 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
   }
 
   if (error) {
-    return (
-      <div className="text-sm text-red-500 py-4">{error}</div>
-    );
+    return <div className="text-sm text-red-500 py-4">{error}</div>;
   }
 
   if (pressKits.length === 0) {
     return (
       <div className="text-sm text-slc-muted py-4">
-        No hay press kits disponibles. Crea press kits desde la sección de artistas.
+        No hay press kits disponibles. Crea press kits desde la sección de
+        artistas.
       </div>
     );
   }
@@ -108,7 +110,8 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
     <div className="space-y-4">
       {value.length > 0 && (
         <p className="text-xs text-primary">
-          {value.length} press kit{value.length !== 1 ? "s" : ""} seleccionado{value.length !== 1 ? "s" : ""}
+          {value.length} press kit{value.length !== 1 ? "s" : ""} seleccionado
+          {value.length !== 1 ? "s" : ""}
         </p>
       )}
 
@@ -140,10 +143,14 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <FileDown className="w-4 h-4 text-slc-muted flex-shrink-0" />
-                      <span className="text-sm font-medium truncate">{kit.title}</span>
+                      <span className="text-sm font-medium truncate">
+                        {kit.title}
+                      </span>
                     </div>
                     {kit.description && (
-                      <p className="text-xs text-slc-muted mt-0.5 truncate">{kit.description}</p>
+                      <p className="text-xs text-slc-muted mt-0.5 truncate">
+                        {kit.description}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -152,9 +159,7 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
                         {formatFileSize(kit.fileSize)}
                       </span>
                     )}
-                    {isSelected && (
-                      <Check className="w-4 h-4 text-primary" />
-                    )}
+                    {isSelected && <Check className="w-4 h-4 text-primary" />}
                   </div>
                 </label>
               );
@@ -172,7 +177,13 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
               <span className="font-medium">Sin artista asignado</span>
             </div>
           )}
-          <div className={Object.keys(groupedByArtist).length > 0 ? "ml-5 space-y-1" : "space-y-1"}>
+          <div
+            className={
+              Object.keys(groupedByArtist).length > 0
+                ? "ml-5 space-y-1"
+                : "space-y-1"
+            }
+          >
             {ungrouped.map((kit) => {
               const isSelected = value.includes(kit.id);
               return (
@@ -193,10 +204,14 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <FileDown className="w-4 h-4 text-slc-muted flex-shrink-0" />
-                      <span className="text-sm font-medium truncate">{kit.title}</span>
+                      <span className="text-sm font-medium truncate">
+                        {kit.title}
+                      </span>
                     </div>
                     {kit.description && (
-                      <p className="text-xs text-slc-muted mt-0.5 truncate">{kit.description}</p>
+                      <p className="text-xs text-slc-muted mt-0.5 truncate">
+                        {kit.description}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -205,9 +220,7 @@ export function PressKitMultiSelector({ value, onChange }: PressKitMultiSelector
                         {formatFileSize(kit.fileSize)}
                       </span>
                     )}
-                    {isSelected && (
-                      <Check className="w-4 h-4 text-primary" />
-                    )}
+                    {isSelected && <Check className="w-4 h-4 text-primary" />}
                   </div>
                 </label>
               );

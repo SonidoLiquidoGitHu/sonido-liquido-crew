@@ -8,7 +8,10 @@ export { Footer } from "./Footer";
 
 // Home Page Sections
 export { HeroSection } from "./sections/HeroSection";
-export { UpcomingReleasesHero, UpcomingReleasesHeroSkeleton } from "./sections/UpcomingReleasesHero";
+export {
+  UpcomingReleasesHero,
+  UpcomingReleasesHeroSkeleton,
+} from "./sections/UpcomingReleasesHero";
 export { MarqueeBanner } from "./sections/MarqueeBanner";
 export { FeaturedArtists } from "./sections/FeaturedArtists";
 export { FeaturedBeats } from "./sections/FeaturedBeats";

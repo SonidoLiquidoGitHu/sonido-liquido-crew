@@ -17,17 +17,17 @@
 // - Fixed: Timed events now use TZID instead of UTC conversion.
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { events, releases, upcomingReleases } from "@/db/schema";
-import { eq, gte, desc } from "drizzle-orm";
+import { desc, eq, gte } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // Cache for 1 hour
 
 // Format date to ICS format: YYYYMMDDTHHMMSSZ
 function formatICSDate(d: Date): string {
-  return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  return `${d.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
 }
 
 // Format date-only for all-day events: YYYYMMDD
@@ -65,7 +65,9 @@ function escapeICS(text: string): string {
 // making calendar clients think events were modified and creating duplicates
 function stableDTSTAMP(dateStr: string | Date): string {
   const d = new Date(dateStr);
-  const stamp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
+  const stamp = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0),
+  );
   return formatICSDate(stamp);
 }
 
@@ -119,7 +121,16 @@ function createICSEvent(params: {
   location?: string;
   url?: string;
 }): string {
-  const { uid, title, dateStart, dateEnd, isAllDay, description, location, url } = params;
+  const {
+    uid,
+    title,
+    dateStart,
+    dateEnd,
+    isAllDay,
+    description,
+    location,
+    url,
+  } = params;
 
   const lines: string[] = [
     "BEGIN:VEVENT",
@@ -135,9 +146,13 @@ function createICSEvent(params: {
     lines.push(`DTEND;VALUE=DATE:${formatICSDateOnly(nextDay)}`);
   } else {
     // Use TZID for timed events so calendar clients interpret the time correctly
-    lines.push(`DTSTART;TZID=America/Mexico_City:${formatLocalDateTime(dateStart)}`);
+    lines.push(
+      `DTSTART;TZID=America/Mexico_City:${formatLocalDateTime(dateStart)}`,
+    );
     if (dateEnd) {
-      lines.push(`DTEND;TZID=America/Mexico_City:${formatLocalDateTime(dateEnd)}`);
+      lines.push(
+        `DTEND;TZID=America/Mexico_City:${formatLocalDateTime(dateEnd)}`,
+      );
     } else {
       const end = new Date(dateStart);
       end.setHours(end.getHours() + 2);
@@ -166,10 +181,9 @@ function createICSEvent(params: {
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      const emptyCalendar = [
-        ...buildCalendarHeader(),
-        "END:VCALENDAR",
-      ].join("\r\n");
+      const emptyCalendar = [...buildCalendarHeader(), "END:VCALENDAR"].join(
+        "\r\n",
+      );
 
       return new NextResponse(emptyCalendar, {
         status: 200,
@@ -197,10 +211,12 @@ export async function GET(request: NextRequest) {
       const hasTime = event.eventTime && event.eventTime.trim() !== "";
 
       if (hasTime && event.eventTime) {
-        const timeParts = event.eventTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        const timeParts = event.eventTime.match(
+          /(\d{1,2}):(\d{2})\s*(AM|PM)?/i,
+        );
         if (timeParts) {
-          let hours = parseInt(timeParts[1], 10);
-          const minutes = parseInt(timeParts[2], 10);
+          let hours = Number.parseInt(timeParts[1], 10);
+          const minutes = Number.parseInt(timeParts[2], 10);
           const ampm = timeParts[3]?.toUpperCase();
 
           if (ampm === "PM" && hours < 12) hours += 12;
@@ -211,37 +227,46 @@ export async function GET(request: NextRequest) {
           const endDate = new Date(eventDate);
           endDate.setHours(endDate.getHours() + 3);
 
-          icsEvents.push(createICSEvent({
-            uid: `event-${event.id}`,
-            title: event.title,
-            dateStart: eventDate,
-            dateEnd: endDate,
-            isAllDay: false,
-            description: event.description || `Evento en ${event.venue}, ${event.city}`,
-            location: `${event.venue}, ${event.city}, ${event.country}`,
-            url: event.ticketUrl || undefined,
-          }));
+          icsEvents.push(
+            createICSEvent({
+              uid: `event-${event.id}`,
+              title: event.title,
+              dateStart: eventDate,
+              dateEnd: endDate,
+              isAllDay: false,
+              description:
+                event.description || `Evento en ${event.venue}, ${event.city}`,
+              location: `${event.venue}, ${event.city}, ${event.country}`,
+              url: event.ticketUrl || undefined,
+            }),
+          );
         } else {
-          icsEvents.push(createICSEvent({
+          icsEvents.push(
+            createICSEvent({
+              uid: `event-${event.id}`,
+              title: event.title,
+              dateStart: eventDate,
+              isAllDay: true,
+              description:
+                event.description || `Evento en ${event.venue}, ${event.city}`,
+              location: `${event.venue}, ${event.city}, ${event.country}`,
+              url: event.ticketUrl || undefined,
+            }),
+          );
+        }
+      } else {
+        icsEvents.push(
+          createICSEvent({
             uid: `event-${event.id}`,
             title: event.title,
             dateStart: eventDate,
             isAllDay: true,
-            description: event.description || `Evento en ${event.venue}, ${event.city}`,
+            description:
+              event.description || `Evento en ${event.venue}, ${event.city}`,
             location: `${event.venue}, ${event.city}, ${event.country}`,
             url: event.ticketUrl || undefined,
-          }));
-        }
-      } else {
-        icsEvents.push(createICSEvent({
-          uid: `event-${event.id}`,
-          title: event.title,
-          dateStart: eventDate,
-          isAllDay: true,
-          description: event.description || `Evento en ${event.venue}, ${event.city}`,
-          location: `${event.venue}, ${event.city}, ${event.country}`,
-          url: event.ticketUrl || undefined,
-        }));
+          }),
+        );
       }
     }
 
@@ -255,14 +280,16 @@ export async function GET(request: NextRequest) {
 
     for (const release of recentReleases) {
       const releaseDate = new Date(release.releaseDate);
-      icsEvents.push(createICSEvent({
-        uid: `release-${release.id}`,
-        title: `🎵 Lanzamiento: ${release.title}`,
-        dateStart: releaseDate,
-        isAllDay: true,
-        description: `Lanzamiento: ${release.title}`,
-        url: release.spotifyUrl || undefined,
-      }));
+      icsEvents.push(
+        createICSEvent({
+          uid: `release-${release.id}`,
+          title: `🎵 Lanzamiento: ${release.title}`,
+          dateStart: releaseDate,
+          isAllDay: true,
+          description: `Lanzamiento: ${release.title}`,
+          url: release.spotifyUrl || undefined,
+        }),
+      );
     }
 
     // Fetch upcoming releases
@@ -275,14 +302,16 @@ export async function GET(request: NextRequest) {
 
     for (const release of upcomingReleasesList) {
       const releaseDate = new Date(release.releaseDate);
-      icsEvents.push(createICSEvent({
-        uid: `upcoming-${release.id}`,
-        title: `🚀 ${release.title}`,
-        dateStart: releaseDate,
-        isAllDay: true,
-        description: `Próximo lanzamiento: ${release.title} por ${release.artistName}`,
-        url: release.rpmPresaveUrl || release.spotifyPresaveUrl || undefined,
-      }));
+      icsEvents.push(
+        createICSEvent({
+          uid: `upcoming-${release.id}`,
+          title: `🚀 ${release.title}`,
+          dateStart: releaseDate,
+          isAllDay: true,
+          description: `Próximo lanzamiento: ${release.title} por ${release.artistName}`,
+          url: release.rpmPresaveUrl || release.spotifyPresaveUrl || undefined,
+        }),
+      );
     }
 
     // Build the ICS calendar
@@ -304,10 +333,9 @@ export async function GET(request: NextRequest) {
     console.error("[Calendar ICS] Error generating feed:", error);
 
     // Return a valid but empty ICS on error
-    const errorCalendar = [
-      ...buildCalendarHeader(),
-      "END:VCALENDAR",
-    ].join("\r\n");
+    const errorCalendar = [...buildCalendarHeader(), "END:VCALENDAR"].join(
+      "\r\n",
+    );
 
     return new NextResponse(errorCalendar, {
       status: 200,

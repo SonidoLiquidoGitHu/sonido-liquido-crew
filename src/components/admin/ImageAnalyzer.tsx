@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Palette,
-  CheckCircle,
   AlertTriangle,
-  Square,
-  RectangleHorizontal,
-  Loader2,
-  Copy,
   Check,
+  CheckCircle,
+  Copy,
   Crop,
-  X,
-  Move,
   ImageIcon,
+  Loader2,
+  Move,
+  Palette,
+  RectangleHorizontal,
+  Square,
+  X,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ColorInfo {
   hex: string;
@@ -38,7 +38,10 @@ interface ImageAnalyzerProps {
   imageUrl: string | null | undefined;
   onColorExtracted?: (color: string) => void;
   onColorsExtracted?: (colors: ColorInfo[]) => void;
-  onDimensionsValidated?: (valid: boolean, dimensions: ImageDimensions | null) => void;
+  onDimensionsValidated?: (
+    valid: boolean,
+    dimensions: ImageDimensions | null,
+  ) => void;
   onImageCropped?: (croppedDataUrl: string) => void;
   expectedAspectRatio?: "square" | "16:9" | "4:3" | "any";
   minWidth?: number;
@@ -71,10 +74,7 @@ function getDirectUrl(imageUrl: string): string {
 
   // Dropbox and other external hosts — route through the image proxy
   // so the browser gets CORS-clean bytes for canvas pixel reading.
-  const EXTERNAL_HOSTS = [
-    "dropbox.com",
-    "dropboxusercontent.com",
-  ];
+  const EXTERNAL_HOSTS = ["dropbox.com", "dropboxusercontent.com"];
 
   const isExternal = EXTERNAL_HOSTS.some((h) => imageUrl.includes(h));
   if (isExternal) {
@@ -85,7 +85,10 @@ function getDirectUrl(imageUrl: string): string {
 }
 
 // Extract color palette from an image using canvas
-function extractColorPalette(imageUrl: string, numColors: number = 6): Promise<ColorInfo[]> {
+function extractColorPalette(
+  imageUrl: string,
+  numColors = 6,
+): Promise<ColorInfo[]> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -108,7 +111,10 @@ function extractColorPalette(imageUrl: string, numColors: number = 6): Promise<C
         const imageData = ctx.getImageData(0, 0, sampleSize, sampleSize);
         const data = imageData.data;
 
-        const colorCounts: Record<string, { count: number; r: number; g: number; b: number }> = {};
+        const colorCounts: Record<
+          string,
+          { count: number; r: number; g: number; b: number }
+        > = {};
         let totalPixels = 0;
 
         for (let i = 0; i < data.length; i += 4) {
@@ -147,7 +153,8 @@ function extractColorPalette(imageUrl: string, numColors: number = 6): Promise<C
 
           if (isDistinct || distinctColors.length === 0) {
             const hex = `#${color.r.toString(16).padStart(2, "0")}${color.g.toString(16).padStart(2, "0")}${color.b.toString(16).padStart(2, "0")}`;
-            const luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
+            const luminance =
+              (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
 
             distinctColors.push({
               hex,
@@ -158,12 +165,18 @@ function extractColorPalette(imageUrl: string, numColors: number = 6): Promise<C
           }
         }
 
-        resolve(distinctColors.length > 0 ? distinctColors : [{
-          hex: "#808080",
-          rgb: { r: 128, g: 128, b: 128 },
-          isDark: false,
-          percentage: 100,
-        }]);
+        resolve(
+          distinctColors.length > 0
+            ? distinctColors
+            : [
+                {
+                  hex: "#808080",
+                  rgb: { r: 128, g: 128, b: 128 },
+                  isDark: false,
+                  percentage: 100,
+                },
+              ],
+        );
       } catch (error) {
         reject(error);
       }
@@ -175,7 +188,11 @@ function extractColorPalette(imageUrl: string, numColors: number = 6): Promise<C
 }
 
 // Get image dimensions with resolution validation
-function getImageDimensions(imageUrl: string, minWidth: number = 1000, minHeight: number = 1000): Promise<ImageDimensions> {
+function getImageDimensions(
+  imageUrl: string,
+  minWidth = 1000,
+  minHeight = 1000,
+): Promise<ImageDimensions> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -190,7 +207,15 @@ function getImageDimensions(imageUrl: string, minWidth: number = 1000, minHeight
       const is4x3 = Math.abs(aspectRatio - 4 / 3) < 0.05;
       const meetsMinResolution = width >= minWidth && height >= minHeight;
 
-      resolve({ width, height, aspectRatio, isSquare, is16x9, is4x3, meetsMinResolution });
+      resolve({
+        width,
+        height,
+        aspectRatio,
+        isSquare,
+        is16x9,
+        is4x3,
+        meetsMinResolution,
+      });
     };
 
     img.onerror = () => reject(new Error("Failed to load image"));
@@ -229,7 +254,11 @@ function ImageCropperModal({
       setImage(img);
 
       const maxDisplaySize = 450;
-      const scale = Math.min(maxDisplaySize / img.width, maxDisplaySize / img.height, 1);
+      const scale = Math.min(
+        maxDisplaySize / img.width,
+        maxDisplaySize / img.height,
+        1,
+      );
       setDisplayScale(scale);
 
       let cropWidth = img.width;
@@ -297,8 +326,18 @@ function ImageCropperModal({
 
     const handleSize = 8;
     ctx.fillStyle = "#ff6b00";
-    [[cropX, cropY], [cropX + cropW, cropY], [cropX, cropY + cropH], [cropX + cropW, cropY + cropH]].forEach(([hx, hy]) => {
-      ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+    [
+      [cropX, cropY],
+      [cropX + cropW, cropY],
+      [cropX, cropY + cropH],
+      [cropX + cropW, cropY + cropH],
+    ].forEach(([hx, hy]) => {
+      ctx.fillRect(
+        hx - handleSize / 2,
+        hy - handleSize / 2,
+        handleSize,
+        handleSize,
+      );
     });
 
     ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
@@ -328,8 +367,14 @@ function ImageCropperModal({
     const x = (e.clientX - rect.left) / displayScale;
     const y = (e.clientY - rect.top) / displayScale;
 
-    let newX = Math.max(0, Math.min(x - dragStart.x, image.width - cropArea.width));
-    let newY = Math.max(0, Math.min(y - dragStart.y, image.height - cropArea.height));
+    const newX = Math.max(
+      0,
+      Math.min(x - dragStart.x, image.width - cropArea.width),
+    );
+    const newY = Math.max(
+      0,
+      Math.min(y - dragStart.y, image.height - cropArea.height),
+    );
 
     setCropArea((prev) => ({ ...prev, x: newX, y: newY }));
   };
@@ -352,8 +397,14 @@ function ImageCropperModal({
 
       outputCtx.drawImage(
         image,
-        cropArea.x, cropArea.y, cropArea.width, cropArea.height,
-        0, 0, outputWidth, outputHeight
+        cropArea.x,
+        cropArea.y,
+        cropArea.width,
+        cropArea.height,
+        0,
+        0,
+        outputWidth,
+        outputHeight,
       );
 
       const dataUrl = outputCanvas.toDataURL("image/jpeg", 0.92);
@@ -397,18 +448,27 @@ function ImageCropperModal({
           <div className="flex items-center gap-4 text-sm">
             <span className="text-slc-muted">Salida:</span>
             <span className="font-mono bg-slc-card px-2 py-1 rounded">
-              {targetWidth || Math.round(cropArea.width)} × {targetHeight || Math.round(cropArea.height)}px
+              {targetWidth || Math.round(cropArea.width)} ×{" "}
+              {targetHeight || Math.round(cropArea.height)}px
             </span>
           </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-slc-border">
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
           <Button onClick={handleCrop} disabled={isProcessing}>
             {isProcessing ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Procesando...</>
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Procesando...
+              </>
             ) : (
-              <><Crop className="w-4 h-4 mr-2" />Recortar y Aplicar</>
+              <>
+                <Crop className="w-4 h-4 mr-2" />
+                Recortar y Aplicar
+              </>
             )}
           </Button>
         </div>
@@ -449,8 +509,12 @@ export function ImageAnalyzer({
 
     try {
       const [colorsResult, dimsResult] = await Promise.all([
-        showColorPicker || showColorPalette ? extractColorPalette(imageUrl, 6) : null,
-        showDimensionInfo ? getImageDimensions(imageUrl, minWidth, minHeight) : null,
+        showColorPicker || showColorPalette
+          ? extractColorPalette(imageUrl, 6)
+          : null,
+        showDimensionInfo
+          ? getImageDimensions(imageUrl, minWidth, minHeight)
+          : null,
       ]);
 
       if (colorsResult) {
@@ -463,9 +527,12 @@ export function ImageAnalyzer({
         setDimensions(dimsResult);
 
         let valid = dimsResult.meetsMinResolution;
-        if (expectedAspectRatio === "square") valid = valid && dimsResult.isSquare;
-        else if (expectedAspectRatio === "16:9") valid = valid && dimsResult.is16x9;
-        else if (expectedAspectRatio === "4:3") valid = valid && dimsResult.is4x3;
+        if (expectedAspectRatio === "square")
+          valid = valid && dimsResult.isSquare;
+        else if (expectedAspectRatio === "16:9")
+          valid = valid && dimsResult.is16x9;
+        else if (expectedAspectRatio === "4:3")
+          valid = valid && dimsResult.is4x3;
 
         onDimensionsValidated?.(valid, dimsResult);
       }
@@ -475,7 +542,18 @@ export function ImageAnalyzer({
     } finally {
       setIsLoading(false);
     }
-  }, [imageUrl, showColorPicker, showColorPalette, showDimensionInfo, expectedAspectRatio, minWidth, minHeight, onColorExtracted, onColorsExtracted, onDimensionsValidated]);
+  }, [
+    imageUrl,
+    showColorPicker,
+    showColorPalette,
+    showDimensionInfo,
+    expectedAspectRatio,
+    minWidth,
+    minHeight,
+    onColorExtracted,
+    onColorsExtracted,
+    onDimensionsValidated,
+  ]);
 
   useEffect(() => {
     if (imageUrl) {
@@ -613,11 +691,13 @@ export function ImageAnalyzer({
 
       {/* Dimension validation result */}
       {showDimensionInfo && dimensions && !isLoading && (
-        <div className={`p-3 rounded-lg space-y-2 ${
-          isDimensionValid()
-            ? "bg-green-500/10 border border-green-500/20"
-            : "bg-yellow-500/10 border border-yellow-500/20"
-        }`}>
+        <div
+          className={`p-3 rounded-lg space-y-2 ${
+            isDimensionValid()
+              ? "bg-green-500/10 border border-green-500/20"
+              : "bg-yellow-500/10 border border-yellow-500/20"
+          }`}
+        >
           {/* Dimensions row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -652,12 +732,17 @@ export function ImageAnalyzer({
           )}
 
           {/* Aspect ratio check */}
-          {expectedAspectRatio !== "any" && !isDimensionValid() && dimensions.meetsMinResolution && (
-            <div className="flex items-center gap-2 text-xs text-yellow-500">
-              <AlertTriangle className="w-3 h-3" />
-              Se esperaba proporción {expectedAspectRatio === "square" ? "cuadrada (1:1)" : expectedAspectRatio}
-            </div>
-          )}
+          {expectedAspectRatio !== "any" &&
+            !isDimensionValid() &&
+            dimensions.meetsMinResolution && (
+              <div className="flex items-center gap-2 text-xs text-yellow-500">
+                <AlertTriangle className="w-3 h-3" />
+                Se esperaba proporción{" "}
+                {expectedAspectRatio === "square"
+                  ? "cuadrada (1:1)"
+                  : expectedAspectRatio}
+              </div>
+            )}
 
           {/* Crop button */}
           {showCropTool && !isDimensionValid() && (
@@ -693,9 +778,19 @@ export function ImageAnalyzer({
       {showCropper && imageUrl && (
         <ImageCropperModal
           imageUrl={imageUrl}
-          targetAspectRatio={expectedAspectRatio === "any" ? "free" : expectedAspectRatio}
-          targetWidth={expectedAspectRatio === "square" ? Math.max(minWidth, minHeight) : minWidth}
-          targetHeight={expectedAspectRatio === "square" ? Math.max(minWidth, minHeight) : minHeight}
+          targetAspectRatio={
+            expectedAspectRatio === "any" ? "free" : expectedAspectRatio
+          }
+          targetWidth={
+            expectedAspectRatio === "square"
+              ? Math.max(minWidth, minHeight)
+              : minWidth
+          }
+          targetHeight={
+            expectedAspectRatio === "square"
+              ? Math.max(minWidth, minHeight)
+              : minHeight
+          }
           onCrop={handleCropComplete}
           onClose={() => setShowCropper(false)}
         />

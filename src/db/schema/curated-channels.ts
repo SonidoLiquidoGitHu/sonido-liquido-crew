@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // CURATED SPOTIFY CHANNELS TABLE
@@ -22,23 +22,33 @@ export const curatedSpotifyChannels = sqliteTable("curated_spotify_channels", {
 
   // Curation Settings
   category: text("category", {
-    enum: ["roster", "affiliate", "collaborator", "label", "featured", "other"]
-  }).notNull().default("roster"),
+    enum: ["roster", "affiliate", "collaborator", "label", "featured", "other"],
+  })
+    .notNull()
+    .default("roster"),
   priority: integer("priority").notNull().default(0), // Higher = more important
   description: text("description"), // Admin notes about this channel
 
   // Sync Settings
   autoSync: integer("auto_sync", { mode: "boolean" }).notNull().default(true),
-  syncNewReleases: integer("sync_new_releases", { mode: "boolean" }).notNull().default(true),
-  syncTopTracks: integer("sync_top_tracks", { mode: "boolean" }).notNull().default(true),
+  syncNewReleases: integer("sync_new_releases", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  syncTopTracks: integer("sync_top_tracks", { mode: "boolean" })
+    .notNull()
+    .default(true),
 
   // Status
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 
   // Timestamps
   lastSyncedAt: integer("last_synced_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -67,16 +77,29 @@ export const curatedTracks = sqliteTable("curated_tracks", {
   explicit: integer("explicit", { mode: "boolean" }).notNull().default(false),
 
   // Reference to curated channel
-  curatedChannelId: text("curated_channel_id").references(() => curatedSpotifyChannels.id, { onDelete: "cascade" }),
+  curatedChannelId: text("curated_channel_id").references(
+    () => curatedSpotifyChannels.id,
+    { onDelete: "cascade" },
+  ),
 
   // Playlist Status
-  isAvailableForPlaylist: integer("is_available_for_playlist", { mode: "boolean" }).notNull().default(true),
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  isAvailableForPlaylist: integer("is_available_for_playlist", {
+    mode: "boolean",
+  })
+    .notNull()
+    .default(true),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
   adminNotes: text("admin_notes"),
 
   // Timestamps
-  addedAt: integer("added_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  addedAt: integer("added_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -108,7 +131,9 @@ export const playlistTracks = sqliteTable("playlist_tracks", {
   addedBy: text("added_by"), // Admin user ID
 
   // Timestamps
-  addedAt: integer("added_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  addedAt: integer("added_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -137,8 +162,12 @@ export const curatedPlaylists = sqliteTable("curated_playlists", {
   trackCount: integer("track_count").default(0), // Cached track count from Spotify
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -146,7 +175,8 @@ export const curatedPlaylists = sqliteTable("curated_playlists", {
 // ===========================================
 
 export type CuratedSpotifyChannel = typeof curatedSpotifyChannels.$inferSelect;
-export type NewCuratedSpotifyChannel = typeof curatedSpotifyChannels.$inferInsert;
+export type NewCuratedSpotifyChannel =
+  typeof curatedSpotifyChannels.$inferInsert;
 export type CuratedTrack = typeof curatedTracks.$inferSelect;
 export type NewCuratedTrack = typeof curatedTracks.$inferInsert;
 export type PlaylistTrack = typeof playlistTracks.$inferSelect;

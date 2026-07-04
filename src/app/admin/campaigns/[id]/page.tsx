@@ -1,40 +1,40 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { AudioPreviewPlayer } from "@/components/admin/AudioPreviewPlayer";
+import { CampaignEmailModal } from "@/components/admin/CampaignEmailModal";
+import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
+import { RunwayVideoStudio } from "@/components/admin/RunwayVideoStudio";
+import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SafeImage } from "@/components/ui/safe-image";
-import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
-import { AudioPreviewPlayer } from "@/components/admin/AudioPreviewPlayer";
-import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
-import { RunwayVideoStudio } from "@/components/admin/RunwayVideoStudio";
-import { CampaignEmailModal } from "@/components/admin/CampaignEmailModal";
-import { type StyleSettings } from "@/lib/style-config";
+import type { StyleSettings } from "@/lib/style-config";
 import {
-  ArrowLeft,
-  Save,
-  Megaphone,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
+  ArrowLeft,
+  BarChart3,
   Calendar,
+  CheckCircle,
   Cloud,
-  Image as ImageIcon,
   Download,
-  Link as LinkIcon,
-  Music,
   ExternalLink,
   Eye,
-  Users,
-  Trash2,
-  BarChart3,
-  Video,
   Film,
-  Sparkles,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Loader2,
   Mail,
+  Megaphone,
+  Music,
+  Save,
+  Sparkles,
+  Trash2,
+  Users,
+  Video,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
 
 interface Campaign {
   id: string;
@@ -88,13 +88,18 @@ function formatDateForInput(date: string | null): string {
   }
 }
 
-export default function EditCampaignPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditCampaignPage({
+  params,
+}: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
 
@@ -135,10 +140,10 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
 
   // Auto-open email modal if #send-email hash is present
   useEffect(() => {
-    if (window.location.hash === '#send-email') {
+    if (window.location.hash === "#send-email") {
       setEmailModalOpen(true);
       // Clean up the hash
-      window.history.replaceState(null, '', window.location.pathname);
+      window.history.replaceState(null, "", window.location.pathname);
     }
   }, []);
 
@@ -190,18 +195,30 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  const handleCoverUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, coverImageUrl: url }));
+  const handleCoverUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, coverImageUrl: url }));
     showMessage("success", `Portada "${filename}" subida a Dropbox`);
   };
 
-  const handleBannerUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, bannerImageUrl: url }));
+  const handleBannerUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, bannerImageUrl: url }));
     showMessage("success", `Banner "${filename}" subido a Dropbox`);
   };
 
-  const handleDownloadFileUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({
+  const handleDownloadFileUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       downloadFileUrl: url,
       downloadFileName: filename,
@@ -209,13 +226,21 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
     showMessage("success", `Archivo "${filename}" subido a Dropbox`);
   };
 
-  const handlePreviewAudioUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, previewAudioUrl: url }));
+  const handlePreviewAudioUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, previewAudioUrl: url }));
     showMessage("success", `Audio "${filename}" subido a Dropbox`);
   };
 
-  const handlePreviewVideoUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, previewVideoUrl: url }));
+  const handlePreviewVideoUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, previewVideoUrl: url }));
     showMessage("success", `Video "${filename}" subido a Dropbox`);
   };
 
@@ -258,15 +283,22 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
   };
 
   const handleDelete = async () => {
-    if (!confirm("¿Estás seguro de eliminar esta campaña? Esta acción no se puede deshacer.")) {
+    if (
+      !confirm(
+        "¿Estás seguro de eliminar esta campaña? Esta acción no se puede deshacer.",
+      )
+    ) {
       return;
     }
 
     setDeleting(true);
     try {
-      const response = await fetch(`/api/admin/campaigns?id=${resolvedParams.id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/admin/campaigns?id=${resolvedParams.id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const data = await response.json();
 
@@ -296,7 +328,9 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-8 text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="font-oswald text-2xl mb-2">Campaña no encontrada</h2>
-          <p className="text-slc-muted mb-4">La campaña que buscas no existe.</p>
+          <p className="text-slc-muted mb-4">
+            La campaña que buscas no existe.
+          </p>
           <Button asChild>
             <Link href="/admin/campaigns">Volver a Campañas</Link>
           </Button>
@@ -344,10 +378,7 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
               Analytics
             </Link>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setEmailModalOpen(true)}
-          >
+          <Button variant="outline" onClick={() => setEmailModalOpen(true)}>
             <Mail className="w-4 h-4 mr-2" />
             Enviar Email
           </Button>
@@ -362,11 +393,13 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
 
       {/* Message */}
       {message && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-          message.type === "success"
-            ? "bg-green-500/10 border border-green-500/20 text-green-500"
-            : "bg-red-500/10 border border-red-500/20 text-red-500"
-        }`}>
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-green-500/10 border border-green-500/20 text-green-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500"
+          }`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
@@ -382,33 +415,53 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Info */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Información Básica</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Información Básica
+              </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Título *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Título *
+                  </label>
                   <Input
                     value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="Nombre de la campaña"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Slug (URL)</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Slug (URL)
+                  </label>
                   <Input
                     value={formData.slug}
-                    onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, slug: e.target.value }))
+                    }
                     placeholder="nombre-de-campana"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Tipo de Campaña *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Tipo de Campaña *
+                  </label>
                   <select
                     value={formData.campaignType}
-                    onChange={(e) => setFormData(prev => ({ ...prev, campaignType: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        campaignType: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   >
                     {campaignTypes.map((type) => (
@@ -420,10 +473,17 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Descripción
+                  </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Descripción de la campaña..."
                     rows={3}
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -441,50 +501,85 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Smart Link (Principal)</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Smart Link (Principal)
+                  </label>
                   <Input
                     value={formData.smartLinkUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, smartLinkUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        smartLinkUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://onerpm.link/..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">OneRPM URL</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    OneRPM URL
+                  </label>
                   <Input
                     value={formData.oneRpmUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, oneRpmUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        oneRpmUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://onerpm.link/..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Spotify Presave URL</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Spotify Presave URL
+                  </label>
                   <Input
                     value={formData.spotifyPresaveUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, spotifyPresaveUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        spotifyPresaveUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Apple Music Presave</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Apple Music Presave
+                  </label>
                   <Input
                     value={formData.appleMusicPresaveUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, appleMusicPresaveUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        appleMusicPresaveUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://music.apple.com/..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Spotify Artist URL (para follow)</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Spotify Artist URL (para follow)
+                  </label>
                   <Input
                     value={formData.spotifyArtistUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, spotifyArtistUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        spotifyArtistUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://open.spotify.com/artist/..."
                     type="url"
                   />
@@ -503,7 +598,12 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                   <input
                     type="checkbox"
                     checked={formData.downloadGateEnabled}
-                    onChange={(e) => setFormData(prev => ({ ...prev, downloadGateEnabled: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        downloadGateEnabled: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span className="text-sm">Activar</span>
@@ -518,7 +618,8 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                       <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
                         <p className="text-sm text-green-500 flex items-center gap-2 mb-2">
                           <CheckCircle className="w-4 h-4" />
-                          Archivo actual: {formData.downloadFileName || "Archivo subido"}
+                          Archivo actual:{" "}
+                          {formData.downloadFileName || "Archivo subido"}
                         </p>
                         <a
                           href={formData.downloadFileUrl}
@@ -557,22 +658,34 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                   {/* Alternative: Direct URL */}
                   <div className="p-4 bg-slc-card/50 border border-slc-border rounded-lg">
                     <label className="block text-sm text-slc-muted mb-2 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4" />
-                      O pegar URL directa (opcional)
+                      <LinkIcon className="w-4 h-4" />O pegar URL directa
+                      (opcional)
                     </label>
                     <Input
                       value={formData.downloadFileUrl}
-                      onChange={(e) => setFormData(prev => ({ ...prev, downloadFileUrl: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          downloadFileUrl: e.target.value,
+                        }))
+                      }
                       placeholder="https://dl.dropboxusercontent.com/..."
                       type="url"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Nombre del archivo (opcional)</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Nombre del archivo (opcional)
+                    </label>
                     <Input
                       value={formData.downloadFileName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, downloadFileName: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          downloadFileName: e.target.value,
+                        }))
+                      }
                       placeholder="track.mp3"
                     />
                   </div>
@@ -584,7 +697,8 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                       Audio de Preview (Landing de Desbloqueo)
                     </label>
                     <p className="text-xs text-slc-muted mb-3">
-                      Este audio se mostrará en la landing page después de desbloquear el contenido.
+                      Este audio se mostrará en la landing page después de
+                      desbloquear el contenido.
                     </p>
 
                     {/* Audio preview player if exists */}
@@ -611,7 +725,12 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                     <div className="mt-2">
                       <Input
                         value={formData.previewAudioUrl}
-                        onChange={(e) => setFormData(prev => ({ ...prev, previewAudioUrl: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            previewAudioUrl: e.target.value,
+                          }))
+                        }
                         placeholder="O pegar URL directa..."
                         type="url"
                         className="text-xs"
@@ -626,7 +745,8 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                       Video Exclusivo (Landing de Desbloqueo)
                     </label>
                     <p className="text-xs text-slc-muted mb-3">
-                      Ofrece un video exclusivo como recompensa. Puedes subir un video o usar YouTube.
+                      Ofrece un video exclusivo como recompensa. Puedes subir un
+                      video o usar YouTube.
                     </p>
 
                     <div className="space-y-4">
@@ -664,10 +784,17 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
 
                       {/* Or paste URL */}
                       <div>
-                        <label className="block text-xs text-slc-muted mb-1">O pegar URL del video</label>
+                        <label className="block text-xs text-slc-muted mb-1">
+                          O pegar URL del video
+                        </label>
                         <Input
                           value={formData.previewVideoUrl}
-                          onChange={(e) => setFormData(prev => ({ ...prev, previewVideoUrl: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              previewVideoUrl: e.target.value,
+                            }))
+                          }
                           placeholder="https://dl.dropboxusercontent.com/video.mp4"
                           type="url"
                         />
@@ -681,17 +808,28 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
 
                       {/* YouTube option */}
                       <div>
-                        <label className="block text-xs text-slc-muted mb-1">ID de Video de YouTube</label>
+                        <label className="block text-xs text-slc-muted mb-1">
+                          ID de Video de YouTube
+                        </label>
                         <Input
                           value={formData.youtubeVideoId}
-                          onChange={(e) => setFormData(prev => ({ ...prev, youtubeVideoId: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              youtubeVideoId: e.target.value,
+                            }))
+                          }
                           placeholder="dQw4w9WgXcQ (solo el ID)"
                         />
                         {formData.youtubeVideoId && (
                           <div className="mt-2 rounded-lg overflow-hidden">
                             <iframe
                               src={`https://www.youtube.com/embed/${formData.youtubeVideoId}`}
-                              className={formData.videoIsVertical ? "w-full aspect-[9/16] max-w-xs mx-auto" : "w-full aspect-video"}
+                              className={
+                                formData.videoIsVertical
+                                  ? "w-full aspect-[9/16] max-w-xs mx-auto"
+                                  : "w-full aspect-video"
+                              }
                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             />
                           </div>
@@ -699,17 +837,27 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                       </div>
 
                       {/* Video orientation */}
-                      {(formData.previewVideoUrl || formData.youtubeVideoId) && (
+                      {(formData.previewVideoUrl ||
+                        formData.youtubeVideoId) && (
                         <label className="flex items-center gap-3 p-3 bg-slc-card rounded-lg cursor-pointer hover:bg-slc-card/80 mt-3">
                           <input
                             type="checkbox"
                             checked={formData.videoIsVertical}
-                            onChange={(e) => setFormData(prev => ({ ...prev, videoIsVertical: e.target.checked }))}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                videoIsVertical: e.target.checked,
+                              }))
+                            }
                             className="w-4 h-4 rounded border-slc-border"
                           />
                           <div>
-                            <span className="font-medium text-sm">Video Vertical (TikTok/Reels)</span>
-                            <p className="text-xs text-slc-muted">Activar si el video tiene formato 9:16</p>
+                            <span className="font-medium text-sm">
+                              Video Vertical (TikTok/Reels)
+                            </span>
+                            <p className="text-xs text-slc-muted">
+                              Activar si el video tiene formato 9:16
+                            </p>
                           </div>
                         </label>
                       )}
@@ -721,19 +869,28 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
 
             {/* Requirements */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Requisitos para Acceder</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Requisitos para Acceder
+              </h2>
 
               <div className="space-y-3">
                 <label className="flex items-center gap-3 p-3 bg-slc-card rounded-lg cursor-pointer hover:bg-slc-card/80">
                   <input
                     type="checkbox"
                     checked={formData.requireEmail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requireEmail: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requireEmail: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <div>
                     <span className="font-medium">Requerir Email</span>
-                    <p className="text-xs text-slc-muted">El usuario debe ingresar su email</p>
+                    <p className="text-xs text-slc-muted">
+                      El usuario debe ingresar su email
+                    </p>
                   </div>
                 </label>
 
@@ -741,12 +898,19 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                   <input
                     type="checkbox"
                     checked={formData.requireSpotifyFollow}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requireSpotifyFollow: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requireSpotifyFollow: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <div>
                     <span className="font-medium">Seguir en Spotify</span>
-                    <p className="text-xs text-slc-muted">El usuario debe seguir al artista</p>
+                    <p className="text-xs text-slc-muted">
+                      El usuario debe seguir al artista
+                    </p>
                   </div>
                 </label>
 
@@ -754,12 +918,19 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                   <input
                     type="checkbox"
                     checked={formData.requireSpotifyPresave}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requireSpotifyPresave: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requireSpotifyPresave: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <div>
                     <span className="font-medium">Pre-save en Spotify</span>
-                    <p className="text-xs text-slc-muted">El usuario debe hacer presave del lanzamiento</p>
+                    <p className="text-xs text-slc-muted">
+                      El usuario debe hacer presave del lanzamiento
+                    </p>
                   </div>
                 </label>
               </div>
@@ -774,27 +945,48 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha de Inicio</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha de Inicio
+                  </label>
                   <Input
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        startDate: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha de Fin</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha de Fin
+                  </label>
                   <Input
                     type="date"
                     value={formData.endDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        endDate: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha de Lanzamiento</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha de Lanzamiento
+                  </label>
                   <Input
                     type="date"
                     value={formData.releaseDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, releaseDate: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        releaseDate: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               </div>
@@ -803,7 +995,9 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
             {/* Style Settings */}
             <StyleSettingsEditor
               value={formData.styleSettings}
-              onChange={(styleSettings) => setFormData(prev => ({ ...prev, styleSettings }))}
+              onChange={(styleSettings) =>
+                setFormData((prev) => ({ ...prev, styleSettings }))
+              }
             />
 
             {/* AI Video Studio (Runway) */}
@@ -817,7 +1011,10 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                   onVideoGenerated={(videoUrl) => {
                     // Auto-fill the preview video URL with the Runway output
                     if (videoUrl && !formData.previewVideoUrl) {
-                      setFormData(prev => ({ ...prev, previewVideoUrl: videoUrl }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        previewVideoUrl: videoUrl,
+                      }));
                     }
                   }}
                 />
@@ -826,7 +1023,9 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
             {!formData.coverImageUrl && (
               <div className="bg-slc-dark border border-slc-border rounded-xl p-8 text-center">
                 <Sparkles className="w-12 h-12 mx-auto mb-4 text-slc-muted opacity-50" />
-                <h3 className="font-oswald text-lg uppercase mb-2">AI Video Studio</h3>
+                <h3 className="font-oswald text-lg uppercase mb-2">
+                  AI Video Studio
+                </h3>
                 <p className="text-sm text-slc-muted mb-4">
                   Sube una portada para activar la generación de videos con IA.
                 </p>
@@ -909,7 +1108,12 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isActive: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Campaña Activa</span>
@@ -918,7 +1122,12 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
                   <input
                     type="checkbox"
                     checked={formData.isFeatured}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isFeatured: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Destacar</span>
@@ -926,11 +1135,7 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
               </div>
 
               <div className="space-y-3">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={saving}
-                >
+                <Button type="submit" className="w-full" disabled={saving}>
                   {saving ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (

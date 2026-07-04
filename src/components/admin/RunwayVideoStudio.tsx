@@ -1,39 +1,39 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Sparkles,
-  Video,
-  Loader2,
-  Check,
-  AlertTriangle,
-  Clock,
-  Smartphone,
-  Monitor,
-  Square,
-  Wand2,
-  Download,
-  RefreshCw,
-  Trash2,
-  ExternalLink,
-  Zap,
-  DollarSign,
-  Eye,
-  Play,
-  Pause,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Settings,
-} from "lucide-react";
-import {
+  PROMPT_TEMPLATES,
   RUNWAY_MODELS,
   RUNWAY_RATIOS,
-  PROMPT_TEMPLATES,
   type RunwayModel,
   type RunwayRatio,
 } from "@/lib/clients/runway";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  DollarSign,
+  Download,
+  ExternalLink,
+  Eye,
+  Loader2,
+  Monitor,
+  Pause,
+  Play,
+  RefreshCw,
+  Settings,
+  Smartphone,
+  Sparkles,
+  Square,
+  Trash2,
+  Video,
+  Wand2,
+  X,
+  Zap,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ============================================
 // TYPES
@@ -142,9 +142,14 @@ export function RunwayVideoStudio({
             setTasks((prev) =>
               prev.map((t) =>
                 t.id === taskId
-                  ? { ...t, status: task.status, output: task.output, error: task.error }
-                  : t
-              )
+                  ? {
+                      ...t,
+                      status: task.status,
+                      output: task.output,
+                      error: task.error,
+                    }
+                  : t,
+              ),
             );
 
             if (
@@ -160,7 +165,11 @@ export function RunwayVideoStudio({
               }
 
               // If succeeded, notify parent
-              if (task.status === "SUCCEEDED" && task.output && task.output[0]) {
+              if (
+                task.status === "SUCCEEDED" &&
+                task.output &&
+                task.output[0]
+              ) {
                 onVideoGenerated?.(task.output[0]);
               }
             }
@@ -177,7 +186,7 @@ export function RunwayVideoStudio({
       // Also poll immediately
       poll();
     },
-    [onVideoGenerated]
+    [onVideoGenerated],
   );
 
   // Quick generate
@@ -301,7 +310,7 @@ export function RunwayVideoStudio({
     try {
       await fetch(`/api/admin/runway/tasks/${taskId}`, { method: "DELETE" });
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: "CANCELLED" } : t))
+        prev.map((t) => (t.id === taskId ? { ...t, status: "CANCELLED" } : t)),
       );
       const timeout = pollingRef.current.get(taskId);
       if (timeout) {
@@ -370,11 +379,17 @@ export function RunwayVideoStudio({
 
   // Active tasks (still generating)
   const activeTasks = tasks.filter(
-    (t) => t.status === "PENDING" || t.status === "THROTTLED" || t.status === "RUNNING"
+    (t) =>
+      t.status === "PENDING" ||
+      t.status === "THROTTLED" ||
+      t.status === "RUNNING",
   );
 
   const completedTasks = tasks.filter(
-    (t) => t.status === "SUCCEEDED" || t.status === "FAILED" || t.status === "CANCELLED"
+    (t) =>
+      t.status === "SUCCEEDED" ||
+      t.status === "FAILED" ||
+      t.status === "CANCELLED",
   );
 
   return (
@@ -454,7 +469,9 @@ export function RunwayVideoStudio({
 
             {/* Template selection */}
             <div>
-              <label className="block text-sm text-slc-muted mb-2">Style Template</label>
+              <label className="block text-sm text-slc-muted mb-2">
+                Style Template
+              </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {PROMPT_TEMPLATES.slice(0, 8).map((template) => (
                   <button
@@ -468,7 +485,9 @@ export function RunwayVideoStudio({
                     }`}
                   >
                     <span className="font-medium block">{template.name}</span>
-                    <span className="text-slc-muted line-clamp-2 mt-0.5">{template.bestFor}</span>
+                    <span className="text-slc-muted line-clamp-2 mt-0.5">
+                      {template.bestFor}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -476,7 +495,9 @@ export function RunwayVideoStudio({
 
             {/* Orientation */}
             <div>
-              <label className="block text-sm text-slc-muted mb-2">Orientation</label>
+              <label className="block text-sm text-slc-muted mb-2">
+                Orientation
+              </label>
               <div className="flex gap-2">
                 {RUNWAY_RATIOS.slice(0, 3).map((r) => (
                   <button
@@ -510,7 +531,9 @@ export function RunwayVideoStudio({
                 <span className="font-medium">${cost.usd.toFixed(2)}</span>
                 <span className="text-slc-muted">({cost.credits} credits)</span>
               </div>
-              <span className="text-xs text-slc-muted">5 sec • Gen-4 Turbo</span>
+              <span className="text-xs text-slc-muted">
+                5 sec • Gen-4 Turbo
+              </span>
             </div>
 
             {/* Generate button */}
@@ -558,9 +581,13 @@ export function RunwayVideoStudio({
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm">{info.name}</span>
-                      <span className="text-xs text-green-500">${info.creditsPerSecond}/sec</span>
+                      <span className="text-xs text-green-500">
+                        ${info.creditsPerSecond}/sec
+                      </span>
                     </div>
-                    <p className="text-xs text-slc-muted mt-1">{info.description}</p>
+                    <p className="text-xs text-slc-muted mt-1">
+                      {info.description}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -568,15 +595,19 @@ export function RunwayVideoStudio({
 
             {/* Prompt template quick-fill */}
             <div>
-              <label className="block text-sm text-slc-muted mb-2">Prompt Template (optional)</label>
+              <label className="block text-sm text-slc-muted mb-2">
+                Prompt Template (optional)
+              </label>
               <select
                 value={customTemplate}
                 onChange={(e) => {
                   setCustomTemplate(e.target.value);
-                  const template = PROMPT_TEMPLATES.find((t) => t.id === e.target.value);
+                  const template = PROMPT_TEMPLATES.find(
+                    (t) => t.id === e.target.value,
+                  );
                   if (template) {
                     setCustomPrompt(
-                      `${template.prompt}, "${title}" by ${artistName}`
+                      `${template.prompt}, "${title}" by ${artistName}`,
                     );
                   }
                 }}
@@ -604,18 +635,22 @@ export function RunwayVideoStudio({
                 className="w-full px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary resize-none"
               />
               <p className="text-xs text-slc-muted mt-1">
-                Be descriptive: mention camera movements, lighting, effects, mood.
-                Include the artist name and title for best results.
+                Be descriptive: mention camera movements, lighting, effects,
+                mood. Include the artist name and title for best results.
               </p>
             </div>
 
             {/* Ratio and Duration */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Aspect Ratio</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Aspect Ratio
+                </label>
                 <select
                   value={customRatio}
-                  onChange={(e) => setCustomRatio(e.target.value as RunwayRatio)}
+                  onChange={(e) =>
+                    setCustomRatio(e.target.value as RunwayRatio)
+                  }
                   className="w-full px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                 >
                   {RUNWAY_RATIOS.map((r) => (
@@ -698,7 +733,9 @@ export function RunwayVideoStudio({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={task.status} />
-                      <span className="text-sm font-medium">{task.artistName} — {task.title}</span>
+                      <span className="text-sm font-medium">
+                        {task.artistName} — {task.title}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -748,48 +785,58 @@ export function RunwayVideoStudio({
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {task.status === "SUCCEEDED" && task.output && task.output[0] && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => onVideoGenerated?.(task.output![0])}
-                            className="text-xs text-primary hover:underline flex items-center gap-1"
-                          >
-                            <Video className="w-3 h-3" />
-                            Use in Generator
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDownload(task.output![0], task.id)}
-                            className="text-xs text-green-500 hover:underline flex items-center gap-1"
-                          >
-                            <Download className="w-3 h-3" />
-                            Download
-                          </button>
-                        </>
-                      )}
+                      {task.status === "SUCCEEDED" &&
+                        task.output &&
+                        task.output[0] && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onVideoGenerated?.(task.output?.[0] || "")
+                              }
+                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                              <Video className="w-3 h-3" />
+                              Use in Generator
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDownload(task.output?.[0] || "", task.id)
+                              }
+                              className="text-xs text-green-500 hover:underline flex items-center gap-1"
+                            >
+                              <Download className="w-3 h-3" />
+                              Download
+                            </button>
+                          </>
+                        )}
                     </div>
                   </div>
 
-                  {task.status === "SUCCEEDED" && task.output && task.output[0] && (
-                    <div className="mt-2 rounded-lg overflow-hidden bg-black max-h-[200px]">
-                      <video
-                        src={task.output[0]}
-                        controls
-                        className="w-full max-h-[200px] object-contain"
-                      />
-                    </div>
-                  )}
+                  {task.status === "SUCCEEDED" &&
+                    task.output &&
+                    task.output[0] && (
+                      <div className="mt-2 rounded-lg overflow-hidden bg-black max-h-[200px]">
+                        <video
+                          src={task.output[0]}
+                          controls
+                          className="w-full max-h-[200px] object-contain"
+                        />
+                      </div>
+                    )}
 
                   {task.status === "FAILED" && (
                     <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
                       <p className="text-xs text-red-400 font-medium">Error:</p>
                       <p className="text-xs text-red-400/80 mt-0.5">
-                        {task.error || "Error desconocido — Runway no proporcionó detalles"}
+                        {task.error ||
+                          "Error desconocido — Runway no proporcionó detalles"}
                       </p>
                       <p className="text-xs text-red-400/50 mt-1">
-                        Causas comunes: URL de imagen inaccesible, créditos insuficientes, o filtro de contenido.
-                        Intenta con otra plantilla o verifica tu cuenta en runwayml.com
+                        Causas comunes: URL de imagen inaccesible, créditos
+                        insuficientes, o filtro de contenido. Intenta con otra
+                        plantilla o verifica tu cuenta en runwayml.com
                       </p>
                     </div>
                   )}
@@ -849,17 +896,19 @@ export function RunwayVideoStudio({
           <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
           <div className="text-xs text-slc-muted space-y-1">
             <p>
-              <strong>How it works:</strong> Runway AI generates a short video from your cover art
-              using the style prompt you choose. The generated video can then be used in the
-              Video Generator to add countdown overlays, artist name, and pre-save CTAs.
+              <strong>How it works:</strong> Runway AI generates a short video
+              from your cover art using the style prompt you choose. The
+              generated video can then be used in the Video Generator to add
+              countdown overlays, artist name, and pre-save CTAs.
             </p>
             <p>
-              <strong>Output:</strong> 5-10 second MP4 video. Ephemeral URLs expire in ~24h —
-              download immediately or use in Video Generator.
+              <strong>Output:</strong> 5-10 second MP4 video. Ephemeral URLs
+              expire in ~24h — download immediately or use in Video Generator.
             </p>
             <p>
-              <strong>Cost:</strong> Gen-4 Turbo = $0.05/sec ($0.25 for 5s). Gen-4.5 = $0.12/sec ($0.60 for 5s).
-              Credits billed to your Runway account.
+              <strong>Cost:</strong> Gen-4 Turbo = $0.05/sec ($0.25 for 5s).
+              Gen-4.5 = $0.12/sec ($0.60 for 5s). Credits billed to your Runway
+              account.
             </p>
             <p>
               <strong>API & Credits:</strong>{" "}
@@ -870,8 +919,8 @@ export function RunwayVideoStudio({
                 className="text-primary hover:underline inline-flex items-center gap-1"
               >
                 Runway Developers <ExternalLink className="w-3 h-3" />
-              </a>
-              {" "}&mdash; manage API keys, credits, and view documentation.
+              </a>{" "}
+              &mdash; manage API keys, credits, and view documentation.
             </p>
           </div>
         </div>

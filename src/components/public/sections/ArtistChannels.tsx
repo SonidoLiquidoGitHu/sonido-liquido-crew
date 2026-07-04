@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
-import { Youtube, ChevronLeft, ChevronRight, Play, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Play,
+  Youtube,
+} from "lucide-react";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 
 // Type for artist data from /api/artists/roster
 interface RosterArtist {
@@ -52,7 +59,7 @@ export function ArtistChannels() {
           if (data.success && data.data?.length > 0) {
             // Only include artists that have YouTube channels
             const withYouTube = data.data.filter(
-              (artist: RosterArtist) => artist.youtubeUrl
+              (artist: RosterArtist) => artist.youtubeUrl,
             );
             setArtists(withYouTube);
           }
@@ -67,40 +74,43 @@ export function ArtistChannels() {
   }, []);
 
   // Fetch videos for the selected artist
-  const fetchArtistVideos = useCallback(async (artistSlug: string) => {
-    // Check cache first
-    if (artistVideos[artistSlug]) {
-      return;
-    }
-
-    setLoadingVideos(true);
-    try {
-      const res = await fetch(`/api/videos?artistSlug=${artistSlug}&limit=5`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.data?.length > 0) {
-          setArtistVideos(prev => ({
-            ...prev,
-            [artistSlug]: data.data
-          }));
-        } else {
-          // No videos found - store empty array
-          setArtistVideos(prev => ({
-            ...prev,
-            [artistSlug]: []
-          }));
-        }
+  const fetchArtistVideos = useCallback(
+    async (artistSlug: string) => {
+      // Check cache first
+      if (artistVideos[artistSlug]) {
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch artist videos:", error);
-      setArtistVideos(prev => ({
-        ...prev,
-        [artistSlug]: []
-      }));
-    } finally {
-      setLoadingVideos(false);
-    }
-  }, [artistVideos]);
+
+      setLoadingVideos(true);
+      try {
+        const res = await fetch(`/api/videos?artistSlug=${artistSlug}&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data?.length > 0) {
+            setArtistVideos((prev) => ({
+              ...prev,
+              [artistSlug]: data.data,
+            }));
+          } else {
+            // No videos found - store empty array
+            setArtistVideos((prev) => ({
+              ...prev,
+              [artistSlug]: [],
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch artist videos:", error);
+        setArtistVideos((prev) => ({
+          ...prev,
+          [artistSlug]: [],
+        }));
+      } finally {
+        setLoadingVideos(false);
+      }
+    },
+    [artistVideos],
+  );
 
   // Fetch videos when artist changes
   useEffect(() => {
@@ -112,9 +122,12 @@ export function ArtistChannels() {
 
   const selectedArtist = artists[selectedIndex];
   const channelUrl = selectedArtist?.youtubeUrl || null;
-  const channelHandle = selectedArtist?.youtubeHandle || selectedArtist?.name || "";
+  const channelHandle =
+    selectedArtist?.youtubeHandle || selectedArtist?.name || "";
   const color = selectedArtist?.tintColor || DEFAULT_COLOR;
-  const currentVideos = selectedArtist ? artistVideos[selectedArtist.slug] : undefined;
+  const currentVideos = selectedArtist
+    ? artistVideos[selectedArtist.slug]
+    : undefined;
   const featuredVideo = currentVideos?.[0];
 
   const handlePrev = () => {
@@ -126,7 +139,7 @@ export function ArtistChannels() {
   };
 
   const handleImageError = (slug: string) => {
-    setImageErrors(prev => ({ ...prev, [slug]: true }));
+    setImageErrors((prev) => ({ ...prev, [slug]: true }));
   };
 
   if (loading) {
@@ -156,7 +169,8 @@ export function ArtistChannels() {
           </h2>
         </div>
         <p className="text-gray-400 mb-8 max-w-2xl">
-          Explora el contenido de cada artista en YouTube. Freestyles, videos oficiales, sesiones en vivo y más.
+          Explora el contenido de cada artista en YouTube. Freestyles, videos
+          oficiales, sesiones en vivo y más.
         </p>
 
         {/* Artist Selector - Horizontal Scroll */}
@@ -181,7 +195,8 @@ export function ArtistChannels() {
           <div className="flex gap-2 overflow-x-auto scrollbar-hide px-10 py-2">
             {artists.map((artist, index) => {
               const artistColor = artist.tintColor || DEFAULT_COLOR;
-              const hasImage = artist.profileImageUrl && !imageErrors[artist.slug];
+              const hasImage =
+                artist.profileImageUrl && !imageErrors[artist.slug];
 
               return (
                 <button
@@ -189,20 +204,27 @@ export function ArtistChannels() {
                   onClick={() => setSelectedIndex(index)}
                   className={`
                     shrink-0 flex items-center gap-2 px-3 py-2 rounded-full font-medium text-sm transition-all duration-300
-                    ${selectedIndex === index
-                      ? "text-white scale-105 shadow-lg"
-                      : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                    ${
+                      selectedIndex === index
+                        ? "text-white scale-105 shadow-lg"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
                     }
                   `}
                   style={{
-                    backgroundColor: selectedIndex === index ? artistColor : undefined,
-                    boxShadow: selectedIndex === index ? `0 4px 20px ${artistColor}40` : undefined,
+                    backgroundColor:
+                      selectedIndex === index ? artistColor : undefined,
+                    boxShadow:
+                      selectedIndex === index
+                        ? `0 4px 20px ${artistColor}40`
+                        : undefined,
                   }}
                 >
                   {/* Profile Image */}
                   <div
                     className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ backgroundColor: !hasImage ? artistColor : undefined }}
+                    style={{
+                      backgroundColor: !hasImage ? artistColor : undefined,
+                    }}
                   >
                     {hasImage ? (
                       <Image
@@ -215,7 +237,9 @@ export function ArtistChannels() {
                         unoptimized
                       />
                     ) : (
-                      <span className="text-white">{artist.name.charAt(0)}</span>
+                      <span className="text-white">
+                        {artist.name.charAt(0)}
+                      </span>
                     )}
                   </div>
                   <span>{artist.name}</span>
@@ -230,14 +254,18 @@ export function ArtistChannels() {
           {/* Decorative border */}
           <div
             className="absolute -inset-1 rounded-xl opacity-50 blur-sm"
-            style={{ background: `linear-gradient(135deg, ${color}, transparent)` }}
+            style={{
+              background: `linear-gradient(135deg, ${color}, transparent)`,
+            }}
           />
 
           <div className="relative bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/10">
             {/* Channel Header with Profile Image */}
             <div
               className="flex items-center justify-between p-4 border-b border-white/10"
-              style={{ background: `linear-gradient(90deg, ${color}20, transparent)` }}
+              style={{
+                background: `linear-gradient(90deg, ${color}20, transparent)`,
+              }}
             >
               <div className="flex items-center gap-3">
                 {/* Profile Image in Header */}
@@ -245,10 +273,11 @@ export function ArtistChannels() {
                   className="w-12 h-12 rounded-full flex items-center justify-center font-oswald font-bold text-white text-lg overflow-hidden ring-2 ring-offset-2 ring-offset-[#0a0a0a]"
                   style={{
                     backgroundColor: color,
-                    boxShadow: `0 0 0 2px ${color}`
+                    boxShadow: `0 0 0 2px ${color}`,
                   }}
                 >
-                  {selectedArtist.profileImageUrl && !imageErrors[selectedArtist.slug] ? (
+                  {selectedArtist.profileImageUrl &&
+                  !imageErrors[selectedArtist.slug] ? (
                     <Image
                       src={selectedArtist.profileImageUrl}
                       alt={selectedArtist.name}
@@ -263,7 +292,9 @@ export function ArtistChannels() {
                   )}
                 </div>
                 <div>
-                  <h3 className="font-oswald text-xl text-white uppercase">{selectedArtist.name}</h3>
+                  <h3 className="font-oswald text-xl text-white uppercase">
+                    {selectedArtist.name}
+                  </h3>
                   <p className="text-gray-400 text-sm">{channelHandle}</p>
                 </div>
               </div>
@@ -289,15 +320,20 @@ export function ArtistChannels() {
               ) : featuredVideo ? (
                 <iframe
                   src={`https://www.youtube.com/embed/${featuredVideo.youtubeId}?rel=0&modestbranding=1`}
-                  title={featuredVideo.title || `Video de ${selectedArtist.name}`}
+                  title={
+                    featuredVideo.title || `Video de ${selectedArtist.name}`
+                  }
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
               ) : (
                 /* No videos - show channel link placeholder */
-                <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8"
-                  style={{ background: `linear-gradient(135deg, ${color}20, transparent)` }}
+                <div
+                  className="w-full h-full flex flex-col items-center justify-center gap-6 p-8"
+                  style={{
+                    background: `linear-gradient(135deg, ${color}20, transparent)`,
+                  }}
                 >
                   <div
                     className="w-24 h-24 rounded-full flex items-center justify-center"
@@ -312,11 +348,12 @@ export function ArtistChannels() {
                     <p className="text-gray-400 text-sm mb-4">
                       Visita el canal de YouTube para ver todos sus videos
                     </p>
-                    <Button
-                      asChild
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      <a href={channelUrl} target="_blank" rel="noopener noreferrer">
+                    <Button asChild className="bg-red-600 hover:bg-red-700">
+                      <a
+                        href={channelUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <ExternalLink className="w-4 h-4 mr-2" />
                         Ir al Canal
                       </a>
@@ -329,16 +366,23 @@ export function ArtistChannels() {
             {/* Video list if we have more than one */}
             {currentVideos && currentVideos.length > 1 && (
               <div className="p-4 border-t border-white/10">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Más videos de {selectedArtist.name}</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+                  Más videos de {selectedArtist.name}
+                </p>
                 <div className="flex gap-3 overflow-x-auto scrollbar-hide">
                   {currentVideos.slice(1, 5).map((video) => (
                     <button
                       key={video.id}
                       onClick={() => {
                         // Move this video to the front
-                        setArtistVideos(prev => ({
+                        setArtistVideos((prev) => ({
                           ...prev,
-                          [selectedArtist.slug]: [video, ...prev[selectedArtist.slug].filter(v => v.id !== video.id)]
+                          [selectedArtist.slug]: [
+                            video,
+                            ...prev[selectedArtist.slug].filter(
+                              (v) => v.id !== video.id,
+                            ),
+                          ],
                         }));
                       }}
                       className="shrink-0 group relative w-40 aspect-video rounded-lg overflow-hidden bg-black/50 hover:ring-2 hover:ring-red-500 transition-all"
@@ -369,11 +413,14 @@ export function ArtistChannels() {
 
         {/* Quick Links - All Channels with Images */}
         <div className="mt-8 pt-8 border-t border-white/10">
-          <h4 className="text-gray-400 text-sm uppercase tracking-wider mb-4">Todos los canales</h4>
+          <h4 className="text-gray-400 text-sm uppercase tracking-wider mb-4">
+            Todos los canales
+          </h4>
           <div className="flex flex-wrap gap-2">
             {artists.map((artist) => {
               const artistColor = artist.tintColor || DEFAULT_COLOR;
-              const hasImage = artist.profileImageUrl && !imageErrors[artist.slug];
+              const hasImage =
+                artist.profileImageUrl && !imageErrors[artist.slug];
               const ytUrl = artist.youtubeUrl;
 
               return (
@@ -400,7 +447,9 @@ export function ArtistChannels() {
                         unoptimized
                       />
                     ) : (
-                      <span className="text-white">{artist.name.charAt(0)}</span>
+                      <span className="text-white">
+                        {artist.name.charAt(0)}
+                      </span>
                     )}
                   </div>
                   <Youtube className="w-3 h-3" />

@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Edit,
+  ExternalLink,
+  Loader2,
+  MapPin,
   Plus,
   Search,
-  Edit,
-  Trash2,
-  ExternalLink,
-  Calendar,
-  MapPin,
-  Clock,
-  Ticket,
   Star,
-  AlertTriangle,
-  CheckCircle,
-  Loader2,
+  Ticket,
+  Trash2,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Event {
   id: string;
@@ -41,7 +41,10 @@ export default function AdminEventsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("all");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -105,7 +108,9 @@ export default function AdminEventsPage() {
     });
   };
 
-  const upcomingCount = events.filter((e) => new Date(e.eventDate) >= now).length;
+  const upcomingCount = events.filter(
+    (e) => new Date(e.eventDate) >= now,
+  ).length;
   const pastCount = events.filter((e) => new Date(e.eventDate) < now).length;
 
   return (
@@ -184,11 +189,15 @@ export default function AdminEventsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-primary">{events.length}</div>
+          <div className="font-oswald text-2xl text-primary">
+            {events.length}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Total</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-green-500">{upcomingCount}</div>
+          <div className="font-oswald text-2xl text-green-500">
+            {upcomingCount}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Próximos</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">

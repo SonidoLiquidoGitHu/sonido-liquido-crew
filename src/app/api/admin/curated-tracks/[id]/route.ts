@@ -1,20 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedTracks } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 // GET - Get a single curated track
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     const [track] = await db
@@ -26,7 +29,7 @@ export async function GET(
     if (!track) {
       return NextResponse.json(
         { success: false, error: "Track not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -38,7 +41,7 @@ export async function GET(
     console.error("[Curated Tracks API] Error fetching track:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching track" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,14 +49,17 @@ export async function GET(
 // PUT - Update a curated track
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const body = await request.json();
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     const { isAvailableForPlaylist, isFeatured, adminNotes } = body;
@@ -68,7 +74,7 @@ export async function PUT(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Track not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -77,14 +83,12 @@ export async function PUT(
       updatedAt: new Date(),
     };
 
-    if (isAvailableForPlaylist !== undefined) updates.isAvailableForPlaylist = isAvailableForPlaylist;
+    if (isAvailableForPlaylist !== undefined)
+      updates.isAvailableForPlaylist = isAvailableForPlaylist;
     if (isFeatured !== undefined) updates.isFeatured = isFeatured;
     if (adminNotes !== undefined) updates.adminNotes = adminNotes;
 
-    await db
-      .update(curatedTracks)
-      .set(updates)
-      .where(eq(curatedTracks.id, id));
+    await db.update(curatedTracks).set(updates).where(eq(curatedTracks.id, id));
 
     return NextResponse.json({
       success: true,
@@ -94,7 +98,7 @@ export async function PUT(
     console.error("[Curated Tracks API] Error updating track:", error);
     return NextResponse.json(
       { success: false, error: "Error updating track" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -102,13 +106,16 @@ export async function PUT(
 // DELETE - Remove a curated track
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     // Check if exists
@@ -121,14 +128,12 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Track not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Delete
-    await db
-      .delete(curatedTracks)
-      .where(eq(curatedTracks.id, id));
+    await db.delete(curatedTracks).where(eq(curatedTracks.id, id));
 
     return NextResponse.json({
       success: true,
@@ -138,7 +143,7 @@ export async function DELETE(
     console.error("[Curated Tracks API] Error deleting track:", error);
     return NextResponse.json(
       { success: false, error: "Error deleting track" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

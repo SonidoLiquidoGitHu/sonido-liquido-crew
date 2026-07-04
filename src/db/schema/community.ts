@@ -3,7 +3,7 @@
 // ===========================================
 // Features: Fan Wall, User Playlists, Concert Memories, Collaboration Stories
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // FAN WALL / GUESTBOOK
@@ -42,8 +42,12 @@ export const fanWallMessages = sqliteTable("fan_wall_messages", {
   position: integer("position"), // For visual wall layout
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type FanWallMessage = typeof fanWallMessages.$inferSelect;
@@ -75,8 +79,12 @@ export const userPlaylists = sqliteTable("user_playlists", {
   shareCount: integer("share_count").default(0),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type UserPlaylist = typeof userPlaylists.$inferSelect;
@@ -103,7 +111,9 @@ export const userPlaylistTracks = sqliteTable("user_playlist_tracks", {
   position: integer("position").notNull().default(0),
 
   // Timestamps
-  addedAt: integer("added_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  addedAt: integer("added_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type UserPlaylistTrack = typeof userPlaylistTracks.$inferSelect;
@@ -152,8 +162,12 @@ export const concertMemories = sqliteTable("concert_memories", {
   viewCount: integer("view_count").default(0),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type ConcertMemory = typeof concertMemories.$inferSelect;
@@ -176,8 +190,12 @@ export const collaborationStories = sqliteTable("collaboration_stories", {
   story: text("story"), // Rich text / markdown
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type CollaborationStory = typeof collaborationStories.$inferSelect;
@@ -209,7 +227,9 @@ export const releaseCollaborators = sqliteTable("release_collaborators", {
   // Order
   position: integer("position").default(0),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type ReleaseCollaborator = typeof releaseCollaborators.$inferSelect;
@@ -237,7 +257,9 @@ export const storyMedia = sqliteTable("story_media", {
   // Order
   position: integer("position").default(0),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type StoryMedia = typeof storyMedia.$inferSelect;
@@ -268,11 +290,17 @@ export const trackLyrics = sqliteTable("track_lyrics", {
   lyricsContributor: text("lyrics_contributor"),
 
   // Status
-  hasSyncedLyrics: integer("has_synced_lyrics", { mode: "boolean" }).default(false),
+  hasSyncedLyrics: integer("has_synced_lyrics", { mode: "boolean" }).default(
+    false,
+  ),
   isVerified: integer("is_verified", { mode: "boolean" }).default(false),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type TrackLyrics = typeof trackLyrics.$inferSelect;
@@ -299,7 +327,9 @@ export const syncedLyricLines = sqliteTable("synced_lyric_lines", {
   isChorus: integer("is_chorus", { mode: "boolean" }).default(false),
   speaker: text("speaker"), // For multiple voices
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type SyncedLyricLine = typeof syncedLyricLines.$inferSelect;
@@ -327,16 +357,26 @@ export const playlistCollaborators = sqliteTable("playlist_collaborators", {
 
   // Permissions
   canAddTracks: integer("can_add_tracks", { mode: "boolean" }).default(true),
-  canRemoveTracks: integer("can_remove_tracks", { mode: "boolean" }).default(false),
-  canEditDetails: integer("can_edit_details", { mode: "boolean" }).default(false),
-  canInviteOthers: integer("can_invite_others", { mode: "boolean" }).default(false),
+  canRemoveTracks: integer("can_remove_tracks", { mode: "boolean" }).default(
+    false,
+  ),
+  canEditDetails: integer("can_edit_details", { mode: "boolean" }).default(
+    false,
+  ),
+  canInviteOthers: integer("can_invite_others", { mode: "boolean" }).default(
+    false,
+  ),
 
   // Status
   isActive: integer("is_active", { mode: "boolean" }).default(true),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type PlaylistCollaborator = typeof playlistCollaborators.$inferSelect;
@@ -357,8 +397,12 @@ export const trustedContributors = sqliteTable("trusted_contributors", {
 
   // Trust settings
   trustLevel: integer("trust_level").default(1), // 1=basic, 2=verified, 3=vip
-  autoApproveMessages: integer("auto_approve_messages", { mode: "boolean" }).default(true),
-  autoApprovePhotos: integer("auto_approve_photos", { mode: "boolean" }).default(true),
+  autoApproveMessages: integer("auto_approve_messages", {
+    mode: "boolean",
+  }).default(true),
+  autoApprovePhotos: integer("auto_approve_photos", {
+    mode: "boolean",
+  }).default(true),
   autoFeature: integer("auto_feature", { mode: "boolean" }).default(false),
 
   // Reason for trust
@@ -373,8 +417,12 @@ export const trustedContributors = sqliteTable("trusted_contributors", {
   isActive: integer("is_active", { mode: "boolean" }).default(true),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type TrustedContributor = typeof trustedContributors.$inferSelect;
@@ -399,8 +447,12 @@ export const playlistEmbedStats = sqliteTable("playlist_embed_stats", {
   playCount: integer("play_count").default(0),
 
   // First and last seen
-  firstSeenAt: integer("first_seen_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  lastSeenAt: integer("last_seen_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  firstSeenAt: integer("first_seen_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type PlaylistEmbedStats = typeof playlistEmbedStats.$inferSelect;

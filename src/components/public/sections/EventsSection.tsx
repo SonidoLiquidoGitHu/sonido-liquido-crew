@@ -1,22 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { ArrowRight, Calendar, MapPin, History, CalendarDays, LayoutGrid } from "lucide-react";
-import { EventCard } from "../cards/EventCard";
-import { SafeImage } from "@/components/ui/safe-image";
-import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
+import type { Event } from "@/types";
+import {
+  ArrowRight,
+  Calendar,
+  CalendarDays,
+  History,
+  LayoutGrid,
+  MapPin,
+} from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { EventCard } from "../cards/EventCard";
 
 interface EventsSectionProps {
   upcomingEvents: Event[];
   pastEvents: Event[];
 }
 
-export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps) {
+export function EventsSection({
+  upcomingEvents,
+  pastEvents,
+}: EventsSectionProps) {
   // Default to "all" to show all events
-  const [activeTab, setActiveTab] = useState<"all" | "upcoming" | "past">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "upcoming" | "past">(
+    "all",
+  );
 
   // Get featured event (first upcoming one)
   const [featuredEvent, ...restUpcoming] = upcomingEvents;
@@ -41,7 +53,11 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
               Conciertos, fiestas y presentaciones en vivo
             </p>
           </div>
-          <Button asChild variant="outline" className="shrink-0 border-gray-600 text-white hover:bg-white/10">
+          <Button
+            asChild
+            variant="outline"
+            className="shrink-0 border-gray-600 text-white hover:bg-white/10"
+          >
             <Link href="/eventos">
               Ver calendario
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -57,15 +73,17 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
               "flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-300",
               activeTab === "all"
                 ? "bg-white text-black shadow-lg"
-                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
             )}
           >
             <LayoutGrid className="w-4 h-4" />
             Todos
-            <span className={cn(
-              "px-2 py-0.5 rounded-full text-xs",
-              activeTab === "all" ? "bg-black/20" : "bg-white/10"
-            )}>
+            <span
+              className={cn(
+                "px-2 py-0.5 rounded-full text-xs",
+                activeTab === "all" ? "bg-black/20" : "bg-white/10",
+              )}
+            >
               {totalEvents}
             </span>
           </button>
@@ -75,16 +93,18 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
               "flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-300",
               activeTab === "upcoming"
                 ? "bg-primary text-white shadow-lg shadow-primary/30"
-                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
             )}
           >
             <CalendarDays className="w-4 h-4" />
             Próximos
             {hasUpcoming && (
-              <span className={cn(
-                "px-2 py-0.5 rounded-full text-xs",
-                activeTab === "upcoming" ? "bg-white/20" : "bg-white/10"
-              )}>
+              <span
+                className={cn(
+                  "px-2 py-0.5 rounded-full text-xs",
+                  activeTab === "upcoming" ? "bg-white/20" : "bg-white/10",
+                )}
+              >
                 {upcomingEvents.length}
               </span>
             )}
@@ -95,16 +115,18 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
               "flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-300",
               activeTab === "past"
                 ? "bg-gray-700 text-white shadow-lg"
-                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
             )}
           >
             <History className="w-4 h-4" />
             Anteriores
             {hasPast && (
-              <span className={cn(
-                "px-2 py-0.5 rounded-full text-xs",
-                activeTab === "past" ? "bg-white/20" : "bg-white/10"
-              )}>
+              <span
+                className={cn(
+                  "px-2 py-0.5 rounded-full text-xs",
+                  activeTab === "past" ? "bg-white/20" : "bg-white/10",
+                )}
+              >
                 {pastEvents.length}
               </span>
             )}
@@ -124,8 +146,8 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
                   Sin eventos
                 </h3>
                 <p className="text-gray-400 max-w-md mx-auto">
-                  No hay eventos registrados aún.
-                  Síguenos en redes sociales para enterarte de los próximos shows.
+                  No hay eventos registrados aún. Síguenos en redes sociales
+                  para enterarte de los próximos shows.
                 </p>
               </div>
             ) : (
@@ -135,7 +157,9 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
                   <div>
                     <div className="flex items-center gap-3 mb-4">
                       <CalendarDays className="w-5 h-5 text-primary" />
-                      <h3 className="font-oswald text-lg uppercase text-white">Próximos Eventos</h3>
+                      <h3 className="font-oswald text-lg uppercase text-white">
+                        Próximos Eventos
+                      </h3>
                       <div className="h-px flex-1 bg-gradient-to-r from-primary/50 to-transparent" />
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -160,7 +184,9 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
                   <div>
                     <div className="flex items-center gap-3 mb-4">
                       <History className="w-5 h-5 text-gray-500" />
-                      <h3 className="font-oswald text-lg uppercase text-gray-400">Eventos Anteriores</h3>
+                      <h3 className="font-oswald text-lg uppercase text-gray-400">
+                        Eventos Anteriores
+                      </h3>
                       <div className="h-px flex-1 bg-gradient-to-r from-gray-700 to-transparent" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -199,8 +225,8 @@ export function EventsSection({ upcomingEvents, pastEvents }: EventsSectionProps
                   Próximamente
                 </h3>
                 <p className="text-gray-400 max-w-md mx-auto">
-                  No hay eventos programados en este momento.
-                  Síguenos en redes sociales para enterarte de los próximos shows.
+                  No hay eventos programados en este momento. Síguenos en redes
+                  sociales para enterarte de los próximos shows.
                 </p>
               </div>
             ) : (
@@ -293,7 +319,7 @@ function PastEventCard({ event }: { event: Event }) {
   const eventDate = new Date(event.eventDate);
 
   // Guard against invalid dates
-  const isValidDate = !isNaN(eventDate.getTime());
+  const isValidDate = !Number.isNaN(eventDate.getTime());
   const displayDay = isValidDate ? eventDate.getDate() : "?";
   const displayMonth = isValidDate
     ? eventDate.toLocaleDateString("es-MX", { month: "short" })
@@ -352,7 +378,9 @@ function PastEventCard({ event }: { event: Event }) {
         <div className="flex items-center gap-3 text-xs text-gray-500">
           <span className="flex items-center gap-1 truncate">
             <MapPin className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{event.venue}, {event.city}</span>
+            <span className="truncate">
+              {event.venue}, {event.city}
+            </span>
           </span>
         </div>
       </div>

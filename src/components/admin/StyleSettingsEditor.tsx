@@ -1,49 +1,49 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Palette,
-  Type,
-  Sparkles,
-  Monitor,
+  type ResponsiveBreakpoint,
+  type StyleSettings,
+  animationKeyframes,
+  animationPresets,
+  availableFonts,
+  backgroundStyles,
+  colorPresets,
+  defaultStyleSettings,
+  fontCategories,
+  getGoogleFontsUrl,
+  responsiveBreakpoints,
+  stylePresets,
+  titleStyles,
+} from "@/lib/style-config";
+import {
+  Check,
   ChevronDown,
   ChevronUp,
-  Check,
-  RotateCcw,
-  Image as ImageIcon,
-  Zap,
-  Layout,
   Eye,
-  X,
-  Wand2,
-  Play,
-  Moon,
-  Sun,
-  Smartphone,
-  Tablet,
-  Save,
   FolderOpen,
-  User,
+  Image as ImageIcon,
+  Layout,
   Link2,
+  Monitor,
+  Moon,
+  Palette,
+  Play,
+  RotateCcw,
+  Save,
+  Smartphone,
+  Sparkles,
+  Sun,
+  Tablet,
+  Type,
+  User,
+  Wand2,
+  X,
+  Zap,
 } from "lucide-react";
-import {
-  availableFonts,
-  fontCategories,
-  colorPresets,
-  backgroundStyles,
-  titleStyles,
-  animationPresets,
-  stylePresets,
-  defaultStyleSettings,
-  getGoogleFontsUrl,
-  animationKeyframes,
-  responsiveBreakpoints,
-  type StyleSettings,
-  type ResponsiveBreakpoint,
-} from "@/lib/style-config";
+import { useEffect, useState } from "react";
 
 interface CustomStyle {
   id: string;
@@ -81,10 +81,14 @@ export function StyleSettingsEditor({
   category = "general",
 }: StyleSettingsEditorProps) {
   const [isExpanded, setIsExpanded] = useState(true); // Start expanded by default
-  const [activeTab, setActiveTab] = useState<"presets" | "colors" | "fonts" | "effects" | "background" | "library">("presets");
-  const [selectedFontCategory, setSelectedFontCategory] = useState<string>("display");
+  const [activeTab, setActiveTab] = useState<
+    "presets" | "colors" | "fonts" | "effects" | "background" | "library"
+  >("presets");
+  const [selectedFontCategory, setSelectedFontCategory] =
+    useState<string>("display");
   const [showFullPreview, setShowFullPreview] = useState(false);
-  const [previewMode, setPreviewMode] = useState<ResponsiveBreakpoint>("desktop");
+  const [previewMode, setPreviewMode] =
+    useState<ResponsiveBreakpoint>("desktop");
   const [savedStyles, setSavedStyles] = useState<CustomStyle[]>([]);
   const [artistStyle, setArtistStyle] = useState<ArtistStyle | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -148,7 +152,7 @@ export function StyleSettingsEditor({
   };
 
   const handleColorPresetChange = (presetValue: string) => {
-    const preset = colorPresets.find(p => p.value === presetValue);
+    const preset = colorPresets.find((p) => p.value === presetValue);
     if (preset && preset.value !== "custom") {
       onChange({
         ...value,
@@ -166,7 +170,7 @@ export function StyleSettingsEditor({
   };
 
   const applyPreset = (presetId: string) => {
-    const preset = stylePresets.find(p => p.id === presetId);
+    const preset = stylePresets.find((p) => p.id === presetId);
     if (preset) {
       onChange({
         ...value,
@@ -194,7 +198,9 @@ export function StyleSettingsEditor({
   const toggleDarkMode = () => {
     const newDarkMode = !settings.darkMode;
     // When switching modes, also update background style if needed
-    const currentBg = backgroundStyles.find(bg => bg.value === settings.backgroundStyle);
+    const currentBg = backgroundStyles.find(
+      (bg) => bg.value === settings.backgroundStyle,
+    );
     let newBackgroundStyle = settings.backgroundStyle;
 
     if (currentBg?.mode === "dark" && !newDarkMode) {
@@ -264,9 +270,12 @@ export function StyleSettingsEditor({
     { id: "library", label: "Librería", icon: FolderOpen },
   ];
 
-  const filteredFonts = availableFonts.filter(f => f.category === selectedFontCategory);
+  const filteredFonts = availableFonts.filter(
+    (f) => f.category === selectedFontCategory,
+  );
   const filteredBackgrounds = backgroundStyles.filter(
-    bg => bg.mode === "both" || bg.mode === (settings.darkMode ? "dark" : "light")
+    (bg) =>
+      bg.mode === "both" || bg.mode === (settings.darkMode ? "dark" : "light"),
   );
 
   return (
@@ -287,8 +296,12 @@ export function StyleSettingsEditor({
             <Palette className="w-5 h-5 text-white" />
           </div>
           <div className="text-left">
-            <h3 className="font-oswald text-xl uppercase text-primary">Personalización Visual</h3>
-            <p className="text-sm text-slc-muted">Colores, fuentes, animaciones y más</p>
+            <h3 className="font-oswald text-xl uppercase text-primary">
+              Personalización Visual
+            </h3>
+            <p className="text-sm text-slc-muted">
+              Colores, fuentes, animaciones y más
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -300,11 +313,17 @@ export function StyleSettingsEditor({
               toggleDarkMode();
             }}
             className={`p-2 rounded-lg transition-colors ${
-              settings.darkMode ? "bg-zinc-800 text-yellow-400" : "bg-yellow-100 text-yellow-600"
+              settings.darkMode
+                ? "bg-zinc-800 text-yellow-400"
+                : "bg-yellow-100 text-yellow-600"
             }`}
             title={settings.darkMode ? "Modo Oscuro" : "Modo Claro"}
           >
-            {settings.darkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            {settings.darkMode ? (
+              <Moon className="w-4 h-4" />
+            ) : (
+              <Sun className="w-4 h-4" />
+            )}
           </button>
 
           {showPreview && (
@@ -381,11 +400,13 @@ export function StyleSettingsEditor({
                 settings.darkMode ? "" : "border border-gray-200"
               }`}
               style={{
-                background: settings.backgroundStyle === "custom-image" && settings.backgroundImageUrl
-                  ? `linear-gradient(rgba(0,0,0,${settings.backgroundOverlayOpacity / 100}), rgba(0,0,0,${settings.backgroundOverlayOpacity / 100})), url(${settings.backgroundImageUrl})`
-                  : settings.darkMode
-                  ? `linear-gradient(135deg, ${settings.primaryColor}20, ${settings.secondaryColor}10)`
-                  : `linear-gradient(135deg, ${settings.primaryColor}10, white)`,
+                background:
+                  settings.backgroundStyle === "custom-image" &&
+                  settings.backgroundImageUrl
+                    ? `linear-gradient(rgba(0,0,0,${settings.backgroundOverlayOpacity / 100}), rgba(0,0,0,${settings.backgroundOverlayOpacity / 100})), url(${settings.backgroundImageUrl})`
+                    : settings.darkMode
+                      ? `linear-gradient(135deg, ${settings.primaryColor}20, ${settings.secondaryColor}10)`
+                      : `linear-gradient(135deg, ${settings.primaryColor}10, white)`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 borderColor: settings.primaryColor,
@@ -394,22 +415,34 @@ export function StyleSettingsEditor({
             >
               <p
                 className={`text-2xl mb-2 ${
-                  availableFonts.find(f => f.value === settings.titleFont)?.className || "font-oswald"
+                  availableFonts.find((f) => f.value === settings.titleFont)
+                    ?.className || "font-oswald"
                 } ${settings.titleStyle === "uppercase" ? "uppercase" : ""}`}
                 style={{
-                  color: settings.titleStyle === "gradient" ? "transparent" : (settings.darkMode ? settings.primaryColor : settings.primaryColor),
-                  background: settings.titleStyle === "gradient"
-                    ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
-                    : undefined,
-                  WebkitBackgroundClip: settings.titleStyle === "gradient" ? "text" : undefined,
-                  textShadow: settings.titleStyle === "shadow" ? `0 0 25px ${settings.primaryColor}` : undefined,
+                  color:
+                    settings.titleStyle === "gradient"
+                      ? "transparent"
+                      : settings.darkMode
+                        ? settings.primaryColor
+                        : settings.primaryColor,
+                  background:
+                    settings.titleStyle === "gradient"
+                      ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
+                      : undefined,
+                  WebkitBackgroundClip:
+                    settings.titleStyle === "gradient" ? "text" : undefined,
+                  textShadow:
+                    settings.titleStyle === "shadow"
+                      ? `0 0 25px ${settings.primaryColor}`
+                      : undefined,
                 }}
               >
                 {previewTitle}
               </p>
               <p
                 className={`text-sm opacity-80 ${
-                  availableFonts.find(f => f.value === settings.bodyFont)?.className || "font-sans"
+                  availableFonts.find((f) => f.value === settings.bodyFont)
+                    ?.className || "font-sans"
                 }`}
                 style={{ color: settings.darkMode ? "#999" : "#666" }}
               >
@@ -419,26 +452,39 @@ export function StyleSettingsEditor({
                 type="button"
                 className="mt-4 px-6 py-2 text-sm font-medium transition-all"
                 style={{
-                  background: settings.buttonStyle === "gradient"
-                    ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
-                    : settings.buttonStyle === "solid"
-                    ? settings.primaryColor
-                    : settings.buttonStyle === "glass"
-                    ? "rgba(255,255,255,0.1)"
-                    : "transparent",
-                  border: settings.buttonStyle === "outline"
-                    ? `2px solid ${settings.primaryColor}`
-                    : settings.buttonStyle === "glass"
-                    ? "1px solid rgba(255,255,255,0.2)"
-                    : "none",
-                  backdropFilter: settings.buttonStyle === "glass" ? "blur(10px)" : undefined,
-                  borderRadius: settings.buttonRounded === "full" ? "9999px"
-                    : settings.buttonRounded === "lg" ? "0.5rem"
-                    : settings.buttonRounded === "md" ? "0.375rem"
-                    : settings.buttonRounded === "sm" ? "0.25rem"
-                    : "0",
-                  color: settings.buttonStyle === "outline" ? settings.primaryColor : "white",
-                  boxShadow: settings.enableGlow ? `0 5px 20px -5px ${settings.primaryColor}50` : undefined,
+                  background:
+                    settings.buttonStyle === "gradient"
+                      ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
+                      : settings.buttonStyle === "solid"
+                        ? settings.primaryColor
+                        : settings.buttonStyle === "glass"
+                          ? "rgba(255,255,255,0.1)"
+                          : "transparent",
+                  border:
+                    settings.buttonStyle === "outline"
+                      ? `2px solid ${settings.primaryColor}`
+                      : settings.buttonStyle === "glass"
+                        ? "1px solid rgba(255,255,255,0.2)"
+                        : "none",
+                  backdropFilter:
+                    settings.buttonStyle === "glass" ? "blur(10px)" : undefined,
+                  borderRadius:
+                    settings.buttonRounded === "full"
+                      ? "9999px"
+                      : settings.buttonRounded === "lg"
+                        ? "0.5rem"
+                        : settings.buttonRounded === "md"
+                          ? "0.375rem"
+                          : settings.buttonRounded === "sm"
+                            ? "0.25rem"
+                            : "0",
+                  color:
+                    settings.buttonStyle === "outline"
+                      ? settings.primaryColor
+                      : "white",
+                  boxShadow: settings.enableGlow
+                    ? `0 5px 20px -5px ${settings.primaryColor}50`
+                    : undefined,
                 }}
               >
                 Botón de Ejemplo
@@ -452,7 +498,8 @@ export function StyleSettingsEditor({
             {activeTab === "presets" && (
               <div className="space-y-4">
                 <p className="text-sm text-slc-muted">
-                  Selecciona un preset para aplicar un estilo completo rápidamente.
+                  Selecciona un preset para aplicar un estilo completo
+                  rápidamente.
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {stylePresets.map((preset) => (
@@ -469,9 +516,13 @@ export function StyleSettingsEditor({
                         }}
                       />
                       <p className="font-medium text-sm">{preset.name}</p>
-                      <p className="text-xs text-slc-muted line-clamp-1">{preset.description}</p>
+                      <p className="text-xs text-slc-muted line-clamp-1">
+                        {preset.description}
+                      </p>
                       <div className="absolute inset-0 rounded-lg bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="bg-primary text-white text-xs px-3 py-1 rounded-full">Aplicar</span>
+                        <span className="bg-primary text-white text-xs px-3 py-1 rounded-full">
+                          Aplicar
+                        </span>
                       </div>
                     </button>
                   ))}
@@ -526,65 +577,89 @@ export function StyleSettingsEditor({
                 {settings.colorPreset === "custom" && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slc-card rounded-lg">
                     <div>
-                      <label className="block text-xs text-slc-muted mb-1">Primario</label>
+                      <label className="block text-xs text-slc-muted mb-1">
+                        Primario
+                      </label>
                       <div className="flex gap-2">
                         <input
                           type="color"
                           value={settings.primaryColor}
-                          onChange={(e) => handleChange("primaryColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("primaryColor", e.target.value)
+                          }
                           className="w-10 h-10 rounded cursor-pointer"
                         />
                         <Input
                           value={settings.primaryColor}
-                          onChange={(e) => handleChange("primaryColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("primaryColor", e.target.value)
+                          }
                           className="flex-1 text-xs"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-slc-muted mb-1">Secundario</label>
+                      <label className="block text-xs text-slc-muted mb-1">
+                        Secundario
+                      </label>
                       <div className="flex gap-2">
                         <input
                           type="color"
                           value={settings.secondaryColor}
-                          onChange={(e) => handleChange("secondaryColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("secondaryColor", e.target.value)
+                          }
                           className="w-10 h-10 rounded cursor-pointer"
                         />
                         <Input
                           value={settings.secondaryColor}
-                          onChange={(e) => handleChange("secondaryColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("secondaryColor", e.target.value)
+                          }
                           className="flex-1 text-xs"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-slc-muted mb-1">Acento</label>
+                      <label className="block text-xs text-slc-muted mb-1">
+                        Acento
+                      </label>
                       <div className="flex gap-2">
                         <input
                           type="color"
                           value={settings.accentColor}
-                          onChange={(e) => handleChange("accentColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("accentColor", e.target.value)
+                          }
                           className="w-10 h-10 rounded cursor-pointer"
                         />
                         <Input
                           value={settings.accentColor}
-                          onChange={(e) => handleChange("accentColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("accentColor", e.target.value)
+                          }
                           className="flex-1 text-xs"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-slc-muted mb-1">Texto</label>
+                      <label className="block text-xs text-slc-muted mb-1">
+                        Texto
+                      </label>
                       <div className="flex gap-2">
                         <input
                           type="color"
                           value={settings.textColor}
-                          onChange={(e) => handleChange("textColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("textColor", e.target.value)
+                          }
                           className="w-10 h-10 rounded cursor-pointer"
                         />
                         <Input
                           value={settings.textColor}
-                          onChange={(e) => handleChange("textColor", e.target.value)}
+                          onChange={(e) =>
+                            handleChange("textColor", e.target.value)
+                          }
                           className="flex-1 text-xs"
                         />
                       </div>
@@ -617,7 +692,9 @@ export function StyleSettingsEditor({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Fuente de Títulos</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Fuente de Títulos
+                    </label>
                     <div className="space-y-1 max-h-48 overflow-y-auto">
                       {filteredFonts.map((font) => (
                         <button
@@ -630,38 +707,55 @@ export function StyleSettingsEditor({
                               : "border-slc-border hover:border-white/30"
                           }`}
                         >
-                          <span className={`${font.className} text-lg`}>{font.preview}</span>
-                          <span className="text-xs text-slc-muted">{font.label}</span>
+                          <span className={`${font.className} text-lg`}>
+                            {font.preview}
+                          </span>
+                          <span className="text-xs text-slc-muted">
+                            {font.label}
+                          </span>
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Fuente de Cuerpo</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Fuente de Cuerpo
+                    </label>
                     <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {availableFonts.filter(f => f.category === "sans" || f.category === "serif").map((font) => (
-                        <button
-                          key={font.value}
-                          type="button"
-                          onClick={() => handleChange("bodyFont", font.value)}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${
-                            settings.bodyFont === font.value
-                              ? "border-primary bg-primary/10"
-                              : "border-slc-border hover:border-white/30"
-                          }`}
-                        >
-                          <span className={`${font.className}`}>{font.preview}</span>
-                          <span className="text-xs text-slc-muted">{font.label}</span>
-                        </button>
-                      ))}
+                      {availableFonts
+                        .filter(
+                          (f) =>
+                            f.category === "sans" || f.category === "serif",
+                        )
+                        .map((font) => (
+                          <button
+                            key={font.value}
+                            type="button"
+                            onClick={() => handleChange("bodyFont", font.value)}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${
+                              settings.bodyFont === font.value
+                                ? "border-primary bg-primary/10"
+                                : "border-slc-border hover:border-white/30"
+                            }`}
+                          >
+                            <span className={`${font.className}`}>
+                              {font.preview}
+                            </span>
+                            <span className="text-xs text-slc-muted">
+                              {font.label}
+                            </span>
+                          </button>
+                        ))}
                     </div>
                   </div>
                 </div>
 
                 {/* Title Style */}
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Estilo de Títulos</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Estilo de Títulos
+                  </label>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {titleStyles.map((style) => (
                       <button
@@ -696,7 +790,9 @@ export function StyleSettingsEditor({
                       <button
                         key={anim.value}
                         type="button"
-                        onClick={() => handleChange("animationPreset", anim.value)}
+                        onClick={() =>
+                          handleChange("animationPreset", anim.value)
+                        }
                         className={`p-3 rounded-lg border text-left transition-all ${
                           settings.animationPreset === anim.value
                             ? "border-primary bg-primary/10"
@@ -704,7 +800,9 @@ export function StyleSettingsEditor({
                         }`}
                       >
                         <p className="font-medium text-sm">{anim.label}</p>
-                        <p className="text-xs text-slc-muted">{anim.description}</p>
+                        <p className="text-xs text-slc-muted">
+                          {anim.description}
+                        </p>
                       </button>
                     ))}
                   </div>
@@ -713,64 +811,87 @@ export function StyleSettingsEditor({
                 {/* Button Style */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Estilo de Botones</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Estilo de Botones
+                    </label>
                     <div className="grid grid-cols-2 gap-2">
-                      {(["solid", "gradient", "outline", "glass"] as const).map((style) => (
-                        <button
-                          key={style}
-                          type="button"
-                          onClick={() => handleChange("buttonStyle", style)}
-                          className={`px-3 py-2 rounded-lg border text-sm capitalize transition-all ${
-                            settings.buttonStyle === style
-                              ? "border-primary bg-primary/10"
-                              : "border-slc-border hover:border-white/30"
-                          }`}
-                        >
-                          {style === "solid" ? "Sólido" :
-                           style === "gradient" ? "Gradiente" :
-                           style === "outline" ? "Contorno" : "Cristal"}
-                        </button>
-                      ))}
+                      {(["solid", "gradient", "outline", "glass"] as const).map(
+                        (style) => (
+                          <button
+                            key={style}
+                            type="button"
+                            onClick={() => handleChange("buttonStyle", style)}
+                            className={`px-3 py-2 rounded-lg border text-sm capitalize transition-all ${
+                              settings.buttonStyle === style
+                                ? "border-primary bg-primary/10"
+                                : "border-slc-border hover:border-white/30"
+                            }`}
+                          >
+                            {style === "solid"
+                              ? "Sólido"
+                              : style === "gradient"
+                                ? "Gradiente"
+                                : style === "outline"
+                                  ? "Contorno"
+                                  : "Cristal"}
+                          </button>
+                        ),
+                      )}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Bordes de Botones</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Bordes de Botones
+                    </label>
                     <div className="grid grid-cols-5 gap-1">
-                      {(["none", "sm", "md", "lg", "full"] as const).map((rounded) => (
-                        <button
-                          key={rounded}
-                          type="button"
-                          onClick={() => handleChange("buttonRounded", rounded)}
-                          className={`px-2 py-2 border text-xs uppercase transition-all ${
-                            settings.buttonRounded === rounded
-                              ? "border-primary bg-primary/10"
-                              : "border-slc-border hover:border-white/30"
-                          }`}
-                          style={{
-                            borderRadius: rounded === "full" ? "9999px"
-                              : rounded === "lg" ? "0.5rem"
-                              : rounded === "md" ? "0.375rem"
-                              : rounded === "sm" ? "0.25rem"
-                              : "0",
-                          }}
-                        >
-                          {rounded}
-                        </button>
-                      ))}
+                      {(["none", "sm", "md", "lg", "full"] as const).map(
+                        (rounded) => (
+                          <button
+                            key={rounded}
+                            type="button"
+                            onClick={() =>
+                              handleChange("buttonRounded", rounded)
+                            }
+                            className={`px-2 py-2 border text-xs uppercase transition-all ${
+                              settings.buttonRounded === rounded
+                                ? "border-primary bg-primary/10"
+                                : "border-slc-border hover:border-white/30"
+                            }`}
+                            style={{
+                              borderRadius:
+                                rounded === "full"
+                                  ? "9999px"
+                                  : rounded === "lg"
+                                    ? "0.5rem"
+                                    : rounded === "md"
+                                      ? "0.375rem"
+                                      : rounded === "sm"
+                                        ? "0.25rem"
+                                        : "0",
+                            }}
+                          >
+                            {rounded}
+                          </button>
+                        ),
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Effects Toggles */}
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Efectos Visuales</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Efectos Visuales
+                  </label>
                   <div className="grid grid-cols-3 gap-2">
                     <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slc-border cursor-pointer hover:border-white/30">
                       <input
                         type="checkbox"
                         checked={settings.enableGlow}
-                        onChange={(e) => handleChange("enableGlow", e.target.checked)}
+                        onChange={(e) =>
+                          handleChange("enableGlow", e.target.checked)
+                        }
                         className="w-4 h-4 rounded"
                       />
                       <span className="text-sm">Glow</span>
@@ -779,7 +900,9 @@ export function StyleSettingsEditor({
                       <input
                         type="checkbox"
                         checked={settings.enableAnimations}
-                        onChange={(e) => handleChange("enableAnimations", e.target.checked)}
+                        onChange={(e) =>
+                          handleChange("enableAnimations", e.target.checked)
+                        }
                         className="w-4 h-4 rounded"
                       />
                       <span className="text-sm">Animaciones</span>
@@ -788,7 +911,9 @@ export function StyleSettingsEditor({
                       <input
                         type="checkbox"
                         checked={settings.enableParticles}
-                        onChange={(e) => handleChange("enableParticles", e.target.checked)}
+                        onChange={(e) =>
+                          handleChange("enableParticles", e.target.checked)
+                        }
                         className="w-4 h-4 rounded"
                       />
                       <span className="text-sm">Partículas</span>
@@ -802,13 +927,17 @@ export function StyleSettingsEditor({
             {activeTab === "background" && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Estilo de Fondo</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Estilo de Fondo
+                  </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {filteredBackgrounds.map((bg) => (
                       <button
                         key={bg.value}
                         type="button"
-                        onClick={() => handleChange("backgroundStyle", bg.value)}
+                        onClick={() =>
+                          handleChange("backgroundStyle", bg.value)
+                        }
                         className={`px-3 py-3 rounded-lg border text-sm transition-all ${
                           settings.backgroundStyle === bg.value
                             ? "border-primary bg-primary/10"
@@ -824,7 +953,9 @@ export function StyleSettingsEditor({
                 {/* Background Image Upload */}
                 {settings.backgroundStyle === "custom-image" && (
                   <div className="p-4 bg-slc-card rounded-lg space-y-3">
-                    <label className="block text-sm text-slc-muted">Imagen de Fondo</label>
+                    <label className="block text-sm text-slc-muted">
+                      Imagen de Fondo
+                    </label>
 
                     {settings.backgroundImageUrl && (
                       <div className="relative aspect-video rounded-lg overflow-hidden">
@@ -844,7 +975,9 @@ export function StyleSettingsEditor({
                     )}
 
                     <DirectDropboxUploader
-                      onUploadComplete={(url) => handleBackgroundImageUpload(url)}
+                      onUploadComplete={(url) =>
+                        handleBackgroundImageUpload(url)
+                      }
                       accept="image/*"
                       maxSize={10}
                       folder="/backgrounds"
@@ -854,14 +987,20 @@ export function StyleSettingsEditor({
 
                     <div>
                       <label className="block text-xs text-slc-muted mb-1">
-                        Opacidad del overlay: {settings.backgroundOverlayOpacity}%
+                        Opacidad del overlay:{" "}
+                        {settings.backgroundOverlayOpacity}%
                       </label>
                       <input
                         type="range"
                         min="0"
                         max="100"
                         value={settings.backgroundOverlayOpacity}
-                        onChange={(e) => handleChange("backgroundOverlayOpacity", parseInt(e.target.value))}
+                        onChange={(e) =>
+                          handleChange(
+                            "backgroundOverlayOpacity",
+                            Number.parseInt(e.target.value),
+                          )
+                        }
                         className="w-full"
                       />
                     </div>
@@ -875,7 +1014,12 @@ export function StyleSettingsEditor({
                         min="0"
                         max="20"
                         value={settings.backgroundBlur}
-                        onChange={(e) => handleChange("backgroundBlur", parseInt(e.target.value))}
+                        onChange={(e) =>
+                          handleChange(
+                            "backgroundBlur",
+                            Number.parseInt(e.target.value),
+                          )
+                        }
                         className="w-full"
                       />
                     </div>
@@ -914,18 +1058,26 @@ export function StyleSettingsEditor({
                           className="w-full h-12 rounded-md mb-2"
                           style={{
                             background: `linear-gradient(135deg, ${
-                              style.settings.primaryColor || defaultStyleSettings.primaryColor
+                              style.settings.primaryColor ||
+                              defaultStyleSettings.primaryColor
                             }, ${
-                              style.settings.secondaryColor || defaultStyleSettings.secondaryColor
+                              style.settings.secondaryColor ||
+                              defaultStyleSettings.secondaryColor
                             })`,
                           }}
                         />
-                        <p className="font-medium text-sm truncate">{style.name}</p>
+                        <p className="font-medium text-sm truncate">
+                          {style.name}
+                        </p>
                         {style.description && (
-                          <p className="text-xs text-slc-muted line-clamp-1">{style.description}</p>
+                          <p className="text-xs text-slc-muted line-clamp-1">
+                            {style.description}
+                          </p>
                         )}
                         <div className="absolute inset-0 rounded-lg bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="bg-primary text-white text-xs px-3 py-1 rounded-full">Aplicar</span>
+                          <span className="bg-primary text-white text-xs px-3 py-1 rounded-full">
+                            Aplicar
+                          </span>
                         </div>
                       </button>
                     ))}
@@ -1023,28 +1175,44 @@ export function StyleSettingsEditor({
               <div
                 className="transition-all duration-300 overflow-hidden rounded-lg shadow-2xl"
                 style={{
-                  width: previewMode === "desktop" ? "100%" : responsiveBreakpoints[previewMode].width,
-                  maxWidth: previewMode === "desktop" ? "100%" : responsiveBreakpoints[previewMode].width,
-                  minHeight: previewMode === "desktop" ? "auto" : Math.min(responsiveBreakpoints[previewMode].height, 600),
+                  width:
+                    previewMode === "desktop"
+                      ? "100%"
+                      : responsiveBreakpoints[previewMode].width,
+                  maxWidth:
+                    previewMode === "desktop"
+                      ? "100%"
+                      : responsiveBreakpoints[previewMode].width,
+                  minHeight:
+                    previewMode === "desktop"
+                      ? "auto"
+                      : Math.min(
+                          responsiveBreakpoints[previewMode].height,
+                          600,
+                        ),
                 }}
               >
                 {/* Full Preview Content */}
                 <div
                   className="min-h-[500px] p-8 rounded-xl"
                   style={{
-                    background: settings.backgroundStyle === "custom-image" && settings.backgroundImageUrl
-                      ? `linear-gradient(rgba(0,0,0,${settings.backgroundOverlayOpacity / 100}), rgba(0,0,0,${settings.backgroundOverlayOpacity / 100})), url(${settings.backgroundImageUrl})`
-                      : settings.backgroundStyle === "gradient-radial"
-                      ? `radial-gradient(ellipse at center, ${settings.primaryColor}20, ${settings.darkMode ? "#0a0a0a" : "white"})`
-                      : settings.darkMode
-                      ? `linear-gradient(135deg, ${settings.primaryColor}20, ${settings.secondaryColor}10, transparent)`
-                      : `linear-gradient(135deg, ${settings.primaryColor}10, white, ${settings.secondaryColor}05)`,
+                    background:
+                      settings.backgroundStyle === "custom-image" &&
+                      settings.backgroundImageUrl
+                        ? `linear-gradient(rgba(0,0,0,${settings.backgroundOverlayOpacity / 100}), rgba(0,0,0,${settings.backgroundOverlayOpacity / 100})), url(${settings.backgroundImageUrl})`
+                        : settings.backgroundStyle === "gradient-radial"
+                          ? `radial-gradient(ellipse at center, ${settings.primaryColor}20, ${settings.darkMode ? "#0a0a0a" : "white"})`
+                          : settings.darkMode
+                            ? `linear-gradient(135deg, ${settings.primaryColor}20, ${settings.secondaryColor}10, transparent)`
+                            : `linear-gradient(135deg, ${settings.primaryColor}10, white, ${settings.secondaryColor}05)`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }}
                 >
                   {/* Inject animation keyframes */}
-                  <style dangerouslySetInnerHTML={{ __html: animationKeyframes }} />
+                  <style
+                    dangerouslySetInnerHTML={{ __html: animationKeyframes }}
+                  />
 
                   <div className="flex flex-col items-center justify-center text-center space-y-6">
                     {/* Badge */}
@@ -1064,22 +1232,38 @@ export function StyleSettingsEditor({
                       className="w-48 h-48 rounded-xl"
                       style={{
                         background: `linear-gradient(135deg, ${settings.primaryColor}, ${settings.secondaryColor})`,
-                        boxShadow: settings.enableGlow ? `0 20px 50px -10px ${settings.primaryColor}50` : undefined,
+                        boxShadow: settings.enableGlow
+                          ? `0 20px 50px -10px ${settings.primaryColor}50`
+                          : undefined,
                       }}
                     />
 
                     {/* Title */}
                     <h1
                       className={`text-4xl ${
-                        availableFonts.find(f => f.value === settings.titleFont)?.className || "font-oswald"
+                        availableFonts.find(
+                          (f) => f.value === settings.titleFont,
+                        )?.className || "font-oswald"
                       } ${settings.titleStyle === "uppercase" ? "uppercase" : ""}`}
                       style={{
-                        color: settings.titleStyle === "gradient" ? "transparent" : (settings.darkMode ? settings.textColor : "#1a1a1a"),
-                        background: settings.titleStyle === "gradient"
-                          ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
-                          : undefined,
-                        WebkitBackgroundClip: settings.titleStyle === "gradient" ? "text" : undefined,
-                        textShadow: settings.titleStyle === "shadow" ? `0 0 30px ${settings.primaryColor}` : undefined,
+                        color:
+                          settings.titleStyle === "gradient"
+                            ? "transparent"
+                            : settings.darkMode
+                              ? settings.textColor
+                              : "#1a1a1a",
+                        background:
+                          settings.titleStyle === "gradient"
+                            ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
+                            : undefined,
+                        WebkitBackgroundClip:
+                          settings.titleStyle === "gradient"
+                            ? "text"
+                            : undefined,
+                        textShadow:
+                          settings.titleStyle === "shadow"
+                            ? `0 0 30px ${settings.primaryColor}`
+                            : undefined,
                       }}
                     >
                       {previewTitle}
@@ -1088,7 +1272,9 @@ export function StyleSettingsEditor({
                     {/* Subtitle */}
                     <p
                       className={`text-lg ${
-                        availableFonts.find(f => f.value === settings.bodyFont)?.className || "font-sans"
+                        availableFonts.find(
+                          (f) => f.value === settings.bodyFont,
+                        )?.className || "font-sans"
                       }`}
                       style={{ color: settings.primaryColor }}
                     >
@@ -1098,11 +1284,18 @@ export function StyleSettingsEditor({
                     {/* Description */}
                     <p
                       className={`max-w-md opacity-70 ${
-                        availableFonts.find(f => f.value === settings.bodyFont)?.className || "font-sans"
+                        availableFonts.find(
+                          (f) => f.value === settings.bodyFont,
+                        )?.className || "font-sans"
                       }`}
-                      style={{ color: settings.darkMode ? settings.textColor : "#1a1a1a" }}
+                      style={{
+                        color: settings.darkMode
+                          ? settings.textColor
+                          : "#1a1a1a",
+                      }}
                     >
-                      Esta es una vista previa de cómo se verá tu landing page con los estilos seleccionados.
+                      Esta es una vista previa de cómo se verá tu landing page
+                      con los estilos seleccionados.
                     </p>
 
                     {/* Button */}
@@ -1110,26 +1303,41 @@ export function StyleSettingsEditor({
                       type="button"
                       className="px-8 py-3 text-lg font-medium transition-all"
                       style={{
-                        background: settings.buttonStyle === "gradient"
-                          ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
-                          : settings.buttonStyle === "solid"
-                          ? settings.primaryColor
-                          : settings.buttonStyle === "glass"
-                          ? "rgba(255,255,255,0.1)"
-                          : "transparent",
-                        border: settings.buttonStyle === "outline"
-                          ? `2px solid ${settings.primaryColor}`
-                          : settings.buttonStyle === "glass"
-                          ? "1px solid rgba(255,255,255,0.2)"
-                          : "none",
-                        backdropFilter: settings.buttonStyle === "glass" ? "blur(10px)" : undefined,
-                        borderRadius: settings.buttonRounded === "full" ? "9999px"
-                          : settings.buttonRounded === "lg" ? "0.5rem"
-                          : settings.buttonRounded === "md" ? "0.375rem"
-                          : settings.buttonRounded === "sm" ? "0.25rem"
-                          : "0",
-                        color: settings.buttonStyle === "outline" ? settings.primaryColor : "white",
-                        boxShadow: settings.enableGlow ? `0 10px 30px -5px ${settings.primaryColor}50` : undefined,
+                        background:
+                          settings.buttonStyle === "gradient"
+                            ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
+                            : settings.buttonStyle === "solid"
+                              ? settings.primaryColor
+                              : settings.buttonStyle === "glass"
+                                ? "rgba(255,255,255,0.1)"
+                                : "transparent",
+                        border:
+                          settings.buttonStyle === "outline"
+                            ? `2px solid ${settings.primaryColor}`
+                            : settings.buttonStyle === "glass"
+                              ? "1px solid rgba(255,255,255,0.2)"
+                              : "none",
+                        backdropFilter:
+                          settings.buttonStyle === "glass"
+                            ? "blur(10px)"
+                            : undefined,
+                        borderRadius:
+                          settings.buttonRounded === "full"
+                            ? "9999px"
+                            : settings.buttonRounded === "lg"
+                              ? "0.5rem"
+                              : settings.buttonRounded === "md"
+                                ? "0.375rem"
+                                : settings.buttonRounded === "sm"
+                                  ? "0.25rem"
+                                  : "0",
+                        color:
+                          settings.buttonStyle === "outline"
+                            ? settings.primaryColor
+                            : "white",
+                        boxShadow: settings.enableGlow
+                          ? `0 10px 30px -5px ${settings.primaryColor}50`
+                          : undefined,
                       }}
                     >
                       Descargar Ahora
@@ -1141,7 +1349,8 @@ export function StyleSettingsEditor({
 
             {/* Preview mode label */}
             <div className="p-2 border-t border-slc-border text-center text-xs text-slc-muted">
-              {responsiveBreakpoints[previewMode].width} x {responsiveBreakpoints[previewMode].height} px
+              {responsiveBreakpoints[previewMode].width} x{" "}
+              {responsiveBreakpoints[previewMode].height} px
               {" • "}
               {responsiveBreakpoints[previewMode].label}
             </div>
@@ -1153,11 +1362,15 @@ export function StyleSettingsEditor({
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="bg-slc-dark border border-slc-border rounded-xl w-full max-w-md p-6">
-            <h3 className="font-oswald text-lg uppercase mb-4">Guardar Estilo</h3>
+            <h3 className="font-oswald text-lg uppercase mb-4">
+              Guardar Estilo
+            </h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Nombre *</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Nombre *
+                </label>
                 <Input
                   value={styleName}
                   onChange={(e) => setStyleName(e.target.value)}
@@ -1166,7 +1379,9 @@ export function StyleSettingsEditor({
               </div>
 
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Descripción
+                </label>
                 <textarea
                   value={styleDescription}
                   onChange={(e) => setStyleDescription(e.target.value)}

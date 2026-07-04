@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { calculateCountdown } from "@/lib/utils";
 import type { Release } from "@/types";
-import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface ReleaseCountdownProps {
   release: Release;
 }
 
 export function ReleaseCountdown({ release }: ReleaseCountdownProps) {
-  const [countdown, setCountdown] = useState(calculateCountdown(release.releaseDate));
+  const [countdown, setCountdown] = useState(
+    calculateCountdown(release.releaseDate),
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -43,8 +45,18 @@ export function ReleaseCountdown({ release }: ReleaseCountdownProps) {
                 />
               ) : (
                 <div className="w-full h-full bg-slc-card flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" className="w-16 h-16 text-slc-border">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="w-16 h-16 text-slc-border"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      fill="none"
+                    />
                     <circle cx="12" cy="12" r="3" fill="currentColor" />
                   </svg>
                 </div>
@@ -84,7 +96,11 @@ export function ReleaseCountdown({ release }: ReleaseCountdownProps) {
               </Button>
               {release.spotifyUrl && (
                 <Button variant="outline" asChild>
-                  <a href={release.spotifyUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={release.spotifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Pre-guardar
                   </a>
                 </Button>

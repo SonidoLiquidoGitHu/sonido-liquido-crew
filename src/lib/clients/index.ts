@@ -8,7 +8,11 @@ export { youtubeClient, YouTubeClient } from "./youtube";
 export { dropboxClient, DropboxClient } from "./dropbox";
 
 // Optional integrations
-export { mailchimpClient, MailchimpClient, MAILCHIMP_DEFAULT_TAG } from "./mailchimp";
+export {
+  mailchimpClient,
+  MailchimpClient,
+  MAILCHIMP_DEFAULT_TAG,
+} from "./mailchimp";
 export { stripeClient, StripeClient } from "./stripe";
 
 // ===========================================
@@ -18,7 +22,9 @@ export { stripeClient, StripeClient } from "./stripe";
 export function getIntegrationStatus() {
   return {
     spotify: {
-      configured: Boolean(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET),
+      configured: Boolean(
+        process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET,
+      ),
       name: "Spotify",
     },
     youtube: {
@@ -32,8 +38,8 @@ export function getIntegrationStatus() {
     mailchimp: {
       configured: Boolean(
         process.env.MAILCHIMP_API_KEY &&
-        process.env.MAILCHIMP_SERVER_PREFIX &&
-        process.env.MAILCHIMP_AUDIENCE_ID
+          process.env.MAILCHIMP_SERVER_PREFIX &&
+          process.env.MAILCHIMP_AUDIENCE_ID,
       ),
       name: "Mailchimp",
       optional: true,

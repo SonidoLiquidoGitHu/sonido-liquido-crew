@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { customStyles, artistStyles, artists } from "@/db/schema";
-import { eq, desc, and, or } from "drizzle-orm";
+import { artistStyles, artists, customStyles } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
+import { and, desc, eq, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - Fetch all custom styles or filter by category/artist
 export async function GET(request: NextRequest) {
@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
         conditions.push(
           or(
             eq(customStyles.artistId, artistId),
-            eq(customStyles.isPublic, true)
-          )
+            eq(customStyles.isPublic, true),
+          ),
         );
       } else {
         conditions.push(eq(customStyles.artistId, artistId));
@@ -51,8 +51,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     // Handle table not existing error gracefully
-    if (error?.message?.includes("no such table") || error?.code === "SQLITE_ERROR") {
-      console.warn("[API] custom_styles table does not exist yet - run migrations");
+    if (
+      error?.message?.includes("no such table") ||
+      error?.code === "SQLITE_ERROR"
+    ) {
+      console.warn(
+        "[API] custom_styles table does not exist yet - run migrations",
+      );
       return NextResponse.json({
         success: true,
         data: [],
@@ -62,7 +67,7 @@ export async function GET(request: NextRequest) {
     console.error("[API] Error fetching styles:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch styles" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -73,7 +78,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -82,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (!body.name || !body.settings) {
       return NextResponse.json(
         { success: false, error: "Name and settings are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -112,17 +117,25 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     // Handle table not existing error gracefully
-    if (error?.message?.includes("no such table") || error?.code === "SQLITE_ERROR") {
-      console.warn("[API] custom_styles table does not exist yet - run migrations");
+    if (
+      error?.message?.includes("no such table") ||
+      error?.code === "SQLITE_ERROR"
+    ) {
+      console.warn(
+        "[API] custom_styles table does not exist yet - run migrations",
+      );
       return NextResponse.json(
-        { success: false, error: "Styles table not found - run database migrations" },
-        { status: 503 }
+        {
+          success: false,
+          error: "Styles table not found - run database migrations",
+        },
+        { status: 503 },
       );
     }
     console.error("[API] Error creating style:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create style" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -133,7 +146,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -142,7 +155,7 @@ export async function PUT(request: NextRequest) {
     if (!body.id) {
       return NextResponse.json(
         { success: false, error: "Style ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -165,7 +178,7 @@ export async function PUT(request: NextRequest) {
     if (!style) {
       return NextResponse.json(
         { success: false, error: "Style not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -179,7 +192,7 @@ export async function PUT(request: NextRequest) {
     console.error("[API] Error updating style:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update style" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -190,7 +203,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -200,7 +213,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Style ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -216,7 +229,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[API] Error deleting style:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete style" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

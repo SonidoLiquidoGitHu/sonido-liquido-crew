@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { pushSubscriptions, notificationHistory } from "@/db/schema";
+import { notificationHistory, pushSubscriptions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 
 // Configure web-push with VAPID keys
@@ -9,7 +9,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
     "mailto:hello@sonidoliquido.com",
     process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
+    process.env.VAPID_PRIVATE_KEY,
   );
 }
 
@@ -25,7 +25,7 @@ interface NotificationPayload {
 
 async function sendPushNotification(
   subscription: { endpoint: string; keysP256dh: string; keysAuth: string },
-  payload: NotificationPayload
+  payload: NotificationPayload,
 ): Promise<boolean> {
   if (!subscription.keysP256dh || !subscription.keysAuth) {
     return false;
@@ -40,7 +40,7 @@ async function sendPushNotification(
           auth: subscription.keysAuth,
         },
       },
-      JSON.stringify(payload)
+      JSON.stringify(payload),
     );
     return true;
   } catch (error: unknown) {
@@ -50,7 +50,12 @@ async function sendPushNotification(
     if (err.statusCode === 410 || err.statusCode === 404) {
       await db
         .delete(pushSubscriptions)
-        .where(require("drizzle-orm").eq(pushSubscriptions.endpoint, subscription.endpoint));
+        .where(
+          require("drizzle-orm").eq(
+            pushSubscriptions.endpoint,
+            subscription.endpoint,
+          ),
+        );
     }
     return false;
   }
@@ -62,14 +67,14 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
       return NextResponse.json(
         { success: false, error: "VAPID keys not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -79,14 +84,12 @@ export async function POST(request: NextRequest) {
     if (!title || !message) {
       return NextResponse.json(
         { success: false, error: "Title and body are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Get all active subscriptions
-    const subscriptions = await db
-      .select()
-      .from(pushSubscriptions);
+    const subscriptions = await db.select().from(pushSubscriptions);
 
     if (subscriptions.length === 0) {
       return NextResponse.json({
@@ -130,7 +133,10 @@ export async function POST(request: NextRequest) {
         sentBy: "admin",
       });
     } catch (historyError) {
-      console.warn("[Admin Send Notification] Failed to log history:", historyError);
+      console.warn(
+        "[Admin Send Notification] Failed to log history:",
+        historyError,
+      );
     }
 
     return NextResponse.json({
@@ -144,7 +150,7 @@ export async function POST(request: NextRequest) {
     console.error("[Admin Send Notification] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to send notification" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

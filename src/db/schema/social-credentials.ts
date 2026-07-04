@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // SOCIAL CREDENTIALS TABLE
@@ -23,9 +23,7 @@ export const socialCredentials = sqliteTable("social_credentials", {
   value: text("value").notNull(),
 
   // Whether this credential was set via the UI (true) or inherited from env var (false)
-  isFromUi: integer("is_from_ui", { mode: "boolean" })
-    .notNull()
-    .default(true),
+  isFromUi: integer("is_from_ui", { mode: "boolean" }).notNull().default(true),
 
   // Timestamps
   createdAt: integer("created_at", { mode: "timestamp" })

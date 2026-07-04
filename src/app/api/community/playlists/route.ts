@@ -1,11 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { userPlaylists, userPlaylistTracks, playlistCollaborators } from "@/db/schema";
-import { eq, desc, and, or } from "drizzle-orm";
+import {
+  playlistCollaborators,
+  userPlaylistTracks,
+  userPlaylists,
+} from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
+import { and, desc, eq, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Helper to check if user can edit playlist
-async function canEditPlaylist(playlistId: string, email: string): Promise<{ canEdit: boolean; canAddTracks: boolean; canRemoveTracks: boolean; role: string }> {
+async function canEditPlaylist(
+  playlistId: string,
+  email: string,
+): Promise<{
+  canEdit: boolean;
+  canAddTracks: boolean;
+  canRemoveTracks: boolean;
+  role: string;
+}> {
   // Check if owner
   const [playlist] = await db
     .select()
@@ -14,11 +26,21 @@ async function canEditPlaylist(playlistId: string, email: string): Promise<{ can
     .limit(1);
 
   if (!playlist) {
-    return { canEdit: false, canAddTracks: false, canRemoveTracks: false, role: "none" };
+    return {
+      canEdit: false,
+      canAddTracks: false,
+      canRemoveTracks: false,
+      role: "none",
+    };
   }
 
   if (playlist.ownerEmail === email) {
-    return { canEdit: true, canAddTracks: true, canRemoveTracks: true, role: "owner" };
+    return {
+      canEdit: true,
+      canAddTracks: true,
+      canRemoveTracks: true,
+      role: "owner",
+    };
   }
 
   // Check if collaborator
@@ -29,12 +51,12 @@ async function canEditPlaylist(playlistId: string, email: string): Promise<{ can
       and(
         eq(playlistCollaborators.playlistId, playlistId),
         eq(playlistCollaborators.email, email),
-        eq(playlistCollaborators.isActive, true)
-      )
+        eq(playlistCollaborators.isActive, true),
+      ),
     )
     .limit(1);
 
-  if (collaborator && collaborator.acceptedAt) {
+  if (collaborator?.acceptedAt) {
     return {
       canEdit: collaborator.canEditDetails ?? false,
       canAddTracks: collaborator.canAddTracks ?? true,
@@ -43,17 +65,30 @@ async function canEditPlaylist(playlistId: string, email: string): Promise<{ can
     };
   }
 
-  return { canEdit: false, canAddTracks: false, canRemoveTracks: false, role: "none" };
+  return {
+    canEdit: false,
+    canAddTracks: false,
+    canRemoveTracks: false,
+    role: "none",
+  };
 }
 
 // Helper to generate embed code
-function generateEmbedCode(playlistSlug: string, options: {
-  theme?: "dark" | "light";
-  compact?: boolean;
-  width?: number;
-  height?: number;
-} = {}): { iframe: string; html: string } {
-  const { theme = "dark", compact = false, width = 400, height = compact ? 80 : 400 } = options;
+function generateEmbedCode(
+  playlistSlug: string,
+  options: {
+    theme?: "dark" | "light";
+    compact?: boolean;
+    width?: number;
+    height?: number;
+  } = {},
+): { iframe: string; html: string } {
+  const {
+    theme = "dark",
+    compact = false,
+    width = 400,
+    height = compact ? 80 : 400,
+  } = options;
   const baseUrl = "https://sonidoliquido.com/embed/playlist";
   const params = new URLSearchParams({
     theme,
@@ -82,7 +117,7 @@ export async function GET(request: NextRequest) {
     const slug = searchParams.get("slug");
     const email = searchParams.get("email");
     const publicOnly = searchParams.get("public") !== "false";
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const limit = Number.parseInt(searchParams.get("limit") || "20", 10);
 
     // Fetch single playlist by slug
     if (slug) {
@@ -95,7 +130,7 @@ export async function GET(request: NextRequest) {
       if (!playlist) {
         return NextResponse.json(
           { success: false, error: "Playlist no encontrada" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -103,7 +138,7 @@ export async function GET(request: NextRequest) {
       if (!playlist.isPublic && playlist.ownerEmail !== email) {
         return NextResponse.json(
           { success: false, error: "Playlist privada" },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
@@ -121,11 +156,11 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(playlistCollaborators.playlistId, playlist.id),
-            eq(playlistCollaborators.isActive, true)
-          )
+            eq(playlistCollaborators.isActive, true),
+          ),
         );
 
-      const acceptedCollaborators = collaborators.filter(c => c.acceptedAt);
+      const acceptedCollaborators = collaborators.filter((c) => c.acceptedAt);
 
       // Generate embed code
       const embedCode = generateEmbedCode(playlist.slug);
@@ -145,7 +180,7 @@ export async function GET(request: NextRequest) {
             position: t.position,
             addedAt: t.addedAt?.toISOString(),
           })),
-          collaborators: acceptedCollaborators.map(c => ({
+          collaborators: acceptedCollaborators.map((c) => ({
             id: c.id,
             name: c.name,
             email: c.email,
@@ -182,7 +217,7 @@ export async function GET(request: NextRequest) {
     console.error("[Playlists] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar playlists" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -193,7 +228,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -203,14 +238,14 @@ export async function POST(request: NextRequest) {
     if (!name?.trim() || !ownerEmail?.trim()) {
       return NextResponse.json(
         { success: false, error: "Nombre y email son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!tracks || tracks.length === 0) {
       return NextResponse.json(
         { success: false, error: "Agrega al menos una canción" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -256,7 +291,7 @@ export async function POST(request: NextRequest) {
         trackDuration: track.trackDuration || null,
         spotifyUri: track.spotifyUri || null,
         position: track.position,
-      })
+      }),
     );
 
     await db.insert(userPlaylistTracks).values(trackInserts);
@@ -274,7 +309,7 @@ export async function POST(request: NextRequest) {
     console.error("[Playlists] Error creating:", error);
     return NextResponse.json(
       { success: false, error: "Error al crear playlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -285,7 +320,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -295,7 +330,7 @@ export async function PUT(request: NextRequest) {
     if (!id || !ownerEmail) {
       return NextResponse.json(
         { success: false, error: "ID y email requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -308,8 +343,11 @@ export async function PUT(request: NextRequest) {
 
     if (!existing || existing.ownerEmail !== ownerEmail) {
       return NextResponse.json(
-        { success: false, error: "No tienes permiso para editar esta playlist" },
-        { status: 403 }
+        {
+          success: false,
+          error: "No tienes permiso para editar esta playlist",
+        },
+        { status: 403 },
       );
     }
 
@@ -329,7 +367,9 @@ export async function PUT(request: NextRequest) {
     // Update tracks if provided
     if (tracks && tracks.length > 0) {
       // Delete existing tracks
-      await db.delete(userPlaylistTracks).where(eq(userPlaylistTracks.playlistId, id));
+      await db
+        .delete(userPlaylistTracks)
+        .where(eq(userPlaylistTracks.playlistId, id));
 
       // Insert new tracks
       const trackInserts = tracks.map(
@@ -344,7 +384,7 @@ export async function PUT(request: NextRequest) {
             spotifyUri?: string;
             position: number;
           },
-          index: number
+          index: number,
         ) => ({
           id: generateUUID(),
           playlistId: id,
@@ -356,7 +396,7 @@ export async function PUT(request: NextRequest) {
           trackDuration: track.trackDuration || null,
           spotifyUri: track.spotifyUri || null,
           position: track.position ?? index,
-        })
+        }),
       );
 
       await db.insert(userPlaylistTracks).values(trackInserts);
@@ -372,7 +412,7 @@ export async function PUT(request: NextRequest) {
     console.error("[Playlists] Error updating:", error);
     return NextResponse.json(
       { success: false, error: "Error al actualizar playlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -383,7 +423,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -394,7 +434,7 @@ export async function DELETE(request: NextRequest) {
     if (!id || !email) {
       return NextResponse.json(
         { success: false, error: "ID y email requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -407,13 +447,18 @@ export async function DELETE(request: NextRequest) {
 
     if (!existing || existing.ownerEmail !== email) {
       return NextResponse.json(
-        { success: false, error: "No tienes permiso para eliminar esta playlist" },
-        { status: 403 }
+        {
+          success: false,
+          error: "No tienes permiso para eliminar esta playlist",
+        },
+        { status: 403 },
       );
     }
 
     // Delete tracks first
-    await db.delete(userPlaylistTracks).where(eq(userPlaylistTracks.playlistId, id));
+    await db
+      .delete(userPlaylistTracks)
+      .where(eq(userPlaylistTracks.playlistId, id));
 
     // Delete playlist
     await db.delete(userPlaylists).where(eq(userPlaylists.id, id));
@@ -425,7 +470,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Playlists] Error deleting:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar playlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

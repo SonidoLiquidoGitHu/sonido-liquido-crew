@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  AlertTriangle,
   BarChart3,
+  CheckCircle,
+  Clock,
+  Eye,
+  FlaskConical,
+  Loader2,
+  MousePointer,
+  Pause,
+  Percent,
+  Play,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Target,
   TrendingUp,
   Trophy,
-  Percent,
-  Eye,
-  MousePointer,
-  Target,
-  Play,
-  Pause,
-  RefreshCw,
-  Loader2,
-  AlertTriangle,
-  CheckCircle,
-  Plus,
-  FlaskConical,
-  Sparkles,
-  Clock,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ABTestVariant {
   id: string;
@@ -75,7 +75,11 @@ const TEMPLATE_COLORS: Record<string, string> = {
 
 export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
   const [tests, setTests] = useState<ABTest[]>([]);
-  const [activeTest, setActiveTest] = useState<{ id: string; name: string; variants: any[] } | null>(null);
+  const [activeTest, setActiveTest] = useState<{
+    id: string;
+    name: string;
+    variants: any[];
+  } | null>(null);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [results, setResults] = useState<ABTestResults | null>(null);
   const [loading, setLoading] = useState(true);
@@ -198,7 +202,7 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
 
   function toggleTemplate(key: string) {
     setSelectedTemplates((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
   }
 
@@ -239,7 +243,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
         <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           {error}
-          <button onClick={() => setError(null)} className="ml-auto">×</button>
+          <button onClick={() => setError(null)} className="ml-auto">
+            ×
+          </button>
         </div>
       )}
 
@@ -252,7 +258,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
           </h4>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Nombre del Test</label>
+            <label className="block text-sm font-medium mb-2">
+              Nombre del Test
+            </label>
             <input
               type="text"
               value={newTestName}
@@ -279,7 +287,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${TEMPLATE_COLORS[template.key]}`} />
+                    <div
+                      className={`w-3 h-3 rounded-full ${TEMPLATE_COLORS[template.key]}`}
+                    />
                     <span className="text-sm font-medium">{template.name}</span>
                   </div>
                 </button>
@@ -288,7 +298,10 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={createTest} disabled={!newTestName || selectedTemplates.length < 2}>
+            <Button
+              onClick={createTest}
+              disabled={!newTestName || selectedTemplates.length < 2}
+            >
               Crear Test
             </Button>
             <Button variant="ghost" onClick={() => setShowNewTest(false)}>
@@ -332,7 +345,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                 <Eye className="w-4 h-4 text-blue-500" />
                 <span className="text-xs text-slc-muted">Impresiones</span>
               </div>
-              <p className="text-2xl font-oswald">{results.totalImpressions.toLocaleString()}</p>
+              <p className="text-2xl font-oswald">
+                {results.totalImpressions.toLocaleString()}
+              </p>
             </div>
 
             <div className="p-4 bg-slc-card rounded-xl border border-slc-border">
@@ -340,7 +355,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                 <Target className="w-4 h-4 text-green-500" />
                 <span className="text-xs text-slc-muted">Conversiones</span>
               </div>
-              <p className="text-2xl font-oswald">{results.totalConversions.toLocaleString()}</p>
+              <p className="text-2xl font-oswald">
+                {results.totalConversions.toLocaleString()}
+              </p>
             </div>
 
             <div className="p-4 bg-slc-card rounded-xl border border-slc-border">
@@ -348,7 +365,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                 <Percent className="w-4 h-4 text-purple-500" />
                 <span className="text-xs text-slc-muted">Tasa Conversión</span>
               </div>
-              <p className="text-2xl font-oswald">{results.overallConversionRate.toFixed(2)}%</p>
+              <p className="text-2xl font-oswald">
+                {results.overallConversionRate.toFixed(2)}%
+              </p>
             </div>
 
             <div className="p-4 bg-slc-card rounded-xl border border-slc-border">
@@ -371,10 +390,15 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                   ¡Tenemos un ganador!
                 </p>
                 <p className="text-sm text-slc-muted">
-                  {results.variants.find((v) => v.id === results.winnerVariant)?.name} tiene
-                  una tasa de conversión significativamente mayor con{" "}
-                  {results.variants.find((v) => v.id === results.winnerVariant)?.confidence.toFixed(1)}%
-                  de confianza estadística.
+                  {
+                    results.variants.find((v) => v.id === results.winnerVariant)
+                      ?.name
+                  }{" "}
+                  tiene una tasa de conversión significativamente mayor con{" "}
+                  {results.variants
+                    .find((v) => v.id === results.winnerVariant)
+                    ?.confidence.toFixed(1)}
+                  % de confianza estadística.
                 </p>
               </div>
             </div>
@@ -382,14 +406,21 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
 
           {/* Variant comparison */}
           <div className="space-y-4">
-            <h4 className="font-oswald text-sm uppercase">Rendimiento por Variante</h4>
+            <h4 className="font-oswald text-sm uppercase">
+              Rendimiento por Variante
+            </h4>
 
             <div className="space-y-3">
               {results.variants
                 .sort((a, b) => b.conversionRate - a.conversionRate)
                 .map((variant, index) => {
-                  const maxConversionRate = Math.max(...results.variants.map((v) => v.conversionRate));
-                  const barWidth = maxConversionRate > 0 ? (variant.conversionRate / maxConversionRate) * 100 : 0;
+                  const maxConversionRate = Math.max(
+                    ...results.variants.map((v) => v.conversionRate),
+                  );
+                  const barWidth =
+                    maxConversionRate > 0
+                      ? (variant.conversionRate / maxConversionRate) * 100
+                      : 0;
 
                   return (
                     <div
@@ -402,7 +433,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-4 h-4 rounded-full ${TEMPLATE_COLORS[variant.key] || "bg-gray-500"}`} />
+                          <div
+                            className={`w-4 h-4 rounded-full ${TEMPLATE_COLORS[variant.key] || "bg-gray-500"}`}
+                          />
                           <span className="font-medium">{variant.name}</span>
                           {variant.isWinning && (
                             <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-xs">
@@ -417,7 +450,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className="font-oswald text-lg">{variant.conversionRate.toFixed(2)}%</p>
+                          <p className="font-oswald text-lg">
+                            {variant.conversionRate.toFixed(2)}%
+                          </p>
                           <p className="text-xs text-slc-muted">conversión</p>
                         </div>
                       </div>
@@ -433,19 +468,27 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                       {/* Stats grid */}
                       <div className="grid grid-cols-4 gap-4 text-center">
                         <div>
-                          <p className="text-sm font-oswald">{variant.impressions.toLocaleString()}</p>
+                          <p className="text-sm font-oswald">
+                            {variant.impressions.toLocaleString()}
+                          </p>
                           <p className="text-xs text-slc-muted">Impresiones</p>
                         </div>
                         <div>
-                          <p className="text-sm font-oswald">{variant.clicks.toLocaleString()}</p>
+                          <p className="text-sm font-oswald">
+                            {variant.clicks.toLocaleString()}
+                          </p>
                           <p className="text-xs text-slc-muted">Clicks</p>
                         </div>
                         <div>
-                          <p className="text-sm font-oswald">{variant.conversions.toLocaleString()}</p>
+                          <p className="text-sm font-oswald">
+                            {variant.conversions.toLocaleString()}
+                          </p>
                           <p className="text-xs text-slc-muted">Conversiones</p>
                         </div>
                         <div>
-                          <p className="text-sm font-oswald">{variant.clickRate.toFixed(2)}%</p>
+                          <p className="text-sm font-oswald">
+                            {variant.clickRate.toFixed(2)}%
+                          </p>
                           <p className="text-xs text-slc-muted">CTR</p>
                         </div>
                       </div>
@@ -456,7 +499,8 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
                           <div className="flex items-center gap-2">
                             <TrendingUp className="w-4 h-4 text-slc-muted" />
                             <span className="text-xs text-slc-muted">
-                              Confianza estadística: {variant.confidence.toFixed(1)}%
+                              Confianza estadística:{" "}
+                              {variant.confidence.toFixed(1)}%
                             </span>
                             {variant.confidence >= 95 && (
                               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -474,7 +518,9 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
           <div className="flex gap-3">
             {results.hasWinner && (
               <Button
-                onClick={() => completeTest(results.testId, results.winnerVariant)}
+                onClick={() =>
+                  completeTest(results.testId, results.winnerVariant)
+                }
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Finalizar Test con Ganador
@@ -494,9 +540,12 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
       {tests.length === 0 && !showNewTest && (
         <div className="text-center py-12">
           <FlaskConical className="w-12 h-12 mx-auto mb-4 text-slc-muted opacity-50" />
-          <h3 className="font-oswald text-lg uppercase mb-2">No hay tests activos</h3>
+          <h3 className="font-oswald text-lg uppercase mb-2">
+            No hay tests activos
+          </h3>
           <p className="text-sm text-slc-muted mb-4">
-            Crea un test A/B para comparar el rendimiento de diferentes templates de video.
+            Crea un test A/B para comparar el rendimiento de diferentes
+            templates de video.
           </p>
           <Button onClick={() => setShowNewTest(true)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -512,9 +561,18 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
           Tips para A/B Testing
         </h4>
         <ul className="text-sm text-slc-muted space-y-2">
-          <li>• <strong>Mínimo 30 impresiones</strong> por variante para resultados significativos</li>
-          <li>• <strong>95% de confianza</strong> indica un ganador estadísticamente válido</li>
-          <li>• Prueba templates con estilos muy diferentes para resultados más claros</li>
+          <li>
+            • <strong>Mínimo 30 impresiones</strong> por variante para
+            resultados significativos
+          </li>
+          <li>
+            • <strong>95% de confianza</strong> indica un ganador
+            estadísticamente válido
+          </li>
+          <li>
+            • Prueba templates con estilos muy diferentes para resultados más
+            claros
+          </li>
           <li>• Los tests funcionan mejor con alto volumen de tráfico</li>
         </ul>
       </div>

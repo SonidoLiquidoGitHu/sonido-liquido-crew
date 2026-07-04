@@ -1,10 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { siteSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Email template types
-type EmailTemplate = "approval_message" | "approval_photo" | "newsletter" | "welcome" | "custom";
+type EmailTemplate =
+  | "approval_message"
+  | "approval_photo"
+  | "newsletter"
+  | "welcome"
+  | "custom";
 
 interface TestEmailRequest {
   recipients: string[];
@@ -39,9 +44,15 @@ function generateEmailHtml(
     includeReward?: boolean;
     rewardUrl?: string;
     rewardFileName?: string;
-  } = {}
+  } = {},
 ): { html: string; subject: string } {
-  const { recipientName = "Usuario de Prueba", customContent, includeReward, rewardUrl, rewardFileName } = options;
+  const {
+    recipientName = "Usuario de Prueba",
+    customContent,
+    includeReward,
+    rewardUrl,
+    rewardFileName,
+  } = options;
 
   let subject = options.subject || "";
   let contentSection = "";
@@ -221,7 +232,7 @@ function generateEmailHtml(
 async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
 ): Promise<{ success: boolean; error?: string; provider?: string }> {
   // Try Resend first
   const resendKey = process.env.RESEND_API_KEY;
@@ -234,7 +245,9 @@ async function sendEmail(
           Authorization: `Bearer ${resendKey}`,
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "Sonido Líquido <no-reply@sonidoliquido.com>",
+          from:
+            process.env.EMAIL_FROM ||
+            "Sonido Líquido <no-reply@sonidoliquido.com>",
           to: [to],
           subject,
           html,
@@ -245,9 +258,12 @@ async function sendEmail(
 
       if (response.ok) {
         return { success: true, provider: "resend" };
-      } else {
-        return { success: false, error: data.message || "Resend error", provider: "resend" };
       }
+      return {
+        success: false,
+        error: data.message || "Resend error",
+        provider: "resend",
+      };
     } catch (error) {
       return { success: false, error: String(error), provider: "resend" };
     }
@@ -257,29 +273,36 @@ async function sendEmail(
   const mandrillKey = process.env.MANDRILL_API_KEY;
   if (mandrillKey) {
     try {
-      const response = await fetch("https://mandrillapp.com/api/1.0/messages/send.json", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: mandrillKey,
-          message: {
-            html,
-            subject,
-            from_email: process.env.EMAIL_FROM || "no-reply@sonidoliquido.com",
-            from_name: "Sonido Líquido",
-            to: [{ email: to, type: "to" }],
-            tags: ["test-email"],
-          },
-        }),
-      });
+      const response = await fetch(
+        "https://mandrillapp.com/api/1.0/messages/send.json",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: mandrillKey,
+            message: {
+              html,
+              subject,
+              from_email:
+                process.env.EMAIL_FROM || "no-reply@sonidoliquido.com",
+              from_name: "Sonido Líquido",
+              to: [{ email: to, type: "to" }],
+              tags: ["test-email"],
+            },
+          }),
+        },
+      );
 
       const data = await response.json();
 
       if (Array.isArray(data) && data[0]?.status === "sent") {
         return { success: true, provider: "mandrill" };
-      } else {
-        return { success: false, error: data[0]?.reject_reason || "Mandrill error", provider: "mandrill" };
       }
+      return {
+        success: false,
+        error: data[0]?.reject_reason || "Mandrill error",
+        provider: "mandrill",
+      };
     } catch (error) {
       return { success: false, error: String(error), provider: "mandrill" };
     }
@@ -297,7 +320,10 @@ async function sendEmail(
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }] }],
-          from: { email: process.env.EMAIL_FROM || "no-reply@sonidoliquido.com", name: "Sonido Líquido" },
+          from: {
+            email: process.env.EMAIL_FROM || "no-reply@sonidoliquido.com",
+            name: "Sonido Líquido",
+          },
           subject,
           content: [{ type: "text/html", value: html }],
         }),
@@ -305,10 +331,13 @@ async function sendEmail(
 
       if (response.ok || response.status === 202) {
         return { success: true, provider: "sendgrid" };
-      } else {
-        const data = await response.json();
-        return { success: false, error: JSON.stringify(data.errors), provider: "sendgrid" };
       }
+      const data = await response.json();
+      return {
+        success: false,
+        error: JSON.stringify(data.errors),
+        provider: "sendgrid",
+      };
     } catch (error) {
       return { success: false, error: String(error), provider: "sendgrid" };
     }
@@ -316,7 +345,8 @@ async function sendEmail(
 
   return {
     success: false,
-    error: "No email provider configured. Set RESEND_API_KEY, MANDRILL_API_KEY, or SENDGRID_API_KEY",
+    error:
+      "No email provider configured. Set RESEND_API_KEY, MANDRILL_API_KEY, or SENDGRID_API_KEY",
   };
 }
 
@@ -339,12 +369,20 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body: TestEmailRequest = await request.json();
-    const { recipients, template, subject, customContent, includeReward, rewardUrl, rewardFileName } = body;
+    const {
+      recipients,
+      template,
+      subject,
+      customContent,
+      includeReward,
+      rewardUrl,
+      rewardFileName,
+    } = body;
 
     if (!recipients || recipients.length === 0) {
       return NextResponse.json(
         { success: false, error: "Al menos un destinatario es requerido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -353,8 +391,11 @@ export async function POST(request: NextRequest) {
     const invalidEmails = recipients.filter((e) => !emailRegex.test(e));
     if (invalidEmails.length > 0) {
       return NextResponse.json(
-        { success: false, error: `Emails inválidos: ${invalidEmails.join(", ")}` },
-        { status: 400 }
+        {
+          success: false,
+          error: `Emails inválidos: ${invalidEmails.join(", ")}`,
+        },
+        { status: 400 },
       );
     }
 
@@ -362,7 +403,7 @@ export async function POST(request: NextRequest) {
     if (recipients.length > 5) {
       return NextResponse.json(
         { success: false, error: "Máximo 5 destinatarios para pruebas" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -399,7 +440,7 @@ export async function POST(request: NextRequest) {
       testEmailLogs.push(log);
 
       console.log(
-        `[Test Email] ${result.success ? "✓" : "✗"} ${recipient} - ${template} - ${result.provider || "no provider"}`
+        `[Test Email] ${result.success ? "✓" : "✗"} ${recipient} - ${template} - ${result.provider || "no provider"}`,
       );
     }
 
@@ -425,7 +466,7 @@ export async function POST(request: NextRequest) {
     console.error("[Test Email] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error al enviar emails de prueba" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

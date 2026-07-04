@@ -2,18 +2,22 @@
 // PUSH NOTIFICATION SUBSCRIPTION API
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { pushNotificationService } from "@/lib/services/push-notifications";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { subscription, userAgent } = body;
 
-    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+    if (
+      !subscription?.endpoint ||
+      !subscription?.keys?.p256dh ||
+      !subscription?.keys?.auth
+    ) {
       return NextResponse.json(
         { success: false, error: "Invalid subscription data" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -25,7 +29,7 @@ export async function POST(request: NextRequest) {
           auth: subscription.keys.auth,
         },
       },
-      userAgent
+      userAgent,
     );
 
     return NextResponse.json({
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
     console.error("[Push Subscribe] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -49,7 +53,7 @@ export async function DELETE(request: NextRequest) {
     if (!endpoint) {
       return NextResponse.json(
         { success: false, error: "Endpoint required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -60,7 +64,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Push Unsubscribe] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

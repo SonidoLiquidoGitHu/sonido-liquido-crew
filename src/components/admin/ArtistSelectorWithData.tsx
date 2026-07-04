@@ -1,6 +1,6 @@
 "use client";
 
-import { ArtistSelector, type Artist } from "./ArtistSelector";
+import { type Artist, ArtistSelector } from "./ArtistSelector";
 
 interface ArtistSelectorWithDataProps {
   artists: Artist[];
@@ -22,12 +22,7 @@ export function ArtistSelectorWithData({
   artists,
   ...props
 }: ArtistSelectorWithDataProps) {
-  return (
-    <ArtistSelector
-      initialArtists={artists}
-      {...props}
-    />
-  );
+  return <ArtistSelector initialArtists={artists} {...props} />;
 }
 
 export default ArtistSelectorWithData;

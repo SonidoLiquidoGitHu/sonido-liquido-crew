@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { videos, artists } from "@/db/schema";
+import { artists, videos } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "6", 10);
+    const limit = Number.parseInt(searchParams.get("limit") || "6", 10);
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json({
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     console.error("[API] Error fetching random videos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch random videos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

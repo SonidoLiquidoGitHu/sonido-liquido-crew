@@ -1,14 +1,7 @@
 "use client";
 
+import { Loader2, Mail, Search, Tag, Users, X } from "lucide-react";
 import { useState } from "react";
-import {
-  Users,
-  Tag,
-  Mail,
-  Loader2,
-  Search,
-  X,
-} from "lucide-react";
 
 // ===========================================
 // TYPES
@@ -63,8 +56,8 @@ export function AudienceSelector({
 
   // Filter tags by search query
   const filteredTags = searchQuery.trim()
-    ? tags.filter(tag =>
-        tag.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ? tags.filter((tag) =>
+        tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : tags;
 
@@ -73,8 +66,8 @@ export function AudienceSelector({
     if (disabled) return;
     onSelectedTagsChange(
       selectedTags.includes(tagName)
-        ? selectedTags.filter(t => t !== tagName)
-        : [...selectedTags, tagName]
+        ? selectedTags.filter((t) => t !== tagName)
+        : [...selectedTags, tagName],
     );
   };
 
@@ -87,23 +80,27 @@ export function AudienceSelector({
   // Select all tags
   const selectAll = () => {
     if (disabled) return;
-    onSelectedTagsChange(tags.map(t => t.name));
+    onSelectedTagsChange(tags.map((t) => t.name));
   };
 
   // Calculate reach (with NaN protection)
   const safeAudienceCount = audienceMemberCount || 0;
-  const selectedReach = selectedTags.length > 0
-    ? tags
-        .filter(t => selectedTags.includes(t.name))
-        .reduce((sum, t) => sum + (t.count || 0), 0)
-    : safeAudienceCount;
+  const selectedReach =
+    selectedTags.length > 0
+      ? tags
+          .filter((t) => selectedTags.includes(t.name))
+          .reduce((sum, t) => sum + (t.count || 0), 0)
+      : safeAudienceCount;
 
-  const reachLabel = selectedTags.length > 0
-    ? `~${selectedReach.toLocaleString()} contacto${selectedReach !== 1 ? "s" : ""}`
-    : `${safeAudienceCount.toLocaleString()} contacto${safeAudienceCount !== 1 ? "s" : ""}`;
+  const reachLabel =
+    selectedTags.length > 0
+      ? `~${selectedReach.toLocaleString()} contacto${selectedReach !== 1 ? "s" : ""}`
+      : `${safeAudienceCount.toLocaleString()} contacto${safeAudienceCount !== 1 ? "s" : ""}`;
 
   return (
-    <div className={`p-4 bg-slc-card rounded-lg border border-slc-border space-y-3 ${className}`}>
+    <div
+      className={`p-4 bg-slc-card rounded-lg border border-slc-border space-y-3 ${className}`}
+    >
       {/* Header */}
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -117,7 +114,9 @@ export function AudienceSelector({
         </div>
         {audienceMemberCount > 0 && (
           <div className="text-right flex-shrink-0">
-            <p className="text-lg font-bold text-primary">{audienceMemberCount.toLocaleString()}</p>
+            <p className="text-lg font-bold text-primary">
+              {audienceMemberCount.toLocaleString()}
+            </p>
             <p className="text-[10px] text-slc-muted">suscriptores totales</p>
           </div>
         )}
@@ -168,7 +167,8 @@ export function AudienceSelector({
             <>
               <span className="text-[10px] text-slc-muted">·</span>
               <span className="text-[10px] text-primary font-medium">
-                {selectedTags.length} seleccionado{selectedTags.length > 1 ? "s" : ""}
+                {selectedTags.length} seleccionado
+                {selectedTags.length > 1 ? "s" : ""}
               </span>
             </>
           )}
@@ -179,7 +179,9 @@ export function AudienceSelector({
       {tagsLoading ? (
         <div className="flex items-center gap-2 py-3">
           <Loader2 className="w-4 h-4 text-primary animate-spin" />
-          <span className="text-xs text-slc-muted">Cargando tags de audiencia...</span>
+          <span className="text-xs text-slc-muted">
+            Cargando tags de audiencia...
+          </span>
         </div>
       ) : filteredTags.length > 0 ? (
         variant === "checkbox" ? (
@@ -204,12 +206,20 @@ export function AudienceSelector({
                     className="w-4 h-4 rounded border-slc-border accent-primary flex-shrink-0"
                   />
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Tag className={`w-3 h-3 flex-shrink-0 ${isSelected ? "text-primary" : "text-slc-muted"}`} />
-                    <span className={`text-sm truncate ${isSelected ? "font-medium" : ""}`}>{tag.name}</span>
+                    <Tag
+                      className={`w-3 h-3 flex-shrink-0 ${isSelected ? "text-primary" : "text-slc-muted"}`}
+                    />
+                    <span
+                      className={`text-sm truncate ${isSelected ? "font-medium" : ""}`}
+                    >
+                      {tag.name}
+                    </span>
                   </div>
-                  <span className={`text-xs font-medium flex-shrink-0 ${
-                    isSelected ? "text-primary" : "text-slc-muted"
-                  }`}>
+                  <span
+                    className={`text-xs font-medium flex-shrink-0 ${
+                      isSelected ? "text-primary" : "text-slc-muted"
+                    }`}
+                  >
                     {tag.count > 0
                       ? `${tag.count.toLocaleString()} contacto${tag.count !== 1 ? "s" : ""}`
                       : "0 contactos"}
@@ -236,7 +246,9 @@ export function AudienceSelector({
                 >
                   <Tag className="w-3 h-3" />
                   {tag.name}
-                  <span className={`font-medium ${isSelected ? "text-primary" : ""}`}>
+                  <span
+                    className={`font-medium ${isSelected ? "text-primary" : ""}`}
+                  >
                     {tag.count}
                   </span>
                 </button>
@@ -256,19 +268,20 @@ export function AudienceSelector({
 
       {/* Reach Summary */}
       {showReachSummary && (
-        <div className={`p-3 rounded-lg border transition-colors ${
-          selectedTags.length > 0
-            ? "bg-primary/5 border-primary/20"
-            : "bg-slc-dark border-slc-border"
-        }`}>
+        <div
+          className={`p-3 rounded-lg border transition-colors ${
+            selectedTags.length > 0
+              ? "bg-primary/5 border-primary/20"
+              : "bg-slc-dark border-slc-border"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Mail className="w-3.5 h-3.5 text-primary flex-shrink-0" />
               <span className="text-xs font-medium">
                 {selectedTags.length > 0
                   ? `Se enviará a suscriptores con ${selectedTags.length} tag${selectedTags.length > 1 ? "s" : ""} seleccionado${selectedTags.length > 1 ? "s" : ""}`
-                  : "Se enviará a TODOS los suscriptores"
-                }
+                  : "Se enviará a TODOS los suscriptores"}
               </span>
             </div>
             <span className="text-xs font-bold text-primary flex-shrink-0 ml-2">
@@ -277,8 +290,8 @@ export function AudienceSelector({
           </div>
           {selectedTags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {selectedTags.map(tagName => {
-                const tagData = tags.find(t => t.name === tagName);
+              {selectedTags.map((tagName) => {
+                const tagData = tags.find((t) => t.name === tagName);
                 return (
                   <span
                     key={tagName}

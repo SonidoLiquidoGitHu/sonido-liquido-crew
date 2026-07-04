@@ -1,12 +1,13 @@
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { verticalVideos, verticalVideoTags, tags, artists } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { artists, tags, verticalVideoTags, verticalVideos } from "@/db/schema";
 import { getDirectDropboxUrl } from "@/lib/video-utils";
+import { eq, sql } from "drizzle-orm";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { ReelDetail } from "./ReelDetail";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,9 @@ export async function generateMetadata({
       video.description ||
       `Mira este video de ${video.artistName || "Sonido Líquido Crew"}`;
     const pageUrl = `${SITE_URL}/reels/${video.id}`;
-    const thumbnail = video.thumbnailUrl ? getDirectDropboxUrl(video.thumbnailUrl) : undefined;
+    const thumbnail = video.thumbnailUrl
+      ? getDirectDropboxUrl(video.thumbnailUrl)
+      : undefined;
 
     // Extract YouTube ID for video embed in OG
     let videoEmbedUrl: string | undefined;
@@ -62,7 +65,7 @@ export async function generateMetadata({
       videoEmbedUrl = video.embedUrl;
     } else if (video.videoUrl) {
       const ytMatch = video.videoUrl.match(
-        /(?:shorts\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/
+        /(?:shorts\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/,
       );
       if (ytMatch) {
         videoEmbedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
@@ -78,8 +81,19 @@ export async function generateMetadata({
         url: pageUrl,
         siteName: "Sonido Líquido Crew",
         type: "video.other",
-        ...(thumbnail && { images: [{ url: thumbnail, width: 1080, height: 1920, alt: video.title || "Video" }] }),
-        ...(videoEmbedUrl && { videos: [{ url: videoEmbedUrl, width: 1080, height: 1920 }] }),
+        ...(thumbnail && {
+          images: [
+            {
+              url: thumbnail,
+              width: 1080,
+              height: 1920,
+              alt: video.title || "Video",
+            },
+          ],
+        }),
+        ...(videoEmbedUrl && {
+          videos: [{ url: videoEmbedUrl, width: 1080, height: 1920 }],
+        }),
       },
       twitter: {
         card: thumbnail ? "summary_large_image" : "summary",

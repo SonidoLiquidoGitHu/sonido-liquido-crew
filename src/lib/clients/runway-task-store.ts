@@ -5,9 +5,9 @@
 // across serverless function cold starts on Netlify.
 // Previously used an in-memory Map which was lost on every cold start.
 
-import { type RunwayModel, type RunwayRatio } from "@/lib/clients/runway";
 import { isDatabaseConfigured } from "@/db/client";
-import { createClient, type Client } from "@libsql/client/web";
+import type { RunwayModel, RunwayRatio } from "@/lib/clients/runway";
+import { type Client, createClient } from "@libsql/client/web";
 
 export interface RunwayTaskInfo {
   id: string;
@@ -37,8 +37,18 @@ let _dbClient: Client | null = null;
 function getDbClient(): Client | null {
   if (_dbClient) return _dbClient;
 
-  const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-  const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
+  const url = (
+    process.env.DATABASE_URL ||
+    process.env.TURSO_DATABASE_URL ||
+    process.env.LIBSQL_URL ||
+    ""
+  ).trim();
+  const token = (
+    process.env.DATABASE_AUTH_TOKEN ||
+    process.env.TURSO_AUTH_TOKEN ||
+    process.env.LIBSQL_AUTH_TOKEN ||
+    ""
+  ).trim();
   if (!url || !token) return null;
 
   _dbClient = createClient({ url, authToken: token });
@@ -95,8 +105,12 @@ async function _doEnsureTable(): Promise<void> {
         updated_at INTEGER NOT NULL DEFAULT (unixepoch())
       )
     `);
-    await client.execute(`CREATE INDEX IF NOT EXISTS idx_runway_tasks_status ON runway_tasks(status)`);
-    await client.execute(`CREATE INDEX IF NOT EXISTS idx_runway_tasks_created ON runway_tasks(created_at DESC)`);
+    await client.execute(
+      "CREATE INDEX IF NOT EXISTS idx_runway_tasks_status ON runway_tasks(status)",
+    );
+    await client.execute(
+      "CREATE INDEX IF NOT EXISTS idx_runway_tasks_created ON runway_tasks(created_at DESC)",
+    );
     console.log("[Runway Task Store] Table ensured");
   } catch (err) {
     console.error("[Runway Task Store] Failed to ensure table:", err);
@@ -125,7 +139,9 @@ function rowToTaskInfo(row: any): RunwayTaskInfo {
     status: row.status || "PENDING",
     output: row.output ? JSON.parse(row.output) : undefined,
     error: row.error || undefined,
-    createdAt: row.created_at ? new Date(row.created_at * 1000).toISOString() : new Date().toISOString(),
+    createdAt: row.created_at
+      ? new Date(row.created_at * 1000).toISOString()
+      : new Date().toISOString(),
     estimatedCost: {
       credits: row.estimated_cost_credits || 0,
       usd: row.estimated_cost_usd || 0,
@@ -145,7 +161,9 @@ export async function storeTask(task: RunwayTaskInfo): Promise<void> {
 
   const client = getDbClient();
   if (!client) {
-    console.warn("[Runway Task Store] Database not configured, task stored in memory only");
+    console.warn(
+      "[Runway Task Store] Database not configured, task stored in memory only",
+    );
     return;
   }
 
@@ -189,15 +207,20 @@ export async function storeTask(task: RunwayTaskInfo): Promise<void> {
  * This prevents polling from overwriting valid data with null/undefined
  * when Runway hasn't produced output yet.
  */
-export async function updateTask(taskId: string, updates: Partial<Pick<RunwayTaskInfo, "status" | "output" | "error">>): Promise<void> {
+export async function updateTask(
+  taskId: string,
+  updates: Partial<Pick<RunwayTaskInfo, "status" | "output" | "error">>,
+): Promise<void> {
   // Update memory cache
   const cached = memoryCache.get(taskId);
   if (cached) {
     if (updates.status !== undefined) cached.status = updates.status;
     // Only update output if we have actual output data
-    if (updates.output !== undefined && updates.output.length > 0) cached.output = updates.output;
+    if (updates.output !== undefined && updates.output.length > 0)
+      cached.output = updates.output;
     // Only update error if there's an actual error message
-    if (updates.error !== undefined && updates.error) cached.error = updates.error;
+    if (updates.error !== undefined && updates.error)
+      cached.error = updates.error;
   }
   cacheTimestamps.set(taskId, Date.now());
 
@@ -238,11 +261,13 @@ export async function updateTask(taskId: string, updates: Partial<Pick<RunwayTas
 /**
  * Get a task by ID
  */
-export async function getTask(taskId: string): Promise<RunwayTaskInfo | undefined> {
+export async function getTask(
+  taskId: string,
+): Promise<RunwayTaskInfo | undefined> {
   // Check memory cache first
   const cached = memoryCache.get(taskId);
   const cacheAge = cacheTimestamps.get(taskId) || 0;
-  if (cached && (Date.now() - cacheAge) < CACHE_TTL) {
+  if (cached && Date.now() - cacheAge < CACHE_TTL) {
     return cached;
   }
 
@@ -283,13 +308,14 @@ export async function getAllTasks(): Promise<RunwayTaskInfo[]> {
   if (!client) {
     // Return memory cache if DB not available
     return Array.from(memoryCache.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }
 
   try {
     const result = await client.execute(
-      "SELECT * FROM runway_tasks ORDER BY created_at DESC LIMIT 100"
+      "SELECT * FROM runway_tasks ORDER BY created_at DESC LIMIT 100",
     );
 
     const tasks = result.rows.map(rowToTaskInfo);
@@ -304,7 +330,8 @@ export async function getAllTasks(): Promise<RunwayTaskInfo[]> {
   } catch (err) {
     console.error("[Runway Task Store] Failed to get all tasks:", err);
     return Array.from(memoryCache.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }
 }
@@ -312,12 +339,12 @@ export async function getAllTasks(): Promise<RunwayTaskInfo[]> {
 /**
  * Delete old completed tasks (cleanup)
  */
-export async function cleanupOldTasks(maxAgeDays: number = 7): Promise<number> {
+export async function cleanupOldTasks(maxAgeDays = 7): Promise<number> {
   const client = getDbClient();
   if (!client) return 0;
 
   try {
-    const cutoff = Math.floor(Date.now() / 1000) - (maxAgeDays * 86400);
+    const cutoff = Math.floor(Date.now() / 1000) - maxAgeDays * 86400;
     const result = await client.execute({
       sql: "DELETE FROM runway_tasks WHERE status IN ('SUCCEEDED', 'FAILED', 'CANCELLED') AND created_at < ?",
       args: [cutoff],

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { mailchimpClient } from "@/lib/clients/mailchimp";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Email template for welcome notification (used as fallback or for Mailchimp campaign)
 function getWelcomeEmailHTML(name?: string): string {
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     if (!email) {
       return NextResponse.json(
         { success: false, error: "Email is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { success: false, error: "Invalid email format" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -168,14 +168,17 @@ export async function POST(request: NextRequest) {
           source: "push-notification-signup",
         });
 
-        console.log(`[Welcome Email] Added ${email} to Mailchimp with push-notifications tag`);
+        console.log(
+          `[Welcome Email] Added ${email} to Mailchimp with push-notifications tag`,
+        );
 
         // Optionally send a campaign directly (single recipient)
         // This is useful if you don't have an automation set up
         try {
           await mailchimpClient.createAndSendCampaign({
             subject: "🔔 ¡Notificaciones Activadas! - Sonido Líquido Crew",
-            previewText: "Gracias por activar las notificaciones. Te avisaremos de los próximos lanzamientos.",
+            previewText:
+              "Gracias por activar las notificaciones. Te avisaremos de los próximos lanzamientos.",
             title: `Welcome - ${email} - ${new Date().toISOString().split("T")[0]}`,
             htmlContent: getWelcomeEmailHTML(name),
             tags: ["push-notifications"], // Only send to this tag
@@ -183,7 +186,10 @@ export async function POST(request: NextRequest) {
           console.log(`[Welcome Email] Campaign sent to ${email}`);
         } catch (campaignError) {
           // Campaign send is optional - automation might handle it
-          console.warn(`[Welcome Email] Campaign not sent (automation may handle):`, campaignError);
+          console.warn(
+            "[Welcome Email] Campaign not sent (automation may handle):",
+            campaignError,
+          );
         }
 
         return NextResponse.json({
@@ -213,7 +219,7 @@ export async function POST(request: NextRequest) {
     console.error("[Welcome Email] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to process request" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

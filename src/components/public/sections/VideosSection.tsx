@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Video, Shuffle, Tv } from "lucide-react";
+import { Shuffle, Tv, Video } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useState } from "react";
 
 // ===========================================
 // VIDEOS SECTION - Tabbed: Destacados / Aleatorios / Canales
@@ -10,18 +10,27 @@ import dynamic from "next/dynamic";
 // ===========================================
 
 const FeaturedVideos = dynamic(
-  () => import("@/components/public/sections/FeaturedVideos").then(m => ({ default: m.FeaturedVideos })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/FeaturedVideos").then((m) => ({
+      default: m.FeaturedVideos,
+    })),
+  { ssr: true },
 );
 
 const RandomVideoCarousel = dynamic(
-  () => import("@/components/public/sections/RandomVideoCarousel").then(m => ({ default: m.RandomVideoCarousel })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/RandomVideoCarousel").then((m) => ({
+      default: m.RandomVideoCarousel,
+    })),
+  { ssr: true },
 );
 
 const ArtistChannels = dynamic(
-  () => import("@/components/public/sections/ArtistChannels").then(m => ({ default: m.ArtistChannels })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/ArtistChannels").then((m) => ({
+      default: m.ArtistChannels,
+    })),
+  { ssr: true },
 );
 
 const TABS = [
@@ -30,7 +39,7 @@ const TABS = [
   { id: "channels", label: "Canales", icon: Tv },
 ] as const;
 
-type TabId = typeof TABS[number]["id"];
+type TabId = (typeof TABS)[number]["id"];
 
 interface VideosSectionProps {
   featuredVideos: any[];
@@ -38,7 +47,7 @@ interface VideosSectionProps {
 
 export function VideosSection({ featuredVideos }: VideosSectionProps) {
   const [activeTab, setActiveTab] = useState<TabId>(
-    featuredVideos.length > 0 ? "featured" : "random"
+    featuredVideos.length > 0 ? "featured" : "random",
   );
 
   return (
@@ -66,9 +75,10 @@ export function VideosSection({ featuredVideos }: VideosSectionProps) {
                   onClick={() => setActiveTab(tab.id)}
                   className={`
                     flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all
-                    ${activeTab === tab.id
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                    ${
+                      activeTab === tab.id
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
                     }
                   `}
                 >
@@ -82,16 +92,15 @@ export function VideosSection({ featuredVideos }: VideosSectionProps) {
 
         {/* Tab content */}
         <div className="min-h-[400px]">
-          {activeTab === "featured" && (
-            featuredVideos.length > 0 ? (
+          {activeTab === "featured" &&
+            (featuredVideos.length > 0 ? (
               <FeaturedVideos videos={featuredVideos} />
             ) : (
               <div className="text-center py-12 text-gray-400">
                 <Video className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Videos destacados próximamente</p>
               </div>
-            )
-          )}
+            ))}
           {activeTab === "random" && (
             <RandomVideoCarousel
               title="Videos Aleatorios"

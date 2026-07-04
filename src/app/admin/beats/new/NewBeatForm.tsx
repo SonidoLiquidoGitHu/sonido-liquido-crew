@@ -1,58 +1,89 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { type Artist, ArtistSelector } from "@/components/admin/ArtistSelector";
+import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
+import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
-import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
-import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
-import { type StyleSettings } from "@/lib/style-config";
+import type { StyleSettings } from "@/lib/style-config";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export interface NewBeatFormProps {
   artists: Artist[];
 }
 import {
-  ArrowLeft,
-  Save,
-  Music,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
   Cloud,
-  Image as ImageIcon,
-  Headphones,
   Download,
-  Lock,
-  Play,
-  Instagram,
-  Facebook,
-  Link as LinkIcon,
   Eye,
   EyeOff,
+  Facebook,
+  Headphones,
+  Image as ImageIcon,
+  Instagram,
+  Link as LinkIcon,
+  Loader2,
+  Lock,
+  Music,
+  Play,
+  Save,
 } from "lucide-react";
 
 const musicKeys = [
-  "C major", "C minor", "C# major", "C# minor",
-  "D major", "D minor", "D# major", "D# minor",
-  "E major", "E minor",
-  "F major", "F minor", "F# major", "F# minor",
-  "G major", "G minor", "G# major", "G# minor",
-  "A major", "A minor", "A# major", "A# minor",
-  "B major", "B minor",
+  "C major",
+  "C minor",
+  "C# major",
+  "C# minor",
+  "D major",
+  "D minor",
+  "D# major",
+  "D# minor",
+  "E major",
+  "E minor",
+  "F major",
+  "F minor",
+  "F# major",
+  "F# minor",
+  "G major",
+  "G minor",
+  "G# major",
+  "G# minor",
+  "A major",
+  "A minor",
+  "A# major",
+  "A# minor",
+  "B major",
+  "B minor",
 ];
 
 const genres = [
-  "Boom Bap", "Trap", "Lo-Fi", "Old School", "West Coast",
-  "East Coast", "Southern", "Instrumental", "Underground",
-  "Hardcore", "Conscious", "Melodic", "Dark", "Chill",
+  "Boom Bap",
+  "Trap",
+  "Lo-Fi",
+  "Old School",
+  "West Coast",
+  "East Coast",
+  "Southern",
+  "Instrumental",
+  "Underground",
+  "Hardcore",
+  "Conscious",
+  "Melodic",
+  "Dark",
+  "Chill",
 ];
 
 export default function NewBeatForm({ artists }: NewBeatFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -98,23 +129,39 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
     setTimeout(() => setMessage(null), 3000);
   };
 
-  const handleCoverUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, coverImageUrl: url }));
+  const handleCoverUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, coverImageUrl: url }));
     showMessage("success", `Portada "${filename}" subida a Dropbox`);
   };
 
-  const handlePreviewUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, previewAudioUrl: url }));
+  const handlePreviewUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, previewAudioUrl: url }));
     showMessage("success", `Preview "${filename}" subido a Dropbox`);
   };
 
-  const handleFullAudioUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, fullAudioUrl: url }));
+  const handleFullAudioUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, fullAudioUrl: url }));
     showMessage("success", `Beat completo "${filename}" subido a Dropbox`);
   };
 
-  const handleStemPackUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, stemPackUrl: url }));
+  const handleStemPackUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, stemPackUrl: url }));
     showMessage("success", `Stems "${filename}" subidos a Dropbox`);
   };
 
@@ -137,10 +184,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
 
       const submitData = {
         ...formData,
-        bpm: formData.bpm ? parseInt(formData.bpm) : null,
-        duration: formData.duration ? parseInt(formData.duration) : null,
-        price: formData.price ? parseFloat(formData.price) : null,
-        tags: formData.tags ? formData.tags.split(",").map(t => t.trim()) : null,
+        bpm: formData.bpm ? Number.parseInt(formData.bpm) : null,
+        duration: formData.duration ? Number.parseInt(formData.duration) : null,
+        price: formData.price ? Number.parseFloat(formData.price) : null,
+        tags: formData.tags
+          ? formData.tags.split(",").map((t) => t.trim())
+          : null,
       };
 
       const response = await fetch("/api/admin/beats", {
@@ -181,19 +230,19 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
         </Button>
         <div>
           <h1 className="font-oswald text-3xl uppercase">Nuevo Beat</h1>
-          <p className="text-slc-muted mt-1">
-            Sube un beat con download gate
-          </p>
+          <p className="text-slc-muted mt-1">Sube un beat con download gate</p>
         </div>
       </div>
 
       {/* Message */}
       {message && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-          message.type === "success"
-            ? "bg-green-500/10 border border-green-500/20 text-green-500"
-            : "bg-red-500/10 border border-red-500/20 text-red-500"
-        }`}>
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-green-500/10 border border-green-500/20 text-green-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500"
+          }`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
@@ -209,14 +258,23 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Info */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Información Básica</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Información Básica
+              </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Título del Beat *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Título del Beat *
+                  </label>
                   <Input
                     value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="Nombre del beat"
                     required
                   />
@@ -225,7 +283,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                 <div>
                   <ArtistSelector
                     value={formData.producerId}
-                    onChange={(v) => setFormData(prev => ({ ...prev, producerId: Array.isArray(v) ? v[0] || "" : v }))}
+                    onChange={(v) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        producerId: Array.isArray(v) ? v[0] || "" : v,
+                      }))
+                    }
                     label="Productor"
                     placeholder="Seleccionar productor..."
                     initialArtists={artists}
@@ -233,20 +296,31 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">O nombre manual</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    O nombre manual
+                  </label>
                   <Input
                     value={formData.producerName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, producerName: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        producerName: e.target.value,
+                      }))
+                    }
                     placeholder="Nombre del productor (si no está en lista)"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">BPM</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    BPM
+                  </label>
                   <Input
                     type="number"
                     value={formData.bpm}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bpm: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, bpm: e.target.value }))
+                    }
                     placeholder="90"
                     min="40"
                     max="300"
@@ -254,47 +328,73 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Tonalidad</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Tonalidad
+                  </label>
                   <select
                     value={formData.key}
-                    onChange={(e) => setFormData(prev => ({ ...prev, key: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, key: e.target.value }))
+                    }
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   >
                     <option value="">Seleccionar...</option>
                     {musicKeys.map((key) => (
-                      <option key={key} value={key}>{key}</option>
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Género</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Género
+                  </label>
                   <select
                     value={formData.genre}
-                    onChange={(e) => setFormData(prev => ({ ...prev, genre: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        genre: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   >
                     <option value="">Seleccionar...</option>
                     {genres.map((genre) => (
-                      <option key={genre} value={genre}>{genre}</option>
+                      <option key={genre} value={genre}>
+                        {genre}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Tags (separados por coma)</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Tags (separados por coma)
+                  </label>
                   <Input
                     value={formData.tags}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, tags: e.target.value }))
+                    }
                     placeholder="dark, melodic, trap"
                   />
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Descripción
+                  </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Descripción del beat..."
                     rows={3}
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -387,7 +487,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.gateEnabled}
-                    onChange={(e) => setFormData(prev => ({ ...prev, gateEnabled: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        gateEnabled: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span className="text-sm">Activar</span>
@@ -401,12 +506,19 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                     <input
                       type="checkbox"
                       checked={formData.requireEmail}
-                      onChange={(e) => setFormData(prev => ({ ...prev, requireEmail: e.target.checked }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          requireEmail: e.target.checked,
+                        }))
+                      }
                       className="w-4 h-4 rounded border-slc-border"
                     />
                     <div>
                       <span className="font-medium">Requerir Email</span>
-                      <p className="text-xs text-slc-muted">Captura emails para tu lista</p>
+                      <p className="text-xs text-slc-muted">
+                        Captura emails para tu lista
+                      </p>
                     </div>
                   </label>
 
@@ -416,7 +528,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       <input
                         type="checkbox"
                         checked={formData.requireSpotifyFollow}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requireSpotifyFollow: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            requireSpotifyFollow: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <div className="flex items-center gap-2">
@@ -427,7 +544,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                     {formData.requireSpotifyFollow && (
                       <Input
                         value={formData.spotifyArtistUrl}
-                        onChange={(e) => setFormData(prev => ({ ...prev, spotifyArtistUrl: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            spotifyArtistUrl: e.target.value,
+                          }))
+                        }
                         placeholder="https://open.spotify.com/artist/..."
                         type="url"
                       />
@@ -440,18 +562,30 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       <input
                         type="checkbox"
                         checked={formData.requireSpotifyPlay}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requireSpotifyPlay: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            requireSpotifyPlay: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <div className="flex items-center gap-2">
                         <Play className="w-4 h-4 text-spotify" />
-                        <span className="font-medium">Escuchar canción en Spotify</span>
+                        <span className="font-medium">
+                          Escuchar canción en Spotify
+                        </span>
                       </div>
                     </label>
                     {formData.requireSpotifyPlay && (
                       <Input
                         value={formData.spotifySongUrl}
-                        onChange={(e) => setFormData(prev => ({ ...prev, spotifySongUrl: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            spotifySongUrl: e.target.value,
+                          }))
+                        }
                         placeholder="https://open.spotify.com/track/..."
                         type="url"
                       />
@@ -464,18 +598,30 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       <input
                         type="checkbox"
                         checked={formData.requireHyperfollow}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requireHyperfollow: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            requireHyperfollow: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <div className="flex items-center gap-2">
                         <LinkIcon className="w-4 h-4 text-primary" />
-                        <span className="font-medium">Hyperfollow / Smart Link</span>
+                        <span className="font-medium">
+                          Hyperfollow / Smart Link
+                        </span>
                       </div>
                     </label>
                     {formData.requireHyperfollow && (
                       <Input
                         value={formData.hyperfollowUrl}
-                        onChange={(e) => setFormData(prev => ({ ...prev, hyperfollowUrl: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            hyperfollowUrl: e.target.value,
+                          }))
+                        }
                         placeholder="https://onerpm.link/..."
                         type="url"
                       />
@@ -488,18 +634,30 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       <input
                         type="checkbox"
                         checked={formData.requireInstagramShare}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requireInstagramShare: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            requireInstagramShare: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <div className="flex items-center gap-2">
                         <Instagram className="w-4 h-4 text-pink-500" />
-                        <span className="font-medium">Compartir en Instagram</span>
+                        <span className="font-medium">
+                          Compartir en Instagram
+                        </span>
                       </div>
                     </label>
                     {formData.requireInstagramShare && (
                       <Input
                         value={formData.instagramShareText}
-                        onChange={(e) => setFormData(prev => ({ ...prev, instagramShareText: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            instagramShareText: e.target.value,
+                          }))
+                        }
                         placeholder="Texto para copiar en Instagram..."
                       />
                     )}
@@ -511,18 +669,30 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       <input
                         type="checkbox"
                         checked={formData.requireFacebookShare}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requireFacebookShare: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            requireFacebookShare: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <div className="flex items-center gap-2">
                         <Facebook className="w-4 h-4 text-blue-500" />
-                        <span className="font-medium">Compartir en Facebook</span>
+                        <span className="font-medium">
+                          Compartir en Facebook
+                        </span>
                       </div>
                     </label>
                     {formData.requireFacebookShare && (
                       <Input
                         value={formData.facebookShareText}
-                        onChange={(e) => setFormData(prev => ({ ...prev, facebookShareText: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            facebookShareText: e.target.value,
+                          }))
+                        }
                         placeholder="Texto para compartir..."
                       />
                     )}
@@ -534,7 +704,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       <input
                         type="checkbox"
                         checked={formData.requireCustomAction}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requireCustomAction: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            requireCustomAction: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <span className="font-medium">Acción Personalizada</span>
@@ -543,18 +718,33 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       <div className="space-y-2">
                         <Input
                           value={formData.customActionLabel}
-                          onChange={(e) => setFormData(prev => ({ ...prev, customActionLabel: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              customActionLabel: e.target.value,
+                            }))
+                          }
                           placeholder="Etiqueta del botón"
                         />
                         <Input
                           value={formData.customActionUrl}
-                          onChange={(e) => setFormData(prev => ({ ...prev, customActionUrl: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              customActionUrl: e.target.value,
+                            }))
+                          }
                           placeholder="URL de la acción"
                           type="url"
                         />
                         <Input
                           value={formData.customActionInstructions}
-                          onChange={(e) => setFormData(prev => ({ ...prev, customActionInstructions: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              customActionInstructions: e.target.value,
+                            }))
+                          }
                           placeholder="Instrucciones para el usuario"
                         />
                       </div>
@@ -607,7 +797,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.isFree}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isFree: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isFree: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Gratis (con download gate)</span>
@@ -618,7 +813,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                     <Input
                       type="number"
                       value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          price: e.target.value,
+                        }))
+                      }
                       placeholder="29.99"
                       min="0"
                       step="0.01"
@@ -626,7 +826,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                     />
                     <select
                       value={formData.currency}
-                      onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          currency: e.target.value,
+                        }))
+                      }
                       className="px-3 bg-slc-card border border-slc-border rounded-lg"
                     >
                       <option value="USD">USD</option>
@@ -641,18 +846,27 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
             {/* Style Settings */}
             <StyleSettingsEditor
               value={formData.styleSettings}
-              onChange={(styleSettings) => setFormData(prev => ({ ...prev, styleSettings }))}
+              onChange={(styleSettings) =>
+                setFormData((prev) => ({ ...prev, styleSettings }))
+              }
             />
 
             {/* Visibility */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-lg uppercase mb-4">Visibilidad</h2>
+              <h2 className="font-oswald text-lg uppercase mb-4">
+                Visibilidad
+              </h2>
 
               <div className="space-y-3 mb-4">
                 {/* Visibility toggle */}
                 <button
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      isActive: !prev.isActive,
+                    }))
+                  }
                   className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
                     formData.isActive
                       ? "bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
@@ -666,7 +880,9 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                   )}
                   <div className="text-left">
                     <span className="font-medium block">
-                      {formData.isActive ? "Visible en el sitio" : "Oculto del sitio"}
+                      {formData.isActive
+                        ? "Visible en el sitio"
+                        : "Oculto del sitio"}
                     </span>
                     <span className="text-xs opacity-70">
                       {formData.isActive
@@ -680,7 +896,12 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.isFeatured}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isFeatured: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Destacar</span>
@@ -688,11 +909,7 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
               </div>
 
               <div className="space-y-3">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (

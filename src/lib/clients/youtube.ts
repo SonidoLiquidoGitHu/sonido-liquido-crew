@@ -1,5 +1,5 @@
-import type { YouTubeVideo, YouTubeChannel } from "@/types";
 import { parseISODuration } from "@/lib/utils";
+import type { YouTubeChannel, YouTubeVideo } from "@/types";
 
 // ===========================================
 // YOUTUBE DATA API CLIENT
@@ -56,7 +56,10 @@ class YouTubeClient {
   /**
    * Make API request
    */
-  private async request<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    params: Record<string, string> = {},
+  ): Promise<T> {
     if (!this.isConfigured()) {
       throw new Error("YouTube API key not configured");
     }
@@ -73,7 +76,7 @@ class YouTubeClient {
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(
-        `YouTube API error: ${response.status} - ${error.error?.message || response.statusText}`
+        `YouTube API error: ${response.status} - ${error.error?.message || response.statusText}`,
       );
     }
 
@@ -81,7 +84,9 @@ class YouTubeClient {
 
     // Check for API error in response body
     if (data.error) {
-      throw new Error(`YouTube API error: ${data.error.code} - ${data.error.message}`);
+      throw new Error(
+        `YouTube API error: ${data.error.code} - ${data.error.message}`,
+      );
     }
 
     return data;
@@ -129,10 +134,13 @@ class YouTubeClient {
    * Get channel details by ID
    */
   async getChannel(channelId: string): Promise<YouTubeChannel | null> {
-    const response = await this.request<YouTubeChannelListResponse>("/channels", {
-      part: "snippet,statistics",
-      id: channelId,
-    });
+    const response = await this.request<YouTubeChannelListResponse>(
+      "/channels",
+      {
+        part: "snippet,statistics",
+        id: channelId,
+      },
+    );
 
     return response.items?.[0] || null;
   }
@@ -148,10 +156,13 @@ class YouTubeClient {
     // Remove @ if present
     const cleanHandle = handle.replace(/^@/, "");
 
-    const response = await this.request<YouTubeChannelListResponse>("/channels", {
-      part: "snippet,statistics",
-      forHandle: cleanHandle,
-    });
+    const response = await this.request<YouTubeChannelListResponse>(
+      "/channels",
+      {
+        part: "snippet,statistics",
+        forHandle: cleanHandle,
+      },
+    );
 
     return response.items?.[0] || null;
   }
@@ -161,7 +172,11 @@ class YouTubeClient {
    */
   async searchVideos(
     query: string,
-    options: { maxResults?: number; channelId?: string; pageToken?: string } = {}
+    options: {
+      maxResults?: number;
+      channelId?: string;
+      pageToken?: string;
+    } = {},
   ): Promise<{
     videos: YouTubeSearchResponse["items"];
     nextPageToken?: string;
@@ -183,7 +198,10 @@ class YouTubeClient {
       params.pageToken = options.pageToken;
     }
 
-    const response = await this.request<YouTubeSearchResponse>("/search", params);
+    const response = await this.request<YouTubeSearchResponse>(
+      "/search",
+      params,
+    );
 
     return {
       videos: response.items || [],
@@ -198,7 +216,7 @@ class YouTubeClient {
    */
   async getChannelVideos(
     channelId: string,
-    maxResults = 50
+    maxResults = 50,
   ): Promise<YouTubeVideo[]> {
     // Use a broad query to list channel videos.
     // Empty string can cause API errors, so we use "*" as a wildcard.
@@ -258,20 +276,22 @@ class YouTubeClient {
   /**
    * Extract channel info from URL
    */
-  static extractChannelInfo(url: string): { type: "id" | "handle"; value: string } | null {
+  static extractChannelInfo(
+    url: string,
+  ): { type: "id" | "handle"; value: string } | null {
     if (!url || typeof url !== "string") {
       return null;
     }
 
     const idMatch = url.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
-    if (idMatch && idMatch[1]) return { type: "id", value: idMatch[1] };
+    if (idMatch?.[1]) return { type: "id", value: idMatch[1] };
 
     const handleMatch = url.match(/youtube\.com\/@([a-zA-Z0-9_.-]+)/);
-    if (handleMatch && handleMatch[1]) return { type: "handle", value: handleMatch[1] };
+    if (handleMatch?.[1]) return { type: "handle", value: handleMatch[1] };
 
     // Also handle youtube.com/c/ChannelName format
     const customMatch = url.match(/youtube\.com\/c\/([a-zA-Z0-9_.-]+)/);
-    if (customMatch && customMatch[1]) return { type: "handle", value: customMatch[1] };
+    if (customMatch?.[1]) return { type: "handle", value: customMatch[1] };
 
     return null;
   }
@@ -286,7 +306,10 @@ class YouTubeClient {
   /**
    * Get thumbnail URL for video
    */
-  static getThumbnailUrl(videoId: string, quality: "default" | "medium" | "high" | "maxres" = "high"): string {
+  static getThumbnailUrl(
+    videoId: string,
+    quality: "default" | "medium" | "high" | "maxres" = "high",
+  ): string {
     const qualityMap = {
       default: "default",
       medium: "mqdefault",

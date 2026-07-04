@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { releases, releaseArtists, artists, artistExternalProfiles } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import {
+  artistExternalProfiles,
+  artists,
+  releaseArtists,
+  releases,
+} from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
+import { and, eq, sql } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 // All Sonido Líquido Crew artists with their Spotify IDs
 const SLC_ARTISTS = [
@@ -25,13 +30,19 @@ const SLC_ARTISTS = [
 
 // Spotify credentials - Default to provided credentials, can be overridden via environment variables
 // Trim to remove any accidental whitespace from environment variables
-const SPOTIFY_CLIENT_ID = (process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568").trim();
-const SPOTIFY_CLIENT_SECRET = (process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6").trim();
+const SPOTIFY_CLIENT_ID = (
+  process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568"
+).trim();
+const SPOTIFY_CLIENT_SECRET = (
+  process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6"
+).trim();
 
 // Check if user has configured their own credentials via environment variables
 // If true, we have custom credentials; if false, using default credentials
 function hasCustomSpotifyCredentials(): boolean {
-  return Boolean(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET);
+  return Boolean(
+    process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET,
+  );
 }
 
 // Check if we have any credentials (default or custom)
@@ -65,7 +76,9 @@ async function getSpotifyToken(): Promise<string> {
     throw new Error("Credenciales de Spotify no configuradas");
   }
 
-  const credentials = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString("base64");
+  const credentials = Buffer.from(
+    `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`,
+  ).toString("base64");
 
   const response = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -80,9 +93,13 @@ async function getSpotifyToken(): Promise<string> {
     const errorBody = await response.text().catch(() => "");
     console.error("[Spotify Auth] Error response:", response.status, errorBody);
     if (response.status === 400) {
-      throw new Error("Credenciales de Spotify inválidas. Verifica SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET.");
+      throw new Error(
+        "Credenciales de Spotify inválidas. Verifica SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET.",
+      );
     }
-    throw new Error(`Error de autenticación con Spotify: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Error de autenticación con Spotify: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = await response.json();
@@ -90,9 +107,16 @@ async function getSpotifyToken(): Promise<string> {
 }
 
 // Fetch all albums for an artist with pagination
-async function fetchArtistAlbums(artistId: string, token: string): Promise<SpotifyAlbum[]> {
+async function fetchArtistAlbums(
+  artistId: string,
+  token: string,
+): Promise<SpotifyAlbum[]> {
   // Validate artistId
-  if (!artistId || typeof artistId !== "string" || artistId.trim().length === 0) {
+  if (
+    !artistId ||
+    typeof artistId !== "string" ||
+    artistId.trim().length === 0
+  ) {
     console.error(`[Spotify] Invalid artist ID: ${artistId}`);
     return [];
   }
@@ -105,7 +129,8 @@ async function fetchArtistAlbums(artistId: string, token: string): Promise<Spoti
 
   // Start with base URL - don't use limit parameter as some Spotify app credentials don't support it
   // The API defaults to returning 20 items per page
-  let nextUrl: string | null = `https://api.spotify.com/v1/artists/${cleanId}/albums?include_groups=album,single,compilation`;
+  let nextUrl: string | null =
+    `https://api.spotify.com/v1/artists/${cleanId}/albums?include_groups=album,single,compilation`;
 
   while (nextUrl) {
     try {
@@ -116,12 +141,19 @@ async function fetchArtistAlbums(artistId: string, token: string): Promise<Spoti
       if (!response.ok) {
         if (response.status === 429) {
           // Rate limited - wait and retry
-          const retryAfter = parseInt(response.headers.get("Retry-After") || "30", 10);
-          console.error(`[Spotify] Rate limited (429)! Retry-After: ${retryAfter}s`);
+          const retryAfter = Number.parseInt(
+            response.headers.get("Retry-After") || "30",
+            10,
+          );
+          console.error(
+            `[Spotify] Rate limited (429)! Retry-After: ${retryAfter}s`,
+          );
 
           // Always try to wait and retry (up to max retries)
           console.log(`[Spotify] Rate limited, waiting ${retryAfter}s...`);
-          await new Promise(resolve => setTimeout(resolve, (retryAfter + 1) * 1000));
+          await new Promise((resolve) =>
+            setTimeout(resolve, (retryAfter + 1) * 1000),
+          );
           retryCount++;
           if (retryCount >= maxRetries) {
             console.error(`[Spotify] Max retries exceeded for ${cleanId}`);
@@ -133,11 +165,15 @@ async function fetchArtistAlbums(artistId: string, token: string): Promise<Spoti
 
         if (response.status === 400) {
           const errorBody = await response.text().catch(() => "");
-          console.error(`[Spotify] Bad request for artist ${cleanId}: ${errorBody}`);
+          console.error(
+            `[Spotify] Bad request for artist ${cleanId}: ${errorBody}`,
+          );
           break;
         }
 
-        console.error(`[Spotify] Error fetching albums for ${cleanId}: ${response.status}`);
+        console.error(
+          `[Spotify] Error fetching albums for ${cleanId}: ${response.status}`,
+        );
         break;
       }
 
@@ -156,15 +192,18 @@ async function fetchArtistAlbums(artistId: string, token: string): Promise<Spoti
 
       // Small delay to avoid rate limiting
       if (nextUrl) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     } catch (fetchError) {
-      console.error(`[Spotify] Network error fetching albums for ${cleanId}:`, fetchError);
+      console.error(
+        `[Spotify] Network error fetching albums for ${cleanId}:`,
+        fetchError,
+      );
       retryCount++;
       if (retryCount >= maxRetries) {
         break;
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
@@ -172,7 +211,9 @@ async function fetchArtistAlbums(artistId: string, token: string): Promise<Spoti
 }
 
 // Map Spotify album_type to our release type
-function mapAlbumType(albumType: string): "album" | "ep" | "single" | "compilation" {
+function mapAlbumType(
+  albumType: string,
+): "album" | "ep" | "single" | "compilation" {
   switch (albumType.toLowerCase()) {
     case "album":
       return "album";
@@ -189,15 +230,17 @@ function mapAlbumType(albumType: string): "album" | "ep" | "single" | "compilati
 function parseReleaseDate(dateStr: string, precision: string): Date {
   if (precision === "day") {
     return new Date(dateStr);
-  } else if (precision === "month") {
-    return new Date(`${dateStr}-01`);
-  } else {
-    return new Date(`${dateStr}-01-01`);
   }
+  if (precision === "month") {
+    return new Date(`${dateStr}-01`);
+  }
+  return new Date(`${dateStr}-01-01`);
 }
 
 // Get the best cover image (prefer larger sizes)
-function getBestCoverImage(images: { url: string; width: number; height: number }[]): string | null {
+function getBestCoverImage(
+  images: { url: string; width: number; height: number }[],
+): string | null {
   if (!images || images.length === 0) return null;
 
   // Sort by width descending and get the largest
@@ -233,16 +276,19 @@ export async function POST() {
   try {
     // Get Spotify access token
     console.log("🔑 Getting Spotify access token...");
-    console.log("   Client ID:", SPOTIFY_CLIENT_ID.substring(0, 8) + "...");
+    console.log("   Client ID:", `${SPOTIFY_CLIENT_ID.substring(0, 8)}...`);
     let token: string;
     try {
       token = await getSpotifyToken();
     } catch (authError) {
       console.error("❌ Failed to get Spotify token:", authError);
-      return NextResponse.json({
-        success: false,
-        error: `Error de autenticación con Spotify: ${(authError as Error).message}. Verifica tus credenciales de API.`,
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Error de autenticación con Spotify: ${(authError as Error).message}. Verifica tus credenciales de API.`,
+        },
+        { status: 401 },
+      );
     }
     console.log("✅ Token obtained\n");
 
@@ -250,18 +296,25 @@ export async function POST() {
     const dbArtists = await db.select().from(artists);
 
     // Get all Spotify external profiles
-    const spotifyProfiles = await db.select().from(artistExternalProfiles)
+    const spotifyProfiles = await db
+      .select()
+      .from(artistExternalProfiles)
       .where(eq(artistExternalProfiles.platform, "spotify"));
 
     // Create lookup maps:
     // 1. By DB artist name (lowercase) → DB artist + Spotify ID
     // 2. By Spotify artist ID → DB artist (for multi-artist matching)
-    const artistNameMap = new Map<string, { artist: typeof dbArtists[0]; spotifyId: string | null }>();
-    const artistBySpotifyIdMap = new Map<string, typeof dbArtists[0]>();
+    const artistNameMap = new Map<
+      string,
+      { artist: (typeof dbArtists)[0]; spotifyId: string | null }
+    >();
+    const artistBySpotifyIdMap = new Map<string, (typeof dbArtists)[0]>();
 
     for (const artist of dbArtists) {
       // Find Spotify profile for this artist
-      const spotifyProfile = spotifyProfiles.find(p => p.artistId === artist.id);
+      const spotifyProfile = spotifyProfiles.find(
+        (p) => p.artistId === artist.id,
+      );
       const spotifyId = spotifyProfile?.externalId || null;
       artistNameMap.set(artist.name.toLowerCase(), { artist, spotifyId });
       if (spotifyId) {
@@ -292,7 +345,9 @@ export async function POST() {
         const artistData = artistNameMap.get(slcArtist.name.toLowerCase());
 
         if (!artistData) {
-          console.log(`   ⚠️ Artist ${slcArtist.name} not found in database, skipping`);
+          console.log(
+            `   ⚠️ Artist ${slcArtist.name} not found in database, skipping`,
+          );
           results.errors.push(`Artist ${slcArtist.name} not found in database`);
           continue;
         }
@@ -323,7 +378,11 @@ export async function POST() {
         const albums = await fetchArtistAlbums(spotifyId, token);
         console.log(`   Found ${albums.length} releases`);
 
-        const artistStats = { name: slcArtist.name, found: albums.length, created: 0 };
+        const artistStats = {
+          name: slcArtist.name,
+          found: albums.length,
+          created: 0,
+        };
 
         for (const album of albums) {
           results.totalReleasesFound++;
@@ -331,15 +390,21 @@ export async function POST() {
           // Skip if already processed in this sync run (same release under different artists)
           if (processedReleaseIds.has(album.id)) {
             // Still check if current artist needs a link to the existing release
-            const existingRelease = await db.select().from(releases)
+            const existingRelease = await db
+              .select()
+              .from(releases)
               .where(eq(releases.spotifyId, album.id))
               .limit(1);
             if (existingRelease.length > 0) {
-              const existingLink = await db.select().from(releaseArtists)
-                .where(and(
-                  eq(releaseArtists.releaseId, existingRelease[0].id),
-                  eq(releaseArtists.artistId, dbArtist.id)
-                ))
+              const existingLink = await db
+                .select()
+                .from(releaseArtists)
+                .where(
+                  and(
+                    eq(releaseArtists.releaseId, existingRelease[0].id),
+                    eq(releaseArtists.artistId, dbArtist.id),
+                  ),
+                )
                 .limit(1);
               if (existingLink.length === 0) {
                 try {
@@ -350,8 +415,12 @@ export async function POST() {
                     isPrimary: false,
                   });
                   newArtistLinksCreated++;
-                  console.log(`   🔗 Linked existing: ${album.name} → ${slcArtist.name}`);
-                } catch { /* duplicate */ }
+                  console.log(
+                    `   🔗 Linked existing: ${album.name} → ${slcArtist.name}`,
+                  );
+                } catch {
+                  /* duplicate */
+                }
               }
             }
             continue;
@@ -359,7 +428,9 @@ export async function POST() {
           processedReleaseIds.add(album.id);
 
           // Check if release already exists in DB
-          const existing = await db.select().from(releases)
+          const existing = await db
+            .select()
+            .from(releases)
             .where(eq(releases.spotifyId, album.id))
             .limit(1);
 
@@ -376,20 +447,31 @@ export async function POST() {
             }
             if (Object.keys(updates).length > 0) {
               try {
-                await db.update(releases).set(updates).where(eq(releases.id, existingRelease.id));
-                console.log(`   🔄 Updated missing fields for: ${existingRelease.title}`);
-              } catch { /* non-critical */ }
+                await db
+                  .update(releases)
+                  .set(updates)
+                  .where(eq(releases.id, existingRelease.id));
+                console.log(
+                  `   🔄 Updated missing fields for: ${existingRelease.title}`,
+                );
+              } catch {
+                /* non-critical */
+              }
             }
 
             results.existingReleasesSkipped++;
 
             // IMPORTANT: Check if current artist has a link to this release
             // This fixes multi-artist collaborations (e.g. Trap Juicy by Dilema, Zaque, X Santa-Ana)
-            const existingLink = await db.select().from(releaseArtists)
-              .where(and(
-                eq(releaseArtists.releaseId, existingRelease.id),
-                eq(releaseArtists.artistId, dbArtist.id)
-              ))
+            const existingLink = await db
+              .select()
+              .from(releaseArtists)
+              .where(
+                and(
+                  eq(releaseArtists.releaseId, existingRelease.id),
+                  eq(releaseArtists.artistId, dbArtist.id),
+                ),
+              )
               .limit(1);
 
             if (existingLink.length === 0) {
@@ -401,18 +483,27 @@ export async function POST() {
                   isPrimary: false,
                 });
                 newArtistLinksCreated++;
-                console.log(`   🔗 Linked existing: ${album.name} → ${slcArtist.name}`);
-              } catch { /* duplicate */ }
+                console.log(
+                  `   🔗 Linked existing: ${album.name} → ${slcArtist.name}`,
+                );
+              } catch {
+                /* duplicate */
+              }
             }
             continue;
           }
 
           // Before creating, also try matching by title (for manually-created releases without spotifyId)
-          const manualMatch = await db.select().from(releases)
-            .where(and(
-              eq(releases.title, album.name),
-              sql`${releases.spotifyId} IS NULL`
-            )).limit(1);
+          const manualMatch = await db
+            .select()
+            .from(releases)
+            .where(
+              and(
+                eq(releases.title, album.name),
+                sql`${releases.spotifyId} IS NULL`,
+              ),
+            )
+            .limit(1);
 
           if (manualMatch.length > 0) {
             // Update the manually-created release with Spotify data
@@ -427,15 +518,25 @@ export async function POST() {
               updates.spotifyUrl = album.external_urls.spotify;
             }
             try {
-              await db.update(releases).set(updates).where(eq(releases.id, manualMatch[0].id));
-              console.log(`   🔗 Linked manual release to Spotify: ${album.name}`);
+              await db
+                .update(releases)
+                .set(updates)
+                .where(eq(releases.id, manualMatch[0].id));
+              console.log(
+                `   🔗 Linked manual release to Spotify: ${album.name}`,
+              );
 
               // Also link the artist if not already linked
-              const existingLink = await db.select().from(releaseArtists)
-                .where(and(
-                  eq(releaseArtists.releaseId, manualMatch[0].id),
-                  eq(releaseArtists.artistId, dbArtist.id)
-                )).limit(1);
+              const existingLink = await db
+                .select()
+                .from(releaseArtists)
+                .where(
+                  and(
+                    eq(releaseArtists.releaseId, manualMatch[0].id),
+                    eq(releaseArtists.artistId, dbArtist.id),
+                  ),
+                )
+                .limit(1);
               if (existingLink.length === 0) {
                 try {
                   await db.insert(releaseArtists).values({
@@ -445,9 +546,13 @@ export async function POST() {
                     isPrimary: false,
                   });
                   newArtistLinksCreated++;
-                } catch { /* dup */ }
+                } catch {
+                  /* dup */
+                }
               }
-            } catch { /* non-critical */ }
+            } catch {
+              /* non-critical */
+            }
             results.existingReleasesSkipped++;
             continue;
           }
@@ -457,9 +562,12 @@ export async function POST() {
           const baseSlug = slugify(`${album.name}-${slcArtist.name}`);
           // Add a random suffix to make the slug unique
           const releaseSlug = `${baseSlug}-${generateUUID().substring(0, 8)}`;
-          const releaseDate = parseReleaseDate(album.release_date, album.release_date_precision);
+          const releaseDate = parseReleaseDate(
+            album.release_date,
+            album.release_date_precision,
+          );
           const coverUrl = getBestCoverImage(album.images);
-          const allArtistNames = album.artists.map(a => a.name).join(", ");
+          const allArtistNames = album.artists.map((a) => a.name).join(", ");
 
           try {
             // Insert release
@@ -478,7 +586,8 @@ export async function POST() {
             });
 
             // Create artist-release associations for ALL roster artists on this album
-            const isPrimary = (spotifyArtistId: string) => spotifyArtistId === album.artists[0]?.id;
+            const isPrimary = (spotifyArtistId: string) =>
+              spotifyArtistId === album.artists[0]?.id;
 
             for (const spotifyArtist of album.artists) {
               const rosterArtist = artistBySpotifyIdMap.get(spotifyArtist.id);
@@ -490,14 +599,20 @@ export async function POST() {
                     artistId: rosterArtist.id,
                     isPrimary: isPrimary(spotifyArtist.id),
                   });
-                  console.log(`   🔗 Linked: ${album.name} → ${rosterArtist.name} (${isPrimary(spotifyArtist.id) ? "primary" : "featured"})`);
-                } catch { /* duplicate */ }
+                  console.log(
+                    `   🔗 Linked: ${album.name} → ${rosterArtist.name} (${isPrimary(spotifyArtist.id) ? "primary" : "featured"})`,
+                  );
+                } catch {
+                  /* duplicate */
+                }
               }
             }
 
             // If no roster artists were found in the album's artist list,
             // at least link the current SLC artist as primary
-            const hasAnyLink = album.artists.some(a => artistBySpotifyIdMap.has(a.id));
+            const hasAnyLink = album.artists.some((a) =>
+              artistBySpotifyIdMap.has(a.id),
+            );
             if (!hasAnyLink) {
               await db.insert(releaseArtists).values({
                 id: generateUUID(),
@@ -516,7 +631,9 @@ export async function POST() {
             if (errorMsg.includes("UNIQUE") || errorMsg.includes("duplicate")) {
               results.existingReleasesSkipped++;
             } else {
-              results.errors.push(`Failed to insert ${album.name}: ${errorMsg}`);
+              results.errors.push(
+                `Failed to insert ${album.name}: ${errorMsg}`,
+              );
               console.error(`   ❌ Error inserting ${album.name}:`, errorMsg);
             }
           }
@@ -526,8 +643,7 @@ export async function POST() {
         results.totalArtistsProcessed++;
 
         // Small delay between artists to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
-
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (artistError) {
         const errorMsg = (artistError as Error).message;
         console.error(`   ❌ Error processing ${slcArtist.name}:`, errorMsg);
@@ -536,35 +652,39 @@ export async function POST() {
       }
     }
 
-    console.log("\n" + "=".repeat(50));
+    console.log(`\n${"=".repeat(50)}`);
     console.log("📊 SYNC COMPLETE");
     console.log(`   Artists processed: ${results.totalArtistsProcessed}`);
     console.log(`   Total releases found: ${results.totalReleasesFound}`);
     console.log(`   New releases created: ${results.newReleasesCreated}`);
-    console.log(`   Existing releases skipped: ${results.existingReleasesSkipped}`);
+    console.log(
+      `   Existing releases skipped: ${results.existingReleasesSkipped}`,
+    );
     console.log(`   Errors: ${results.errors.length}`);
-    console.log("=".repeat(50) + "\n");
+    console.log(`${"=".repeat(50)}\n`);
 
     return NextResponse.json({
       ...results,
       success: true,
       message: `Synced ${results.newReleasesCreated} new releases from ${results.totalArtistsProcessed} artists`,
     });
-
   } catch (error) {
     console.error("❌ Sync failed:", error);
-    return NextResponse.json({
-      ...results,
-      success: false,
-      error: (error as Error).message,
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        ...results,
+        success: false,
+        error: (error as Error).message,
+      },
+      { status: 500 },
+    );
   }
 }
 
 export async function GET() {
   return NextResponse.json({
     message: "Use POST to sync all Spotify releases",
-    artists: SLC_ARTISTS.map(a => a.name),
+    artists: SLC_ARTISTS.map((a) => a.name),
     totalArtists: SLC_ARTISTS.length,
   });
 }

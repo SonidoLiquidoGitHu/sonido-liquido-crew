@@ -1,30 +1,30 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Mail,
-  Send,
-  Calendar,
-  Users,
-  Clock,
-  CheckCircle,
   AlertTriangle,
-  Sparkles,
-  Edit2,
-  Copy,
-  Eye,
-  Trash2,
-  Plus,
+  Bell,
+  Calendar,
+  CheckCircle,
   ChevronDown,
   ChevronUp,
+  Clock,
+  Copy,
+  Edit2,
   ExternalLink,
-  Rocket,
-  Music,
-  Bell,
+  Eye,
   Gift,
+  Mail,
+  Music,
+  Plus,
+  Rocket,
+  Send,
+  Sparkles,
   Star,
+  Trash2,
+  Users,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 interface EmailTemplate {
   id: string;
@@ -225,31 +225,40 @@ export function EmailCampaignManager({
   className = "",
 }: EmailCampaignManagerProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>(() =>
-    EMAIL_TEMPLATES.map((t) => ({ ...t, id: generateId() }))
+    EMAIL_TEMPLATES.map((t) => ({ ...t, id: generateId() })),
   );
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<EmailTemplate | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(
+    null,
+  );
 
   // Replace placeholders in template
   const processTemplate = (text: string) => {
     return text
       .replace(/{title}/g, releaseTitle)
       .replace(/{artistName}/g, artistName)
-      .replace(/{releaseDate}/g, releaseDate.toLocaleDateString("es-MX", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }))
+      .replace(
+        /{releaseDate}/g,
+        releaseDate.toLocaleDateString("es-MX", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+      )
       .replace(/{presaveUrl}/g, presaveUrl || "#");
   };
 
   // Get send date for template
   const getSendDate = (template: EmailTemplate) => {
-    if (template.sendTiming.type === "absolute" && template.sendTiming.specificDate) {
+    if (
+      template.sendTiming.type === "absolute" &&
+      template.sendTiming.specificDate
+    ) {
       return template.sendTiming.specificDate;
     }
     if (template.sendTiming.daysBeforeRelease !== undefined) {
@@ -272,13 +281,25 @@ export function EmailCampaignManager({
       case "announcement":
         return { color: "bg-blue-500/10 text-blue-500", label: "Anuncio" };
       case "reminder":
-        return { color: "bg-yellow-500/10 text-yellow-500", label: "Recordatorio" };
+        return {
+          color: "bg-yellow-500/10 text-yellow-500",
+          label: "Recordatorio",
+        };
       case "countdown":
-        return { color: "bg-orange-500/10 text-orange-500", label: "Countdown" };
+        return {
+          color: "bg-orange-500/10 text-orange-500",
+          label: "Countdown",
+        };
       case "release":
-        return { color: "bg-green-500/10 text-green-500", label: "Lanzamiento" };
+        return {
+          color: "bg-green-500/10 text-green-500",
+          label: "Lanzamiento",
+        };
       case "thankyou":
-        return { color: "bg-purple-500/10 text-purple-500", label: "Agradecimiento" };
+        return {
+          color: "bg-purple-500/10 text-purple-500",
+          label: "Agradecimiento",
+        };
       default:
         return { color: "bg-slc-muted/10 text-slc-muted", label: type };
     }
@@ -310,7 +331,9 @@ export function EmailCampaignManager({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-2 bg-slc-card rounded-lg">
             <Users className="w-4 h-4 text-primary" />
-            <span className="font-medium">{subscriberCount.toLocaleString()}</span>
+            <span className="font-medium">
+              {subscriberCount.toLocaleString()}
+            </span>
             <span className="text-xs text-slc-muted">suscriptores</span>
           </div>
         </div>
@@ -331,7 +354,9 @@ export function EmailCampaignManager({
             {sortedTemplates.map((template, index) => {
               const sendDate = getSendDate(template);
               const isPast = sendDate && sendDate < new Date();
-              const isToday = sendDate && sendDate.toDateString() === new Date().toDateString();
+              const isToday =
+                sendDate &&
+                sendDate.toDateString() === new Date().toDateString();
               const typeBadge = getTypeBadge(template.type);
 
               return (
@@ -345,8 +370,8 @@ export function EmailCampaignManager({
                       isToday
                         ? "bg-primary border-primary"
                         : isPast
-                        ? "bg-slc-muted border-slc-muted"
-                        : "bg-slc-dark border-slc-border"
+                          ? "bg-slc-muted border-slc-muted"
+                          : "bg-slc-dark border-slc-border"
                     }`}
                   />
 
@@ -358,7 +383,7 @@ export function EmailCampaignManager({
                     }`}
                     onClick={() =>
                       setExpandedTemplate(
-                        expandedTemplate === template.id ? null : template.id
+                        expandedTemplate === template.id ? null : template.id,
                       )
                     }
                   >
@@ -367,7 +392,9 @@ export function EmailCampaignManager({
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium">{template.name}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${typeBadge.color}`}>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs ${typeBadge.color}`}
+                          >
                             {typeBadge.label}
                           </span>
                         </div>
@@ -387,7 +414,8 @@ export function EmailCampaignManager({
                               ? "Inmediato"
                               : template.sendTiming.time}
                           </span>
-                          {template.sendTiming.daysBeforeRelease !== undefined && (
+                          {template.sendTiming.daysBeforeRelease !==
+                            undefined && (
                             <span>
                               {template.sendTiming.daysBeforeRelease === 0
                                 ? "Día del lanzamiento"
@@ -409,21 +437,27 @@ export function EmailCampaignManager({
                     {expandedTemplate === template.id && (
                       <div className="mt-4 pt-4 border-t border-slc-border space-y-4">
                         <div>
-                          <label className="block text-xs text-slc-muted mb-1">Asunto</label>
+                          <label className="block text-xs text-slc-muted mb-1">
+                            Asunto
+                          </label>
                           <p className="text-sm font-medium bg-slc-dark p-2 rounded">
                             {processTemplate(template.subject)}
                           </p>
                         </div>
 
                         <div>
-                          <label className="block text-xs text-slc-muted mb-1">Preview</label>
+                          <label className="block text-xs text-slc-muted mb-1">
+                            Preview
+                          </label>
                           <p className="text-sm text-slc-muted bg-slc-dark p-2 rounded">
                             {processTemplate(template.preheader)}
                           </p>
                         </div>
 
                         <div>
-                          <label className="block text-xs text-slc-muted mb-1">Contenido</label>
+                          <label className="block text-xs text-slc-muted mb-1">
+                            Contenido
+                          </label>
                           <div className="text-sm bg-slc-dark p-3 rounded max-h-48 overflow-y-auto whitespace-pre-wrap">
                             {processTemplate(template.body)}
                           </div>
@@ -512,7 +546,9 @@ export function EmailCampaignManager({
             <Users className="w-4 h-4 text-green-500" />
             <span className="text-xs text-slc-muted">Alcance estimado</span>
           </div>
-          <p className="text-2xl font-oswald">{(subscriberCount * templates.length).toLocaleString()}</p>
+          <p className="text-2xl font-oswald">
+            {(subscriberCount * templates.length).toLocaleString()}
+          </p>
         </div>
 
         <div className="p-4 bg-slc-card rounded-xl border border-slc-border">
@@ -528,7 +564,12 @@ export function EmailCampaignManager({
               });
               if (!nextTemplate) return "—";
               const date = getSendDate(nextTemplate);
-              return date?.toLocaleDateString("es-MX", { day: "numeric", month: "short" }) || "—";
+              return (
+                date?.toLocaleDateString("es-MX", {
+                  day: "numeric",
+                  month: "short",
+                }) || "—"
+              );
             })()}
           </p>
         </div>
@@ -539,7 +580,12 @@ export function EmailCampaignManager({
             <span className="text-xs text-slc-muted">Días restantes</span>
           </div>
           <p className="text-2xl font-oswald">
-            {Math.max(0, Math.ceil((releaseDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}
+            {Math.max(
+              0,
+              Math.ceil(
+                (releaseDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+              ),
+            )}
           </p>
         </div>
       </div>
@@ -551,11 +597,26 @@ export function EmailCampaignManager({
           Tips para tu campaña de email
         </h4>
         <ul className="text-sm text-slc-muted space-y-2">
-          <li>• <strong>Timing:</strong> Los mejores horarios son 10am y 6-8pm (hora local de tus suscriptores)</li>
-          <li>• <strong>Frecuencia:</strong> No envíes más de 1 email cada 3 días para evitar fatiga</li>
-          <li>• <strong>Subject lines:</strong> Usa emojis con moderación y mantén el asunto corto (40-50 caracteres)</li>
-          <li>• <strong>CTA claro:</strong> El botón de pre-save debe ser prominente y fácil de encontrar</li>
-          <li>• <strong>Personalización:</strong> Incluye el nombre del suscriptor cuando sea posible</li>
+          <li>
+            • <strong>Timing:</strong> Los mejores horarios son 10am y 6-8pm
+            (hora local de tus suscriptores)
+          </li>
+          <li>
+            • <strong>Frecuencia:</strong> No envíes más de 1 email cada 3 días
+            para evitar fatiga
+          </li>
+          <li>
+            • <strong>Subject lines:</strong> Usa emojis con moderación y mantén
+            el asunto corto (40-50 caracteres)
+          </li>
+          <li>
+            • <strong>CTA claro:</strong> El botón de pre-save debe ser
+            prominente y fácil de encontrar
+          </li>
+          <li>
+            • <strong>Personalización:</strong> Incluye el nombre del suscriptor
+            cuando sea posible
+          </li>
         </ul>
       </div>
 

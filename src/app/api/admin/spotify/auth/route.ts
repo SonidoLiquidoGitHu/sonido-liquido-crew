@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { NextRequest } from "next/server";
 import { getSpotifyCredentials } from "@/lib/clients/spotify-tokens";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 /**
  * Initiate Spotify OAuth Authorization Code flow.
@@ -26,9 +26,10 @@ export async function GET(request: NextRequest) {
   // 3. From the request origin (works in production)
   // 4. Fallback to localhost for local dev
   const PRODUCTION_BASE_URL = "https://sonidoliquido.com";
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
-    || PRODUCTION_BASE_URL
-    || new URL(request.url).origin;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    PRODUCTION_BASE_URL ||
+    new URL(request.url).origin;
   const redirectUri = `${baseUrl}/api/admin/spotify/callback`;
 
   console.log("[Spotify OAuth] Redirect URI:", redirectUri);

@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { downloadGates, downloadGateActions, fileAssets } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
-import { unlockDownloadGateSchema } from "@/lib/validations";
-import { generateUUID } from "@/lib/utils";
+import { downloadGateActions, downloadGates, fileAssets } from "@/db/schema";
 import { subscribersService } from "@/lib/services";
+import { generateUUID } from "@/lib/utils";
+import { unlockDownloadGateSchema } from "@/lib/validations";
+import { eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -24,14 +24,14 @@ export async function POST(
     if (!gate) {
       return NextResponse.json(
         { success: false, error: "Download gate not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (!gate.isActive) {
       return NextResponse.json(
         { success: false, error: "This download is no longer available" },
-        { status: 410 }
+        { status: 410 },
       );
     }
 
@@ -42,14 +42,14 @@ export async function POST(
     if (gate.requireEmail && !parsed.data?.email) {
       return NextResponse.json(
         { success: false, error: "Email is required to unlock this download" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (gate.requireFollow && !parsed.data?.followCompleted) {
       return NextResponse.json(
         { success: false, error: "Please follow us to unlock this download" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,14 +63,15 @@ export async function POST(
     if (!asset || !asset.publicUrl) {
       return NextResponse.json(
         { success: false, error: "Download file not available" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     // Record the download action
-    const ipAddress = request.headers.get("x-forwarded-for") ||
-                      request.headers.get("x-real-ip") ||
-                      "unknown";
+    const ipAddress =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
     await db.insert(downloadGateActions).values({
@@ -96,7 +97,7 @@ export async function POST(
         await subscribersService.subscribe(
           parsed.data.email,
           undefined,
-          `download-gate:${slug}`
+          `download-gate:${slug}`,
         );
       } catch {
         // Non-critical, continue
@@ -115,14 +116,14 @@ export async function POST(
     console.error("Error unlocking download gate:", error);
     return NextResponse.json(
       { success: false, error: "Failed to unlock download" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -146,7 +147,7 @@ export async function GET(
     if (!gate) {
       return NextResponse.json(
         { success: false, error: "Download gate not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -158,7 +159,7 @@ export async function GET(
     console.error("Error fetching download gate:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch download gate" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

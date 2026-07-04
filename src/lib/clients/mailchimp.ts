@@ -2,7 +2,7 @@
 // MAILCHIMP API CLIENT
 // ===========================================
 
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import { defaultStyleSettings } from "@/lib/style-config";
 
 interface MailchimpMember {
@@ -105,14 +105,17 @@ class MailchimpClient {
    * Get the base URL derived from the active server prefix
    */
   private get baseUrl(): string {
-    return this.serverPrefix ? `https://${this.serverPrefix}.api.mailchimp.com/3.0` : "";
+    return this.serverPrefix
+      ? `https://${this.serverPrefix}.api.mailchimp.com/3.0`
+      : "";
   }
 
   /**
    * Load credentials from the database (site_settings table)
    */
   private async loadDbCredentials(): Promise<void> {
-    if (this.dbCredentialsLoaded && Date.now() < this.dbCredentialsExpiry) return;
+    if (this.dbCredentialsLoaded && Date.now() < this.dbCredentialsExpiry)
+      return;
 
     try {
       const { db, isDatabaseConfigured } = await import("@/db/client");
@@ -124,16 +127,21 @@ class MailchimpClient {
       const results = await db
         .select()
         .from(siteSettings)
-        .where(inArray(siteSettings.key, [
-          "mailchimp_api_key",
-          "mailchimp_server_prefix",
-          "mailchimp_audience_id",
-        ]));
+        .where(
+          inArray(siteSettings.key, [
+            "mailchimp_api_key",
+            "mailchimp_server_prefix",
+            "mailchimp_audience_id",
+          ]),
+        );
 
       for (const row of results) {
-        if (row.key === "mailchimp_api_key" && row.value) this.dbApiKey = row.value;
-        if (row.key === "mailchimp_server_prefix" && row.value) this.dbServerPrefix = row.value;
-        if (row.key === "mailchimp_audience_id" && row.value) this.dbAudienceId = row.value;
+        if (row.key === "mailchimp_api_key" && row.value)
+          this.dbApiKey = row.value;
+        if (row.key === "mailchimp_server_prefix" && row.value)
+          this.dbServerPrefix = row.value;
+        if (row.key === "mailchimp_audience_id" && row.value)
+          this.dbAudienceId = row.value;
       }
 
       this.dbCredentialsLoaded = true;
@@ -178,7 +186,12 @@ class MailchimpClient {
   /**
    * Get configuration status for debugging
    */
-  getConfigStatus(): { configured: boolean; hasApiKey: boolean; hasPrefix: boolean; hasAudienceId: boolean } {
+  getConfigStatus(): {
+    configured: boolean;
+    hasApiKey: boolean;
+    hasPrefix: boolean;
+    hasAudienceId: boolean;
+  } {
     return {
       configured: this.isConfigured(),
       hasApiKey: Boolean(this.apiKey),
@@ -192,13 +205,15 @@ class MailchimpClient {
    */
   private async request<T>(
     endpoint: string,
-    options: { method?: string; body?: Record<string, unknown> } = {}
+    options: { method?: string; body?: Record<string, unknown> } = {},
   ): Promise<T> {
     // Ensure DB credentials are loaded before checking
     await this.loadDbCredentials();
 
     if (!this.isConfigured()) {
-      throw new Error("Mailchimp credentials not configured. Configúralas en Email Studio → Config o agrega MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, y MAILCHIMP_AUDIENCE_ID en Netlify.");
+      throw new Error(
+        "Mailchimp credentials not configured. Configúralas en Email Studio → Config o agrega MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, y MAILCHIMP_AUDIENCE_ID en Netlify.",
+      );
     }
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -218,13 +233,15 @@ class MailchimpClient {
       let error: MailchimpError;
       try {
         const text = await response.text();
-        error = text ? JSON.parse(text) : {
-          type: "unknown",
-          title: "Unknown error",
-          status: response.status,
-          detail: response.statusText,
-          instance: endpoint,
-        };
+        error = text
+          ? JSON.parse(text)
+          : {
+              type: "unknown",
+              title: "Unknown error",
+              status: response.status,
+              detail: response.statusText,
+              instance: endpoint,
+            };
       } catch {
         error = {
           type: "unknown",
@@ -235,12 +252,17 @@ class MailchimpClient {
         };
       }
 
-      console.error(`[Mailchimp] Error: ${error.title} - ${error.detail}`, error.errors || "");
+      console.error(
+        `[Mailchimp] Error: ${error.title} - ${error.detail}`,
+        error.errors || "",
+      );
 
       // Build a more detailed error message including field-specific errors
       let detailMsg = `Mailchimp API error: ${error.title} - ${error.detail}`;
       if (error.errors && error.errors.length > 0) {
-        const fieldErrors = error.errors.map(e => `${e.field}: ${e.message}`).join(", ");
+        const fieldErrors = error.errors
+          .map((e) => `${e.field}: ${e.message}`)
+          .join(", ");
         detailMsg += ` (${fieldErrors})`;
       }
       throw new Error(detailMsg);
@@ -274,7 +296,7 @@ class MailchimpClient {
    */
   async addSubscriber(
     email: string,
-    options: { name?: string; tags?: string[]; source?: string } = {}
+    options: { name?: string; tags?: string[]; source?: string } = {},
   ): Promise<MailchimpMember> {
     const mergeFields: Record<string, string> = {};
 
@@ -293,29 +315,36 @@ class MailchimpClient {
     const allTags = [DEFAULT_TAG, ...(options.tags || [])];
     const uniqueTags = [...new Set(allTags)]; // Remove duplicates
 
-    console.log(`[Mailchimp] Adding subscriber: ${email.substring(0, 3)}*** with tags: ${uniqueTags.join(", ")}`);
+    console.log(
+      `[Mailchimp] Adding subscriber: ${email.substring(0, 3)}*** with tags: ${uniqueTags.join(", ")}`,
+    );
 
     // First, add or update the member
     const subscriberHash = this.getSubscriberHash(email);
 
     try {
       // Try to add new member
-      const member = await this.request<MailchimpMember>(`/lists/${this.audienceId}/members`, {
-        method: "POST",
-        body: {
-          email_address: email,
-          status: "subscribed",
-          merge_fields: mergeFields,
-          tags: uniqueTags,
+      const member = await this.request<MailchimpMember>(
+        `/lists/${this.audienceId}/members`,
+        {
+          method: "POST",
+          body: {
+            email_address: email,
+            status: "subscribed",
+            merge_fields: mergeFields,
+            tags: uniqueTags,
+          },
         },
-      });
+      );
 
-      console.log(`[Mailchimp] Successfully added new subscriber: ${email.substring(0, 3)}***`);
+      console.log(
+        `[Mailchimp] Successfully added new subscriber: ${email.substring(0, 3)}***`,
+      );
       return member;
     } catch (error) {
       // If member already exists, update them instead
       if ((error as Error).message.includes("Member Exists")) {
-        console.log(`[Mailchimp] Member already exists, updating...`);
+        console.log("[Mailchimp] Member already exists, updating...");
 
         // Update the existing member
         const member = await this.request<MailchimpMember>(
@@ -326,13 +355,15 @@ class MailchimpClient {
               status: "subscribed",
               merge_fields: mergeFields,
             },
-          }
+          },
         );
 
         // Add tags separately (Mailchimp API requires separate call for tags on existing members)
         await this.addTagsToMember(email, uniqueTags);
 
-        console.log(`[Mailchimp] Successfully updated existing subscriber: ${email.substring(0, 3)}***`);
+        console.log(
+          `[Mailchimp] Successfully updated existing subscriber: ${email.substring(0, 3)}***`,
+        );
         return member;
       }
       throw error;
@@ -345,12 +376,15 @@ class MailchimpClient {
   async addTagsToMember(email: string, tags: string[]): Promise<void> {
     const subscriberHash = this.getSubscriberHash(email);
 
-    await this.request(`/lists/${this.audienceId}/members/${subscriberHash}/tags`, {
-      method: "POST",
-      body: {
-        tags: tags.map(tag => ({ name: tag, status: "active" })),
+    await this.request(
+      `/lists/${this.audienceId}/members/${subscriberHash}/tags`,
+      {
+        method: "POST",
+        body: {
+          tags: tags.map((tag) => ({ name: tag, status: "active" })),
+        },
       },
-    });
+    );
 
     console.log(`[Mailchimp] Added tags to member: ${tags.join(", ")}`);
   }
@@ -360,7 +394,10 @@ class MailchimpClient {
    */
   async updateSubscriber(
     email: string,
-    data: { status?: MailchimpMember["status"]; mergeFields?: Record<string, string> }
+    data: {
+      status?: MailchimpMember["status"];
+      mergeFields?: Record<string, string>;
+    },
   ): Promise<MailchimpMember> {
     const subscriberHash = this.getSubscriberHash(email);
 
@@ -372,7 +409,7 @@ class MailchimpClient {
           status: data.status,
           merge_fields: data.mergeFields,
         },
-      }
+      },
     );
   }
 
@@ -383,10 +420,13 @@ class MailchimpClient {
     try {
       const subscriberHash = this.getSubscriberHash(email);
       return await this.request<MailchimpMember>(
-        `/lists/${this.audienceId}/members/${subscriberHash}`
+        `/lists/${this.audienceId}/members/${subscriberHash}`,
       );
     } catch (error) {
-      if ((error as Error).message.includes("404") || (error as Error).message.includes("Resource Not Found")) {
+      if (
+        (error as Error).message.includes("404") ||
+        (error as Error).message.includes("Resource Not Found")
+      ) {
         return null;
       }
       throw error;
@@ -405,7 +445,7 @@ class MailchimpClient {
    * Get all subscribers
    */
   async getSubscribers(
-    options: { count?: number; offset?: number; status?: string } = {}
+    options: { count?: number; offset?: number; status?: string } = {},
   ): Promise<{ members: MailchimpMember[]; total_items: number }> {
     const params = new URLSearchParams({
       count: String(options.count || 100),
@@ -416,14 +456,16 @@ class MailchimpClient {
       params.set("status", options.status);
     }
 
-    return this.request(`/lists/${this.audienceId}/members?${params.toString()}`);
+    return this.request(
+      `/lists/${this.audienceId}/members?${params.toString()}`,
+    );
   }
 
   /**
    * Get campaigns
    */
   async getCampaigns(
-    options: { count?: number; status?: string } = {}
+    options: { count?: number; status?: string } = {},
   ): Promise<{ campaigns: MailchimpCampaign[]; total_items: number }> {
     const params = new URLSearchParams({
       count: String(options.count || 20),
@@ -477,9 +519,9 @@ class MailchimpClient {
     else if (data.tags && data.tags.length > 0) {
       try {
         const tagData = await this.getTags();
-        const tagIdMap = new Map(tagData.tags.map(t => [t.name, t.id]));
+        const tagIdMap = new Map(tagData.tags.map((t) => [t.name, t.id]));
         const resolvedIds = data.tags
-          .map(name => tagIdMap.get(name))
+          .map((name) => tagIdMap.get(name))
           .filter((id): id is number => id !== undefined);
 
         if (resolvedIds.length > 0) {
@@ -494,7 +536,10 @@ class MailchimpClient {
           };
         }
       } catch (err) {
-        console.warn("[Mailchimp] Failed to resolve tag names to IDs, sending to full list:", err);
+        console.warn(
+          "[Mailchimp] Failed to resolve tag names to IDs, sending to full list:",
+          err,
+        );
       }
     }
 
@@ -508,7 +553,8 @@ class MailchimpClient {
           preview_text: data.previewText || "",
           title: data.title,
           from_name: "Sonido Líquido Crew",
-          reply_to: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "info@sonidoliquido.com",
+          reply_to:
+            process.env.NEXT_PUBLIC_CONTACT_EMAIL || "info@sonidoliquido.com",
         },
       },
     });
@@ -526,14 +572,17 @@ class MailchimpClient {
       title?: string;
       from_name?: string;
       reply_to?: string;
-    }
+    },
   ): Promise<MailchimpCampaign> {
-    const result = await this.request<MailchimpCampaign>(`/campaigns/${campaignId}`, {
-      method: "PATCH",
-      body: {
-        settings,
+    const result = await this.request<MailchimpCampaign>(
+      `/campaigns/${campaignId}`,
+      {
+        method: "PATCH",
+        body: {
+          settings,
+        },
       },
-    });
+    );
     console.log(`[Mailchimp] Campaign settings updated: ${campaignId}`);
     return result;
   }
@@ -541,7 +590,10 @@ class MailchimpClient {
   /**
    * Set campaign HTML content
    */
-  async setCampaignContent(campaignId: string, htmlContent: string): Promise<void> {
+  async setCampaignContent(
+    campaignId: string,
+    htmlContent: string,
+  ): Promise<void> {
     await this.request(`/campaigns/${campaignId}/content`, {
       method: "PUT",
       body: {
@@ -564,14 +616,19 @@ class MailchimpClient {
   /**
    * Schedule campaign for later
    */
-  async scheduleCampaign(campaignId: string, scheduleTime: Date): Promise<void> {
+  async scheduleCampaign(
+    campaignId: string,
+    scheduleTime: Date,
+  ): Promise<void> {
     await this.request(`/campaigns/${campaignId}/actions/schedule`, {
       method: "POST",
       body: {
         schedule_time: scheduleTime.toISOString(),
       },
     });
-    console.log(`[Mailchimp] Campaign scheduled: ${campaignId} for ${scheduleTime.toISOString()}`);
+    console.log(
+      `[Mailchimp] Campaign scheduled: ${campaignId} for ${scheduleTime.toISOString()}`,
+    );
   }
 
   /**
@@ -598,7 +655,11 @@ class MailchimpClient {
     htmlContent: string;
     tags?: string[];
     scheduleTime?: Date;
-  }): Promise<{ campaignId: string; webId: number; status: "sent" | "scheduled" }> {
+  }): Promise<{
+    campaignId: string;
+    webId: number;
+    status: "sent" | "scheduled";
+  }> {
     // Step 1: Create campaign
     const campaign = await this.createCampaign({
       subject: data.subject,
@@ -613,11 +674,14 @@ class MailchimpClient {
     // Step 3: Send or schedule
     if (data.scheduleTime) {
       await this.scheduleCampaign(campaign.id, data.scheduleTime);
-      return { campaignId: campaign.id, webId: campaign.web_id, status: "scheduled" };
-    } else {
-      await this.sendCampaign(campaign.id);
-      return { campaignId: campaign.id, webId: campaign.web_id, status: "sent" };
+      return {
+        campaignId: campaign.id,
+        webId: campaign.web_id,
+        status: "scheduled",
+      };
     }
+    await this.sendCampaign(campaign.id);
+    return { campaignId: campaign.id, webId: campaign.web_id, status: "sent" };
   }
 
   /**
@@ -631,16 +695,26 @@ class MailchimpClient {
     coverImageUrl?: string;
     body: string;
   }): string {
-    const { title, artistName, releaseDate, presaveUrl, coverImageUrl, body } = data;
+    const { title, artistName, releaseDate, presaveUrl, coverImageUrl, body } =
+      data;
 
     // Convert markdown-like formatting to HTML
     const formattedBody = body
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\n\n/g, "</p><p>")
       .replace(/\n/g, "<br>")
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" style="color: #ff6b00; text-decoration: underline;">$1</a>')
-      .replace(/^### (.*?)$/gm, '<h3 style="color: #ff6b00; margin: 20px 0 10px;">$1</h3>')
-      .replace(/^# (.*?)$/gm, '<h1 style="color: #ff6b00; margin: 20px 0 10px;">$1</h1>');
+      .replace(
+        /\[(.*?)\]\((.*?)\)/g,
+        '<a href="$2" style="color: #ff6b00; text-decoration: underline;">$1</a>',
+      )
+      .replace(
+        /^### (.*?)$/gm,
+        '<h3 style="color: #ff6b00; margin: 20px 0 10px;">$1</h3>',
+      )
+      .replace(
+        /^# (.*?)$/gm,
+        '<h1 style="color: #ff6b00; margin: 20px 0 10px;">$1</h1>',
+      );
 
     return `
 <!DOCTYPE html>
@@ -663,14 +737,18 @@ class MailchimpClient {
             </td>
           </tr>
 
-          ${coverImageUrl ? `
+          ${
+            coverImageUrl
+              ? `
           <!-- Cover Image -->
           <tr>
             <td style="padding: 30px 40px 0;">
               <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 400px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(255, 107, 0, 0.3);">
             </td>
           </tr>
-          ` : ""}
+          `
+              : ""
+          }
 
           <!-- Content -->
           <tr>
@@ -725,7 +803,12 @@ class MailchimpClient {
   /**
    * Test the connection to Mailchimp
    */
-  async testConnection(): Promise<{ success: boolean; audienceName?: string; memberCount?: number; error?: string }> {
+  async testConnection(): Promise<{
+    success: boolean;
+    audienceName?: string;
+    memberCount?: number;
+    error?: string;
+  }> {
     try {
       const audience = await this.getAudience();
       return {
@@ -787,9 +870,12 @@ class MailchimpClient {
    * Replicate an existing campaign (create a copy)
    */
   async replicateCampaign(campaignId: string): Promise<MailchimpCampaign> {
-    return this.request<MailchimpCampaign>(`/campaigns/${campaignId}/actions/replicate`, {
-      method: "POST",
-    });
+    return this.request<MailchimpCampaign>(
+      `/campaigns/${campaignId}/actions/replicate`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   /**
@@ -797,10 +883,18 @@ class MailchimpClient {
    * The /tag-search endpoint may not return reliable member counts per tag,
    * so we fetch all subscribed members and count per tag ourselves.
    */
-  async getTags(): Promise<{ tags: { id: number; name: string; count: number }[]; total_items: number }> {
+  async getTags(): Promise<{
+    tags: { id: number; name: string; count: number }[];
+    total_items: number;
+  }> {
     // First, get the tag list from tag-search
     const tagSearchResult = await this.request<{
-      tags: { id: number; name: string; count?: number; total_items?: number }[];
+      tags: {
+        id: number;
+        name: string;
+        count?: number;
+        total_items?: number;
+      }[];
       total_items: number;
     }>(`/lists/${this.audienceId}/tag-search`);
 
@@ -810,7 +904,10 @@ class MailchimpClient {
     }
 
     // Build a map of tag id -> tag data
-    const tagMap = new Map<number, { id: number; name: string; count: number }>();
+    const tagMap = new Map<
+      number,
+      { id: number; name: string; count: number }
+    >();
     for (const tag of tagSearchResult.tags) {
       // Try both 'count' and 'total_items' fields (API version dependent)
       const memberCount = tag.count ?? tag.total_items ?? 0;
@@ -838,7 +935,10 @@ class MailchimpClient {
       }
     } catch (err) {
       // If member fetch fails, keep the tag-search counts as fallback
-      console.warn("[Mailchimp] Failed to fetch members for tag counts, using tag-search counts:", err);
+      console.warn(
+        "[Mailchimp] Failed to fetch members for tag counts, using tag-search counts:",
+        err,
+      );
     }
 
     return {
@@ -857,8 +957,11 @@ class MailchimpClient {
     let hasMore = true;
 
     while (hasMore) {
-      const result = await this.request<{ members: MailchimpMember[]; total_items: number }>(
-        `/lists/${this.audienceId}/members?count=${batchSize}&offset=${offset}&status=subscribed&fields=members.id,members.tags`
+      const result = await this.request<{
+        members: MailchimpMember[];
+        total_items: number;
+      }>(
+        `/lists/${this.audienceId}/members?count=${batchSize}&offset=${offset}&status=subscribed&fields=members.id,members.tags`,
       );
 
       if (result.members && result.members.length > 0) {
@@ -957,34 +1060,34 @@ class MailchimpClient {
 
     // Font mapping for email (Google Font family names)
     const fontMap: Record<string, string> = {
-      "oswald": "'Oswald', sans-serif",
-      "bebas": "'Bebas Neue', sans-serif",
-      "anton": "'Anton', sans-serif",
+      oswald: "'Oswald', sans-serif",
+      bebas: "'Bebas Neue', sans-serif",
+      anton: "'Anton', sans-serif",
       "archivo-black": "'Archivo Black', sans-serif",
-      "righteous": "'Righteous', sans-serif",
+      righteous: "'Righteous', sans-serif",
       "black-ops-one": "'Black Ops One', sans-serif",
-      "bangers": "'Bangers', sans-serif",
+      bangers: "'Bangers', sans-serif",
       "permanent-marker": "'Permanent Marker', sans-serif",
-      "inter": "'Inter', sans-serif",
-      "montserrat": "'Montserrat', sans-serif",
-      "poppins": "'Poppins', sans-serif",
-      "raleway": "'Raleway', sans-serif",
+      inter: "'Inter', sans-serif",
+      montserrat: "'Montserrat', sans-serif",
+      poppins: "'Poppins', sans-serif",
+      raleway: "'Raleway', sans-serif",
       "space-grotesk": "'Space Grotesk', sans-serif",
       "dm-sans": "'DM Sans', sans-serif",
-      "outfit": "'Outfit', sans-serif",
-      "sora": "'Sora', sans-serif",
-      "playfair": "'Playfair Display', serif",
+      outfit: "'Outfit', sans-serif",
+      sora: "'Sora', sans-serif",
+      playfair: "'Playfair Display', serif",
       "libre-baskerville": "'Libre Baskerville', serif",
-      "cormorant": "'Cormorant Garamond', serif",
-      "cinzel": "'Cinzel', serif",
-      "merriweather": "'Merriweather', serif",
+      cormorant: "'Cormorant Garamond', serif",
+      cinzel: "'Cinzel', serif",
+      merriweather: "'Merriweather', serif",
       "roboto-mono": "'Roboto Mono', monospace",
       "jetbrains-mono": "'JetBrains Mono', monospace",
       "fira-code": "'Fira Code', monospace",
       "source-code": "'Source Code Pro', monospace",
       "dancing-script": "'Dancing Script', sans-serif",
-      "pacifico": "'Pacifico', sans-serif",
-      "caveat": "'Caveat', sans-serif",
+      pacifico: "'Pacifico', sans-serif",
+      caveat: "'Caveat', sans-serif",
     };
 
     const titleFontFamily = fontMap[s.titleFont] || "'Oswald', sans-serif";
@@ -995,11 +1098,11 @@ class MailchimpClient {
 
     // Button style mapping for email (inline CSS)
     const buttonRoundedMap: Record<string, string> = {
-      "none": "0px",
-      "sm": "4px",
-      "md": "6px",
-      "lg": "8px",
-      "full": "50px",
+      none: "0px",
+      sm: "4px",
+      md: "6px",
+      lg: "8px",
+      full: "50px",
     };
     const buttonRadius = buttonRoundedMap[s.buttonRounded] || "8px";
 
@@ -1015,7 +1118,8 @@ class MailchimpClient {
         buttonStyle = `background: transparent; border: 2px solid ${primaryColor}; color: ${primaryColor};`;
         break;
       case "glass":
-        buttonStyle = `background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff;`;
+        buttonStyle =
+          "background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff;";
         break;
       default:
         buttonStyle = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`;
@@ -1023,16 +1127,25 @@ class MailchimpClient {
 
     // Cover image shadow color
     const coverShadowColor = darkMode
-      ? `rgba(${parseInt(primaryColor.slice(1,3),16)}, ${parseInt(primaryColor.slice(3,5),16)}, ${parseInt(primaryColor.slice(5,7),16)}, 0.3)`
-      : `rgba(0, 0, 0, 0.1)`;
+      ? `rgba(${Number.parseInt(primaryColor.slice(1, 3), 16)}, ${Number.parseInt(primaryColor.slice(3, 5), 16)}, ${Number.parseInt(primaryColor.slice(5, 7), 16)}, 0.3)`
+      : "rgba(0, 0, 0, 0.1)";
 
     const formattedBody = body
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\n\n/g, "</p><p>")
       .replace(/\n/g, "<br>")
-      .replace(/\[(.*?)\]\((.*?)\)/g, `<a href="$2" style="color: ${primaryColor}; text-decoration: underline;">$1</a>`)
-      .replace(/^### (.*?)$/gm, `<h3 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h3>`)
-      .replace(/^# (.*?)$/gm, `<h1 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h1>`);
+      .replace(
+        /\[(.*?)\]\((.*?)\)/g,
+        `<a href="$2" style="color: ${primaryColor}; text-decoration: underline;">$1</a>`,
+      )
+      .replace(
+        /^### (.*?)$/gm,
+        `<h3 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h3>`,
+      )
+      .replace(
+        /^# (.*?)$/gm,
+        `<h1 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h1>`,
+      );
 
     return `
 <!DOCTYPE html>
@@ -1061,14 +1174,18 @@ class MailchimpClient {
             </td>
           </tr>
 
-          ${coverImageUrl ? `
+          ${
+            coverImageUrl
+              ? `
           <!-- Cover Image -->
           <tr>
             <td style="padding: 30px 40px 0;">
               <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px ${coverShadowColor};">
             </td>
           </tr>
-          ` : ""}
+          `
+              : ""
+          }
 
           <!-- Title -->
           <tr>
@@ -1086,7 +1203,9 @@ class MailchimpClient {
             </td>
           </tr>
 
-          ${ctaText && ctaUrl ? `
+          ${
+            ctaText && ctaUrl
+              ? `
           <!-- CTA Button -->
           <tr>
             <td style="padding: 0 40px 30px; text-align: center;">
@@ -1095,7 +1214,9 @@ class MailchimpClient {
               </a>
             </td>
           </tr>
-          ` : ""}
+          `
+              : ""
+          }
 
           <!-- Footer -->
           <tr>
@@ -1124,34 +1245,34 @@ class MailchimpClient {
    */
   private buildGoogleFontsLink(titleFont?: string, bodyFont?: string): string {
     const fontUrlMap: Record<string, string> = {
-      "oswald": "Oswald:wght@400;500;600;700",
-      "bebas": "Bebas+Neue",
-      "anton": "Anton",
+      oswald: "Oswald:wght@400;500;600;700",
+      bebas: "Bebas+Neue",
+      anton: "Anton",
       "archivo-black": "Archivo+Black",
-      "righteous": "Righteous",
+      righteous: "Righteous",
       "black-ops-one": "Black+Ops+One",
-      "bangers": "Bangers",
+      bangers: "Bangers",
       "permanent-marker": "Permanent+Marker",
-      "inter": "Inter:wght@400;500;600;700",
-      "montserrat": "Montserrat:wght@400;500;600;700",
-      "poppins": "Poppins:wght@400;500;600;700",
-      "raleway": "Raleway:wght@400;500;600;700",
+      inter: "Inter:wght@400;500;600;700",
+      montserrat: "Montserrat:wght@400;500;600;700",
+      poppins: "Poppins:wght@400;500;600;700",
+      raleway: "Raleway:wght@400;500;600;700",
       "space-grotesk": "Space+Grotesk:wght@400;500;600;700",
       "dm-sans": "DM+Sans:wght@400;500;600;700",
-      "outfit": "Outfit:wght@400;500;600;700",
-      "sora": "Sora:wght@400;500;600;700",
-      "playfair": "Playfair+Display:wght@400;500;600;700",
+      outfit: "Outfit:wght@400;500;600;700",
+      sora: "Sora:wght@400;500;600;700",
+      playfair: "Playfair+Display:wght@400;500;600;700",
       "libre-baskerville": "Libre+Baskerville:wght@400;700",
-      "cormorant": "Cormorant+Garamond:wght@400;500;600;700",
-      "cinzel": "Cinzel:wght@400;500;600;700",
-      "merriweather": "Merriweather:wght@400;700",
+      cormorant: "Cormorant+Garamond:wght@400;500;600;700",
+      cinzel: "Cinzel:wght@400;500;600;700",
+      merriweather: "Merriweather:wght@400;700",
       "roboto-mono": "Roboto+Mono:wght@400;500;600;700",
       "jetbrains-mono": "JetBrains+Mono:wght@400;500;600;700",
       "fira-code": "Fira+Code:wght@400;500;600;700",
       "source-code": "Source+Code+Pro:wght@400;500;600;700",
       "dancing-script": "Dancing+Script:wght@400;500;600;700",
-      "pacifico": "Pacifico",
-      "caveat": "Caveat:wght@400;500;600;700",
+      pacifico: "Pacifico",
+      caveat: "Caveat:wght@400;500;600;700",
     };
 
     const families: string[] = [];

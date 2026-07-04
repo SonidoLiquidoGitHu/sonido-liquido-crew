@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import type { UpcomingRelease } from "@/db/schema/upcoming";
+import { cn, getReleaseTypeDisplay } from "@/lib/utils";
 import {
-  Rocket,
   Bell,
   Calendar,
-  Play,
-  Music,
-  ExternalLink,
   ChevronRight,
+  ExternalLink,
   Loader2,
+  Music,
+  Play,
+  Rocket,
   Sparkles,
 } from "lucide-react";
-import { cn, getReleaseTypeDisplay } from "@/lib/utils";
-import type { UpcomingRelease } from "@/db/schema/upcoming";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface ArtistUpcomingReleasesProps {
   artistName: string;
@@ -71,7 +71,9 @@ export function ArtistUpcomingReleases({
   initialReleases,
   className = "",
 }: ArtistUpcomingReleasesProps) {
-  const [releases, setReleases] = useState<UpcomingRelease[]>(initialReleases || []);
+  const [releases, setReleases] = useState<UpcomingRelease[]>(
+    initialReleases || [],
+  );
   const [loading, setLoading] = useState(!initialReleases);
   const [presaving, setPresaving] = useState<string | null>(null);
 
@@ -84,7 +86,9 @@ export function ArtistUpcomingReleases({
 
   async function fetchReleases() {
     try {
-      const res = await fetch(`/api/upcoming-releases?artistName=${encodeURIComponent(artistName)}`);
+      const res = await fetch(
+        `/api/upcoming-releases?artistName=${encodeURIComponent(artistName)}`,
+      );
       const data = await res.json();
       if (data.success) {
         setReleases(data.data || []);
@@ -171,15 +175,31 @@ function UpcomingReleaseCard({
   onPresave: (url: string) => void;
 }) {
   const daysUntil = getDaysUntil(release.releaseDate);
-  const hasPresaveLinks = release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl;
+  const hasPresaveLinks =
+    release.rpmPresaveUrl ||
+    release.spotifyPresaveUrl ||
+    release.appleMusicPresaveUrl;
 
   // Get available presave links
   const presaveLinks = [
-    { platform: "rpm", url: release.rpmPresaveUrl, label: "Pre-save", primary: true },
+    {
+      platform: "rpm",
+      url: release.rpmPresaveUrl,
+      label: "Pre-save",
+      primary: true,
+    },
     { platform: "spotify", url: release.spotifyPresaveUrl, label: "Spotify" },
-    { platform: "apple", url: release.appleMusicPresaveUrl, label: "Apple Music" },
+    {
+      platform: "apple",
+      url: release.appleMusicPresaveUrl,
+      label: "Apple Music",
+    },
     { platform: "deezer", url: release.deezerPresaveUrl, label: "Deezer" },
-    { platform: "youtube", url: release.youtubeMusicPresaveUrl, label: "YouTube" },
+    {
+      platform: "youtube",
+      url: release.youtubeMusicPresaveUrl,
+      label: "YouTube",
+    },
   ].filter((link) => link.url);
 
   return (
@@ -225,7 +245,9 @@ function UpcomingReleaseCard({
             {/* Countdown Badge */}
             {release.showCountdown && daysUntil > 0 && (
               <div className="absolute top-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-sm rounded-lg text-center">
-                <p className="font-oswald text-lg text-white leading-none">{daysUntil}</p>
+                <p className="font-oswald text-lg text-white leading-none">
+                  {daysUntil}
+                </p>
                 <p className="text-[10px] text-white/60 uppercase">días</p>
               </div>
             )}
@@ -255,7 +277,10 @@ function UpcomingReleaseCard({
             <p className="text-sm text-slc-muted mb-2">
               {release.artistName}
               {release.featuredArtists && (
-                <span className="text-slc-muted/60"> ft. {release.featuredArtists}</span>
+                <span className="text-slc-muted/60">
+                  {" "}
+                  ft. {release.featuredArtists}
+                </span>
               )}
             </p>
 
@@ -294,10 +319,14 @@ function UpcomingReleaseCard({
                     variant="outline"
                     size="sm"
                     className="border-slc-border hover:border-white/30"
-                    onClick={() => window.open(link.url!, "_blank", "noopener,noreferrer")}
+                    onClick={() =>
+                      window.open(link.url!, "_blank", "noopener,noreferrer")
+                    }
                     title={`Pre-save en ${link.label}`}
                   >
-                    {PLATFORM_ICONS[link.platform] || <ExternalLink className="w-4 h-4" />}
+                    {PLATFORM_ICONS[link.platform] || (
+                      <ExternalLink className="w-4 h-4" />
+                    )}
                   </Button>
                 ))}
               </div>

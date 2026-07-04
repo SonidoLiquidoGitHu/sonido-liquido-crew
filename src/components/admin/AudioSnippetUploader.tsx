@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Upload,
-  Play,
-  Pause,
-  Music,
+  Activity,
+  AlertTriangle,
+  Check,
+  Clock,
   Loader2,
-  X,
+  Music,
+  Pause,
+  Play,
+  Scissors,
+  Upload,
   Volume2,
   VolumeX,
-  Scissors,
-  Clock,
-  Activity,
-  Check,
-  AlertTriangle,
+  X,
   Zap,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AudioSnippetUploaderProps {
   value?: string | null;
@@ -56,7 +56,9 @@ function WaveformVisualizer({
     const generateWaveform = async () => {
       setIsLoading(true);
       try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioContext = new (
+          window.AudioContext || (window as any).webkitAudioContext
+        )();
         const response = await fetch(audioUrl);
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -67,7 +69,7 @@ function WaveformVisualizer({
         const filteredData: number[] = [];
 
         for (let i = 0; i < samples; i++) {
-          let blockStart = blockSize * i;
+          const blockStart = blockSize * i;
           let sum = 0;
           for (let j = 0; j < blockSize; j++) {
             sum += Math.abs(rawData[blockStart + j]);
@@ -82,7 +84,10 @@ function WaveformVisualizer({
       } catch (error) {
         console.error("Error generating waveform:", error);
         // Generate fake waveform as fallback
-        const fakeData = Array.from({ length: 100 }, () => Math.random() * 0.5 + 0.3);
+        const fakeData = Array.from(
+          { length: 100 },
+          () => Math.random() * 0.5 + 0.3,
+        );
         setWaveformData(fakeData);
       } finally {
         setIsLoading(false);
@@ -184,7 +189,9 @@ export function AudioSnippetUploader({
   const [isDragOver, setIsDragOver] = useState(false);
 
   // Dropbox direct upload state
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -243,15 +250,23 @@ export function AudioSnippetUploader({
 
   // Handle file upload
   // Known audio file extensions for mobile browsers that may not set MIME type
-  const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "opus", "weba"];
+  const AUDIO_EXTENSIONS = [
+    "mp3",
+    "wav",
+    "m4a",
+    "aac",
+    "ogg",
+    "flac",
+    "wma",
+    "opus",
+    "weba",
+  ];
 
   // Convert Dropbox shared link to direct link with ?raw=1
   const convertToDirectLink = (url: string): string => {
-    const result = url
-      .replace("?dl=0", "?raw=1")
-      .replace("&dl=0", "&raw=1");
+    const result = url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
     if (!result.includes("raw=1")) {
-      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+      return `${result + (result.includes("?") ? "&" : "?")}raw=1`;
     }
     return result;
   };
@@ -261,17 +276,24 @@ export function AudioSnippetUploader({
     if (!accessToken) throw new Error("No hay token de Dropbox");
 
     try {
-      const response = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            path,
+            settings: {
+              access: "viewer",
+              audience: "public",
+              requested_visibility: "public",
+            },
+          }),
         },
-        body: JSON.stringify({
-          path,
-          settings: { access: "viewer", audience: "public", requested_visibility: "public" },
-        }),
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -280,15 +302,21 @@ export function AudioSnippetUploader({
 
       // Link might already exist
       const errorData = await response.json().catch(() => ({}));
-      if (errorData.error_summary?.includes("shared_link_already_exists") || response.status === 409) {
-        const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
+      if (
+        errorData.error_summary?.includes("shared_link_already_exists") ||
+        response.status === 409
+      ) {
+        const listResponse = await fetch(
+          "https://api.dropboxapi.com/2/sharing/list_shared_links",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ path, direct_only: true }),
           },
-          body: JSON.stringify({ path, direct_only: true }),
-        });
+        );
         if (listResponse.ok) {
           const listData = await listResponse.json();
           if (listData.links && listData.links.length > 0) {
@@ -296,7 +324,9 @@ export function AudioSnippetUploader({
           }
         }
       }
-      throw new Error(errorData.error_summary || "Failed to create shared link");
+      throw new Error(
+        errorData.error_summary || "Failed to create shared link",
+      );
     } catch (error) {
       console.error("[AudioSnippet] Create link error:", error);
       throw error;
@@ -306,11 +336,15 @@ export function AudioSnippetUploader({
   // Upload a file directly to Dropbox from the browser (bypasses server size limits on Netlify)
   const uploadDirectToDropbox = async (file: File): Promise<string> => {
     if (!accessToken) {
-      throw new Error("No hay token de Dropbox disponible. Reconecta en Sincronización.");
+      throw new Error(
+        "No hay token de Dropbox disponible. Reconecta en Sincronización.",
+      );
     }
 
     const ext = file.name.split(".").pop() || "";
-    const baseName = file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const baseName = file.name
+      .replace(`.${ext}`, "")
+      .replace(/[^a-zA-Z0-9-_]/g, "_");
     const uniqueId = generateUniqueId();
     const filename = `${baseName}_${uniqueId}.${ext}`;
     const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
@@ -326,18 +360,23 @@ export function AudioSnippetUploader({
 
       // Start session
       setUploadMessage("Iniciando sesión de subida...");
-      const startResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/start", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/octet-stream",
-          "Dropbox-API-Arg": JSON.stringify({ close: false }),
+      const startResponse = await fetch(
+        "https://content.dropboxapi.com/2/files/upload_session/start",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream",
+            "Dropbox-API-Arg": JSON.stringify({ close: false }),
+          },
+          body: new ArrayBuffer(0),
         },
-        body: new ArrayBuffer(0),
-      });
+      );
       if (!startResponse.ok) {
         const errData = await startResponse.json().catch(() => ({}));
-        throw new Error(errData.error_summary || "Failed to start upload session");
+        throw new Error(
+          errData.error_summary || "Failed to start upload session",
+        );
       }
       const { session_id } = await startResponse.json();
 
@@ -352,35 +391,48 @@ export function AudioSnippetUploader({
         setUploadMessage(`Subiendo parte ${i + 1} de ${totalChunks}...`);
 
         if (isLastChunk) {
-          const finishResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/finish", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/octet-stream",
-              "Dropbox-API-Arg": JSON.stringify({
-                cursor: { session_id, offset },
-                commit: { path: dropboxPath, mode: "overwrite", autorename: false, mute: false },
-              }),
+          const finishResponse = await fetch(
+            "https://content.dropboxapi.com/2/files/upload_session/finish",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/octet-stream",
+                "Dropbox-API-Arg": JSON.stringify({
+                  cursor: { session_id, offset },
+                  commit: {
+                    path: dropboxPath,
+                    mode: "overwrite",
+                    autorename: false,
+                    mute: false,
+                  },
+                }),
+              },
+              body: chunkBuffer,
             },
-            body: chunkBuffer,
-          });
+          );
           if (!finishResponse.ok) {
             const errorData = await finishResponse.json().catch(() => ({}));
-            throw new Error(errorData.error_summary || "Failed to finish upload");
+            throw new Error(
+              errorData.error_summary || "Failed to finish upload",
+            );
           }
         } else {
-          const appendResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/append_v2", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/octet-stream",
-              "Dropbox-API-Arg": JSON.stringify({
-                cursor: { session_id, offset },
-                close: false,
-              }),
+          const appendResponse = await fetch(
+            "https://content.dropboxapi.com/2/files/upload_session/append_v2",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/octet-stream",
+                "Dropbox-API-Arg": JSON.stringify({
+                  cursor: { session_id, offset },
+                  close: false,
+                }),
+              },
+              body: chunkBuffer,
             },
-            body: chunkBuffer,
-          });
+          );
           if (!appendResponse.ok) {
             const errData = await appendResponse.json().catch(() => ({}));
             throw new Error(errData.error_summary || "Failed to append chunk");
@@ -395,27 +447,34 @@ export function AudioSnippetUploader({
 
       const arrayBuffer = await file.arrayBuffer();
 
-      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/octet-stream",
-          "Dropbox-API-Arg": JSON.stringify({
-            path: dropboxPath,
-            mode: "overwrite",
-            autorename: false,
-            mute: false,
-          }),
+      const uploadResponse = await fetch(
+        "https://content.dropboxapi.com/2/files/upload",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream",
+            "Dropbox-API-Arg": JSON.stringify({
+              path: dropboxPath,
+              mode: "overwrite",
+              autorename: false,
+              mute: false,
+            }),
+          },
+          body: arrayBuffer,
         },
-        body: arrayBuffer,
-      });
+      );
 
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json().catch(() => ({}));
         if (uploadResponse.status === 401) {
-          throw new Error("Token de Dropbox expirado. Reconecta en Sincronización → Dropbox.");
+          throw new Error(
+            "Token de Dropbox expirado. Reconecta en Sincronización → Dropbox.",
+          );
         }
-        throw new Error(errorData.error_summary || `Error HTTP ${uploadResponse.status}`);
+        throw new Error(
+          errorData.error_summary || `Error HTTP ${uploadResponse.status}`,
+        );
       }
     }
 
@@ -436,7 +495,9 @@ export function AudioSnippetUploader({
     const isAudioExt = AUDIO_EXTENSIONS.includes(ext);
 
     if (!isAudioMime && !isAudioExt) {
-      setError("Solo se permiten archivos de audio (MP3, WAV, FLAC, M4A, AAC, OGG, WMA, AIFF)");
+      setError(
+        "Solo se permiten archivos de audio (MP3, WAV, FLAC, M4A, AAC, OGG, WMA, AIFF)",
+      );
       return;
     }
 
@@ -450,7 +511,9 @@ export function AudioSnippetUploader({
     // browsers that may not support Audio duration detection for all formats)
     const audioDuration = await getAudioDuration(file);
     if (audioDuration > 0 && audioDuration > maxDuration) {
-      setError(`El audio debe ser máximo ${maxDuration} segundos. Este archivo dura ${Math.round(audioDuration)}s.`);
+      setError(
+        `El audio debe ser máximo ${maxDuration} segundos. Este archivo dura ${Math.round(audioDuration)}s.`,
+      );
       return;
     }
 
@@ -471,14 +534,18 @@ export function AudioSnippetUploader({
       } else {
         // Fallback: Server-side upload (for when Dropbox is not configured for direct upload)
         // NOTE: This path has body size limits (~4.5MB on Netlify) and should rarely be used
-        console.warn("[AudioSnippet] No direct Dropbox token, falling back to server upload (may fail for large files)");
+        console.warn(
+          "[AudioSnippet] No direct Dropbox token, falling back to server upload (may fail for large files)",
+        );
 
         const formData = new FormData();
         formData.append("file", file);
         formData.append("folder", folder);
 
         setUploadProgress(30);
-        setUploadMessage("Subiendo por servidor (puede fallar con archivos grandes)...");
+        setUploadMessage(
+          "Subiendo por servidor (puede fallar con archivos grandes)...",
+        );
 
         const response = await fetch("/api/admin/dropbox/upload", {
           method: "POST",
@@ -491,7 +558,9 @@ export function AudioSnippetUploader({
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
           console.error("Server returned non-JSON response");
-          throw new Error("Error de conexión con Dropbox. Reconecta tu cuenta en Sincronización.");
+          throw new Error(
+            "Error de conexión con Dropbox. Reconecta tu cuenta en Sincronización.",
+          );
         }
 
         const data = await response.json();
@@ -508,7 +577,11 @@ export function AudioSnippetUploader({
       const errMsg = (err as Error).message;
 
       // Retry on token expiry (after refreshing)
-      if ((errMsg.includes("401") || errMsg.includes("expired") || errMsg.includes("expirado"))) {
+      if (
+        errMsg.includes("401") ||
+        errMsg.includes("expired") ||
+        errMsg.includes("expirado")
+      ) {
         console.log("[AudioSnippet] Token expired, refreshing and retrying");
         try {
           const tokenRes = await fetch("/api/admin/dropbox/token");
@@ -562,7 +635,7 @@ export function AudioSnippetUploader({
         const dur = audio.duration;
         cleanup();
         // Some browsers return Infinity for streaming formats
-        if (!isFinite(dur)) {
+        if (!Number.isFinite(dur)) {
           resolve(0);
         } else {
           resolve(dur);
@@ -645,18 +718,26 @@ export function AudioSnippetUploader({
         </label>
         {description && <p className="text-xs text-slc-muted">{description}</p>}
         <p className="text-xs text-slc-muted mt-1">
-          Máximo {maxDuration} segundos, {maxSize}MB. MP3, WAV, FLAC, M4A, AAC, OGG, WMA, AIFF.
+          Máximo {maxDuration} segundos, {maxSize}MB. MP3, WAV, FLAC, M4A, AAC,
+          OGG, WMA, AIFF.
         </p>
         {dropboxConfigured && (
           <div className="flex items-center gap-1.5 mt-1">
             <Zap className="w-3 h-3 text-emerald-500" />
-            <span className="text-xs text-emerald-500">Upload directo a Dropbox desde tu navegador</span>
+            <span className="text-xs text-emerald-500">
+              Upload directo a Dropbox desde tu navegador
+            </span>
           </div>
         )}
         {dropboxConfigured === false && (
           <div className="flex items-center gap-1.5 mt-1">
             <AlertTriangle className="w-3 h-3 text-yellow-500" />
-            <span className="text-xs text-yellow-500">Dropbox no configurado. <a href="/admin/sync" className="underline">Conectar</a></span>
+            <span className="text-xs text-yellow-500">
+              Dropbox no configurado.{" "}
+              <a href="/admin/sync" className="underline">
+                Conectar
+              </a>
+            </span>
           </div>
         )}
       </div>
@@ -698,7 +779,9 @@ export function AudioSnippetUploader({
             <div className="flex-1">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-mono">{formatTime(currentTime)}</span>
-                <span className="text-slc-muted font-mono">{formatTime(duration)}</span>
+                <span className="text-slc-muted font-mono">
+                  {formatTime(duration)}
+                </span>
               </div>
 
               {/* Progress bar (fallback when waveform not shown) */}
@@ -706,7 +789,9 @@ export function AudioSnippetUploader({
                 <div className="mt-2 h-1 bg-slc-border rounded-full overflow-hidden">
                   <div
                     className="h-full bg-spotify transition-all"
-                    style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                    style={{
+                      width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+                    }}
                   />
                 </div>
               )}
@@ -763,7 +848,10 @@ export function AudioSnippetUploader({
       {!value && (
         <div
           onDrop={handleDrop}
-          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
           onDragLeave={() => setIsDragOver(false)}
           className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
             isDragOver
@@ -801,7 +889,8 @@ export function AudioSnippetUploader({
                 Arrastra un archivo de audio o haz clic para seleccionar
               </p>
               <p className="text-xs text-slc-muted">
-                Snippet de hasta {maxDuration}s para mostrar en la página de pre-save
+                Snippet de hasta {maxDuration}s para mostrar en la página de
+                pre-save
               </p>
               {dropboxConfigured && (
                 <p className="text-xs text-emerald-500/80 mt-2">
@@ -819,8 +908,12 @@ export function AudioSnippetUploader({
           <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <div>
             <p>{error}</p>
-            {(error.toLowerCase().includes("token") || error.toLowerCase().includes("expirado")) && (
-              <a href="/admin/sync" className="text-xs text-primary hover:underline mt-1 inline-block">
+            {(error.toLowerCase().includes("token") ||
+              error.toLowerCase().includes("expirado")) && (
+              <a
+                href="/admin/sync"
+                className="text-xs text-primary hover:underline mt-1 inline-block"
+              >
                 Ir a Sincronización - Dropbox
               </a>
             )}
@@ -831,7 +924,8 @@ export function AudioSnippetUploader({
       {/* Tips */}
       <div className="p-3 bg-slc-card/50 rounded-lg border border-slc-border">
         <p className="text-xs text-slc-muted">
-          <strong>Tip:</strong> Un snippet de 15-30 segundos con el hook de la canción genera más engagement en pre-saves.
+          <strong>Tip:</strong> Un snippet de 15-30 segundos con el hook de la
+          canción genera más engagement en pre-saves.
         </p>
       </div>
     </div>

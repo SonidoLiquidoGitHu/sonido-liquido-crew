@@ -1,7 +1,7 @@
 "use client";
 
+import { Headphones, ListMusic, Music2 } from "lucide-react";
 import { useState } from "react";
-import { Music2, Headphones, ListMusic } from "lucide-react";
 
 // ===========================================
 // MÚSICA SECTION - Tabbed: Artistas / Beats / Playlists
@@ -12,18 +12,27 @@ import { Music2, Headphones, ListMusic } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const RandomArtistPlayer = dynamic(
-  () => import("@/components/public/RandomArtistPlayer").then(m => ({ default: m.RandomArtistPlayer })),
-  { ssr: false }
+  () =>
+    import("@/components/public/RandomArtistPlayer").then((m) => ({
+      default: m.RandomArtistPlayer,
+    })),
+  { ssr: false },
 );
 
 const FeaturedBeats = dynamic(
-  () => import("@/components/public/sections/FeaturedBeats").then(m => ({ default: m.FeaturedBeats })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/FeaturedBeats").then((m) => ({
+      default: m.FeaturedBeats,
+    })),
+  { ssr: true },
 );
 
 const SpotifySection = dynamic(
-  () => import("@/components/public/sections/SpotifySection").then(m => ({ default: m.SpotifySection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/SpotifySection").then((m) => ({
+      default: m.SpotifySection,
+    })),
+  { ssr: true },
 );
 
 const TABS = [
@@ -32,7 +41,7 @@ const TABS = [
   { id: "playlists", label: "Playlists", icon: ListMusic },
 ] as const;
 
-type TabId = typeof TABS[number]["id"];
+type TabId = (typeof TABS)[number]["id"];
 
 interface MusicaSectionProps {
   featuredBeats: any[];
@@ -68,9 +77,10 @@ export function MusicaSection({ featuredBeats }: MusicaSectionProps) {
                   aria-selected={activeTab === tab.id}
                   className={`
                     flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all
-                    ${activeTab === tab.id
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                    ${
+                      activeTab === tab.id
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
                     }
                   `}
                 >
@@ -85,16 +95,15 @@ export function MusicaSection({ featuredBeats }: MusicaSectionProps) {
         {/* Tab content */}
         <div className="min-h-[300px]">
           {activeTab === "artistas" && <RandomArtistPlayer />}
-          {activeTab === "beats" && (
-            featuredBeats.length > 0 ? (
+          {activeTab === "beats" &&
+            (featuredBeats.length > 0 ? (
               <FeaturedBeats beats={featuredBeats} />
             ) : (
               <div className="text-center py-12 text-gray-400">
                 <Headphones className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Próximamente más beats</p>
               </div>
-            )
-          )}
+            ))}
           {activeTab === "playlists" && <SpotifySection />}
         </div>
       </div>

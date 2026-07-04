@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { SafeImage } from "@/components/ui/safe-image";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Music,
-  Check,
-  Mail,
-  ExternalLink,
-  ArrowRight,
-  Download,
-  Loader2,
-  Play,
-  Pause,
-  Instagram,
-  Facebook,
-  User,
-  Share2,
-} from "lucide-react";
 import { UnlockLanding } from "@/components/public/UnlockLanding";
+import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import { ShareButtons } from "@/components/ui/share-button";
+import {
+  ArrowRight,
+  Check,
+  Download,
+  ExternalLink,
+  Facebook,
+  Instagram,
+  Loader2,
+  Mail,
+  Music,
+  Pause,
+  Play,
+  Share2,
+  User,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { BeatStoryCard } from "./BeatStoryCard";
 
 export interface Beat {
@@ -66,7 +66,10 @@ interface BeatPageClientProps {
   slug: string;
 }
 
-export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProps) {
+export default function BeatPageClient({
+  initialBeat,
+  slug,
+}: BeatPageClientProps) {
   const [beat, setBeat] = useState<Beat | null>(initialBeat);
   const [loading, setLoading] = useState(!initialBeat);
   const [error, setError] = useState<string | null>(null);
@@ -89,26 +92,24 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
   const [showStoryCard, setShowStoryCard] = useState(false);
 
   useEffect(() => {
-    if (!initialBeat) {
-      fetchBeat();
-    }
-  }, [slug, initialBeat]);
-
-  const fetchBeat = async () => {
-    try {
-      const res = await fetch(`/api/beats/${slug}`);
-      const data = await res.json();
-      if (data.success) {
-        setBeat(data.data);
-      } else {
-        setError(data.error || "Beat not found");
+    if (initialBeat) return;
+    const fetchBeat = async () => {
+      try {
+        const res = await fetch(`/api/beats/${slug}`);
+        const data = await res.json();
+        if (data.success) {
+          setBeat(data.data);
+        } else {
+          setError(data.error || "Beat not found");
+        }
+      } catch (err) {
+        setError("Failed to load beat");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError("Failed to load beat");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchBeat();
+  }, [slug, initialBeat]);
 
   const togglePlay = () => {
     if (!beat?.previewAudioUrl) return;
@@ -187,19 +188,21 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
   };
 
   const handleInstagramShare = () => {
-    const text = beat?.instagramShareText || `Check out this beat: ${beat?.title}`;
+    const text =
+      beat?.instagramShareText || `Check out this beat: ${beat?.title}`;
     navigator.clipboard.writeText(text);
     alert("Texto copiado. Pégalo en tu historia de Instagram");
     setInstagramShareCompleted(true);
   };
 
   const handleFacebookShare = () => {
-    const text = beat?.facebookShareText || `Check out this beat: ${beat?.title}`;
+    const text =
+      beat?.facebookShareText || `Check out this beat: ${beat?.title}`;
     const url = window.location.href;
     window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`,
       "_blank",
-      "width=600,height=400"
+      "width=600,height=400",
     );
     setTimeout(() => setFacebookShareCompleted(true), 2000);
   };
@@ -229,7 +232,9 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Music className="w-16 h-16 text-slc-muted mb-4" />
-        <h1 className="text-2xl font-oswald uppercase mb-2">Beat No Encontrado</h1>
+        <h1 className="text-2xl font-oswald uppercase mb-2">
+          Beat No Encontrado
+        </h1>
         <p className="text-slc-muted mb-6">{error || "Este beat no existe"}</p>
         <Button asChild>
           <Link href="/beats">
@@ -256,7 +261,8 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
     if (beat.bpm) tags.push({ label: "BPM", value: String(beat.bpm) });
     if (beat.key) tags.push({ label: "Key", value: beat.key });
     if (beat.genre) tags.push({ label: "Género", value: beat.genre });
-    if (beat.duration) tags.push({ label: "Duración", value: formatDuration(beat.duration) });
+    if (beat.duration)
+      tags.push({ label: "Duración", value: formatDuration(beat.duration) });
 
     return (
       <>
@@ -352,7 +358,9 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
         </div>
 
         {/* Title & Info */}
-        <h1 className="text-3xl font-oswald uppercase text-center mb-2">{beat.title}</h1>
+        <h1 className="text-3xl font-oswald uppercase text-center mb-2">
+          {beat.title}
+        </h1>
         {beat.producerName && (
           <p className="text-center text-slc-muted mb-4">
             <User className="w-4 h-4 inline mr-1" />
@@ -368,10 +376,14 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
             </span>
           )}
           {beat.key && (
-            <span className="text-xs px-3 py-1 bg-slc-card rounded-full">{beat.key}</span>
+            <span className="text-xs px-3 py-1 bg-slc-card rounded-full">
+              {beat.key}
+            </span>
           )}
           {beat.genre && (
-            <span className="text-xs px-3 py-1 bg-slc-card rounded-full">{beat.genre}</span>
+            <span className="text-xs px-3 py-1 bg-slc-card rounded-full">
+              {beat.genre}
+            </span>
           )}
           {beat.duration && (
             <span className="text-xs px-3 py-1 bg-slc-card rounded-full">
@@ -406,8 +418,14 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
           {beat.requireEmail && (
             <div className="bg-slc-card border border-slc-border rounded-lg p-4">
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${email ? "bg-green-500" : "bg-slc-border"}`}>
-                  {email ? <Check className="w-4 h-4 text-white" /> : <Mail className="w-4 h-4 text-slc-muted" />}
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${email ? "bg-green-500" : "bg-slc-border"}`}
+                >
+                  {email ? (
+                    <Check className="w-4 h-4 text-white" />
+                  ) : (
+                    <Mail className="w-4 h-4 text-slc-muted" />
+                  )}
                 </div>
                 <span className="font-medium">Tu email</span>
               </div>
@@ -553,7 +571,7 @@ export default function BeatPageClient({ initialBeat, slug }: BeatPageClientProp
 function SpotifyIcon() {
   return (
     <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
     </svg>
   );
 }
@@ -581,7 +599,9 @@ function ActionCard({
     <div className="bg-slc-card border border-slc-border rounded-lg p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${completed ? "bg-green-500" : color}`}>
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${completed ? "bg-green-500" : color}`}
+          >
             {completed ? <Check className="w-4 h-4 text-white" /> : icon}
           </div>
           <div>

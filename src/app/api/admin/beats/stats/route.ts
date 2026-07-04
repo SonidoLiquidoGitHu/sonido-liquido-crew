@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { beats, beatDownloads } from "@/db/schema";
-import { eq, sql, desc, and, gte } from "drizzle-orm";
+import { beatDownloads, beats } from "@/db/schema";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/admin/beats/stats
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
           .where(
             and(
               eq(beatDownloads.beatId, beatId),
-              gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000))
-            )
+              gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000)),
+            ),
           )
       : await db
           .select({
@@ -151,8 +151,8 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           beatId ? eq(beatDownloads.beatId, beatId) : undefined,
-          gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000))
-        )
+          gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000)),
+        ),
       )
       .groupBy(sql`date(${beatDownloads.createdAt}, 'unixepoch')`)
       .orderBy(sql`date(${beatDownloads.createdAt}, 'unixepoch')`);
@@ -179,21 +179,28 @@ export async function GET(request: NextRequest) {
         beatId
           ? and(
               eq(beatDownloads.beatId, beatId),
-              gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000))
+              gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000)),
             )
-          : gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000))
+          : gte(beatDownloads.createdAt, new Date(sinceTimestamp * 1000)),
       )
       .orderBy(desc(beatDownloads.createdAt))
       .limit(50);
 
     // Calculate conversion rates
-    const overallConversionRate = totals.totalViews > 0
-      ? Math.round((totals.totalDownloads / totals.totalViews) * 100 * 10) / 10
-      : 0;
+    const overallConversionRate =
+      totals.totalViews > 0
+        ? Math.round((totals.totalDownloads / totals.totalViews) * 100 * 10) /
+          10
+        : 0;
 
-    const periodConversionRate = totals.totalViews > 0
-      ? Math.round((periodDownloads[0].count / Math.max(totals.totalViews, 1)) * 100 * 10) / 10
-      : 0;
+    const periodConversionRate =
+      totals.totalViews > 0
+        ? Math.round(
+            (periodDownloads[0].count / Math.max(totals.totalViews, 1)) *
+              100 *
+              10,
+          ) / 10
+        : 0;
 
     return NextResponse.json({
       success: true,
@@ -216,7 +223,7 @@ export async function GET(request: NextRequest) {
     console.error("[API] Error fetching beat stats:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch beat stats" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

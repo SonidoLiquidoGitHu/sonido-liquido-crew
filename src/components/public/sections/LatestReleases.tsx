@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef } from "react";
-import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { ReleaseCard } from "../cards/ReleaseCard";
-import type { Release } from "@/types";
 import { Button } from "@/components/ui/button";
+import type { Release } from "@/types";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { useRef } from "react";
+import { ReleaseCard } from "../cards/ReleaseCard";
 
 interface ReleaseWithArtist extends Release {
   artistName?: string | null;

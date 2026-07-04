@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
 import { SafeImage } from "@/components/ui/safe-image";
 import {
+  type VideoLike,
   getProxiedThumbnailUrl,
   getProxiedVideoSrc,
-  getYouTubeId,
-  isYouTubeThumbnailUrl,
-  getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
+  getYouTubeId,
+  getYouTubeThumbnailFallback,
   isDirectVideo,
-  type VideoLike,
+  isYouTubeThumbnailUrl,
 } from "@/lib/video-utils";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface VideoThumbnailProps {
   video: VideoLike;
@@ -73,7 +73,10 @@ export function VideoThumbnail({
           fallbackSrc={(() => {
             const ytId = getYouTubeId(video);
             if (ytId && isYouTubeThumbnailUrl(thumbnailUrl!)) {
-              return getYouTubeThumbnailFallback(ytId, thumbnailUrl!) || getVideoPlaceholderSvg(aspectRatio);
+              return (
+                getYouTubeThumbnailFallback(ytId, thumbnailUrl!) ||
+                getVideoPlaceholderSvg(aspectRatio)
+              );
             }
             return getVideoPlaceholderSvg(aspectRatio);
           })()}
@@ -125,7 +128,11 @@ function PlayOverlay() {
   return (
     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
       <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-        <svg className="w-6 h-6 text-white ml-0.5" viewBox="0 0 24 24" fill="white">
+        <svg
+          className="w-6 h-6 text-white ml-0.5"
+          viewBox="0 0 24 24"
+          fill="white"
+        >
           <path d="M8 5v14l11-7z" />
         </svg>
       </div>
@@ -171,14 +178,19 @@ function VideoFrameFallback({
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) return;
+    if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0)
+      return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     // Use the video's natural dimensions, scaled down for performance
     const maxDim = 720;
-    const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+    const scale = Math.min(
+      maxDim / video.videoWidth,
+      maxDim / video.videoHeight,
+      1,
+    );
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
 
@@ -224,7 +236,11 @@ function VideoFrameFallback({
     return (
       <div className={`${fill ? "absolute inset-0" : "relative"} ${className}`}>
         <div className="w-full h-full bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
-          <svg className="w-12 h-12 text-slc-border/50" viewBox="0 0 24 24" fill="currentColor">
+          <svg
+            className="w-12 h-12 text-slc-border/50"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
             <path d="M8 5v14l11-7z" />
           </svg>
         </div>

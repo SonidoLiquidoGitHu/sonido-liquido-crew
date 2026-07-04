@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { ArtistCard } from "../cards/ArtistCard";
-import type { Artist } from "@/types";
 import { Button } from "@/components/ui/button";
+import type { Artist } from "@/types";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArtistCard } from "../cards/ArtistCard";
 import { ScrollReveal } from "../effects/ScrollReveal";
 
 interface FeaturedArtistsProps {
@@ -54,7 +54,11 @@ export function FeaturedArtists({ artists }: FeaturedArtistsProps) {
                 El roster más representativo del Hip Hop mexicano - 15 artistas
               </p>
             </div>
-            <Button asChild variant="outline" className="shrink-0 border-gray-600 text-white hover:bg-white/10">
+            <Button
+              asChild
+              variant="outline"
+              className="shrink-0 border-gray-600 text-white hover:bg-white/10"
+            >
               <Link href="/artistas">
                 Ver perfiles
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -78,7 +82,8 @@ export function FeaturedArtists({ artists }: FeaturedArtistsProps) {
                   {/* Placeholder colored squares for empty slots */}
                   {Array.from({ length: emptySlots }).map((_, i) => {
                     const colorIndex = featuredArtists.length + i;
-                    const color = placeholderColors[colorIndex % placeholderColors.length];
+                    const color =
+                      placeholderColors[colorIndex % placeholderColors.length];
                     return (
                       <div
                         key={`placeholder-${i}`}
@@ -92,7 +97,7 @@ export function FeaturedArtists({ artists }: FeaturedArtistsProps) {
                           className="w-full h-full opacity-10"
                           style={{
                             backgroundImage: `radial-gradient(circle, ${color.shadow} 1px, transparent 1px)`,
-                            backgroundSize: '4px 4px',
+                            backgroundSize: "4px 4px",
                           }}
                         />
                       </div>
@@ -110,7 +115,12 @@ export function FeaturedArtists({ artists }: FeaturedArtistsProps) {
         {/* Mobile CTA */}
         <ScrollReveal direction="up" delay={400}>
           <div className="mt-10 text-center sm:hidden">
-            <Button asChild variant="outline" size="lg" className="border-gray-600 text-white hover:bg-white/10">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="border-gray-600 text-white hover:bg-white/10"
+            >
               <Link href="/artistas">
                 Ver todos los artistas
                 <ArrowRight className="w-4 h-4 ml-2" />

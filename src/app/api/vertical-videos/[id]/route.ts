@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { verticalVideos, verticalVideoTags, tags } from "@/db/schema";
+import { tags, verticalVideoTags, verticalVideos } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
 import { eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // GET - Public: Get a single vertical video by ID
 // ===========================================
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -22,7 +22,7 @@ export async function GET(
     if (!video || !video.isPublished) {
       return NextResponse.json(
         { success: false, error: "Video not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -41,13 +41,17 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: { ...video, viewCount: video.viewCount + 1, tags: videoTagRows.map((r) => r.tag) },
+      data: {
+        ...video,
+        viewCount: video.viewCount + 1,
+        tags: videoTagRows.map((r) => r.tag),
+      },
     });
   } catch (error) {
     console.error("Failed to fetch vertical video:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch vertical video" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -57,7 +61,7 @@ export async function GET(
 // ===========================================
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -83,7 +87,7 @@ export async function POST(
     console.error("Failed to track share:", error);
     return NextResponse.json(
       { success: false, error: "Failed to track share" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

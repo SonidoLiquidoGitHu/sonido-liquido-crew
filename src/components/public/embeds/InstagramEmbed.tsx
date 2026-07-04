@@ -1,8 +1,8 @@
 "use client";
 
-import { Instagram, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ExternalLink, Instagram } from "lucide-react";
 
 interface InstagramEmbedProps {
   username: string;
@@ -12,10 +12,7 @@ interface InstagramEmbedProps {
   className?: string;
 }
 
-export function InstagramEmbed({
-  username,
-  className,
-}: InstagramEmbedProps) {
+export function InstagramEmbed({ username, className }: InstagramEmbedProps) {
   // Clean username (remove @ if present)
   const cleanUsername = username.replace(/^@/, "");
   const instagramUrl = `https://www.instagram.com/${cleanUsername}/`;

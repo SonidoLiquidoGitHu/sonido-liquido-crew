@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { artistsService } from "@/lib/services";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -25,7 +25,7 @@ export async function GET() {
     console.error("Error fetching artist conflicts:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch artist conflicts" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

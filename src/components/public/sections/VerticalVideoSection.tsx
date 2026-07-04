@@ -1,30 +1,30 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
-import {
-  Play,
-  Share2,
-  Eye,
-  Smartphone,
-  ArrowRight,
-  PlayCircle,
-  Copy,
-  CheckCircle,
-  X,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
 import {
-  getYouTubeId,
-  getProxiedThumbnailUrl,
-  isYouTubeThumbnailUrl,
-  getYouTubeThumbnailFallback,
-  getVideoPlaceholderSvg,
   type VideoLike,
+  getProxiedThumbnailUrl,
+  getVideoPlaceholderSvg,
+  getYouTubeId,
+  getYouTubeThumbnailFallback,
+  isYouTubeThumbnailUrl,
 } from "@/lib/video-utils";
+import {
+  ArrowRight,
+  CheckCircle,
+  Copy,
+  Eye,
+  Play,
+  PlayCircle,
+  Share2,
+  Smartphone,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ===========================================
 // TYPES
@@ -56,10 +56,7 @@ interface VerticalVideoSectionProps {
 // ===========================================
 
 function PlatformIconBadge({ platform }: { platform: string | null }) {
-  const config: Record<
-    string,
-    { icon: React.ReactNode; className: string }
-  > = {
+  const config: Record<string, { icon: React.ReactNode; className: string }> = {
     youtube: {
       icon: (
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -102,7 +99,7 @@ function PlatformIconBadge({ platform }: { platform: string | null }) {
     <div
       className={cn(
         "w-6 h-6 rounded-full flex items-center justify-center",
-        c.className
+        c.className,
       )}
     >
       {c.icon}
@@ -236,9 +233,7 @@ function ShareModal({
         </div>
 
         <div className="p-5 space-y-3">
-          <p className="text-sm text-slc-muted">
-            {video.title || "Video"}
-          </p>
+          <p className="text-sm text-slc-muted">{video.title || "Video"}</p>
 
           {/* Copy link row */}
           <div className="flex items-center gap-2">
@@ -270,7 +265,7 @@ function ShareModal({
                   }
                 } else {
                   window.open(
-                    `https://wa.me/?text=${encodeURIComponent(text + " " + shareUrl)}`
+                    `https://wa.me/?text=${encodeURIComponent(`${text} ${shareUrl}`)}`,
                   );
                 }
                 trackShare("whatsapp");
@@ -291,7 +286,7 @@ function ShareModal({
               onClick={() => {
                 const text = video.title || "Mira este video";
                 window.open(
-                  `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`
+                  `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`,
                 );
                 trackShare("twitter");
               }}
@@ -310,7 +305,7 @@ function ShareModal({
               className="w-full text-sm"
               onClick={() => {
                 window.open(
-                  `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+                  `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
                 );
                 trackShare("facebook");
               }}
@@ -324,7 +319,11 @@ function ShareModal({
               </svg>
               Facebook
             </Button>
-            <Button variant="outline" className="w-full text-sm" onClick={nativeShare}>
+            <Button
+              variant="outline"
+              className="w-full text-sm"
+              onClick={nativeShare}
+            >
               <Share2 className="w-4 h-4 mr-2" />
               Más opciones
             </Button>
@@ -364,7 +363,7 @@ function VideoCard({
           observer.unobserve(el);
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     observer.observe(el);
@@ -376,9 +375,7 @@ function VideoCard({
       ref={cardRef}
       className={cn(
         "shrink-0 w-44 md:w-auto transition-all duration-500",
-        isVisible
-          ? "opacity-100 translate-y-0"
-          : "opacity-0 translate-y-6"
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
       )}
     >
       <Link
@@ -618,10 +615,7 @@ export function VerticalVideoSection({
 
       {/* Share modal (Improvement #4) */}
       {shareVideo && (
-        <ShareModal
-          video={shareVideo}
-          onClose={() => setShareVideo(null)}
-        />
+        <ShareModal video={shareVideo} onClose={() => setShareVideo(null)} />
       )}
     </>
   );

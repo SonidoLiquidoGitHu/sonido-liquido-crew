@@ -10,7 +10,7 @@ export default function Loading() {
         <div className="h-8 w-48 bg-slc-card rounded" />
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="aspect-square bg-slc-card rounded-lg" />
+            <div key={`loading-skeleton-${i}`} className="aspect-square bg-slc-card rounded-lg" />
           ))}
         </div>
       </div>

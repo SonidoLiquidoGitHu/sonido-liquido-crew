@@ -1,14 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { fanWallMessages, trustedContributors } from "@/db/schema";
-import { eq, and, desc, or, sql } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { and, desc, eq, or, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Helper function to check if a user is trusted
 async function checkTrustedContributor(
   email?: string | null,
-  instagram?: string | null
-): Promise<{ trusted: boolean; autoApprove: boolean; autoFeature: boolean } | null> {
+  instagram?: string | null,
+): Promise<{
+  trusted: boolean;
+  autoApprove: boolean;
+  autoFeature: boolean;
+} | null> {
   if (!email && !instagram) {
     return null;
   }
@@ -20,8 +24,8 @@ async function checkTrustedContributor(
       conditions.push(
         and(
           eq(trustedContributors.identifierType, "email"),
-          eq(trustedContributors.identifierValue, email.toLowerCase().trim())
-        )
+          eq(trustedContributors.identifierValue, email.toLowerCase().trim()),
+        ),
       );
     }
 
@@ -30,8 +34,8 @@ async function checkTrustedContributor(
       conditions.push(
         and(
           eq(trustedContributors.identifierType, "instagram"),
-          eq(trustedContributors.identifierValue, cleanInstagram)
-        )
+          eq(trustedContributors.identifierValue, cleanInstagram),
+        ),
       );
     }
 
@@ -41,8 +45,8 @@ async function checkTrustedContributor(
       .where(
         and(
           eq(trustedContributors.isActive, true),
-          conditions.length > 1 ? or(...conditions) : conditions[0]
-        )
+          conditions.length > 1 ? or(...conditions) : conditions[0],
+        ),
       )
       .limit(1);
 
@@ -81,7 +85,7 @@ export async function GET(request: NextRequest) {
     const releaseId = searchParams.get("releaseId");
     const eventId = searchParams.get("eventId");
     const featured = searchParams.get("featured");
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const limit = Number.parseInt(searchParams.get("limit") || "50", 10);
 
     // Build conditions
     const conditions = [
@@ -106,7 +110,10 @@ export async function GET(request: NextRequest) {
       .select()
       .from(fanWallMessages)
       .where(and(...conditions))
-      .orderBy(desc(fanWallMessages.isFeatured), desc(fanWallMessages.createdAt))
+      .orderBy(
+        desc(fanWallMessages.isFeatured),
+        desc(fanWallMessages.createdAt),
+      )
       .limit(limit);
 
     return NextResponse.json({ success: true, data: messages });
@@ -114,7 +121,7 @@ export async function GET(request: NextRequest) {
     console.error("[Fan Wall] Error fetching messages:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar mensajes" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -125,7 +132,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -145,7 +152,7 @@ export async function POST(request: NextRequest) {
     if (!displayName?.trim() || !message?.trim()) {
       return NextResponse.json(
         { success: false, error: "Nombre y mensaje son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -153,7 +160,7 @@ export async function POST(request: NextRequest) {
     if (message.length > 500) {
       return NextResponse.json(
         { success: false, error: "El mensaje no puede superar 500 caracteres" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -185,7 +192,9 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    console.log(`[Fan Wall] New message submitted: ${id} (auto-approved: ${isAutoApproved}, trusted: ${trustedStatus?.trusted ?? false})`);
+    console.log(
+      `[Fan Wall] New message submitted: ${id} (auto-approved: ${isAutoApproved}, trusted: ${trustedStatus?.trusted ?? false})`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -199,7 +208,7 @@ export async function POST(request: NextRequest) {
     console.error("[Fan Wall] Error submitting message:", error);
     return NextResponse.json(
       { success: false, error: "Error al enviar mensaje" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

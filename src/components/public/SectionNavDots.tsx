@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // ===========================================
 // SECTION NAVIGATION DOTS (Desktop only)
@@ -87,9 +87,10 @@ export function SectionNavDots() {
           <span
             className={`
               w-2.5 h-2.5 rounded-full transition-all duration-300
-              ${activeSection === section.id
-                ? "bg-primary scale-125 shadow-sm shadow-primary/50"
-                : "bg-white/20 hover:bg-white/50"
+              ${
+                activeSection === section.id
+                  ? "bg-primary scale-125 shadow-sm shadow-primary/50"
+                  : "bg-white/20 hover:bg-white/50"
               }
             `}
           />

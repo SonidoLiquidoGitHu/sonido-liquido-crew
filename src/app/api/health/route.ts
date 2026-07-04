@@ -19,8 +19,10 @@ export async function GET() {
   // Check if variables look valid (not just set, but properly formatted)
   const dbUrlValid = dbUrl.startsWith("libsql://") && dbUrl.length > 20;
   const dbTokenValid = dbToken.length > 100; // JWT tokens are long
-  const dropboxKeyValid = dropboxKey.length === 15 && /^[a-z0-9]+$/.test(dropboxKey);
-  const dropboxSecretValid = dropboxSecret.length === 15 && /^[a-z0-9]+$/.test(dropboxSecret);
+  const dropboxKeyValid =
+    dropboxKey.length === 15 && /^[a-z0-9]+$/.test(dropboxKey);
+  const dropboxSecretValid =
+    dropboxSecret.length === 15 && /^[a-z0-9]+$/.test(dropboxSecret);
 
   // Test database connection
   let dbStatus = "NOT_TESTED";
@@ -52,7 +54,8 @@ export async function GET() {
   } else {
     dbStatus = "INVALID_CREDENTIALS";
     if (!dbUrlValid) dbError = "DATABASE_URL invalid format";
-    if (!dbTokenValid) dbError += (dbError ? ", " : "") + "DATABASE_AUTH_TOKEN invalid";
+    if (!dbTokenValid)
+      dbError += `${dbError ? ", " : ""}DATABASE_AUTH_TOKEN invalid`;
   }
 
   // Test Dropbox configuration
@@ -112,7 +115,8 @@ export async function GET() {
     },
 
     instructions: {
-      step1: "Copy the EXACT values from 'expected' into your Netlify environment variables",
+      step1:
+        "Copy the EXACT values from 'expected' into your Netlify environment variables",
       step2: "Make sure there are NO spaces before or after the values",
       step3: "Trigger a new deploy in Netlify",
       step4: "Visit this endpoint again to verify",

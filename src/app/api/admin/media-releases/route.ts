@@ -1,11 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { mediaReleases, fileAssets } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { fileAssets, mediaReleases } from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
+import { desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Track file asset for a URL if it's from Dropbox
-async function trackDropboxFile(url: string | null, releaseId: string, fieldName: string) {
+async function trackDropboxFile(
+  url: string | null,
+  releaseId: string,
+  fieldName: string,
+) {
   if (!url || !url.includes("dropbox")) return;
 
   try {
@@ -57,7 +61,9 @@ async function trackDropboxFile(url: string | null, releaseId: string, fieldName
 export async function GET() {
   try {
     if (!isDatabaseConfigured()) {
-      console.warn("[API] Database not configured - returning empty media releases");
+      console.warn(
+        "[API] Database not configured - returning empty media releases",
+      );
       return NextResponse.json({
         success: true,
         data: [],
@@ -77,7 +83,7 @@ export async function GET() {
     console.error("[API] Error fetching media releases:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch media releases" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -87,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -97,7 +103,7 @@ export async function POST(request: NextRequest) {
     if (!body.title || body.title.trim() === "") {
       return NextResponse.json(
         { success: false, error: "Title is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -119,7 +125,7 @@ export async function POST(request: NextRequest) {
       if (!dateStr || dateStr === "") return null;
       try {
         const d = new Date(dateStr);
-        return isNaN(d.getTime()) ? null : d;
+        return Number.isNaN(d.getTime()) ? null : d;
       } catch {
         return null;
       }
@@ -127,7 +133,11 @@ export async function POST(request: NextRequest) {
 
     const publishDate = parseDate(body.publishDate) || new Date();
 
-    console.log("[API] Creating media release:", { title: body.title, slug, publishDate });
+    console.log("[API] Creating media release:", {
+      title: body.title,
+      slug,
+      publishDate,
+    });
 
     const [mediaRelease] = await db
       .insert(mediaReleases)
@@ -203,13 +213,37 @@ export async function POST(request: NextRequest) {
 
     // Track Dropbox files for persistence
     await Promise.all([
-      trackDropboxFile(mediaRelease.coverImageUrl, mediaRelease.id, "coverImageUrl"),
-      trackDropboxFile(mediaRelease.bannerImageUrl, mediaRelease.id, "bannerImageUrl"),
+      trackDropboxFile(
+        mediaRelease.coverImageUrl,
+        mediaRelease.id,
+        "coverImageUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.bannerImageUrl,
+        mediaRelease.id,
+        "bannerImageUrl",
+      ),
       trackDropboxFile(mediaRelease.logoUrl, mediaRelease.id, "logoUrl"),
-      trackDropboxFile(mediaRelease.audioPreviewUrl, mediaRelease.id, "audioPreviewUrl"),
-      trackDropboxFile(mediaRelease.pressKitUrl, mediaRelease.id, "pressKitUrl"),
-      trackDropboxFile(mediaRelease.highResImagesUrl, mediaRelease.id, "highResImagesUrl"),
-      trackDropboxFile(mediaRelease.linerNotesUrl, mediaRelease.id, "linerNotesUrl"),
+      trackDropboxFile(
+        mediaRelease.audioPreviewUrl,
+        mediaRelease.id,
+        "audioPreviewUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.pressKitUrl,
+        mediaRelease.id,
+        "pressKitUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.highResImagesUrl,
+        mediaRelease.id,
+        "highResImagesUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.linerNotesUrl,
+        mediaRelease.id,
+        "linerNotesUrl",
+      ),
     ]);
 
     return NextResponse.json({
@@ -227,21 +261,27 @@ export async function POST(request: NextRequest) {
     if (error?.message?.includes("no such table")) {
       return NextResponse.json(
         { success: false, error: "Database table not found - run migrations" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (error?.message?.includes("UNIQUE constraint failed")) {
       return NextResponse.json(
-        { success: false, error: "A media release with this slug already exists" },
-        { status: 409 }
+        {
+          success: false,
+          error: "A media release with this slug already exists",
+        },
+        { status: 409 },
       );
     }
 
     const errorMessage = error?.message || "Unknown error";
     return NextResponse.json(
-      { success: false, error: `Failed to create media release: ${errorMessage}` },
-      { status: 500 }
+      {
+        success: false,
+        error: `Failed to create media release: ${errorMessage}`,
+      },
+      { status: 500 },
     );
   }
 }
@@ -252,7 +292,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -261,7 +301,7 @@ export async function PUT(request: NextRequest) {
     if (!body.id) {
       return NextResponse.json(
         { success: false, error: "Media release ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -317,7 +357,7 @@ export async function PUT(request: NextRequest) {
     if (!mediaRelease) {
       return NextResponse.json(
         { success: false, error: "Media release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -325,13 +365,37 @@ export async function PUT(request: NextRequest) {
 
     // Track Dropbox files for persistence
     await Promise.all([
-      trackDropboxFile(mediaRelease.coverImageUrl, mediaRelease.id, "coverImageUrl"),
-      trackDropboxFile(mediaRelease.bannerImageUrl, mediaRelease.id, "bannerImageUrl"),
+      trackDropboxFile(
+        mediaRelease.coverImageUrl,
+        mediaRelease.id,
+        "coverImageUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.bannerImageUrl,
+        mediaRelease.id,
+        "bannerImageUrl",
+      ),
       trackDropboxFile(mediaRelease.logoUrl, mediaRelease.id, "logoUrl"),
-      trackDropboxFile(mediaRelease.audioPreviewUrl, mediaRelease.id, "audioPreviewUrl"),
-      trackDropboxFile(mediaRelease.pressKitUrl, mediaRelease.id, "pressKitUrl"),
-      trackDropboxFile(mediaRelease.highResImagesUrl, mediaRelease.id, "highResImagesUrl"),
-      trackDropboxFile(mediaRelease.linerNotesUrl, mediaRelease.id, "linerNotesUrl"),
+      trackDropboxFile(
+        mediaRelease.audioPreviewUrl,
+        mediaRelease.id,
+        "audioPreviewUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.pressKitUrl,
+        mediaRelease.id,
+        "pressKitUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.highResImagesUrl,
+        mediaRelease.id,
+        "highResImagesUrl",
+      ),
+      trackDropboxFile(
+        mediaRelease.linerNotesUrl,
+        mediaRelease.id,
+        "linerNotesUrl",
+      ),
     ]);
 
     return NextResponse.json({
@@ -342,7 +406,7 @@ export async function PUT(request: NextRequest) {
     console.error("[API] Error updating media release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update media release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -353,7 +417,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -363,7 +427,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Media release ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -379,7 +443,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[API] Error deleting media release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete media release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

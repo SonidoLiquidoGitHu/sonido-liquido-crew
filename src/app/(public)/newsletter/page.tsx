@@ -1,26 +1,30 @@
 import { NewsletterForm } from "@/components/public/NewsletterForm";
-import { Mail, Gift, Headphones, Calendar, Bell } from "lucide-react";
+import { Bell, Calendar, Gift, Headphones, Mail } from "lucide-react";
 
 export const metadata = {
   title: "Newsletter | Sonido Líquido Crew",
-  description: "Suscríbete al newsletter de Sonido Líquido Crew y recibe noticias exclusivas, nuevos lanzamientos y ofertas especiales.",
+  description:
+    "Suscríbete al newsletter de Sonido Líquido Crew y recibe noticias exclusivas, nuevos lanzamientos y ofertas especiales.",
 };
 
 const benefits = [
   {
     icon: <Headphones className="w-6 h-6" />,
     title: "Lanzamientos Exclusivos",
-    description: "Sé el primero en escuchar nuevos tracks y álbumes antes que nadie.",
+    description:
+      "Sé el primero en escuchar nuevos tracks y álbumes antes que nadie.",
   },
   {
     icon: <Gift className="w-6 h-6" />,
     title: "Descuentos Especiales",
-    description: "Accede a ofertas exclusivas en la tienda oficial y eventos VIP.",
+    description:
+      "Accede a ofertas exclusivas en la tienda oficial y eventos VIP.",
   },
   {
     icon: <Calendar className="w-6 h-6" />,
     title: "Eventos y Conciertos",
-    description: "Entérate primero de las fechas de shows y preventa de boletos.",
+    description:
+      "Entérate primero de las fechas de shows y preventa de boletos.",
   },
   {
     icon: <Bell className="w-6 h-6" />,
@@ -81,15 +85,19 @@ export default function NewsletterPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {benefits.map((benefit, index) => (
               <div
-                key={index}
+                key={`benefit-${benefit.title}`}
                 className="flex gap-4 p-6 bg-slc-card border border-slc-border rounded-xl hover:border-primary/50 transition-colors"
               >
                 <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                   {benefit.icon}
                 </div>
                 <div>
-                  <h3 className="font-oswald text-lg uppercase mb-1">{benefit.title}</h3>
-                  <p className="text-slc-muted text-sm">{benefit.description}</p>
+                  <h3 className="font-oswald text-lg uppercase mb-1">
+                    {benefit.title}
+                  </h3>
+                  <p className="text-slc-muted text-sm">
+                    {benefit.description}
+                  </p>
                 </div>
               </div>
             ))}
@@ -105,23 +113,29 @@ export default function NewsletterPage() {
               Únete a miles de fans
             </h3>
             <p className="text-slc-muted mb-8">
-              Somos una comunidad de amantes del Hip Hop mexicano.
-              Únete y sé parte de la familia Sonido Líquido.
+              Somos una comunidad de amantes del Hip Hop mexicano. Únete y sé
+              parte de la familia Sonido Líquido.
             </p>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               <div className="p-4 bg-slc-card border border-slc-border rounded-lg">
                 <div className="font-oswald text-2xl text-primary">1,500+</div>
-                <div className="text-xs text-slc-muted uppercase">Suscriptores</div>
+                <div className="text-xs text-slc-muted uppercase">
+                  Suscriptores
+                </div>
               </div>
               <div className="p-4 bg-slc-card border border-slc-border rounded-lg">
                 <div className="font-oswald text-2xl text-primary">48</div>
-                <div className="text-xs text-slc-muted uppercase">Emails al año</div>
+                <div className="text-xs text-slc-muted uppercase">
+                  Emails al año
+                </div>
               </div>
               <div className="p-4 bg-slc-card border border-slc-border rounded-lg">
                 <div className="font-oswald text-2xl text-primary">98%</div>
-                <div className="text-xs text-slc-muted uppercase">Satisfacción</div>
+                <div className="text-xs text-slc-muted uppercase">
+                  Satisfacción
+                </div>
               </div>
             </div>
           </div>
@@ -135,7 +149,8 @@ export default function NewsletterPage() {
             ¿Listo para unirte?
           </h2>
           <p className="text-white/80 mb-8 max-w-xl mx-auto">
-            No te pierdas nada. Suscríbete ahora y comienza a recibir contenido exclusivo.
+            No te pierdas nada. Suscríbete ahora y comienza a recibir contenido
+            exclusivo.
           </p>
           <div className="max-w-md mx-auto">
             <NewsletterForm source="newsletter-cta" variant="inline" />

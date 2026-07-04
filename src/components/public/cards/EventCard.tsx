@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Calendar, MapPin, Clock, Ticket, Share2 } from "lucide-react";
-import { cn, formatDate } from "@/lib/utils";
-import type { Event } from "@/types";
+import { EventStoryCard } from "@/components/public/EventStoryCard";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
-import { EventStoryCard } from "@/components/public/EventStoryCard";
+import { cn, formatDate } from "@/lib/utils";
+import type { Event } from "@/types";
+import { Calendar, Clock, MapPin, Share2, Ticket } from "lucide-react";
+import { useState } from "react";
 
 interface EventCardProps {
   event: Event;
@@ -19,8 +19,21 @@ function parseEventDate(dateStr: string | Date) {
   // Use UTC methods to ensure consistency between server and client
   return {
     day: date.getUTCDate(),
-    month: ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"][date.getUTCMonth()],
-    isPast: date.getTime() < Date.now() - (24 * 60 * 60 * 1000), // Consider past if more than 24h ago
+    month: [
+      "ENE",
+      "FEB",
+      "MAR",
+      "ABR",
+      "MAY",
+      "JUN",
+      "JUL",
+      "AGO",
+      "SEP",
+      "OCT",
+      "NOV",
+      "DIC",
+    ][date.getUTCMonth()],
+    isPast: date.getTime() < Date.now() - 24 * 60 * 60 * 1000, // Consider past if more than 24h ago
   };
 }
 
@@ -31,10 +44,12 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
   if (variant === "featured") {
     return (
       <>
-        <div className={cn(
-          "relative rounded-xl overflow-hidden bg-slc-card border border-slc-border",
-          isPast && "opacity-70"
-        )}>
+        <div
+          className={cn(
+            "relative rounded-xl overflow-hidden bg-slc-card border border-slc-border",
+            isPast && "opacity-70",
+          )}
+        >
           {/* Image */}
           <div className="aspect-[21/9] relative bg-slc-dark">
             {event.imageUrl ? (
@@ -83,7 +98,9 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
                 <div className="mt-2 space-y-1">
                   <p className="text-sm text-slc-muted flex items-center gap-2">
                     <MapPin className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{event.venue} - {event.city}</span>
+                    <span className="truncate">
+                      {event.venue} - {event.city}
+                    </span>
                   </p>
                   {event.eventTime && (
                     <p className="text-sm text-slc-muted flex items-center gap-2">
@@ -106,7 +123,11 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
             <div className="mt-4 flex items-center gap-3 flex-wrap">
               {event.ticketUrl && !isPast && (
                 <Button asChild className="w-full sm:w-auto">
-                  <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={event.ticketUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Ticket className="w-4 h-4 mr-2" />
                     Comprar Boletos
                   </a>
@@ -148,7 +169,10 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
               venue: event.venue,
               city: event.city,
               country: event.country,
-              eventDate: typeof event.eventDate === "string" ? event.eventDate : event.eventDate.toISOString().split("T")[0],
+              eventDate:
+                typeof event.eventDate === "string"
+                  ? event.eventDate
+                  : event.eventDate.toISOString().split("T")[0],
               eventTime: event.eventTime,
               imageUrl: event.imageUrl,
               ticketUrl: event.ticketUrl,
@@ -166,10 +190,12 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
   // Default compact variant - with cover image support
   return (
     <>
-      <div className={cn(
-        "flex items-center gap-4 p-4 rounded-lg bg-slc-card border border-slc-border hover:border-primary/50 transition-colors group",
-        isPast && "opacity-70"
-      )}>
+      <div
+        className={cn(
+          "flex items-center gap-4 p-4 rounded-lg bg-slc-card border border-slc-border hover:border-primary/50 transition-colors group",
+          isPast && "opacity-70",
+        )}
+      >
         {/* Cover Image or Date */}
         {event.imageUrl ? (
           <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden relative bg-slc-dark">
@@ -186,7 +212,9 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
               <span className="font-oswald text-lg font-bold text-white leading-none">
                 {day}
               </span>
-              <span className="text-[10px] text-white/80 uppercase">{month}</span>
+              <span className="text-[10px] text-white/80 uppercase">
+                {month}
+              </span>
             </div>
           </div>
         ) : (
@@ -205,14 +233,21 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
           </h3>
           <p className="text-xs text-slc-muted flex items-center gap-1 mt-1">
             <MapPin className="w-3 h-3" />
-            <span className="truncate">{event.venue} - {event.city}</span>
+            <span className="truncate">
+              {event.venue} - {event.city}
+            </span>
           </p>
         </div>
 
         {/* Ticket Button */}
         {event.ticketUrl && !isPast && (
           <Button size="sm" variant="outline" asChild className="flex-shrink-0">
-            <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" aria-label={`Comprar boletos para ${event.title}`}>
+            <a
+              href={event.ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Comprar boletos para ${event.title}`}
+            >
               <Ticket className="w-4 h-4" />
             </a>
           </Button>
@@ -237,7 +272,10 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
             venue: event.venue,
             city: event.city,
             country: event.country,
-            eventDate: typeof event.eventDate === "string" ? event.eventDate : event.eventDate.toISOString().split("T")[0],
+            eventDate:
+              typeof event.eventDate === "string"
+                ? event.eventDate
+                : event.eventDate.toISOString().split("T")[0],
             eventTime: event.eventTime,
             imageUrl: event.imageUrl,
             ticketUrl: event.ticketUrl,

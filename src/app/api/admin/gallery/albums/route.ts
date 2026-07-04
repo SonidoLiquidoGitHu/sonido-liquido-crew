@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { galleryAlbums, galleryPhotos } from "@/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
+import { desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - List all albums with photo counts
 export async function GET() {
@@ -22,7 +22,10 @@ export async function GET() {
         isPublished: galleryAlbums.isPublished,
         createdAt: galleryAlbums.createdAt,
         updatedAt: galleryAlbums.updatedAt,
-        photoCount: sql<number>`(SELECT COUNT(*) FROM gallery_photos WHERE album_id = ${galleryAlbums.id})`.as("photo_count"),
+        photoCount:
+          sql<number>`(SELECT COUNT(*) FROM gallery_photos WHERE album_id = ${galleryAlbums.id})`.as(
+            "photo_count",
+          ),
       })
       .from(galleryAlbums)
       .orderBy(galleryAlbums.sortOrder, desc(galleryAlbums.createdAt));
@@ -33,7 +36,10 @@ export async function GET() {
         let coverPhoto = null;
         if (album.coverPhotoId) {
           const [photo] = await db
-            .select({ imageUrl: galleryPhotos.imageUrl, thumbnailUrl: galleryPhotos.thumbnailUrl })
+            .select({
+              imageUrl: galleryPhotos.imageUrl,
+              thumbnailUrl: galleryPhotos.thumbnailUrl,
+            })
             .from(galleryPhotos)
             .where(eq(galleryPhotos.id, album.coverPhotoId))
             .limit(1);
@@ -43,7 +49,7 @@ export async function GET() {
           ...album,
           coverPhoto,
         };
-      })
+      }),
     );
 
     return NextResponse.json({
@@ -54,7 +60,7 @@ export async function GET() {
     console.error("Error fetching albums:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch albums" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -65,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -74,7 +80,7 @@ export async function POST(request: NextRequest) {
     if (!body.title) {
       return NextResponse.json(
         { success: false, error: "Title is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -99,7 +105,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating album:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create album" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

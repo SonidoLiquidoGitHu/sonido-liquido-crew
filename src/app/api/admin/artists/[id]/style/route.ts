@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artistStyles } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - Fetch artist style
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
@@ -31,8 +31,13 @@ export async function GET(
     });
   } catch (error: any) {
     // Handle table not existing error gracefully
-    if (error?.message?.includes("no such table") || error?.code === "SQLITE_ERROR") {
-      console.warn("[API] artist_styles table does not exist yet - run migrations");
+    if (
+      error?.message?.includes("no such table") ||
+      error?.code === "SQLITE_ERROR"
+    ) {
+      console.warn(
+        "[API] artist_styles table does not exist yet - run migrations",
+      );
       return NextResponse.json({
         success: true,
         data: null,
@@ -42,7 +47,7 @@ export async function GET(
     console.error("[API] Error fetching artist style:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch artist style" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -50,13 +55,13 @@ export async function GET(
 // PUT - Update or create artist style
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -104,17 +109,25 @@ export async function PUT(
     });
   } catch (error: any) {
     // Handle table not existing error gracefully
-    if (error?.message?.includes("no such table") || error?.code === "SQLITE_ERROR") {
-      console.warn("[API] artist_styles table does not exist yet - run migrations");
+    if (
+      error?.message?.includes("no such table") ||
+      error?.code === "SQLITE_ERROR"
+    ) {
+      console.warn(
+        "[API] artist_styles table does not exist yet - run migrations",
+      );
       return NextResponse.json(
-        { success: false, error: "Artist styles table not found - run database migrations" },
-        { status: 503 }
+        {
+          success: false,
+          error: "Artist styles table not found - run database migrations",
+        },
+        { status: 503 },
       );
     }
     console.error("[API] Error updating artist style:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update artist style" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -122,13 +135,13 @@ export async function PUT(
 // DELETE - Remove artist style
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -146,7 +159,7 @@ export async function DELETE(
     console.error("[API] Error deleting artist style:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete artist style" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

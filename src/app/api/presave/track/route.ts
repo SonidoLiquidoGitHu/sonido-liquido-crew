@@ -1,12 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { presaveClicks, upcomingReleases } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
-import crypto from "crypto";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Hash IP for privacy
 function hashIP(ip: string): string {
-  return crypto.createHash("sha256").update(ip + "presave-salt").digest("hex").substring(0, 16);
+  return crypto
+    .createHash("sha256")
+    .update(`${ip}presave-salt`)
+    .digest("hex")
+    .substring(0, 16);
 }
 
 // POST - Track a presave click
@@ -22,16 +26,17 @@ export async function POST(request: NextRequest) {
     if (!releaseId || !platform) {
       return NextResponse.json(
         { success: false, error: "releaseId and platform are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Get user info
     const userAgent = request.headers.get("user-agent") || undefined;
     const referrer = request.headers.get("referer") || undefined;
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ||
-               request.headers.get("x-real-ip") ||
-               "unknown";
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0] ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
     const ipHash = hashIP(ip);
 
     // Insert click record
@@ -66,7 +71,7 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -124,7 +129,7 @@ export async function GET(request: NextRequest) {
     console.error("[Presave Analytics] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to get analytics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

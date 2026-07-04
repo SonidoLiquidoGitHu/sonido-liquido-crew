@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Upload,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  X,
-  Image as ImageIcon,
+  CheckCircle,
   FolderUp,
-  Trash2,
   GripVertical,
-  ZoomIn,
+  Image as ImageIcon,
+  Loader2,
+  Trash2,
+  Upload,
+  X,
   Zap,
+  ZoomIn,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ImageFileInfo {
   id: string;
@@ -50,7 +50,9 @@ export function BulkImageUploader({
   const [files, setFiles] = useState<ImageFileInfo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,7 +63,9 @@ export function BulkImageUploader({
       try {
         const res = await fetch("/api/admin/dropbox");
         const data = await res.json();
-        const hasToken = data?.data?.configured === true || data?.data?.hasDatabaseToken === true;
+        const hasToken =
+          data?.data?.configured === true ||
+          data?.data?.hasDatabaseToken === true;
         const isConnected = data?.data?.connected === true;
 
         if (hasToken && isConnected) {
@@ -86,51 +90,66 @@ export function BulkImageUploader({
     initDropbox();
   }, []);
 
-  const processFiles = useCallback(async (selectedFiles: FileList | File[]) => {
-    const imageFiles = Array.from(selectedFiles).filter(
-      (f) => f.type.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(f.name)
-    );
+  const processFiles = useCallback(
+    async (selectedFiles: FileList | File[]) => {
+      const imageFiles = Array.from(selectedFiles).filter(
+        (f) =>
+          f.type.startsWith("image/") ||
+          /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(f.name),
+      );
 
-    if (imageFiles.length === 0) {
-      alert("No se encontraron imágenes válidas");
-      return;
-    }
+      if (imageFiles.length === 0) {
+        alert("No se encontraron imágenes válidas");
+        return;
+      }
 
-    const totalImages = existingImages.length + files.length + imageFiles.length;
-    if (totalImages > maxFiles) {
-      alert(`Máximo ${maxFiles} imágenes permitidas. Ya tienes ${existingImages.length + files.length}.`);
-      return;
-    }
+      const totalImages =
+        existingImages.length + files.length + imageFiles.length;
+      if (totalImages > maxFiles) {
+        alert(
+          `Máximo ${maxFiles} imágenes permitidas. Ya tienes ${existingImages.length + files.length}.`,
+        );
+        return;
+      }
 
-    // Check file sizes
-    const oversizedFiles = imageFiles.filter(f => f.size > maxSize * 1024 * 1024);
-    if (oversizedFiles.length > 0) {
-      alert(`Algunas imágenes superan el límite de ${maxSize}MB: ${oversizedFiles.map(f => f.name).join(", ")}`);
-      return;
-    }
+      // Check file sizes
+      const oversizedFiles = imageFiles.filter(
+        (f) => f.size > maxSize * 1024 * 1024,
+      );
+      if (oversizedFiles.length > 0) {
+        alert(
+          `Algunas imágenes superan el límite de ${maxSize}MB: ${oversizedFiles.map((f) => f.name).join(", ")}`,
+        );
+        return;
+      }
 
-    // Create file info objects with previews
-    const newFiles: ImageFileInfo[] = await Promise.all(
-      imageFiles.map(async (file) => {
-        const preview = URL.createObjectURL(file);
-        return {
-          id: generateId(),
-          file,
-          preview,
-          status: "pending" as const,
-          progress: 0,
-        };
-      })
-    );
+      // Create file info objects with previews
+      const newFiles: ImageFileInfo[] = await Promise.all(
+        imageFiles.map(async (file) => {
+          const preview = URL.createObjectURL(file);
+          return {
+            id: generateId(),
+            file,
+            preview,
+            status: "pending" as const,
+            progress: 0,
+          };
+        }),
+      );
 
-    setFiles(prev => [...prev, ...newFiles]);
-  }, [files.length, existingImages.length, maxFiles, maxSize]);
+      setFiles((prev) => [...prev, ...newFiles]);
+    },
+    [files.length, existingImages.length, maxFiles, maxSize],
+  );
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    processFiles(e.dataTransfer.files);
-  }, [processFiles]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      processFiles(e.dataTransfer.files);
+    },
+    [processFiles],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -142,28 +161,31 @@ export function BulkImageUploader({
     setIsDragOver(false);
   }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      processFiles(e.target.files);
-    }
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }, [processFiles]);
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        processFiles(e.target.files);
+      }
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    [processFiles],
+  );
 
   const removeFile = useCallback((id: string) => {
-    setFiles(prev => {
-      const file = prev.find(f => f.id === id);
+    setFiles((prev) => {
+      const file = prev.find((f) => f.id === id);
       if (file?.preview) {
         URL.revokeObjectURL(file.preview);
       }
-      return prev.filter(f => f.id !== id);
+      return prev.filter((f) => f.id !== id);
     });
   }, []);
 
   const uploadFiles = useCallback(async () => {
-    const pendingFiles = files.filter(f => f.status === "pending");
+    const pendingFiles = files.filter((f) => f.status === "pending");
     if (pendingFiles.length === 0 || !accessToken) return;
 
     setIsUploading(true);
@@ -171,14 +193,20 @@ export function BulkImageUploader({
 
     for (const fileInfo of pendingFiles) {
       // Update status to uploading
-      setFiles(prev => prev.map(f =>
-        f.id === fileInfo.id ? { ...f, status: "uploading" as const, progress: 10 } : f
-      ));
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileInfo.id
+            ? { ...f, status: "uploading" as const, progress: 10 }
+            : f,
+        ),
+      );
 
       try {
         // Generate unique filename
         const ext = fileInfo.file.name.split(".").pop() || "";
-        const baseName = fileInfo.file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+        const baseName = fileInfo.file.name
+          .replace(`.${ext}`, "")
+          .replace(/[^a-zA-Z0-9-_]/g, "_");
         const uniqueId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
         const filename = `${baseName}_${uniqueId}.${ext}`;
         const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
@@ -187,68 +215,90 @@ export function BulkImageUploader({
         // Read file as ArrayBuffer
         const arrayBuffer = await fileInfo.file.arrayBuffer();
 
-        setFiles(prev => prev.map(f =>
-          f.id === fileInfo.id ? { ...f, progress: 30 } : f
-        ));
+        setFiles((prev) =>
+          prev.map((f) => (f.id === fileInfo.id ? { ...f, progress: 30 } : f)),
+        );
 
         // Upload directly to Dropbox Content API
-        const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/octet-stream",
-            "Dropbox-API-Arg": JSON.stringify({
-              path: dropboxPath,
-              mode: "overwrite",
-              autorename: false,
-              mute: false,
-            }),
+        const uploadResponse = await fetch(
+          "https://content.dropboxapi.com/2/files/upload",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/octet-stream",
+              "Dropbox-API-Arg": JSON.stringify({
+                path: dropboxPath,
+                mode: "overwrite",
+                autorename: false,
+                mute: false,
+              }),
+            },
+            body: arrayBuffer,
           },
-          body: arrayBuffer,
-        });
+        );
 
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json().catch(() => ({}));
-          throw new Error(errorData.error_summary || `HTTP ${uploadResponse.status}`);
+          throw new Error(
+            errorData.error_summary || `HTTP ${uploadResponse.status}`,
+          );
         }
 
-        setFiles(prev => prev.map(f =>
-          f.id === fileInfo.id ? { ...f, progress: 70 } : f
-        ));
+        setFiles((prev) =>
+          prev.map((f) => (f.id === fileInfo.id ? { ...f, progress: 70 } : f)),
+        );
 
         // Create shared link
         let sharedUrl: string;
         try {
-          const linkResponse = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
+          const linkResponse = await fetch(
+            "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                path: dropboxPath,
+                settings: {
+                  access: "viewer",
+                  audience: "public",
+                  requested_visibility: "public",
+                },
+              }),
             },
-            body: JSON.stringify({
-              path: dropboxPath,
-              settings: { access: "viewer", audience: "public", requested_visibility: "public" },
-            }),
-          });
+          );
 
           if (linkResponse.ok) {
             const data = await linkResponse.json();
             sharedUrl = data.url
               .replace("?dl=0", "?raw=1")
               .replace("&dl=0", "&raw=1");
-            if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+            if (!sharedUrl.includes("raw=1"))
+              sharedUrl = `${sharedUrl + (sharedUrl.includes("?") ? "&" : "?")}raw=1`;
           } else {
             // Try to get existing link
             const errorData = await linkResponse.json().catch(() => ({}));
-            if (errorData.error_summary?.includes("shared_link_already_exists") || linkResponse.status === 409) {
-              const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
+            if (
+              errorData.error_summary?.includes("shared_link_already_exists") ||
+              linkResponse.status === 409
+            ) {
+              const listResponse = await fetch(
+                "https://api.dropboxapi.com/2/sharing/list_shared_links",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    path: dropboxPath,
+                    direct_only: true,
+                  }),
                 },
-                body: JSON.stringify({ path: dropboxPath, direct_only: true }),
-              });
+              );
 
               if (listResponse.ok) {
                 const listData = await listResponse.json();
@@ -256,7 +306,8 @@ export function BulkImageUploader({
                   sharedUrl = listData.links[0].url
                     .replace("?dl=0", "?raw=1")
                     .replace("&dl=0", "&raw=1");
-                  if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+                  if (!sharedUrl.includes("raw=1"))
+                    sharedUrl = `${sharedUrl + (sharedUrl.includes("?") ? "&" : "?")}raw=1`;
                 } else {
                   throw new Error("Could not get shared link");
                 }
@@ -264,7 +315,9 @@ export function BulkImageUploader({
                 throw new Error("Could not get existing shared link");
               }
             } else {
-              throw new Error(errorData.error_summary || "Failed to create shared link");
+              throw new Error(
+                errorData.error_summary || "Failed to create shared link",
+              );
             }
           }
         } catch (linkError) {
@@ -272,18 +325,31 @@ export function BulkImageUploader({
         }
 
         uploadedUrls.push(sharedUrl);
-        setFiles(prev => prev.map(f =>
-          f.id === fileInfo.id
-            ? { ...f, status: "success" as const, progress: 100, url: sharedUrl }
-            : f
-        ));
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileInfo.id
+              ? {
+                  ...f,
+                  status: "success" as const,
+                  progress: 100,
+                  url: sharedUrl,
+                }
+              : f,
+          ),
+        );
       } catch (error) {
         console.error("Upload error:", error);
-        setFiles(prev => prev.map(f =>
-          f.id === fileInfo.id
-            ? { ...f, status: "error" as const, error: error instanceof Error ? error.message : "Error" }
-            : f
-        ));
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileInfo.id
+              ? {
+                  ...f,
+                  status: "error" as const,
+                  error: error instanceof Error ? error.message : "Error",
+                }
+              : f,
+          ),
+        );
       }
     }
 
@@ -296,18 +362,20 @@ export function BulkImageUploader({
   }, [files, folder, accessToken, onUploadComplete]);
 
   const clearCompleted = useCallback(() => {
-    setFiles(prev => {
+    setFiles((prev) => {
       // Revoke URLs for completed files
-      prev.filter(f => f.status === "success").forEach(f => {
-        if (f.preview) URL.revokeObjectURL(f.preview);
-      });
-      return prev.filter(f => f.status !== "success");
+      prev
+        .filter((f) => f.status === "success")
+        .forEach((f) => {
+          if (f.preview) URL.revokeObjectURL(f.preview);
+        });
+      return prev.filter((f) => f.status !== "success");
     });
   }, []);
 
-  const pendingCount = files.filter(f => f.status === "pending").length;
-  const successCount = files.filter(f => f.status === "success").length;
-  const errorCount = files.filter(f => f.status === "error").length;
+  const pendingCount = files.filter((f) => f.status === "pending").length;
+  const successCount = files.filter((f) => f.status === "success").length;
+  const errorCount = files.filter((f) => f.status === "error").length;
   const totalCount = existingImages.length + files.length;
 
   // Show configuration warning
@@ -319,7 +387,14 @@ export function BulkImageUploader({
           <span className="font-medium">Dropbox no configurado</span>
         </div>
         <p className="text-sm text-slc-muted mt-2">
-          Configura Dropbox en <a href="/admin/settings/dropbox" className="text-primary hover:underline">Ajustes</a> para subir imágenes.
+          Configura Dropbox en{" "}
+          <a
+            href="/admin/settings/dropbox"
+            className="text-primary hover:underline"
+          >
+            Ajustes
+          </a>{" "}
+          para subir imágenes.
         </p>
       </div>
     );
@@ -354,18 +429,25 @@ export function BulkImageUploader({
         />
 
         <div className="flex flex-col items-center gap-3">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
-            isDragOver ? "bg-primary/20" : "bg-slc-card"
-          }`}>
-            <FolderUp className={`w-8 h-8 ${isDragOver ? "text-primary" : "text-slc-muted"}`} />
+          <div
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
+              isDragOver ? "bg-primary/20" : "bg-slc-card"
+            }`}
+          >
+            <FolderUp
+              className={`w-8 h-8 ${isDragOver ? "text-primary" : "text-slc-muted"}`}
+            />
           </div>
 
           <div>
             <p className="font-medium">
-              {isDragOver ? "Suelta las imágenes aquí" : "Arrastra imágenes o haz clic para seleccionar"}
+              {isDragOver
+                ? "Suelta las imágenes aquí"
+                : "Arrastra imágenes o haz clic para seleccionar"}
             </p>
             <p className="text-sm text-slc-muted mt-1">
-              JPG, PNG, GIF, WebP • Máx {maxSize}MB por archivo • Hasta {maxFiles} imágenes
+              JPG, PNG, GIF, WebP • Máx {maxSize}MB por archivo • Hasta{" "}
+              {maxFiles} imágenes
             </p>
           </div>
         </div>
@@ -374,11 +456,20 @@ export function BulkImageUploader({
       {/* Existing Images */}
       {existingImages.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-slc-muted">Imágenes existentes ({existingImages.length})</h4>
+          <h4 className="text-sm font-medium text-slc-muted">
+            Imágenes existentes ({existingImages.length})
+          </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
             {existingImages.map((url, index) => (
-              <div key={`existing-${index}`} className="relative aspect-square rounded-lg overflow-hidden bg-slc-card group">
-                <img src={url} alt={`Imagen ${index + 1}`} className="w-full h-full object-cover" />
+              <div
+                key={`existing-${index}`}
+                className="relative aspect-square rounded-lg overflow-hidden bg-slc-card group"
+              >
+                <img
+                  src={url}
+                  alt={`Imagen ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <button
                     type="button"
@@ -412,8 +503,16 @@ export function BulkImageUploader({
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-slc-muted">
               Por subir ({pendingCount})
-              {successCount > 0 && <span className="text-green-500 ml-2">• {successCount} completados</span>}
-              {errorCount > 0 && <span className="text-red-500 ml-2">• {errorCount} errores</span>}
+              {successCount > 0 && (
+                <span className="text-green-500 ml-2">
+                  • {successCount} completados
+                </span>
+              )}
+              {errorCount > 0 && (
+                <span className="text-red-500 ml-2">
+                  • {errorCount} errores
+                </span>
+              )}
             </h4>
             {successCount > 0 && (
               <button
@@ -434,7 +533,11 @@ export function BulkImageUploader({
                   fileInfo.status === "error" ? "ring-2 ring-red-500" : ""
                 }`}
               >
-                <img src={fileInfo.preview} alt={fileInfo.file.name} className="w-full h-full object-cover" />
+                <img
+                  src={fileInfo.preview}
+                  alt={fileInfo.file.name}
+                  className="w-full h-full object-cover"
+                />
 
                 {/* Status overlay */}
                 {fileInfo.status === "uploading" && (
@@ -480,7 +583,9 @@ export function BulkImageUploader({
 
                 {/* Filename */}
                 <div className="absolute bottom-0 left-0 right-0 p-1 bg-gradient-to-t from-black/80 to-transparent">
-                  <p className="text-[10px] text-white truncate">{fileInfo.file.name}</p>
+                  <p className="text-[10px] text-white truncate">
+                    {fileInfo.file.name}
+                  </p>
                 </div>
               </div>
             ))}
@@ -505,7 +610,8 @@ export function BulkImageUploader({
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Subir {pendingCount} {pendingCount === 1 ? "imagen" : "imágenes"}
+                Subir {pendingCount}{" "}
+                {pendingCount === 1 ? "imagen" : "imágenes"}
               </>
             )}
           </Button>
@@ -513,7 +619,7 @@ export function BulkImageUploader({
             type="button"
             variant="outline"
             onClick={() => {
-              files.forEach(f => {
+              files.forEach((f) => {
                 if (f.preview) URL.revokeObjectURL(f.preview);
               });
               setFiles([]);

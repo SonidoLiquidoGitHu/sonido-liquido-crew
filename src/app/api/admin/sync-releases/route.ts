@@ -1,9 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles, releases, releaseArtists } from "@/db/schema";
+import {
+  artistExternalProfiles,
+  artists,
+  releaseArtists,
+  releases,
+} from "@/db/schema";
 import { spotifyClient } from "@/lib/clients";
 import { generateUUID, slugify } from "@/lib/utils";
-import { eq, and, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // SYNC RELEASES FROM SPOTIFY
@@ -24,14 +29,18 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (!spotifyClient.isConfigured()) {
       return NextResponse.json(
-        { success: false, error: "Spotify API credentials not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET." },
-        { status: 503 }
+        {
+          success: false,
+          error:
+            "Spotify API credentials not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET.",
+        },
+        { status: 503 },
       );
     }
 
@@ -44,7 +53,7 @@ export async function POST(request: NextRequest) {
     const allArtists = await db.select().from(artists);
 
     const artistsToSync = specificArtistId
-      ? allArtists.filter(a => a.id === specificArtistId)
+      ? allArtists.filter((a) => a.id === specificArtistId)
       : allArtists;
 
     const results: SyncResult[] = [];
@@ -70,8 +79,8 @@ export async function POST(request: NextRequest) {
           .where(
             and(
               eq(artistExternalProfiles.artistId, artist.id),
-              eq(artistExternalProfiles.platform, "spotify")
-            )
+              eq(artistExternalProfiles.platform, "spotify"),
+            ),
           )
           .limit(1);
 
@@ -82,13 +91,19 @@ export async function POST(request: NextRequest) {
         }
 
         result.spotifyId = spotifyProfile.externalId;
-        console.log(`[Sync Releases] Fetching albums for ${artist.name} (${spotifyProfile.externalId})...`);
+        console.log(
+          `[Sync Releases] Fetching albums for ${artist.name} (${spotifyProfile.externalId})...`,
+        );
 
         // Fetch all albums from Spotify (albums, singles, compilations, appears_on)
-        const spotifyAlbums = await spotifyClient.getAllArtistAlbums(spotifyProfile.externalId);
+        const spotifyAlbums = await spotifyClient.getAllArtistAlbums(
+          spotifyProfile.externalId,
+        );
         result.albumsFound = spotifyAlbums.length;
 
-        console.log(`[Sync Releases] Found ${spotifyAlbums.length} albums for ${artist.name}`);
+        console.log(
+          `[Sync Releases] Found ${spotifyAlbums.length} albums for ${artist.name}`,
+        );
 
         for (const album of spotifyAlbums) {
           try {
@@ -106,7 +121,8 @@ export async function POST(request: NextRequest) {
             }
 
             // Determine release type
-            let releaseType: "album" | "ep" | "single" | "compilation" = "single";
+            let releaseType: "album" | "ep" | "single" | "compilation" =
+              "single";
             if (album.album_type === "album") {
               releaseType = album.total_tracks > 6 ? "album" : "ep";
             } else if (album.album_type === "compilation") {
@@ -116,7 +132,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Create slug (ensure uniqueness)
-            let baseSlug = slugify(album.name);
+            const baseSlug = slugify(album.name);
             let slug = baseSlug;
             let counter = 1;
 
@@ -161,7 +177,9 @@ export async function POST(request: NextRequest) {
             result.albumsCreated++;
             totalCreated++;
 
-            console.log(`[Sync Releases] Created: ${album.name} (${releaseType})`);
+            console.log(
+              `[Sync Releases] Created: ${album.name} (${releaseType})`,
+            );
           } catch (albumError) {
             const errMsg = `Failed to create ${album.name}: ${(albumError as Error).message}`;
             result.errors.push(errMsg);
@@ -169,17 +187,24 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (artistError) {
-        result.errors.push(`Artist sync failed: ${(artistError as Error).message}`);
-        console.error(`[Sync Releases] Error syncing ${artist.name}:`, artistError);
+        result.errors.push(
+          `Artist sync failed: ${(artistError as Error).message}`,
+        );
+        console.error(
+          `[Sync Releases] Error syncing ${artist.name}:`,
+          artistError,
+        );
       }
 
       results.push(result);
 
       // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
-    console.log(`[Sync Releases] Complete: ${totalCreated} created, ${totalSkipped} skipped`);
+    console.log(
+      `[Sync Releases] Complete: ${totalCreated} created, ${totalSkipped} skipped`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -191,8 +216,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[Sync Releases] Error:", error);
     return NextResponse.json(
-      { success: false, error: `Failed to sync releases: ${(error as Error).message}` },
-      { status: 500 }
+      {
+        success: false,
+        error: `Failed to sync releases: ${(error as Error).message}`,
+      },
+      { status: 500 },
     );
   }
 }
@@ -201,7 +229,10 @@ export async function GET() {
   // Get current release stats
   try {
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 503 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 503 },
+      );
     }
 
     const allReleases = await db.select().from(releases);
@@ -216,8 +247,8 @@ export async function GET() {
           .where(
             and(
               eq(artistExternalProfiles.artistId, artist.id),
-              eq(artistExternalProfiles.platform, "spotify")
-            )
+              eq(artistExternalProfiles.platform, "spotify"),
+            ),
           )
           .limit(1);
 
@@ -233,14 +264,15 @@ export async function GET() {
           spotifyId: spotifyProfile?.externalId || null,
           releaseCount: artistReleases[0]?.count || 0,
         };
-      })
+      }),
     );
 
     const releasesByType = {
-      album: allReleases.filter(r => r.releaseType === "album").length,
-      ep: allReleases.filter(r => r.releaseType === "ep").length,
-      single: allReleases.filter(r => r.releaseType === "single").length,
-      compilation: allReleases.filter(r => r.releaseType === "compilation").length,
+      album: allReleases.filter((r) => r.releaseType === "album").length,
+      ep: allReleases.filter((r) => r.releaseType === "ep").length,
+      single: allReleases.filter((r) => r.releaseType === "single").length,
+      compilation: allReleases.filter((r) => r.releaseType === "compilation")
+        .length,
     };
 
     return NextResponse.json({
@@ -256,8 +288,11 @@ export async function GET() {
   } catch (error) {
     console.error("[Sync Releases] GET error:", error);
     return NextResponse.json(
-      { success: false, error: `Failed to get release stats: ${(error as Error).message}` },
-      { status: 500 }
+      {
+        success: false,
+        error: `Failed to get release stats: ${(error as Error).message}`,
+      },
+      { status: 500 },
     );
   }
 }

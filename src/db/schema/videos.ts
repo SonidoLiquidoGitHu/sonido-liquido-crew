@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { artists } from "./artists";
 import { releases } from "./releases";
 
@@ -18,9 +18,15 @@ export const youtubeChannels = sqliteTable("youtube_channels", {
   videoCount: integer("video_count"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   displayOrder: integer("display_order").notNull().default(0),
-  artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  artistId: text("artist_id").references(() => artists.id, {
+    onDelete: "set null",
+  }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -37,12 +43,22 @@ export const videos = sqliteTable("videos", {
   duration: integer("duration"), // in seconds
   viewCount: integer("view_count"),
   publishedAt: integer("published_at", { mode: "timestamp" }),
-  artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
-  releaseId: text("release_id").references(() => releases.id, { onDelete: "set null" }),
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  artistId: text("artist_id").references(() => artists.id, {
+    onDelete: "set null",
+  }),
+  releaseId: text("release_id").references(() => releases.id, {
+    onDelete: "set null",
+  }),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
   displayOrder: integer("display_order").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

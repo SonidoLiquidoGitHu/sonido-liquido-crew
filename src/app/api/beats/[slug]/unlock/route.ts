@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { beats, beatDownloads } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { beatDownloads, beats } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
+import { eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -15,7 +15,7 @@ export async function POST(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -29,14 +29,14 @@ export async function POST(
     if (!beat) {
       return NextResponse.json(
         { success: false, error: "Beat not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (!beat.isActive) {
       return NextResponse.json(
         { success: false, error: "Beat is not available" },
-        { status: 410 }
+        { status: 410 },
       );
     }
 
@@ -44,35 +44,36 @@ export async function POST(
     if (beat.requireEmail && !body.email) {
       return NextResponse.json(
         { success: false, error: "Email is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (beat.requireSpotifyFollow && !body.completedSpotifyFollow) {
       return NextResponse.json(
         { success: false, error: "Spotify follow is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (beat.requireSpotifyPlay && !body.completedSpotifyPlay) {
       return NextResponse.json(
         { success: false, error: "Spotify play is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (beat.requireHyperfollow && !body.completedHyperfollow) {
       return NextResponse.json(
         { success: false, error: "Hyperfollow is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Get request metadata
-    const ipAddress = request.headers.get("x-forwarded-for") ||
-                      request.headers.get("x-real-ip") ||
-                      "unknown";
+    const ipAddress =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
     const referrer = request.headers.get("referer") || null;
 
@@ -104,7 +105,9 @@ export async function POST(
       })
       .where(eq(beats.id, beat.id));
 
-    console.log(`[API] Beat unlocked: ${beat.title} - ${body.email || "anonymous"}`);
+    console.log(
+      `[API] Beat unlocked: ${beat.title} - ${body.email || "anonymous"}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -117,7 +120,7 @@ export async function POST(
     console.error("[API] Error unlocking beat:", error);
     return NextResponse.json(
       { success: false, error: "Failed to unlock beat" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

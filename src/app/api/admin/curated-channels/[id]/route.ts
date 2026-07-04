@@ -1,21 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { spotifyClient } from "@/lib/clients/spotify";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 // GET - Get a single curated channel with its tracks
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     const [channel] = await db
@@ -27,7 +30,7 @@ export async function GET(
     if (!channel) {
       return NextResponse.json(
         { success: false, error: "Channel not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -50,7 +53,7 @@ export async function GET(
     console.error("[Curated Channels API] Error fetching channel:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching channel" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -58,17 +61,29 @@ export async function GET(
 // PUT - Update a curated channel
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const body = await request.json();
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
-    const { category, priority, description, autoSync, syncNewReleases, syncTopTracks, isActive, refreshInfo } = body;
+    const {
+      category,
+      priority,
+      description,
+      autoSync,
+      syncNewReleases,
+      syncTopTracks,
+      isActive,
+      refreshInfo,
+    } = body;
 
     // Check if exists
     const [existing] = await db
@@ -80,14 +95,16 @@ export async function PUT(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Channel not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // If refreshInfo is true, refresh artist name and image from Spotify
     if (refreshInfo) {
       try {
-        const artistInfo = await spotifyClient.getArtist(existing.spotifyArtistId) as any;
+        const artistInfo = (await spotifyClient.getArtist(
+          existing.spotifyArtistId,
+        )) as any;
         const updates: Record<string, unknown> = {
           name: artistInfo.name || existing.name,
           imageUrl: artistInfo.images?.[0]?.url ?? existing.imageUrl,
@@ -105,10 +122,13 @@ export async function PUT(
           message: `Info de "${updates.name}" actualizada`,
         });
       } catch (err) {
-        console.error("[Curated Channels API] Error refreshing info from Spotify:", err);
+        console.error(
+          "[Curated Channels API] Error refreshing info from Spotify:",
+          err,
+        );
         return NextResponse.json(
           { success: false, error: "No se pudo obtener info de Spotify" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -122,7 +142,8 @@ export async function PUT(
     if (priority !== undefined) updates.priority = priority;
     if (description !== undefined) updates.description = description;
     if (autoSync !== undefined) updates.autoSync = autoSync;
-    if (syncNewReleases !== undefined) updates.syncNewReleases = syncNewReleases;
+    if (syncNewReleases !== undefined)
+      updates.syncNewReleases = syncNewReleases;
     if (syncTopTracks !== undefined) updates.syncTopTracks = syncTopTracks;
     if (isActive !== undefined) updates.isActive = isActive;
 
@@ -139,7 +160,7 @@ export async function PUT(
     console.error("[Curated Channels API] Error updating channel:", error);
     return NextResponse.json(
       { success: false, error: "Error updating channel" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -147,13 +168,16 @@ export async function PUT(
 // DELETE - Remove a curated channel
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     // Check if exists
@@ -166,7 +190,7 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Channel not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -183,7 +207,7 @@ export async function DELETE(
     console.error("[Curated Channels API] Error deleting channel:", error);
     return NextResponse.json(
       { success: false, error: "Error deleting channel" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

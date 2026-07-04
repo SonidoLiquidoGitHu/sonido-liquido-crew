@@ -1,16 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
-import { videosService } from "@/lib/services";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { videos, artists } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { artists, videos } from "@/db/schema";
+import { videosService } from "@/lib/services";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const artistSlug = searchParams.get("artistSlug");
     const artistId = searchParams.get("artistId");
-    const isFeatured = searchParams.get("isFeatured") === "true" ? true : undefined;
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const isFeatured =
+      searchParams.get("isFeatured") === "true" ? true : undefined;
+    const limit = Number.parseInt(searchParams.get("limit") || "20");
 
     // If artistSlug is provided, look up the artist first
     let resolvedArtistId = artistId;
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching videos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch videos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

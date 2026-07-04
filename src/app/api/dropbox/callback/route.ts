@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { generateUUID } from "@/lib/utils";
 import { clearDropboxTokenCache } from "@/lib/clients/dropbox";
+import { generateUUID } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Dropbox OAuth credentials - trim to remove any accidental whitespace
 const DROPBOX_APP_KEY = (process.env.DROPBOX_APP_KEY || "").trim();
@@ -35,9 +35,13 @@ export async function GET(request: NextRequest) {
 
   // Handle errors from Dropbox
   if (error) {
-    console.error("[Dropbox OAuth] Error from Dropbox:", error, errorDescription);
+    console.error(
+      "[Dropbox OAuth] Error from Dropbox:",
+      error,
+      errorDescription,
+    );
     return NextResponse.redirect(
-      `${adminSyncUrl}?dropbox_error=${encodeURIComponent(errorDescription || error)}`
+      `${adminSyncUrl}?dropbox_error=${encodeURIComponent(errorDescription || error)}`,
     );
   }
 
@@ -45,7 +49,7 @@ export async function GET(request: NextRequest) {
   if (!code) {
     console.error("[Dropbox OAuth] No authorization code received");
     return NextResponse.redirect(
-      `${adminSyncUrl}?dropbox_error=${encodeURIComponent("No authorization code received")}`
+      `${adminSyncUrl}?dropbox_error=${encodeURIComponent("No authorization code received")}`,
     );
   }
 
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest) {
   if (storedState && state && storedState !== state) {
     console.error("[Dropbox OAuth] State mismatch");
     return NextResponse.redirect(
-      `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Invalid state - please try again")}`
+      `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Invalid state - please try again")}`,
     );
   }
 
@@ -65,33 +69,46 @@ export async function GET(request: NextRequest) {
 
     console.log("[Dropbox OAuth] Exchanging code for tokens...");
     console.log("[Dropbox OAuth] Redirect URI:", redirectUri);
-    console.log("[Dropbox OAuth] App Key:", DROPBOX_APP_KEY ? DROPBOX_APP_KEY.substring(0, 4) + "..." : "NOT SET");
-    console.log("[Dropbox OAuth] App Secret:", DROPBOX_APP_SECRET ? "SET" : "NOT SET");
+    console.log(
+      "[Dropbox OAuth] App Key:",
+      DROPBOX_APP_KEY ? `${DROPBOX_APP_KEY.substring(0, 4)}...` : "NOT SET",
+    );
+    console.log(
+      "[Dropbox OAuth] App Secret:",
+      DROPBOX_APP_SECRET ? "SET" : "NOT SET",
+    );
 
     if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET) {
       console.error("[Dropbox OAuth] Missing credentials!");
       return NextResponse.redirect(
-        `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Dropbox credentials not configured in Netlify")}`
+        `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Dropbox credentials not configured in Netlify")}`,
       );
     }
 
-    const tokenResponse = await fetch("https://api.dropboxapi.com/oauth2/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    const tokenResponse = await fetch(
+      "https://api.dropboxapi.com/oauth2/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          code,
+          grant_type: "authorization_code",
+          redirect_uri: redirectUri,
+          client_id: DROPBOX_APP_KEY,
+          client_secret: DROPBOX_APP_SECRET,
+        }),
       },
-      body: new URLSearchParams({
-        code,
-        grant_type: "authorization_code",
-        redirect_uri: redirectUri,
-        client_id: DROPBOX_APP_KEY,
-        client_secret: DROPBOX_APP_SECRET,
-      }),
-    });
+    );
 
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.text();
-      console.error("[Dropbox OAuth] Token exchange failed:", tokenResponse.status, errorBody);
+      console.error(
+        "[Dropbox OAuth] Token exchange failed:",
+        tokenResponse.status,
+        errorBody,
+      );
 
       // Parse error for better message
       let errorMsg = `Token exchange failed: ${tokenResponse.status}`;
@@ -107,7 +124,7 @@ export async function GET(request: NextRequest) {
       }
 
       return NextResponse.redirect(
-        `${adminSyncUrl}?dropbox_error=${encodeURIComponent(errorMsg)}`
+        `${adminSyncUrl}?dropbox_error=${encodeURIComponent(errorMsg)}`,
       );
     }
 
@@ -120,21 +137,33 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       console.error("[Dropbox OAuth] Database not configured");
       return NextResponse.redirect(
-        `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Database not configured")}`
+        `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Database not configured")}`,
       );
     }
 
     // Save access token
-    await saveDropboxSetting("dropbox_access_token", tokens.access_token, "Dropbox OAuth access token");
+    await saveDropboxSetting(
+      "dropbox_access_token",
+      tokens.access_token,
+      "Dropbox OAuth access token",
+    );
 
     // Save refresh token if we got one
     if (tokens.refresh_token) {
-      await saveDropboxSetting("dropbox_refresh_token", tokens.refresh_token, "Dropbox OAuth refresh token");
+      await saveDropboxSetting(
+        "dropbox_refresh_token",
+        tokens.refresh_token,
+        "Dropbox OAuth refresh token",
+      );
     }
 
     // Save token expiry (expires_in is in seconds)
-    const expiryTime = Date.now() + (tokens.expires_in * 1000);
-    await saveDropboxSetting("dropbox_token_expiry", expiryTime.toString(), "Dropbox token expiry timestamp");
+    const expiryTime = Date.now() + tokens.expires_in * 1000;
+    await saveDropboxSetting(
+      "dropbox_token_expiry",
+      expiryTime.toString(),
+      "Dropbox token expiry timestamp",
+    );
 
     // Clear any cached tokens
     clearDropboxTokenCache();
@@ -142,14 +171,17 @@ export async function GET(request: NextRequest) {
     // Get account info for confirmation
     let accountName = "";
     try {
-      const accountResponse = await fetch("https://api.dropboxapi.com/2/users/get_current_account", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-          "Content-Type": "application/json",
+      const accountResponse = await fetch(
+        "https://api.dropboxapi.com/2/users/get_current_account",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: "null",
         },
-        body: "null",
-      });
+      );
 
       if (accountResponse.ok) {
         const accountData = await accountResponse.json();
@@ -162,16 +194,15 @@ export async function GET(request: NextRequest) {
 
     // Create success response and clear the state cookie
     const response = NextResponse.redirect(
-      `${adminSyncUrl}?dropbox_success=${encodeURIComponent(accountName || "connected")}`
+      `${adminSyncUrl}?dropbox_success=${encodeURIComponent(accountName || "connected")}`,
     );
     response.cookies.delete("dropbox_oauth_state");
 
     return response;
-
   } catch (error) {
     console.error("[Dropbox OAuth] Error:", error);
     return NextResponse.redirect(
-      `${adminSyncUrl}?dropbox_error=${encodeURIComponent((error as Error).message)}`
+      `${adminSyncUrl}?dropbox_error=${encodeURIComponent((error as Error).message)}`,
     );
   }
 }
@@ -179,7 +210,11 @@ export async function GET(request: NextRequest) {
 /**
  * Helper to save a Dropbox setting to the database
  */
-async function saveDropboxSetting(key: string, value: string, description: string): Promise<void> {
+async function saveDropboxSetting(
+  key: string,
+  value: string,
+  description: string,
+): Promise<void> {
   try {
     // Check if setting exists
     const existing = await db

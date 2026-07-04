@@ -1,7 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { verticalVideos, verticalVideoEvents, verticalVideoTags, tags } from "@/db/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import {
+  tags,
+  verticalVideoEvents,
+  verticalVideoTags,
+  verticalVideos,
+} from "@/db/schema";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // GET - Public: List published vertical videos + events
@@ -9,8 +14,8 @@ import { eq, desc, and, sql } from "drizzle-orm";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = Number.parseInt(searchParams.get("limit") || "20");
+    const offset = Number.parseInt(searchParams.get("offset") || "0");
     const featured = searchParams.get("featured") === "true";
     const artistId = searchParams.get("artistId");
     const eventId = searchParams.get("eventId");
@@ -31,16 +36,18 @@ export async function GET(request: NextRequest) {
           const [countResult] = await db
             .select({ total: sql<number>`count(*)` })
             .from(verticalVideos)
-            .where(and(
-              eq(verticalVideos.eventId, event.id),
-              eq(verticalVideos.isPublished, true)
-            ));
+            .where(
+              and(
+                eq(verticalVideos.eventId, event.id),
+                eq(verticalVideos.isPublished, true),
+              ),
+            );
 
           return {
             ...event,
             videoCount: countResult?.total || 0,
           };
-        })
+        }),
       );
     }
 
@@ -71,7 +78,7 @@ export async function GET(request: NextRequest) {
           ...video,
           tags: videoTagRows.map((row) => row.tag),
         };
-      })
+      }),
     );
 
     // Get total count for pagination
@@ -90,7 +97,7 @@ export async function GET(request: NextRequest) {
     console.error("Failed to fetch vertical videos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch vertical videos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

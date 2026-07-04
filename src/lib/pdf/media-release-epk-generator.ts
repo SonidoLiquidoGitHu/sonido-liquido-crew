@@ -63,7 +63,12 @@ interface ArtistEpkData {
 
   // Press & media
   pressQuotes?: PressQuote[];
-  pressFeatures?: { outlet: string; title: string; url?: string; date?: string }[];
+  pressFeatures?: {
+    outlet: string;
+    title: string;
+    url?: string;
+    date?: string;
+  }[];
 
   // Music
   topTracks?: { title: string; url?: string; platform: string }[];
@@ -123,14 +128,14 @@ interface MediaReleaseData {
 // ===========================================
 
 const COLORS = {
-  primary: "#E85D04",       // SLC Orange
-  secondary: "#1DB954",     // Spotify green
+  primary: "#E85D04", // SLC Orange
+  secondary: "#1DB954", // Spotify green
   dark: "#0D0D0D",
   darker: "#080808",
   text: "#FFFFFF",
   textSecondary: "#CCCCCC",
   muted: "#888888",
-  accent: "#F97316",        // Orange lighter
+  accent: "#F97316", // Orange lighter
   card: "#1A1A1A",
   cardBorder: "#2A2A2A",
   sectionBg: "#111111",
@@ -200,7 +205,9 @@ function getPlatformLabel(platform: string): string {
 // PDF GENERATOR
 // ===========================================
 
-export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promise<Uint8Array> {
+export async function generateMediaReleaseEpkPDF(
+  data: MediaReleaseData,
+): Promise<Uint8Array> {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -254,18 +261,18 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
     doc.text(
       `${data.artistName || "Sonido Liquido Crew"} - EPK | ${data.title}`,
       margin,
-      footerY
-    );
-    doc.text(
-      `Pagina ${pageNumber}`,
-      pageWidth - margin,
       footerY,
-      { align: "right" }
     );
+    doc.text(`Pagina ${pageNumber}`, pageWidth - margin, footerY, {
+      align: "right",
+    });
   };
 
   // Section header with accent bar
-  const drawSectionHeader = (title: string, accentColor: string = COLORS.primary) => {
+  const drawSectionHeader = (
+    title: string,
+    accentColor: string = COLORS.primary,
+  ) => {
     checkPageBreak(20);
     // Accent bar
     doc.setFillColor(accentColor);
@@ -312,7 +319,10 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
   doc.setTextColor(COLORS.text);
-  const titleLines = doc.splitTextToSize(data.title.toUpperCase(), contentWidth - 35);
+  const titleLines = doc.splitTextToSize(
+    data.title.toUpperCase(),
+    contentWidth - 35,
+  );
   titleLines.slice(0, 2).forEach((line: string) => {
     doc.text(line, margin, yPos);
     yPos += 12;
@@ -333,7 +343,11 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
   doc.setTextColor(COLORS.primary);
   const categoryLabel = CATEGORY_LABELS[data.category] || data.category;
   const publishDate = formatDate(data.publishDate);
-  doc.text(`${categoryLabel}${publishDate ? `  |  ${publishDate}` : ""}`, margin, yPos);
+  doc.text(
+    `${categoryLabel}${publishDate ? `  |  ${publishDate}` : ""}`,
+    margin,
+    yPos,
+  );
 
   yPos = 100;
 
@@ -345,20 +359,33 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
     const stats: { value: string; label: string }[] = [];
 
     if (data.artist.spotifyMonthlyListeners) {
-      stats.push({ value: formatNumber(data.artist.spotifyMonthlyListeners), label: "OYENTES/MES" });
+      stats.push({
+        value: formatNumber(data.artist.spotifyMonthlyListeners),
+        label: "OYENTES/MES",
+      });
     }
     if (data.artist.totalStreams) {
-      stats.push({ value: formatNumber(data.artist.totalStreams), label: "STREAMS" });
+      stats.push({
+        value: formatNumber(data.artist.totalStreams),
+        label: "STREAMS",
+      });
     }
     if (data.artist.instagramFollowers) {
-      stats.push({ value: formatNumber(data.artist.instagramFollowers), label: "INSTAGRAM" });
+      stats.push({
+        value: formatNumber(data.artist.instagramFollowers),
+        label: "INSTAGRAM",
+      });
     }
     if (data.artist.youtubeSubscribers) {
-      stats.push({ value: formatNumber(data.artist.youtubeSubscribers), label: "YOUTUBE" });
+      stats.push({
+        value: formatNumber(data.artist.youtubeSubscribers),
+        label: "YOUTUBE",
+      });
     }
 
     if (stats.length > 0) {
-      const statsBoxWidth = (contentWidth - (stats.length - 1) * 4) / stats.length;
+      const statsBoxWidth =
+        (contentWidth - (stats.length - 1) * 4) / stats.length;
 
       stats.forEach((stat, index) => {
         const xPos = margin + index * (statsBoxWidth + 4);
@@ -369,12 +396,16 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
         doc.setTextColor(COLORS.primary);
-        doc.text(stat.value, xPos + statsBoxWidth / 2, yPos + 10, { align: "center" });
+        doc.text(stat.value, xPos + statsBoxWidth / 2, yPos + 10, {
+          align: "center",
+        });
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(6);
         doc.setTextColor(COLORS.muted);
-        doc.text(stat.label, xPos + statsBoxWidth / 2, yPos + 17, { align: "center" });
+        doc.text(stat.label, xPos + statsBoxWidth / 2, yPos + 17, {
+          align: "center",
+        });
       });
 
       yPos += 30;
@@ -410,7 +441,10 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
 
     // Quote box with accent border
     doc.setFillColor(COLORS.card);
-    const quoteLines = doc.splitTextToSize(`"${data.pullQuote}"`, contentWidth - 20);
+    const quoteLines = doc.splitTextToSize(
+      `"${data.pullQuote}"`,
+      contentWidth - 20,
+    );
     const quoteHeight = quoteLines.length * 5 + 18;
     doc.roundedRect(margin, yPos, contentWidth, quoteHeight, 2, 2, "F");
 
@@ -457,7 +491,10 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
     }
 
     // Genre tags
-    if (data.artist.genreSpecific || (data.artist.subgenres && data.artist.subgenres.length > 0)) {
+    if (
+      data.artist.genreSpecific ||
+      (data.artist.subgenres && data.artist.subgenres.length > 0)
+    ) {
       const genres = [
         data.artist.genreSpecific,
         ...(data.artist.subgenres || []),
@@ -526,7 +563,9 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
       doc.text(track.title, margin + 12, yPos);
 
       doc.setTextColor(COLORS.muted);
-      doc.text(track.duration || "--:--", pageWidth - margin - 5, yPos, { align: "right" });
+      doc.text(track.duration || "--:--", pageWidth - margin - 5, yPos, {
+        align: "right",
+      });
 
       yPos += 7;
     });
@@ -591,7 +630,10 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
     data.artist.pressQuotes.slice(0, 4).forEach((quote) => {
       checkPageBreak(25);
 
-      const quoteLines = doc.splitTextToSize(`"${quote.quote}"`, contentWidth - 16);
+      const quoteLines = doc.splitTextToSize(
+        `"${quote.quote}"`,
+        contentWidth - 16,
+      );
       const quoteHeight = quoteLines.length * 4.5 + 12;
 
       // Quote box
@@ -681,11 +723,18 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
   // SHOWS & FESTIVALS
   // ===========================================
 
-  if (data.artist && (data.artist.festivalAppearances?.length || data.artist.notableVenues?.length)) {
+  if (
+    data.artist &&
+    (data.artist.festivalAppearances?.length ||
+      data.artist.notableVenues?.length)
+  ) {
     checkPageBreak(25);
     drawSectionHeader("Shows & Festivales");
 
-    if (data.artist.festivalAppearances && data.artist.festivalAppearances.length > 0) {
+    if (
+      data.artist.festivalAppearances &&
+      data.artist.festivalAppearances.length > 0
+    ) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
       doc.setTextColor(COLORS.muted);
@@ -695,7 +744,9 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(COLORS.text);
-      const festivalText = data.artist.festivalAppearances.slice(0, 8).join(" | ");
+      const festivalText = data.artist.festivalAppearances
+        .slice(0, 8)
+        .join(" | ");
       const festivalLines = doc.splitTextToSize(festivalText, contentWidth);
       festivalLines.forEach((line: string) => {
         checkPageBreak(5);
@@ -764,7 +815,12 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7);
         doc.setTextColor(COLORS.muted);
-        doc.text(profile.handle, xPos + profileColWidth - 4, profileRowY + 6.5, { align: "right" });
+        doc.text(
+          profile.handle,
+          xPos + profileColWidth - 4,
+          profileRowY + 6.5,
+          { align: "right" },
+        );
       }
 
       profileCol++;
@@ -790,12 +846,19 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
   const contactItems: { label: string; value: string }[] = [];
 
   // PR contact from media release
-  if (data.prContactName) contactItems.push({ label: "Contacto de Prensa", value: data.prContactName });
-  if (data.prContactEmail) contactItems.push({ label: "Email Prensa", value: data.prContactEmail });
-  if (data.prContactPhone) contactItems.push({ label: "Telefono Prensa", value: data.prContactPhone });
+  if (data.prContactName)
+    contactItems.push({
+      label: "Contacto de Prensa",
+      value: data.prContactName,
+    });
+  if (data.prContactEmail)
+    contactItems.push({ label: "Email Prensa", value: data.prContactEmail });
+  if (data.prContactPhone)
+    contactItems.push({ label: "Telefono Prensa", value: data.prContactPhone });
 
   // Artist contacts from EPK
-  if (data.artist?.bookingEmail) contactItems.push({ label: "Booking", value: data.artist.bookingEmail });
+  if (data.artist?.bookingEmail)
+    contactItems.push({ label: "Booking", value: data.artist.bookingEmail });
   if (data.artist?.managementEmail) {
     contactItems.push({
       label: `Management${data.artist.managementName ? ` (${data.artist.managementName})` : ""}`,
@@ -810,12 +873,16 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
   }
 
   // Default SLC contact
-  contactItems.push({ label: "Sonido Liquido Crew", value: "prensasonidoliquido@gmail.com" });
+  contactItems.push({
+    label: "Sonido Liquido Crew",
+    value: "prensasonidoliquido@gmail.com",
+  });
 
   // Remove duplicate emails
   const seenEmails = new Set<string>();
-  const uniqueContacts = contactItems.filter(item => {
-    if (item.value.includes("@") && seenEmails.has(item.value.toLowerCase())) return false;
+  const uniqueContacts = contactItems.filter((item) => {
+    if (item.value.includes("@") && seenEmails.has(item.value.toLowerCase()))
+      return false;
     if (item.value.includes("@")) seenEmails.add(item.value.toLowerCase());
     return true;
   });
@@ -825,7 +892,7 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(COLORS.muted);
-    doc.text(contact.label + ":", margin, yPos);
+    doc.text(`${contact.label}:`, margin, yPos);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -856,7 +923,7 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
     "SONIDO LIQUIDO CREW  |  www.sonidoliquido.com  |  Est. 1999, Ciudad de Mexico",
     pageWidth / 2,
     finalY,
-    { align: "center" }
+    { align: "center" },
   );
 
   // Return as Uint8Array
@@ -868,7 +935,10 @@ export async function generateMediaReleaseEpkPDF(data: MediaReleaseData): Promis
 // FILENAME GENERATOR
 // ===========================================
 
-export function generateMediaReleaseEpkFilename(title: string, artistName?: string | null): string {
+export function generateMediaReleaseEpkFilename(
+  title: string,
+  artistName?: string | null,
+): string {
   const date = new Date().toISOString().split("T")[0];
   const slug = [artistName, title]
     .filter(Boolean)

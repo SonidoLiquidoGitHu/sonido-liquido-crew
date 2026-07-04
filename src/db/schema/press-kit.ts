@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // PRESS KIT TABLE
@@ -11,8 +11,12 @@ export const pressKit = sqliteTable("press_kit", {
 
   // Hero Section
   heroTitle: text("hero_title").default("Sonido Líquido Crew"),
-  heroSubtitle: text("hero_subtitle").default("El colectivo de Hip Hop más representativo de México"),
-  heroTagline: text("hero_tagline").default("Fundado en 1999 en la Ciudad de México."),
+  heroSubtitle: text("hero_subtitle").default(
+    "El colectivo de Hip Hop más representativo de México",
+  ),
+  heroTagline: text("hero_tagline").default(
+    "Fundado en 1999 en la Ciudad de México.",
+  ),
   heroCoverImageUrl: text("hero_cover_image_url"),
   heroBannerImageUrl: text("hero_banner_image_url"),
 
@@ -34,9 +38,15 @@ export const pressKit = sqliteTable("press_kit", {
   contactLocation: text("contact_location").default("Ciudad de México, CDMX"),
 
   // Social Links
-  spotifyUrl: text("spotify_url").default("https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez"),
-  instagramUrl: text("instagram_url").default("https://www.instagram.com/sonidoliquido/"),
-  youtubeUrl: text("youtube_url").default("https://www.youtube.com/@sonidoliquidocrew"),
+  spotifyUrl: text("spotify_url").default(
+    "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
+  ),
+  instagramUrl: text("instagram_url").default(
+    "https://www.instagram.com/sonidoliquido/",
+  ),
+  youtubeUrl: text("youtube_url").default(
+    "https://www.youtube.com/@sonidoliquidocrew",
+  ),
   twitterUrl: text("twitter_url"),
   facebookUrl: text("facebook_url"),
 
@@ -59,11 +69,17 @@ export const pressKit = sqliteTable("press_kit", {
 
   // SEO
   metaTitle: text("meta_title").default("Press Kit | Sonido Líquido Crew"),
-  metaDescription: text("meta_description").default("Kit de prensa oficial de Sonido Líquido Crew. Información, biografías, fotos y recursos para medios."),
+  metaDescription: text("meta_description").default(
+    "Kit de prensa oficial de Sonido Líquido Crew. Información, biografías, fotos y recursos para medios.",
+  ),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

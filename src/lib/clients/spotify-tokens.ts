@@ -20,8 +20,10 @@ import { eq } from "drizzle-orm";
 // ===========================================
 
 export function getSpotifyCredentials() {
-  const clientId = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
+  const clientId =
+    process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
+  const clientSecret =
+    process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
   return { clientId, clientSecret };
 }
 
@@ -38,7 +40,12 @@ export function getSpotifyAuthHeader(): string {
  * Insert or update a site setting.
  * Throws on error so callers know if the write failed.
  */
-export async function upsertSetting(key: string, value: string, type: string, description?: string): Promise<void> {
+export async function upsertSetting(
+  key: string,
+  value: string,
+  type: string,
+  description?: string,
+): Promise<void> {
   const [existing] = await db
     .select()
     .from(siteSettings)
@@ -95,12 +102,27 @@ export async function storeSpotifyTokens(params: {
 }): Promise<void> {
   const expiryMs = String(Date.now() + (params.expiresIn - 60) * 1000);
 
-  await upsertSetting("spotify_access_token", params.accessToken, "string", "Spotify OAuth access token (temporary)");
-  await upsertSetting("spotify_access_token_expiry", expiryMs, "number", "Spotify access token expiry timestamp");
+  await upsertSetting(
+    "spotify_access_token",
+    params.accessToken,
+    "string",
+    "Spotify OAuth access token (temporary)",
+  );
+  await upsertSetting(
+    "spotify_access_token_expiry",
+    expiryMs,
+    "number",
+    "Spotify access token expiry timestamp",
+  );
 
   // Spotify may not always return a new refresh_token on re-authorization
   if (params.refreshToken) {
-    await upsertSetting("spotify_refresh_token", params.refreshToken, "string", "Spotify OAuth refresh token for playlist access");
+    await upsertSetting(
+      "spotify_refresh_token",
+      params.refreshToken,
+      "string",
+      "Spotify OAuth refresh token for playlist access",
+    );
   }
 }
 
@@ -130,7 +152,10 @@ export async function clearSpotifyTokens(): Promise<void> {
  * @param forceRefresh - If true, skip cached token and force a refresh
  * @param retryCount - Internal: retry count for Turso replication lag
  */
-export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount = 1): Promise<string | null> {
+export async function getSpotifyUserAccessToken(
+  forceRefresh = false,
+  retryCount = 1,
+): Promise<string | null> {
   try {
     const refreshToken = await readSetting("spotify_refresh_token");
 
@@ -142,46 +167,59 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
     if (!forceRefresh) {
       const accessToken = await readSetting("spotify_access_token");
       const expiryStr = await readSetting("spotify_access_token_expiry");
-      const expiry = parseInt(expiryStr || "0", 10);
+      const expiry = Number.parseInt(expiryStr || "0", 10);
 
       // Check if current access token is still valid (with 60s buffer)
       if (accessToken && Date.now() < expiry - 60000) {
         const remainingSec = Math.floor((expiry - Date.now()) / 1000);
-        console.log(`[Spotify Tokens] Using cached access token (expires in ${remainingSec}s)`);
+        console.log(
+          `[Spotify Tokens] Using cached access token (expires in ${remainingSec}s)`,
+        );
         return accessToken;
       }
 
       if (accessToken) {
-        console.log(`[Spotify Tokens] Access token expired. Expiry: ${expiry}, Now: ${Date.now()}, Diff: ${Math.floor((Date.now() - expiry) / 1000)}s ago`);
+        console.log(
+          `[Spotify Tokens] Access token expired. Expiry: ${expiry}, Now: ${Date.now()}, Diff: ${Math.floor((Date.now() - expiry) / 1000)}s ago`,
+        );
       } else {
         console.log("[Spotify Tokens] No access token in DB, refreshing...");
       }
     }
 
     // Access token expired or force refresh requested — refresh it
-    console.log(`[Spotify Tokens] ${forceRefresh ? 'Force refreshing' : 'Refreshing expired'} user access token...`);
+    console.log(
+      `[Spotify Tokens] ${forceRefresh ? "Force refreshing" : "Refreshing expired"} user access token...`,
+    );
 
-    const refreshResponse = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        Authorization: getSpotifyAuthHeader(),
-        "Content-Type": "application/x-www-form-urlencoded",
+    const refreshResponse = await fetch(
+      "https://accounts.spotify.com/api/token",
+      {
+        method: "POST",
+        headers: {
+          Authorization: getSpotifyAuthHeader(),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: refreshToken,
+        }).toString(),
+        signal: AbortSignal.timeout(15_000),
       },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-      }).toString(),
-      signal: AbortSignal.timeout(15_000),
-    });
+    );
 
     if (!refreshResponse.ok) {
       const errorBody = await refreshResponse.text().catch(() => "");
-      console.error(`[Spotify Tokens] Token refresh failed: ${refreshResponse.status} ${errorBody.slice(0, 500)}`);
+      console.error(
+        `[Spotify Tokens] Token refresh failed: ${refreshResponse.status} ${errorBody.slice(0, 500)}`,
+      );
 
       // Only clear tokens on definitive auth failures (400 = invalid refresh token, 401 = bad client)
       // Don't clear on 403 or 5xx — these could be temporary
       if (refreshResponse.status === 400 || refreshResponse.status === 401) {
-        console.log("[Spotify Tokens] Definitive auth failure, clearing tokens");
+        console.log(
+          "[Spotify Tokens] Definitive auth failure, clearing tokens",
+        );
         await clearSpotifyTokens();
       }
 
@@ -190,7 +228,9 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
       if (refreshResponse.status !== 400 && refreshResponse.status !== 401) {
         const cachedAccessToken = await readSetting("spotify_access_token");
         if (cachedAccessToken) {
-          console.warn("[Spotify Tokens] Refresh failed with transient error, trying cached access token as last resort");
+          console.warn(
+            "[Spotify Tokens] Refresh failed with transient error, trying cached access token as last resort",
+          );
           return cachedAccessToken;
         }
       }
@@ -211,7 +251,9 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
       expiresIn: newExpiresIn,
     });
 
-    console.log(`[Spotify Tokens] User access token refreshed successfully, expires in ${newExpiresIn}s, scopes: ${grantedScopes || 'not returned'}`);
+    console.log(
+      `[Spotify Tokens] User access token refreshed successfully, expires in ${newExpiresIn}s, scopes: ${grantedScopes || "not returned"}`,
+    );
     return newAccessToken;
   } catch (error) {
     console.error("[Spotify Tokens] Failed to get user access token:", error);
@@ -221,7 +263,9 @@ export async function getSpotifyUserAccessToken(forceRefresh = false, retryCount
       try {
         const cachedAccessToken = await readSetting("spotify_access_token");
         if (cachedAccessToken) {
-          console.warn("[Spotify Tokens] Exception during refresh, trying cached access token as last resort");
+          console.warn(
+            "[Spotify Tokens] Exception during refresh, trying cached access token as last resort",
+          );
           return cachedAccessToken;
         }
       } catch {
@@ -253,7 +297,9 @@ export async function getClientCredentialsToken(): Promise<string | null> {
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
-      console.error(`[Spotify Tokens] Client credentials token failed: ${response.status} ${errorBody.slice(0, 200)}`);
+      console.error(
+        `[Spotify Tokens] Client credentials token failed: ${response.status} ${errorBody.slice(0, 200)}`,
+      );
       return null;
     }
 
@@ -269,7 +315,14 @@ export async function getClientCredentialsToken(): Promise<string | null> {
  * Validate that an access token works by calling the /me endpoint.
  * Returns the user's Spotify ID if valid, null if invalid.
  */
-export async function validateAccessToken(accessToken: string): Promise<{ valid: boolean; userId?: string; scopes?: string[]; error?: string }> {
+export async function validateAccessToken(
+  accessToken: string,
+): Promise<{
+  valid: boolean;
+  userId?: string;
+  scopes?: string[];
+  error?: string;
+}> {
   try {
     const response = await fetch("https://api.spotify.com/v1/me", {
       headers: {

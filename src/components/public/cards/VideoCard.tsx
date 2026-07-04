@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { Play, Eye } from "lucide-react";
-import { cn, formatNumber, formatDuration } from "@/lib/utils";
-import type { Video } from "@/types";
-import { YouTubeEmbed } from "../embeds/YouTubeEmbed";
 import { SafeImage } from "@/components/ui/safe-image";
+import { cn, formatDuration, formatNumber } from "@/lib/utils";
 import {
-  getVideoThumbnail,
   getProxiedThumbnailUrl,
-  getYouTubeId,
-  isYouTubeThumbnailUrl,
-  getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
+  getVideoThumbnail,
+  getYouTubeId,
+  getYouTubeThumbnailFallback,
+  isYouTubeThumbnailUrl,
 } from "@/lib/video-utils";
+import type { Video } from "@/types";
+import { Eye, Play } from "lucide-react";
+import { useState } from "react";
+import { YouTubeEmbed } from "../embeds/YouTubeEmbed";
 
 interface VideoCardProps {
   video: Video;
@@ -51,7 +51,10 @@ export function VideoCard({ video, showEmbed = false }: VideoCardProps) {
             fallbackSrc={(() => {
               const ytId = video.youtubeId || getYouTubeId(video);
               if (ytId && isYouTubeThumbnailUrl(thumbnailUrl)) {
-                return getYouTubeThumbnailFallback(ytId, thumbnailUrl) || getVideoPlaceholderSvg("16/9");
+                return (
+                  getYouTubeThumbnailFallback(ytId, thumbnailUrl) ||
+                  getVideoPlaceholderSvg("16/9")
+                );
               }
               return getVideoPlaceholderSvg("16/9");
             })()}
@@ -70,7 +73,10 @@ export function VideoCard({ video, showEmbed = false }: VideoCardProps) {
       {/* Play Button */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-youtube/90 flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-hover:bg-youtube shadow-2xl">
-          <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white ml-1" fill="white" />
+          <Play
+            className="w-8 h-8 sm:w-10 sm:h-10 text-white ml-1"
+            fill="white"
+          />
         </div>
       </div>
 

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { videos } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -18,7 +18,7 @@ export async function GET() {
     console.error("Failed to fetch videos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch videos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!title || !youtubeId) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { success: false, error: "Este video ya existe" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -64,7 +64,9 @@ export async function POST(request: NextRequest) {
       title,
       youtubeId,
       youtubeUrl: youtubeUrl || `https://www.youtube.com/watch?v=${youtubeId}`,
-      thumbnailUrl: thumbnailUrl || `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`,
+      thumbnailUrl:
+        thumbnailUrl ||
+        `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`,
       artistId: artistId || null,
       description: description || null,
       isFeatured: isFeatured || false,
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
     console.error("Failed to create video:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create video" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -92,12 +94,18 @@ export async function PATCH(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing video ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Build update object - only include allowed fields
-    const allowedFields = ["title", "description", "isFeatured", "artistId", "displayOrder"];
+    const allowedFields = [
+      "title",
+      "description",
+      "isFeatured",
+      "artistId",
+      "displayOrder",
+    ];
     const updateData: Record<string, unknown> = {};
 
     for (const field of allowedFields) {
@@ -109,7 +117,7 @@ export async function PATCH(request: NextRequest) {
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { success: false, error: "No valid fields to update" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -128,7 +136,7 @@ export async function PATCH(request: NextRequest) {
     console.error("Failed to update video:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update video" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -141,7 +149,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing video ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -152,7 +160,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Failed to delete video:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete video" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

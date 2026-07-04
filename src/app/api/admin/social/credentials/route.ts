@@ -4,11 +4,11 @@
 // PUT  — Save/update credentials
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { socialCredentials } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
 import { invalidateMetaCredentialsCache } from "@/lib/clients/meta";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 // TikTok integration removed
 
 export const dynamic = "force-dynamic";
@@ -39,7 +39,7 @@ function getPlatformForKey(key: string): "meta" {
 function maskValue(value: string): string {
   if (!value) return "";
   if (value.length <= 12) return "••••••••";
-  return value.substring(0, 4) + "••••••••" + value.substring(value.length - 4);
+  return `${value.substring(0, 4)}••••••••${value.substring(value.length - 4)}`;
 }
 
 // ===========================================
@@ -64,11 +64,11 @@ export async function GET(request: NextRequest) {
     for (const key of ALL_KEYS) {
       const platform = getPlatformForKey(key);
       const dbEntry = dbCredentials.find(
-        (c) => c.platform === platform && c.key === key
+        (c) => c.platform === platform && c.key === key,
       );
       const envValue = process.env[key];
 
-      if (dbEntry && dbEntry.value) {
+      if (dbEntry?.value) {
         // DB value takes priority
         credentialMap[key] = {
           maskedValue: maskValue(dbEntry.value),
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     console.error("[Credentials API] GET error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch credentials" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -119,7 +119,7 @@ export async function PUT(request: NextRequest) {
     if (!credentials || typeof credentials !== "object") {
       return NextResponse.json(
         { success: false, error: "credentials object is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -141,8 +141,8 @@ export async function PUT(request: NextRequest) {
         .where(
           and(
             eq(socialCredentials.platform, platform),
-            eq(socialCredentials.key, key)
-          )
+            eq(socialCredentials.key, key),
+          ),
         )
         .limit(1);
 
@@ -190,7 +190,7 @@ export async function PUT(request: NextRequest) {
     console.error("[Credentials API] PUT error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to save credentials" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

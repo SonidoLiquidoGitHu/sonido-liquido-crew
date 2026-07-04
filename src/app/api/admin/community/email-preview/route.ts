@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface EmailSettings {
   sendApprovalEmail: boolean;
@@ -16,7 +16,7 @@ function generateApprovalEmailHtml(
   recipientName: string,
   settings: EmailSettings,
   contentType: "message" | "memory",
-  contentData?: { imageUrl?: string; caption?: string; message?: string }
+  contentData?: { imageUrl?: string; caption?: string; message?: string },
 ): string {
   const contentTypeLabel = contentType === "message" ? "mensaje" : "foto";
   const isPhoto = contentType === "memory";
@@ -120,10 +120,12 @@ export async function POST(request: NextRequest) {
     const defaultSettings: EmailSettings = {
       sendApprovalEmail: true,
       emailSubject: "¡Tu mensaje ha sido publicado en Sonido Líquido!",
-      emailMessage: "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
+      emailMessage:
+        "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
       includeReward: false,
       rewardTitle: "Regalo sorpresa",
-      rewardDescription: "Como agradecimiento, aquí tienes una descarga exclusiva:",
+      rewardDescription:
+        "Como agradecimiento, aquí tienes una descarga exclusiva:",
       rewardDownloadUrl: "",
       rewardFileName: "",
     };
@@ -131,20 +133,24 @@ export async function POST(request: NextRequest) {
     const emailSettings = { ...defaultSettings, ...settings };
 
     // Sample data for preview
-    const previewData = sampleData || (contentType === "memory"
-      ? {
-          imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
-          caption: "Increíble show en CDMX",
-        }
-      : {
-          message: "¡La mejor crew de hip hop en México! Gracias por toda la música.",
-        });
+    const previewData =
+      sampleData ||
+      (contentType === "memory"
+        ? {
+            imageUrl:
+              "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
+            caption: "Increíble show en CDMX",
+          }
+        : {
+            message:
+              "¡La mejor crew de hip hop en México! Gracias por toda la música.",
+          });
 
     const html = generateApprovalEmailHtml(
       "Usuario de Ejemplo",
       emailSettings,
       contentType || "message",
-      previewData
+      previewData,
     );
 
     return NextResponse.json({
@@ -158,7 +164,7 @@ export async function POST(request: NextRequest) {
     console.error("[Email Preview] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error generating preview" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

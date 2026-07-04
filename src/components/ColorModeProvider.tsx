@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 type ColorMode = "dark" | "light" | "system";
 
@@ -81,7 +87,9 @@ function applyColorMode(mode: "dark" | "light") {
 
 function getSystemPreference(): "dark" | "light" {
   if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 interface ColorModeProviderProps {
@@ -89,7 +97,10 @@ interface ColorModeProviderProps {
   defaultMode?: ColorMode;
 }
 
-export function ColorModeProvider({ children, defaultMode = "dark" }: ColorModeProviderProps) {
+export function ColorModeProvider({
+  children,
+  defaultMode = "dark",
+}: ColorModeProviderProps) {
   const [colorMode, setColorModeState] = useState<ColorMode>(defaultMode);
   const [resolvedMode, setResolvedMode] = useState<"dark" | "light">("dark");
 
@@ -158,9 +169,9 @@ export function ColorModeProvider({ children, defaultMode = "dark" }: ColorModeP
   );
 }
 
-// Color Mode Toggle Button Component
-import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
+// Color Mode Toggle Button Component
+import { Monitor, Moon, Sun } from "lucide-react";
 
 interface ColorModeToggleProps {
   className?: string;
@@ -168,8 +179,13 @@ interface ColorModeToggleProps {
   variant?: "icon" | "pills" | "dropdown";
 }
 
-export function ColorModeToggle({ className, showLabels = false, variant = "icon" }: ColorModeToggleProps) {
-  const { colorMode, resolvedMode, setColorMode, toggleColorMode } = useColorMode();
+export function ColorModeToggle({
+  className,
+  showLabels = false,
+  variant = "icon",
+}: ColorModeToggleProps) {
+  const { colorMode, resolvedMode, setColorMode, toggleColorMode } =
+    useColorMode();
 
   if (variant === "icon") {
     return (
@@ -177,9 +193,13 @@ export function ColorModeToggle({ className, showLabels = false, variant = "icon
         onClick={toggleColorMode}
         className={cn(
           "p-2 rounded-lg transition-colors hover:bg-[var(--slc-card)] border border-transparent hover:border-[var(--slc-border)]",
-          className
+          className,
         )}
-        title={resolvedMode === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+        title={
+          resolvedMode === "dark"
+            ? "Cambiar a modo claro"
+            : "Cambiar a modo oscuro"
+        }
         aria-label="Toggle color mode"
       >
         {resolvedMode === "dark" ? (
@@ -193,14 +213,19 @@ export function ColorModeToggle({ className, showLabels = false, variant = "icon
 
   if (variant === "pills") {
     return (
-      <div className={cn("flex items-center gap-1 p-1 bg-[var(--slc-card)] rounded-lg border border-[var(--slc-border)]", className)}>
+      <div
+        className={cn(
+          "flex items-center gap-1 p-1 bg-[var(--slc-card)] rounded-lg border border-[var(--slc-border)]",
+          className,
+        )}
+      >
         <button
           onClick={() => setColorMode("light")}
           className={cn(
             "p-2 rounded-md transition-colors",
             colorMode === "light"
               ? "bg-[var(--slc-background)] text-[var(--slc-text)] shadow-sm"
-              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)]"
+              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)]",
           )}
           title="Modo claro"
         >
@@ -212,7 +237,7 @@ export function ColorModeToggle({ className, showLabels = false, variant = "icon
             "p-2 rounded-md transition-colors",
             colorMode === "dark"
               ? "bg-[var(--slc-background)] text-[var(--slc-text)] shadow-sm"
-              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)]"
+              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)]",
           )}
           title="Modo oscuro"
         >
@@ -224,7 +249,7 @@ export function ColorModeToggle({ className, showLabels = false, variant = "icon
             "p-2 rounded-md transition-colors",
             colorMode === "system"
               ? "bg-[var(--slc-background)] text-[var(--slc-text)] shadow-sm"
-              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)]"
+              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)]",
           )}
           title="Seguir sistema"
         >
@@ -254,7 +279,7 @@ export function ColorModeToggle({ className, showLabels = false, variant = "icon
             "w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors",
             colorMode === "light"
               ? "text-primary"
-              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)] hover:bg-[var(--slc-background)]"
+              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)] hover:bg-[var(--slc-background)]",
           )}
         >
           <Sun className="w-4 h-4" />
@@ -266,7 +291,7 @@ export function ColorModeToggle({ className, showLabels = false, variant = "icon
             "w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors",
             colorMode === "dark"
               ? "text-primary"
-              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)] hover:bg-[var(--slc-background)]"
+              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)] hover:bg-[var(--slc-background)]",
           )}
         >
           <Moon className="w-4 h-4" />
@@ -278,7 +303,7 @@ export function ColorModeToggle({ className, showLabels = false, variant = "icon
             "w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors",
             colorMode === "system"
               ? "text-primary"
-              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)] hover:bg-[var(--slc-background)]"
+              : "text-[var(--slc-muted)] hover:text-[var(--slc-text)] hover:bg-[var(--slc-background)]",
           )}
         >
           <Monitor className="w-4 h-4" />

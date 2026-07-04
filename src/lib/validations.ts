@@ -10,7 +10,10 @@ export const slugSchema = z
   .string()
   .min(1)
   .max(200)
-  .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens");
+  .regex(
+    /^[a-z0-9-]+$/,
+    "Slug must contain only lowercase letters, numbers, and hyphens",
+  );
 
 export const emailSchema = z.string().email("Invalid email address");
 
@@ -25,9 +28,20 @@ export const paginationSchema = z.object({
 // ARTIST SCHEMAS
 // ===========================================
 
-export const artistRoleSchema = z.enum(["mc", "dj", "producer", "cantante", "divo", "lado_b"]);
+export const artistRoleSchema = z.enum([
+  "mc",
+  "dj",
+  "producer",
+  "cantante",
+  "divo",
+  "lado_b",
+]);
 
-export const verificationStatusSchema = z.enum(["pending", "verified", "rejected"]);
+export const verificationStatusSchema = z.enum([
+  "pending",
+  "verified",
+  "rejected",
+]);
 
 export const createArtistSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -49,7 +63,14 @@ export const updateArtistSchema = createArtistSchema.partial();
 
 export const artistExternalProfileSchema = z.object({
   artistId: uuidSchema,
-  platform: z.enum(["spotify", "youtube", "instagram", "mixcloud", "soundcloud", "twitter"]),
+  platform: z.enum([
+    "spotify",
+    "youtube",
+    "instagram",
+    "mixcloud",
+    "soundcloud",
+    "twitter",
+  ]),
   externalId: z.string().max(100).nullable().optional(),
   externalUrl: urlSchema,
   handle: z.string().max(100).nullable().optional(),
@@ -60,7 +81,12 @@ export const artistExternalProfileSchema = z.object({
 // RELEASE SCHEMAS
 // ===========================================
 
-export const releaseTypeSchema = z.enum(["album", "ep", "single", "compilation"]);
+export const releaseTypeSchema = z.enum([
+  "album",
+  "ep",
+  "single",
+  "compilation",
+]);
 
 export const createReleaseSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -125,7 +151,12 @@ export const updateEventSchema = createEventSchema.partial();
 // PRODUCT SCHEMAS
 // ===========================================
 
-export const productCategorySchema = z.enum(["music", "clothing", "accessories", "merchandise"]);
+export const productCategorySchema = z.enum([
+  "music",
+  "clothing",
+  "accessories",
+  "merchandise",
+]);
 
 export const createProductSchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
@@ -165,7 +196,7 @@ export const createOrderSchema = z.object({
       z.object({
         productId: uuidSchema,
         quantity: z.number().int().positive(),
-      })
+      }),
     )
     .min(1, "At least one item is required"),
   shippingAddress: z.string().max(1000).nullable().optional(),
@@ -213,7 +244,11 @@ export const subscribeSchema = z.object({
 // DOWNLOAD GATE SCHEMAS
 // ===========================================
 
-export const downloadGateTypeSchema = z.enum(["email", "social_follow", "free"]);
+export const downloadGateTypeSchema = z.enum([
+  "email",
+  "social_follow",
+  "free",
+]);
 
 export const createDownloadGateSchema = z.object({
   slug: slugSchema,
@@ -329,7 +364,9 @@ export const loginSchema = z.object({
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -343,7 +380,9 @@ export const changePasswordSchema = z
 
 export const searchSchema = z.object({
   query: z.string().min(1).max(200),
-  type: z.enum(["all", "artists", "releases", "videos", "products"]).default("all"),
+  type: z
+    .enum(["all", "artists", "releases", "videos", "products"])
+    .default("all"),
   ...paginationSchema.shape,
 });
 
@@ -398,7 +437,9 @@ export const orderFilterSchema = z.object({
 
 export type CreateArtistInput = z.infer<typeof createArtistSchema>;
 export type UpdateArtistInput = z.infer<typeof updateArtistSchema>;
-export type ArtistExternalProfileInput = z.infer<typeof artistExternalProfileSchema>;
+export type ArtistExternalProfileInput = z.infer<
+  typeof artistExternalProfileSchema
+>;
 export type CreateReleaseInput = z.infer<typeof createReleaseSchema>;
 export type UpdateReleaseInput = z.infer<typeof updateReleaseSchema>;
 export type CreateVideoInput = z.infer<typeof createVideoSchema>;

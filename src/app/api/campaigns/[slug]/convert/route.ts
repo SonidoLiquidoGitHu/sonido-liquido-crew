@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { campaigns, campaignActions } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { campaignActions, campaigns } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
+import { eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -15,7 +15,7 @@ export async function POST(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -29,21 +29,22 @@ export async function POST(
     if (!campaign) {
       return NextResponse.json(
         { success: false, error: "Campaign not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (!campaign.isActive) {
       return NextResponse.json(
         { success: false, error: "Campaign is not active" },
-        { status: 410 }
+        { status: 410 },
       );
     }
 
     // Get request metadata
-    const ipAddress = request.headers.get("x-forwarded-for") ||
-                      request.headers.get("x-real-ip") ||
-                      "unknown";
+    const ipAddress =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
     const referrer = request.headers.get("referer") || null;
 
@@ -72,7 +73,9 @@ export async function POST(
       })
       .where(eq(campaigns.id, campaign.id));
 
-    console.log(`[API] Campaign conversion: ${campaign.title} - ${body.email || "anonymous"}`);
+    console.log(
+      `[API] Campaign conversion: ${campaign.title} - ${body.email || "anonymous"}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -85,7 +88,7 @@ export async function POST(
     console.error("[API] Error processing campaign conversion:", error);
     return NextResponse.json(
       { success: false, error: "Failed to process conversion" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

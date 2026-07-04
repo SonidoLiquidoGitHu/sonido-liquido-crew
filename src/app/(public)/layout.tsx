@@ -1,24 +1,26 @@
 "use client";
 
-import { Suspense, lazy } from "react";
-import { Header } from "@/components/public/Header";
-import { Footer } from "@/components/public/Footer";
 import { ColorModeProvider } from "@/components/ColorModeProvider";
+import { Footer } from "@/components/public/Footer";
+import { Header } from "@/components/public/Header";
 import { usePageViewTracking } from "@/hooks/use-analytics";
+import { Suspense, lazy } from "react";
 
 // Lazy load non-critical client components
 const SoundEffectsWrapper = lazy(() =>
-  import("@/components/public/effects/SoundEffects").then(m => ({
+  import("@/components/public/effects/SoundEffects").then((m) => ({
     default: () => (
       <m.SoundProvider>
         <m.SoundToggle />
       </m.SoundProvider>
     ),
-  }))
+  })),
 );
 
 const NewsletterPopup = lazy(() =>
-  import("@/components/public/NewsletterPopup").then(m => ({ default: m.NewsletterPopup }))
+  import("@/components/public/NewsletterPopup").then((m) => ({
+    default: m.NewsletterPopup,
+  })),
 );
 
 export default function PublicLayout({

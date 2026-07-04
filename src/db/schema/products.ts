@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // PRODUCTS TABLE
@@ -14,18 +14,28 @@ export const products = sqliteTable("products", {
   compareAtPrice: real("compare_at_price"),
   currency: text("currency").notNull().default("MXN"),
   category: text("category", {
-    enum: ["music", "clothing", "accessories", "merchandise"]
-  }).notNull().default("merchandise"),
+    enum: ["music", "clothing", "accessories", "merchandise"],
+  })
+    .notNull()
+    .default("merchandise"),
   imageUrl: text("image_url"),
   images: text("images", { mode: "json" }).$type<string[]>().default([]),
   stripeProductId: text("stripe_product_id"),
   stripePriceId: text("stripe_price_id"),
-  isDigital: integer("is_digital", { mode: "boolean" }).notNull().default(false),
+  isDigital: integer("is_digital", { mode: "boolean" })
+    .notNull()
+    .default(false),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
   stockQuantity: integer("stock_quantity"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -38,8 +48,10 @@ export const orders = sqliteTable("orders", {
   customerEmail: text("customer_email").notNull(),
   customerName: text("customer_name"),
   status: text("status", {
-    enum: ["pending", "paid", "shipped", "delivered", "cancelled", "refunded"]
-  }).notNull().default("pending"),
+    enum: ["pending", "paid", "shipped", "delivered", "cancelled", "refunded"],
+  })
+    .notNull()
+    .default("pending"),
   subtotal: real("subtotal").notNull(),
   tax: real("tax").notNull().default(0),
   shipping: real("shipping").notNull().default(0),
@@ -49,8 +61,12 @@ export const orders = sqliteTable("orders", {
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   shippingAddress: text("shipping_address"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -59,12 +75,18 @@ export const orders = sqliteTable("orders", {
 
 export const orderItems = sqliteTable("order_items", {
   id: text("id").primaryKey(),
-  orderId: text("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
-  productId: text("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  orderId: text("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  productId: text("product_id")
+    .notNull()
+    .references(() => products.id, { onDelete: "restrict" }),
   quantity: integer("quantity").notNull(),
   unitPrice: real("unit_price").notNull(),
   total: real("total").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

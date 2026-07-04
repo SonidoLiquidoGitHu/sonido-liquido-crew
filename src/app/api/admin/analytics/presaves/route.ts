@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { presaveClicks, upcomingReleases } from "@/db/schema";
-import { sql, eq, gte, desc } from "drizzle-orm";
+import { desc, eq, gte, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -36,9 +36,7 @@ export async function GET(request: NextRequest) {
     const dateFilterStr = dateFilter.toISOString();
 
     // Build base query conditions
-    const conditions = [
-      sql`${presaveClicks.clickedAt} >= ${dateFilterStr}`,
-    ];
+    const conditions = [sql`${presaveClicks.clickedAt} >= ${dateFilterStr}`];
 
     if (releaseId) {
       conditions.push(eq(presaveClicks.upcomingReleaseId, releaseId));
@@ -90,12 +88,12 @@ export async function GET(request: NextRequest) {
     // Calculate percentages
     const totalClicks = totals?.totalClicks || 0;
 
-    const platformWithPercentage = byPlatform.map(p => ({
+    const platformWithPercentage = byPlatform.map((p) => ({
       ...p,
       percentage: totalClicks > 0 ? (p.count / totalClicks) * 100 : 0,
     }));
 
-    const sourceWithPercentage = bySource.map(s => ({
+    const sourceWithPercentage = bySource.map((s) => ({
       ...s,
       percentage: totalClicks > 0 ? (s.count / totalClicks) * 100 : 0,
     }));
@@ -107,9 +105,10 @@ export async function GET(request: NextRequest) {
       })
       .from(upcomingReleases);
 
-    const conversionRate = viewTotals?.totalViews > 0
-      ? (totalClicks / viewTotals.totalViews) * 100
-      : 0;
+    const conversionRate =
+      viewTotals?.totalViews > 0
+        ? (totalClicks / viewTotals.totalViews) * 100
+        : 0;
 
     return NextResponse.json({
       success: true,
@@ -130,7 +129,7 @@ export async function GET(request: NextRequest) {
     console.error("[Presave Analytics] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch analytics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

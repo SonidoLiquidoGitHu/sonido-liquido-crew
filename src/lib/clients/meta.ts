@@ -15,7 +15,7 @@
 
 import { db } from "@/db/client";
 import { socialPostQueue, socialPostsLog } from "@/db/schema";
-import { eq, and, desc, sql as drizzleSql } from "drizzle-orm";
+import { and, desc, sql as drizzleSql, eq } from "drizzle-orm";
 
 // ===========================================
 // CONFIGURATION
@@ -98,7 +98,8 @@ export async function isMetaConfiguredAsync(): Promise<boolean> {
  */
 function isMetaConfigured(): boolean {
   return !!(
-    (process.env.META_SYSTEM_USER_TOKEN || _dbCredentials?.META_SYSTEM_USER_TOKEN) &&
+    (process.env.META_SYSTEM_USER_TOKEN ||
+      _dbCredentials?.META_SYSTEM_USER_TOKEN) &&
     (process.env.FACEBOOK_PAGE_ID || _dbCredentials?.FACEBOOK_PAGE_ID)
   );
 }
@@ -132,7 +133,7 @@ export function invalidateMetaCredentialsCache(): void {
  */
 export function extractStoryLinkUrl(
   caption: string | null | undefined,
-  fallbackLinkUrl?: string | null
+  fallbackLinkUrl?: string | null,
 ): string | undefined {
   if (!caption) return fallbackLinkUrl || undefined;
 
@@ -141,7 +142,9 @@ export function extractStoryLinkUrl(
   if (spotifyMatch) return spotifyMatch[0];
 
   // Priority 2: YouTube URLs
-  const ytMatch = caption.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]+|youtu\.be\/[^\s)]+)/);
+  const ytMatch = caption.match(
+    /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]+|youtu\.be\/[^\s)]+)/,
+  );
   if (ytMatch) return ytMatch[0];
 
   // Priority 3: Any other URL (feature.fm, linkfire, sonidoliquido.com, etc.)
@@ -166,7 +169,7 @@ async function getPageAccessToken(): Promise<string> {
 
   try {
     const response = await fetch(
-      `${META_GRAPH_API}/${pageId}?fields=access_token&access_token=${systemToken}`
+      `${META_GRAPH_API}/${pageId}?fields=access_token&access_token=${systemToken}`,
     );
     const data = await response.json();
     if (data.access_token) {
@@ -175,7 +178,9 @@ async function getPageAccessToken(): Promise<string> {
       return _pageAccessToken!;
     }
     // Fallback: system token itself
-    console.warn("[Meta] Could not get Page token, using system token directly");
+    console.warn(
+      "[Meta] Could not get Page token, using system token directly",
+    );
     return systemToken;
   } catch (error) {
     console.warn("[Meta] Page token exchange failed:", error);
@@ -197,12 +202,15 @@ async function getInstagramBusinessAccountId(): Promise<string | null> {
 
   try {
     const response = await fetch(
-      `${META_GRAPH_API}/${pageId}?fields=instagram_business_account&access_token=${token}`
+      `${META_GRAPH_API}/${pageId}?fields=instagram_business_account&access_token=${token}`,
     );
     const data = await response.json();
     if (data.instagram_business_account?.id) {
       _igBusinessAccountId = data.instagram_business_account.id;
-      console.log("[Meta] Instagram Business Account ID:", _igBusinessAccountId);
+      console.log(
+        "[Meta] Instagram Business Account ID:",
+        _igBusinessAccountId,
+      );
       return _igBusinessAccountId;
     }
     console.warn("[Meta] No Instagram Business Account found for this page");
@@ -231,7 +239,7 @@ export interface TokenInfo {
 }
 
 export async function validateToken(token?: string): Promise<TokenInfo> {
-  const tokenToCheck = token || await getSystemUserToken();
+  const tokenToCheck = token || (await getSystemUserToken());
   if (!tokenToCheck) {
     return {
       isValid: false,
@@ -249,7 +257,7 @@ export async function validateToken(token?: string): Promise<TokenInfo> {
   try {
     // 1. Validate the token itself using /me endpoint
     const meResponse = await fetch(
-      `${META_GRAPH_API}/me?fields=id,name&access_token=${tokenToCheck}`
+      `${META_GRAPH_API}/me?fields=id,name&access_token=${tokenToCheck}`,
     );
     const meData = await meResponse.json();
 
@@ -274,7 +282,7 @@ export async function validateToken(token?: string): Promise<TokenInfo> {
     const fbPageId = await getFacebookPageId();
     try {
       const pageRes = await fetch(
-        `${META_GRAPH_API}/${fbPageId}?fields=id,name,access_token&access_token=${tokenToCheck}`
+        `${META_GRAPH_API}/${fbPageId}?fields=id,name,access_token&access_token=${tokenToCheck}`,
       );
       const pageData = await pageRes.json();
       pageAccessible = !pageData.error && !!pageData.access_token;
@@ -289,10 +297,11 @@ export async function validateToken(token?: string): Promise<TokenInfo> {
     let igAccountAccessible = false;
     try {
       const igRes = await fetch(
-        `${META_GRAPH_API}/${fbPageId}?fields=instagram_business_account&access_token=${tokenToCheck}`
+        `${META_GRAPH_API}/${fbPageId}?fields=instagram_business_account&access_token=${tokenToCheck}`,
       );
       const igData = await igRes.json();
-      igAccountAccessible = !igData.error && !!igData.instagram_business_account?.id;
+      igAccountAccessible =
+        !igData.error && !!igData.instagram_business_account?.id;
       if (igData.instagram_business_account?.id) {
         _igBusinessAccountId = igData.instagram_business_account.id;
       }
@@ -311,7 +320,7 @@ export async function validateToken(token?: string): Promise<TokenInfo> {
     if (appIdValue && appSecretValue) {
       try {
         const debugRes = await fetch(
-          `${META_GRAPH_API}/debug_token?input_token=${tokenToCheck}&access_token=${appIdValue}|${appSecretValue}`
+          `${META_GRAPH_API}/debug_token?input_token=${tokenToCheck}&access_token=${appIdValue}|${appSecretValue}`,
         );
         const debugData = await debugRes.json();
         if (!debugData.error && debugData.data) {
@@ -374,21 +383,38 @@ export interface FacebookPostResult {
 export async function postToFacebook(
   imageUrl: string,
   caption: string,
-  linkUrl?: string
+  linkUrl?: string,
 ): Promise<FacebookPostResult> {
   if (!(await isMetaConfiguredAsync())) {
-    return { success: false, postId: null, postUrl: null, error: "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
+    return {
+      success: false,
+      postId: null,
+      postUrl: null,
+      error:
+        "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID",
+    };
   }
 
   const pageToken = await getPageAccessToken();
   const pageId = await getFacebookPageId();
 
   if (!pageToken) {
-    return { success: false, postId: null, postUrl: null, error: "Could not obtain a Page access token — check META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
+    return {
+      success: false,
+      postId: null,
+      postUrl: null,
+      error:
+        "Could not obtain a Page access token — check META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID",
+    };
   }
 
   if (!pageId) {
-    return { success: false, postId: null, postUrl: null, error: "FACEBOOK_PAGE_ID is not set" };
+    return {
+      success: false,
+      postId: null,
+      postUrl: null,
+      error: "FACEBOOK_PAGE_ID is not set",
+    };
   }
 
   try {
@@ -397,7 +423,10 @@ export async function postToFacebook(
     // Works with pages_manage_posts permission + Page access token.
     const fullCaption = linkUrl ? `${caption}\n\n${linkUrl}` : caption;
 
-    console.log("[Meta] Posting to FB Page photos with image:", imageUrl?.substring(0, 80));
+    console.log(
+      "[Meta] Posting to FB Page photos with image:",
+      imageUrl?.substring(0, 80),
+    );
 
     const photoResponse = await fetch(`${META_GRAPH_API}/${pageId}/photos`, {
       method: "POST",
@@ -412,12 +441,20 @@ export async function postToFacebook(
     const photoData = await photoResponse.json();
 
     if (photoData.error) {
-      console.error("[Meta] FB photo post error:", JSON.stringify(photoData.error));
-      const fbErrorMsg = photoData.error.message || photoData.error.type || `Error code ${photoData.error.code || "unknown"}`;
+      console.error(
+        "[Meta] FB photo post error:",
+        JSON.stringify(photoData.error),
+      );
+      const fbErrorMsg =
+        photoData.error.message ||
+        photoData.error.type ||
+        `Error code ${photoData.error.code || "unknown"}`;
 
       // If photo post fails, try feed post with link as fallback
       if (linkUrl) {
-        console.warn("[Meta] FB photo post failed, trying feed link post as fallback...");
+        console.warn(
+          "[Meta] FB photo post failed, trying feed link post as fallback...",
+        );
         const feedResponse = await fetch(`${META_GRAPH_API}/${pageId}/feed`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -431,8 +468,14 @@ export async function postToFacebook(
         const feedData = await feedResponse.json();
 
         if (feedData.error) {
-          console.error("[Meta] FB feed post also failed:", JSON.stringify(feedData.error));
-          const feedErrorMsg = feedData.error.message || feedData.error.type || `Error code ${feedData.error.code || "unknown"}`;
+          console.error(
+            "[Meta] FB feed post also failed:",
+            JSON.stringify(feedData.error),
+          );
+          const feedErrorMsg =
+            feedData.error.message ||
+            feedData.error.type ||
+            `Error code ${feedData.error.code || "unknown"}`;
           return {
             success: false,
             postId: null,
@@ -443,7 +486,10 @@ export async function postToFacebook(
 
         const postId = feedData.id || null;
         const postUrl = postId ? `https://facebook.com/${postId}` : null;
-        console.log("[Meta] Facebook feed link post successful (fallback):", postId);
+        console.log(
+          "[Meta] Facebook feed link post successful (fallback):",
+          postId,
+        );
         return { success: true, postId, postUrl };
       }
 
@@ -491,10 +537,16 @@ export interface InstagramPostResult {
  */
 export async function postToInstagram(
   imageUrl: string,
-  caption: string
+  caption: string,
 ): Promise<InstagramPostResult> {
   if (!(await isMetaConfiguredAsync())) {
-    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error:
+        "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID",
+    };
   }
 
   const igAccountId = await getInstagramBusinessAccountId();
@@ -503,7 +555,8 @@ export async function postToInstagram(
       success: false,
       mediaId: null,
       permalink: null,
-      error: "Instagram Business Account not found — make sure your FB Page is connected to an IG Business Account in Meta Business Settings",
+      error:
+        "Instagram Business Account not found — make sure your FB Page is connected to an IG Business Account in Meta Business Settings",
     };
   }
 
@@ -512,7 +565,8 @@ export async function postToInstagram(
       success: false,
       mediaId: null,
       permalink: null,
-      error: "No image URL provided — Instagram requires a publicly accessible image URL",
+      error:
+        "No image URL provided — Instagram requires a publicly accessible image URL",
     };
   }
 
@@ -521,29 +575,49 @@ export async function postToInstagram(
 
   try {
     // Step 1: Create media container
-    console.log("[Meta] Creating IG container with image:", imageUrl.substring(0, 80));
+    console.log(
+      "[Meta] Creating IG container with image:",
+      imageUrl.substring(0, 80),
+    );
 
-    const containerResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        caption: caption,
-        access_token: token,
-      }),
-    });
+    const containerResponse = await fetch(
+      `${META_GRAPH_API}/${igAccountId}/media`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          caption: caption,
+          access_token: token,
+        }),
+      },
+    );
 
     const containerData = await containerResponse.json();
 
     if (containerData.error) {
-      console.error("[Meta] IG container creation error:", JSON.stringify(containerData.error));
-      const igErrorMsg = containerData.error.message || containerData.error.type || `Error code ${containerData.error.code || "unknown"}`;
+      console.error(
+        "[Meta] IG container creation error:",
+        JSON.stringify(containerData.error),
+      );
+      const igErrorMsg =
+        containerData.error.message ||
+        containerData.error.type ||
+        `Error code ${containerData.error.code || "unknown"}`;
       // Common IG errors guidance
       let guidance = "";
-      if (igErrorMsg.includes("could not download") || igErrorMsg.includes("could not retrieve")) {
-        guidance = " — The image URL is not publicly accessible. Make sure it's a direct URL (not Dropbox/Google Drive). Spotify CDN URLs work.";
-      } else if (igErrorMsg.includes("OAuth") || igErrorMsg.includes("permission")) {
-        guidance = " — Check that your System User Token has instagram_basic and instagram_content_publish permissions.";
+      if (
+        igErrorMsg.includes("could not download") ||
+        igErrorMsg.includes("could not retrieve")
+      ) {
+        guidance =
+          " — The image URL is not publicly accessible. Make sure it's a direct URL (not Dropbox/Google Drive). Spotify CDN URLs work.";
+      } else if (
+        igErrorMsg.includes("OAuth") ||
+        igErrorMsg.includes("permission")
+      ) {
+        guidance =
+          " — Check that your System User Token has instagram_basic and instagram_content_publish permissions.";
       }
       return {
         success: false,
@@ -566,7 +640,7 @@ export async function postToInstagram(
       attempts++;
 
       const statusResponse = await fetch(
-        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`
+        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`,
       );
       const statusData = await statusResponse.json();
       statusCode = statusData.status_code || "IN_PROGRESS";
@@ -596,14 +670,17 @@ export async function postToInstagram(
     }
 
     // Step 3: Publish the container
-    const publishResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media_publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        creation_id: containerId,
-        access_token: token,
-      }),
-    });
+    const publishResponse = await fetch(
+      `${META_GRAPH_API}/${igAccountId}/media_publish`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creation_id: containerId,
+          access_token: token,
+        }),
+      },
+    );
 
     const publishData = await publishResponse.json();
 
@@ -613,7 +690,10 @@ export async function postToInstagram(
         success: false,
         mediaId: null,
         permalink: null,
-        error: publishData.error.message || publishData.error.type || `IG Publish Error ${publishData.error.code || 'unknown'}`,
+        error:
+          publishData.error.message ||
+          publishData.error.type ||
+          `IG Publish Error ${publishData.error.code || "unknown"}`,
       };
     }
 
@@ -623,7 +703,7 @@ export async function postToInstagram(
     let permalink: string | null = null;
     try {
       const permalinkResponse = await fetch(
-        `${META_GRAPH_API}/${mediaId}?fields=permalink&access_token=${token}`
+        `${META_GRAPH_API}/${mediaId}?fields=permalink&access_token=${token}`,
       );
       const permalinkData = await permalinkResponse.json();
       permalink = permalinkData.permalink || null;
@@ -665,10 +745,16 @@ export async function postToInstagramStory(
   imageUrl: string,
   caption: string,
   linkUrl?: string,
-  options?: { composeForStory?: boolean }
+  options?: { composeForStory?: boolean },
 ): Promise<InstagramPostResult> {
   if (!(await isMetaConfiguredAsync())) {
-    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID" };
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error:
+        "Meta API not configured — set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID",
+    };
   }
 
   const igAccountId = await getInstagramBusinessAccountId();
@@ -677,7 +763,8 @@ export async function postToInstagramStory(
       success: false,
       mediaId: null,
       permalink: null,
-      error: "Instagram Business Account not found — make sure your FB Page is connected to an IG Business Account in Meta Business Settings",
+      error:
+        "Instagram Business Account not found — make sure your FB Page is connected to an IG Business Account in Meta Business Settings",
     };
   }
 
@@ -688,21 +775,33 @@ export async function postToInstagramStory(
   let finalImageUrl = imageUrl;
   if (options?.composeForStory && imageUrl) {
     try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || "https://sonidoliquido.com";
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        process.env.URL ||
+        "https://sonidoliquido.com";
       const composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}`;
       // Quick HEAD request to verify the composer can fetch + process the image.
       // If it fails, fall back to the raw image URL (IG will crop it — better
       // than failing the entire Story post).
-      const probe = await fetch(composerUrl, { method: "GET", signal: AbortSignal.timeout(20_000) });
+      const probe = await fetch(composerUrl, {
+        method: "GET",
+        signal: AbortSignal.timeout(20_000),
+      });
       if (probe.ok) {
         finalImageUrl = composerUrl;
-        console.log("[Meta] Story image composer: using composed 1080×1920 image");
+        console.log(
+          "[Meta] Story image composer: using composed 1080×1920 image",
+        );
       } else {
-        console.warn(`[Meta] Story image composer returned HTTP ${probe.status}, falling back to raw image URL`);
+        console.warn(
+          `[Meta] Story image composer returned HTTP ${probe.status}, falling back to raw image URL`,
+        );
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
-      console.warn(`[Meta] Story image composer failed (${msg}), falling back to raw image URL`);
+      console.warn(
+        `[Meta] Story image composer failed (${msg}), falling back to raw image URL`,
+      );
     }
   }
 
@@ -711,7 +810,8 @@ export async function postToInstagramStory(
       success: false,
       mediaId: null,
       permalink: null,
-      error: "No image URL provided — Instagram Stories requires a publicly accessible image URL",
+      error:
+        "No image URL provided — Instagram Stories requires a publicly accessible image URL",
     };
   }
 
@@ -720,7 +820,10 @@ export async function postToInstagramStory(
 
   try {
     // Step 1: Create Story container
-    console.log("[Meta] Creating IG Story container with image:", imageUrl.substring(0, 80));
+    console.log(
+      "[Meta] Creating IG Story container with image:",
+      imageUrl.substring(0, 80),
+    );
 
     const containerBody: Record<string, string | boolean> = {
       media_type: "STORIES",
@@ -741,24 +844,42 @@ export async function postToInstagramStory(
       containerBody.link = linkUrl;
     }
 
-    const containerResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(containerBody),
-    });
+    const containerResponse = await fetch(
+      `${META_GRAPH_API}/${igAccountId}/media`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(containerBody),
+      },
+    );
 
     const containerData = await containerResponse.json();
 
     if (containerData.error) {
-      console.error("[Meta] IG Story container creation error:", JSON.stringify(containerData.error));
-      const igErrorMsg = containerData.error.message || containerData.error.type || `Error code ${containerData.error.code || "unknown"}`;
+      console.error(
+        "[Meta] IG Story container creation error:",
+        JSON.stringify(containerData.error),
+      );
+      const igErrorMsg =
+        containerData.error.message ||
+        containerData.error.type ||
+        `Error code ${containerData.error.code || "unknown"}`;
       let guidance = "";
-      if (igErrorMsg.includes("could not download") || igErrorMsg.includes("could not retrieve")) {
-        guidance = " — The image URL is not publicly accessible. Make sure it's a direct URL (not Dropbox/Google Drive).";
-      } else if (igErrorMsg.includes("OAuth") || igErrorMsg.includes("permission")) {
-        guidance = " — Check that your System User Token has instagram_basic and instagram_content_publish permissions.";
+      if (
+        igErrorMsg.includes("could not download") ||
+        igErrorMsg.includes("could not retrieve")
+      ) {
+        guidance =
+          " — The image URL is not publicly accessible. Make sure it's a direct URL (not Dropbox/Google Drive).";
+      } else if (
+        igErrorMsg.includes("OAuth") ||
+        igErrorMsg.includes("permission")
+      ) {
+        guidance =
+          " — Check that your System User Token has instagram_basic and instagram_content_publish permissions.";
       } else if (igErrorMsg.includes("link")) {
-        guidance = " — IG Story link stickers require instagram_content_publish permission and a verified account.";
+        guidance =
+          " — IG Story link stickers require instagram_content_publish permission and a verified account.";
       }
       return {
         success: false,
@@ -781,7 +902,7 @@ export async function postToInstagramStory(
       attempts++;
 
       const statusResponse = await fetch(
-        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`
+        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`,
       );
       const statusData = await statusResponse.json();
       statusCode = statusData.status_code || "IN_PROGRESS";
@@ -791,7 +912,10 @@ export async function postToInstagramStory(
       }
 
       if (statusCode === "ERROR") {
-        console.error("[Meta] IG Story container processing error:", statusData);
+        console.error(
+          "[Meta] IG Story container processing error:",
+          statusData,
+        );
         return {
           success: false,
           mediaId: null,
@@ -811,14 +935,17 @@ export async function postToInstagramStory(
     }
 
     // Step 3: Publish the Story container
-    const publishResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media_publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        creation_id: containerId,
-        access_token: token,
-      }),
-    });
+    const publishResponse = await fetch(
+      `${META_GRAPH_API}/${igAccountId}/media_publish`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creation_id: containerId,
+          access_token: token,
+        }),
+      },
+    );
 
     const publishData = await publishResponse.json();
 
@@ -828,7 +955,10 @@ export async function postToInstagramStory(
         success: false,
         mediaId: null,
         permalink: null,
-        error: publishData.error.message || publishData.error.type || `IG Story Publish Error ${publishData.error.code || 'unknown'}`,
+        error:
+          publishData.error.message ||
+          publishData.error.type ||
+          `IG Story Publish Error ${publishData.error.code || "unknown"}`,
       };
     }
 
@@ -865,10 +995,15 @@ export async function postToInstagramStory(
 export async function postInstagramReel(
   videoUrl: string,
   caption: string,
-  shareToFeed: boolean = true
+  shareToFeed = true,
 ): Promise<InstagramPostResult> {
   if (!(await isMetaConfiguredAsync())) {
-    return { success: false, mediaId: null, permalink: null, error: "Meta API not configured" };
+    return {
+      success: false,
+      mediaId: null,
+      permalink: null,
+      error: "Meta API not configured",
+    };
   }
 
   const igAccountId = await getInstagramBusinessAccountId();
@@ -889,29 +1024,41 @@ export async function postInstagramReel(
 
   try {
     // Step 1: Create Reels container
-    console.log("[Meta] Creating IG Reels container with video:", resolvedVideoUrl.substring(0, 80));
+    console.log(
+      "[Meta] Creating IG Reels container with video:",
+      resolvedVideoUrl.substring(0, 80),
+    );
 
-    const containerResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        media_type: "REELS",
-        video_url: resolvedVideoUrl,
-        caption: caption,
-        share_to_feed: shareToFeed,
-        access_token: token,
-      }),
-    });
+    const containerResponse = await fetch(
+      `${META_GRAPH_API}/${igAccountId}/media`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          media_type: "REELS",
+          video_url: resolvedVideoUrl,
+          caption: caption,
+          share_to_feed: shareToFeed,
+          access_token: token,
+        }),
+      },
+    );
 
     const containerData = await containerResponse.json();
 
     if (containerData.error) {
-      console.error("[Meta] IG Reels container creation error:", containerData.error);
+      console.error(
+        "[Meta] IG Reels container creation error:",
+        containerData.error,
+      );
       return {
         success: false,
         mediaId: null,
         permalink: null,
-        error: containerData.error.message || containerData.error.type || `IG Error ${containerData.error.code || 'unknown'}`,
+        error:
+          containerData.error.message ||
+          containerData.error.type ||
+          `IG Error ${containerData.error.code || "unknown"}`,
       };
     }
 
@@ -936,24 +1083,29 @@ export async function postInstagramReel(
       attempts++;
 
       const statusResponse = await fetch(
-        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`
+        `${META_GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`,
       );
       const statusData = await statusResponse.json();
       statusCode = statusData.status_code || "IN_PROGRESS";
 
-      console.log(`[Meta] IG Reels container status: ${statusCode} (attempt ${attempts}/${maxAttempts}, waited ${delay/1000}s)`);
+      console.log(
+        `[Meta] IG Reels container status: ${statusCode} (attempt ${attempts}/${maxAttempts}, waited ${delay / 1000}s)`,
+      );
 
       if (statusCode === "FINISHED") {
         break;
       }
 
       if (statusCode === "ERROR") {
-        console.error("[Meta] IG Reels container processing error:", statusData);
+        console.error(
+          "[Meta] IG Reels container processing error:",
+          statusData,
+        );
         return {
           success: false,
           mediaId: null,
           permalink: null,
-          error: `Reels container processing failed: ${statusData.status_message || 'after ' + attempts + ' polls'}`,
+          error: `Reels container processing failed: ${statusData.status_message || `after ${attempts} polls`}`,
         };
       }
     }
@@ -962,7 +1114,9 @@ export async function postInstagramReel(
       // Container is still processing but we need to return.
       // Don't treat this as a hard failure — the container exists and may finish later.
       // Return the containerId so the caller can check status later.
-      console.warn(`[Meta] IG Reels container still processing after ~90s. Container ID: ${containerId}`);
+      console.warn(
+        `[Meta] IG Reels container still processing after ~90s. Container ID: ${containerId}`,
+      );
       return {
         success: false,
         mediaId: null,
@@ -972,14 +1126,17 @@ export async function postInstagramReel(
     }
 
     // Step 3: Publish the container
-    const publishResponse = await fetch(`${META_GRAPH_API}/${igAccountId}/media_publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        creation_id: containerId,
-        access_token: token,
-      }),
-    });
+    const publishResponse = await fetch(
+      `${META_GRAPH_API}/${igAccountId}/media_publish`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creation_id: containerId,
+          access_token: token,
+        }),
+      },
+    );
 
     const publishData = await publishResponse.json();
 
@@ -989,7 +1146,10 @@ export async function postInstagramReel(
         success: false,
         mediaId: null,
         permalink: null,
-        error: publishData.error.message || publishData.error.type || `IG Publish Error ${publishData.error.code || 'unknown'}`,
+        error:
+          publishData.error.message ||
+          publishData.error.type ||
+          `IG Publish Error ${publishData.error.code || "unknown"}`,
       };
     }
 
@@ -999,7 +1159,7 @@ export async function postInstagramReel(
     let permalink: string | null = null;
     try {
       const permalinkResponse = await fetch(
-        `${META_GRAPH_API}/${mediaId}?fields=permalink&access_token=${token}`
+        `${META_GRAPH_API}/${mediaId}?fields=permalink&access_token=${token}`,
       );
       const permalinkData = await permalinkResponse.json();
       permalink = permalinkData.permalink || null;
@@ -1007,7 +1167,11 @@ export async function postInstagramReel(
       // Non-critical
     }
 
-    console.log("[Meta] Instagram Reel published successfully:", mediaId, permalink);
+    console.log(
+      "[Meta] Instagram Reel published successfully:",
+      mediaId,
+      permalink,
+    );
     return { success: true, mediaId, permalink };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
@@ -1042,10 +1206,15 @@ export interface FacebookReelResult {
  */
 export async function postFacebookReel(
   videoUrl: string,
-  caption: string
+  caption: string,
 ): Promise<FacebookReelResult> {
   if (!(await isMetaConfiguredAsync())) {
-    return { success: false, reelId: null, postUrl: null, error: "Meta API not configured" };
+    return {
+      success: false,
+      reelId: null,
+      postUrl: null,
+      error: "Meta API not configured",
+    };
   }
 
   const pageToken = await getPageAccessToken();
@@ -1059,17 +1228,23 @@ export async function postFacebookReel(
     // Step 1: Start upload phase
     console.log("[Meta] Starting FB Reel upload for page:", pageId);
 
-    const startResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        upload_phase: "start",
-        access_token: pageToken,
-      }),
-    });
+    const startResponse = await fetch(
+      `${META_GRAPH_API}/${pageId}/video_reels`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          upload_phase: "start",
+          access_token: pageToken,
+        }),
+      },
+    );
 
     const startData = await startResponse.json();
-    console.log("[Meta] FB Reel start response:", JSON.stringify(startData).substring(0, 200));
+    console.log(
+      "[Meta] FB Reel start response:",
+      JSON.stringify(startData).substring(0, 200),
+    );
 
     if (startData.error) {
       console.error("[Meta] FB Reel start upload error:", startData.error);
@@ -1080,22 +1255,31 @@ export async function postFacebookReel(
 
     if (videoId) {
       // Step 2: Finish upload with video_url and description
-      console.log("[Meta] Finishing FB Reel upload with video URL:", resolvedVideoUrl.substring(0, 80));
+      console.log(
+        "[Meta] Finishing FB Reel upload with video URL:",
+        resolvedVideoUrl.substring(0, 80),
+      );
 
-      const finishResponse = await fetch(`${META_GRAPH_API}/${pageId}/video_reels`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          upload_phase: "finish",
-          video_url: resolvedVideoUrl,
-          access_token: pageToken,
-          description: caption,
-          video_id: videoId,
-        }),
-      });
+      const finishResponse = await fetch(
+        `${META_GRAPH_API}/${pageId}/video_reels`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            upload_phase: "finish",
+            video_url: resolvedVideoUrl,
+            access_token: pageToken,
+            description: caption,
+            video_id: videoId,
+          }),
+        },
+      );
 
       const finishData = await finishResponse.json();
-      console.log("[Meta] FB Reel finish response:", JSON.stringify(finishData).substring(0, 200));
+      console.log(
+        "[Meta] FB Reel finish response:",
+        JSON.stringify(finishData).substring(0, 200),
+      );
 
       if (finishData.error) {
         console.error("[Meta] FB Reel finish upload error:", finishData.error);
@@ -1111,29 +1295,34 @@ export async function postFacebookReel(
         if (pollResult === "ready") {
           console.log("[Meta] Facebook Reel published successfully:", reelId);
           return { success: true, reelId, postUrl };
-        } else if (pollResult === "processing") {
-          console.warn(`[Meta] FB Reel still processing, but upload was successful`);
+        }
+        if (pollResult === "processing") {
+          console.warn(
+            "[Meta] FB Reel still processing, but upload was successful",
+          );
           return {
             success: true,
             reelId,
             postUrl,
-            error: "Reel uploaded but still processing — check Facebook for final status",
-          };
-        } else {
-          return {
-            success: false,
-            reelId,
-            postUrl: null,
-            error: pollResult || "FB Reel processing failed",
+            error:
+              "Reel uploaded but still processing — check Facebook for final status",
           };
         }
+        return {
+          success: false,
+          reelId,
+          postUrl: null,
+          error: pollResult || "FB Reel processing failed",
+        };
       }
     }
 
     // ===== Strategy B: Fallback — Post video as a regular page video =====
     // If the /video_reels endpoint fails (missing permissions, API issues, etc.),
     // fall back to posting as a regular video which still shows on the page.
-    console.log("[Meta] FB Reels endpoint failed, falling back to /videos endpoint");
+    console.log(
+      "[Meta] FB Reels endpoint failed, falling back to /videos endpoint",
+    );
 
     const videoResponse = await fetch(`${META_GRAPH_API}/${pageId}/videos`, {
       method: "POST",
@@ -1146,7 +1335,10 @@ export async function postFacebookReel(
     });
 
     const videoData = await videoResponse.json();
-    console.log("[Meta] FB video fallback response:", JSON.stringify(videoData).substring(0, 200));
+    console.log(
+      "[Meta] FB video fallback response:",
+      JSON.stringify(videoData).substring(0, 200),
+    );
 
     if (videoData.error) {
       console.error("[Meta] FB video fallback error:", videoData.error);
@@ -1154,34 +1346,39 @@ export async function postFacebookReel(
         success: false,
         reelId: null,
         postUrl: null,
-        error: `FB Reel failed and video fallback also failed: ${videoData.error.message || videoData.error.type || 'Error ' + (videoData.error.code || 'unknown')}`,
+        error: `FB Reel failed and video fallback also failed: ${videoData.error.message || videoData.error.type || `Error ${videoData.error.code || "unknown"}`}`,
       };
     }
 
     const fallbackVideoId = videoData.id;
-    const postUrl = fallbackVideoId ? `https://facebook.com/${fallbackVideoId}` : null;
+    const postUrl = fallbackVideoId
+      ? `https://facebook.com/${fallbackVideoId}`
+      : null;
     console.log("[Meta] FB video posted as regular video:", fallbackVideoId);
 
     // Poll for processing
-    const pollResult = await pollFacebookVideoStatus(fallbackVideoId, pageToken);
+    const pollResult = await pollFacebookVideoStatus(
+      fallbackVideoId,
+      pageToken,
+    );
 
     if (pollResult === "ready" || pollResult === "processing") {
       return {
         success: true,
         reelId: fallbackVideoId,
         postUrl,
-        error: pollResult === "processing"
-          ? "Video uploaded but still processing — check Facebook"
-          : undefined,
-      };
-    } else {
-      return {
-        success: false,
-        reelId: fallbackVideoId,
-        postUrl: null,
-        error: pollResult || "FB video upload failed",
+        error:
+          pollResult === "processing"
+            ? "Video uploaded but still processing — check Facebook"
+            : undefined,
       };
     }
+    return {
+      success: false,
+      reelId: fallbackVideoId,
+      postUrl: null,
+      error: pollResult || "FB video upload failed",
+    };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
     console.error("[Meta] Facebook Reel post exception:", errMsg);
@@ -1200,7 +1397,7 @@ export async function postFacebookReel(
 async function pollFacebookReelStatus(
   reelId: string,
   pageToken: string,
-  maxAttempts: number = 10
+  maxAttempts = 10,
 ): Promise<"ready" | "processing" | string> {
   let attempts = 0;
 
@@ -1210,7 +1407,7 @@ async function pollFacebookReelStatus(
 
     try {
       const statusResponse = await fetch(
-        `${META_GRAPH_API}/${reelId}?fields=status,processing_progress&access_token=${pageToken}`
+        `${META_GRAPH_API}/${reelId}?fields=status,processing_progress&access_token=${pageToken}`,
       );
       const statusData = await statusResponse.json();
 
@@ -1218,10 +1415,14 @@ async function pollFacebookReelStatus(
       const progress = statusData.processing_progress;
 
       console.log(
-        `[Meta] FB Reel processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`
+        `[Meta] FB Reel processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`,
       );
 
-      if (status === "ready" || status === "published" || status === "complete") {
+      if (
+        status === "ready" ||
+        status === "published" ||
+        status === "complete"
+      ) {
         return "ready";
       }
 
@@ -1230,7 +1431,11 @@ async function pollFacebookReelStatus(
       }
 
       if (statusData.error) {
-        return statusData.error.message || statusData.error.type || `Error ${statusData.error.code || 'unknown'}`;
+        return (
+          statusData.error.message ||
+          statusData.error.type ||
+          `Error ${statusData.error.code || "unknown"}`
+        );
       }
     } catch (statusErr) {
       console.warn("[Meta] FB Reel status poll failed:", statusErr);
@@ -1247,7 +1452,7 @@ async function pollFacebookReelStatus(
 async function pollFacebookVideoStatus(
   videoId: string,
   pageToken: string,
-  maxAttempts: number = 10
+  maxAttempts = 10,
 ): Promise<"ready" | "processing" | string> {
   let attempts = 0;
 
@@ -1257,7 +1462,7 @@ async function pollFacebookVideoStatus(
 
     try {
       const statusResponse = await fetch(
-        `${META_GRAPH_API}/${videoId}?fields=status,processing_progress&access_token=${pageToken}`
+        `${META_GRAPH_API}/${videoId}?fields=status,processing_progress&access_token=${pageToken}`,
       );
       const statusData = await statusResponse.json();
 
@@ -1265,10 +1470,15 @@ async function pollFacebookVideoStatus(
       const progress = statusData.processing_progress;
 
       console.log(
-        `[Meta] FB video processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`
+        `[Meta] FB video processing status: ${status}${progress !== undefined ? ` (${progress}%)` : ""} (attempt ${attempts}/${maxAttempts})`,
       );
 
-      if (status === "ready" || status === "published" || status === "complete" || status === "video_ready") {
+      if (
+        status === "ready" ||
+        status === "published" ||
+        status === "complete" ||
+        status === "video_ready"
+      ) {
         return "ready";
       }
 
@@ -1277,7 +1487,11 @@ async function pollFacebookVideoStatus(
       }
 
       if (statusData.error) {
-        return statusData.error.message || statusData.error.type || `Error ${statusData.error.code || 'unknown'}`;
+        return (
+          statusData.error.message ||
+          statusData.error.type ||
+          `Error ${statusData.error.code || "unknown"}`
+        );
       }
     } catch (statusErr) {
       console.warn("[Meta] FB video status poll failed:", statusErr);
@@ -1310,7 +1524,9 @@ export function ensurePublicVideoUrl(videoUrl: string): string {
     "dropbox.com",
   ];
 
-  const needsResolution = needsProxyHosts.some(host => videoUrl.includes(host));
+  const needsResolution = needsProxyHosts.some((host) =>
+    videoUrl.includes(host),
+  );
 
   if (needsResolution) {
     // Return as-is — the API route will resolve this to a temporary link
@@ -1326,7 +1542,9 @@ export function ensurePublicVideoUrl(videoUrl: string): string {
  * Temporary links are valid for 4 hours and include proper CORS headers.
  * Meta API servers can download directly from these URLs.
  */
-export async function resolveDropboxVideoUrl(videoUrl: string): Promise<string> {
+export async function resolveDropboxVideoUrl(
+  videoUrl: string,
+): Promise<string> {
   if (!videoUrl.includes("dropbox")) return videoUrl;
 
   try {
@@ -1336,7 +1554,9 @@ export async function resolveDropboxVideoUrl(videoUrl: string): Promise<string> 
     // Convert to shared link format for metadata lookup
     let sharedLink = videoUrl;
     if (sharedLink.includes("raw=1")) {
-      sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+      sharedLink = sharedLink
+        .replace("?raw=1", "?dl=0")
+        .replace("&raw=1", "&dl=0");
     }
     if (!sharedLink.includes("?")) {
       sharedLink += "?dl=0";
@@ -1352,7 +1572,7 @@ export async function resolveDropboxVideoUrl(videoUrl: string): Promise<string> 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ url: sharedLink }),
-      }
+      },
     );
 
     if (!metaResponse.ok) {
@@ -1378,7 +1598,7 @@ export async function resolveDropboxVideoUrl(videoUrl: string): Promise<string> 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ path: filePath }),
-      }
+      },
     );
 
     if (!tempLinkResponse.ok) {
@@ -1411,7 +1631,7 @@ export async function deleteFacebookPost(postId: string): Promise<boolean> {
     const pageToken = await getPageAccessToken();
     const response = await fetch(
       `${META_GRAPH_API}/${postId}?access_token=${pageToken}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
     const data = await response.json();
     return data.success === true;
@@ -1428,7 +1648,7 @@ export async function deleteInstagramPost(mediaId: string): Promise<boolean> {
     const token = await getSystemUserToken();
     const response = await fetch(
       `${META_GRAPH_API}/${mediaId}?access_token=${token}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
     const data = await response.json();
     return data.success === true;
@@ -1449,11 +1669,13 @@ export interface PostMetrics {
   impressions?: number;
 }
 
-export async function getFacebookPostMetrics(postId: string): Promise<PostMetrics | null> {
+export async function getFacebookPostMetrics(
+  postId: string,
+): Promise<PostMetrics | null> {
   try {
     const pageToken = await getPageAccessToken();
     const response = await fetch(
-      `${META_GRAPH_API}/${postId}?fields=likes.limit(0).summary(true),comments.limit(0).summary(true),shares&access_token=${pageToken}`
+      `${META_GRAPH_API}/${postId}?fields=likes.limit(0).summary(true),comments.limit(0).summary(true),shares&access_token=${pageToken}`,
     );
     const data = await response.json();
 
@@ -1473,11 +1695,13 @@ export async function getFacebookPostMetrics(postId: string): Promise<PostMetric
   }
 }
 
-export async function getInstagramPostMetrics(mediaId: string): Promise<PostMetrics | null> {
+export async function getInstagramPostMetrics(
+  mediaId: string,
+): Promise<PostMetrics | null> {
   try {
     const token = await getSystemUserToken();
     const response = await fetch(
-      `${META_GRAPH_API}/${mediaId}?fields=like_count,comments_count&access_token=${token}`
+      `${META_GRAPH_API}/${mediaId}?fields=like_count,comments_count&access_token=${token}`,
     );
     const data = await response.json();
 
@@ -1566,8 +1790,11 @@ async function isAICaptionEnabled(): Promise<boolean> {
  * 3. The caption matches the current state of the release (new vs catalog)
  * 4. AI captions are used when enabled (site setting "social_ai_captions")
  */
-async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<string> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+async function regenerateCaptionForItem(
+  item: SocialPostQueueWithId,
+): Promise<string> {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
 
   // Use cycleNumber as variation seed — different cycle = different caption style
   const variationIndex = item.cycleNumber || 0;
@@ -1614,7 +1841,9 @@ async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<st
       ctx.releaseTitle = titleMatch[1].trim();
     }
     // Extract Spotify URL from existing caption
-    const urlMatch = existingCaption.match(/(https:\/\/open\.spotify\.com\/[^\s]+)/);
+    const urlMatch = existingCaption.match(
+      /(https:\/\/open\.spotify\.com\/[^\s]+)/,
+    );
     if (urlMatch) {
       ctx.spotifyUrl = urlMatch[1];
     }
@@ -1672,17 +1901,23 @@ async function regenerateCaptionForItem(item: SocialPostQueueWithId): Promise<st
  */
 export async function processQueueItem(
   item: SocialPostQueueWithId,
-  options?: ProcessQueueItemOptions
+  options?: ProcessQueueItemOptions,
 ): Promise<PostQueueItemResult> {
   // Filter out removed platforms (e.g. "tiktok" was removed per user request)
   const SUPPORTED_PLATFORMS = ["facebook", "instagram"];
-  let platforms: string[] = JSON.parse(item.platforms || "[]").filter((p: string) => SUPPORTED_PLATFORMS.includes(p));
-  let postedPlatforms: string[] = JSON.parse(item.postedPlatforms || "[]").filter((p: string) => SUPPORTED_PLATFORMS.includes(p));
+  const platforms: string[] = JSON.parse(item.platforms || "[]").filter(
+    (p: string) => SUPPORTED_PLATFORMS.includes(p),
+  );
+  const postedPlatforms: string[] = JSON.parse(
+    item.postedPlatforms || "[]",
+  ).filter((p: string) => SUPPORTED_PLATFORMS.includes(p));
 
   // If the platforms list was modified (e.g. tiktok removed), update it in the DB
   const originalPlatforms: string[] = JSON.parse(item.platforms || "[]");
   if (JSON.stringify(platforms) !== JSON.stringify(originalPlatforms)) {
-    console.log(`[Social] Filtering out unsupported platforms from item ${item.id}: ${originalPlatforms.join(",")} → ${platforms.join(",")}`);
+    console.log(
+      `[Social] Filtering out unsupported platforms from item ${item.id}: ${originalPlatforms.join(",")} → ${platforms.join(",")}`,
+    );
     try {
       await db
         .update(socialPostQueue)
@@ -1698,9 +1933,12 @@ export async function processQueueItem(
   }
 
   // Check if all target platforms have already been posted — mark as posted and skip
-  const allTargetPlatformsPosted = platforms.length > 0 && platforms.every((p) => postedPlatforms.includes(p));
+  const allTargetPlatformsPosted =
+    platforms.length > 0 && platforms.every((p) => postedPlatforms.includes(p));
   if (allTargetPlatformsPosted) {
-    console.log(`[Social] Item ${item.id} already posted to all target platforms (${platforms.join(",")}). Marking as posted.`);
+    console.log(
+      `[Social] Item ${item.id} already posted to all target platforms (${platforms.join(",")}). Marking as posted.`,
+    );
     try {
       await db
         .update(socialPostQueue)
@@ -1717,14 +1955,26 @@ export async function processQueueItem(
     // Return a success result so the caller knows this item is done
     return {
       queueId: item.id,
-      facebook: { success: true, postId: null, postUrl: null, error: "already posted" },
-      instagram: { success: true, mediaId: null, permalink: null, error: "already posted" },
+      facebook: {
+        success: true,
+        postId: null,
+        postUrl: null,
+        error: "already posted",
+      },
+      instagram: {
+        success: true,
+        mediaId: null,
+        permalink: null,
+        error: "already posted",
+      },
     };
   }
 
   // If no supported platforms remain after filtering, mark as skipped
   if (platforms.length === 0) {
-    console.log(`[Social] Item ${item.id} has no supported platforms. Marking as skipped.`);
+    console.log(
+      `[Social] Item ${item.id} has no supported platforms. Marking as skipped.`,
+    );
     try {
       await db
         .update(socialPostQueue)
@@ -1739,8 +1989,18 @@ export async function processQueueItem(
     }
     return {
       queueId: item.id,
-      facebook: { success: false, postId: null, postUrl: null, error: "no supported platforms" },
-      instagram: { success: false, mediaId: null, permalink: null, error: "no supported platforms" },
+      facebook: {
+        success: false,
+        postId: null,
+        postUrl: null,
+        error: "no supported platforms",
+      },
+      instagram: {
+        success: false,
+        mediaId: null,
+        permalink: null,
+        error: "no supported platforms",
+      },
     };
   }
 
@@ -1754,8 +2014,18 @@ export async function processQueueItem(
   }
 
   // Default results with explicit error field so we never get "undefined" in messages
-  let fbResult: FacebookPostResult = { success: false, postId: null, postUrl: null, error: "not attempted" };
-  let igResult: InstagramPostResult = { success: false, mediaId: null, permalink: null, error: "not attempted" };
+  let fbResult: FacebookPostResult = {
+    success: false,
+    postId: null,
+    postUrl: null,
+    error: "not attempted",
+  };
+  let igResult: InstagramPostResult = {
+    success: false,
+    mediaId: null,
+    permalink: null,
+    error: "not attempted",
+  };
   let igStoryResult: InstagramPostResult | undefined = undefined;
 
   // Check if this is a vertical video — post as Reels on both FB and IG
@@ -1765,7 +2035,7 @@ export async function processQueueItem(
 
   if (isVerticalVideo) {
     // Parse the video URL from linkUrl (format: "VIDEO_URL|||WEBSITE_URL" or just a URL)
-    if (item.linkUrl && item.linkUrl.includes("|||")) {
+    if (item.linkUrl?.includes("|||")) {
       const parts = item.linkUrl.split("|||");
       videoUrl = parts[0];
       websiteLink = parts[1];
@@ -1777,13 +2047,22 @@ export async function processQueueItem(
 
     // If no video URL found, we can't post a Reel — fall back to image post
     if (!videoUrl || videoUrl.startsWith("/")) {
-      console.warn(`[Social] Vertical video item ${item.id} has no usable video URL. Falling back to image post.`);
+      console.warn(
+        `[Social] Vertical video item ${item.id} has no usable video URL. Falling back to image post.`,
+      );
     } else {
-      console.log(`[Social] Posting vertical video as Reel: ${item.sourceId} (video: ${videoUrl.substring(0, 60)}...)`);
+      console.log(
+        `[Social] Posting vertical video as Reel: ${item.sourceId} (video: ${videoUrl.substring(0, 60)}...)`,
+      );
 
       // Post to Facebook as Reel
-      if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
-        console.log(`[Social] Posting to Facebook Reel: ${item.contentType} (${item.sourceId})`);
+      if (
+        platforms.includes("facebook") &&
+        !postedPlatforms.includes("facebook")
+      ) {
+        console.log(
+          `[Social] Posting to Facebook Reel: ${item.contentType} (${item.sourceId})`,
+        );
         try {
           const fbReelResult = await postFacebookReel(videoUrl, caption);
 
@@ -1822,13 +2101,23 @@ export async function processQueueItem(
           }
         } catch (err) {
           console.error("[Social] FB Reel posting exception:", err);
-          fbResult = { success: false, postId: null, postUrl: null, error: err instanceof Error ? err.message : "FB Reel failed" };
+          fbResult = {
+            success: false,
+            postId: null,
+            postUrl: null,
+            error: err instanceof Error ? err.message : "FB Reel failed",
+          };
         }
       }
 
       // Post to Instagram as Reel
-      if (platforms.includes("instagram") && !postedPlatforms.includes("instagram")) {
-        console.log(`[Social] Posting to Instagram Reel: ${item.contentType} (${item.sourceId})`);
+      if (
+        platforms.includes("instagram") &&
+        !postedPlatforms.includes("instagram")
+      ) {
+        console.log(
+          `[Social] Posting to Instagram Reel: ${item.contentType} (${item.sourceId})`,
+        );
         try {
           igResult = await postInstagramReel(videoUrl, caption, true);
 
@@ -1859,76 +2148,98 @@ export async function processQueueItem(
           }
         } catch (err) {
           console.error("[Social] IG Reel posting exception:", err);
-          igResult = { success: false, mediaId: null, permalink: null, error: err instanceof Error ? err.message : "IG Reel failed" };
+          igResult = {
+            success: false,
+            mediaId: null,
+            permalink: null,
+            error: err instanceof Error ? err.message : "IG Reel failed",
+          };
         }
       }
     }
   }
 
   // Standard image posting (for non-video items, or vertical videos that fell back to image)
-  if (!isVerticalVideo || (!videoUrl && item.linkUrl && item.linkUrl.startsWith("/"))) {
-  if (platforms.includes("facebook") && !postedPlatforms.includes("facebook")) {
-    console.log(`[Social] Posting to Facebook: ${item.contentType} (${item.sourceId})`);
-    fbResult = await postToFacebook(item.imageUrl, caption, item.linkUrl || undefined);
+  if (
+    !isVerticalVideo ||
+    (!videoUrl && item.linkUrl && item.linkUrl.startsWith("/"))
+  ) {
+    if (
+      platforms.includes("facebook") &&
+      !postedPlatforms.includes("facebook")
+    ) {
+      console.log(
+        `[Social] Posting to Facebook: ${item.contentType} (${item.sourceId})`,
+      );
+      fbResult = await postToFacebook(
+        item.imageUrl,
+        caption,
+        item.linkUrl || undefined,
+      );
 
-    // Log the result
-    try {
-      await db.insert(socialPostsLog).values({
-        id: crypto.randomUUID(),
-        queueId: item.id,
-        platform: "facebook",
-        contentType: item.contentType as any,
-        sourceId: item.sourceId,
-        imageUrl: item.imageUrl,
-        caption: item.caption,
-        linkUrl: item.linkUrl,
-        platformPostId: fbResult.postId,
-        platformPostUrl: fbResult.postUrl,
-        metaApiResponse: null,
-        status: fbResult.success ? "success" : "failed",
-        errorMessage: fbResult.error || null,
-        postedAt: new Date(),
-      } as any);
-    } catch (logError) {
-      console.error("[Social] Failed to log FB result:", logError);
+      // Log the result
+      try {
+        await db.insert(socialPostsLog).values({
+          id: crypto.randomUUID(),
+          queueId: item.id,
+          platform: "facebook",
+          contentType: item.contentType as any,
+          sourceId: item.sourceId,
+          imageUrl: item.imageUrl,
+          caption: item.caption,
+          linkUrl: item.linkUrl,
+          platformPostId: fbResult.postId,
+          platformPostUrl: fbResult.postUrl,
+          metaApiResponse: null,
+          status: fbResult.success ? "success" : "failed",
+          errorMessage: fbResult.error || null,
+          postedAt: new Date(),
+        } as any);
+      } catch (logError) {
+        console.error("[Social] Failed to log FB result:", logError);
+      }
+
+      if (fbResult.success) {
+        postedPlatforms.push("facebook");
+      }
     }
 
-    if (fbResult.success) {
-      postedPlatforms.push("facebook");
-    }
-  }
+    // Post to Instagram
+    if (
+      platforms.includes("instagram") &&
+      !postedPlatforms.includes("instagram")
+    ) {
+      console.log(
+        `[Social] Posting to Instagram: ${item.contentType} (${item.sourceId})`,
+      );
+      igResult = await postToInstagram(item.imageUrl, caption);
 
-  // Post to Instagram
-  if (platforms.includes("instagram") && !postedPlatforms.includes("instagram")) {
-    console.log(`[Social] Posting to Instagram: ${item.contentType} (${item.sourceId})`);
-    igResult = await postToInstagram(item.imageUrl, caption);
+      // Log the result
+      try {
+        await db.insert(socialPostsLog).values({
+          id: crypto.randomUUID(),
+          queueId: item.id,
+          platform: "instagram",
+          contentType: item.contentType as any,
+          sourceId: item.sourceId,
+          imageUrl: item.imageUrl,
+          caption: item.caption,
+          linkUrl: item.linkUrl,
+          platformPostId: igResult.mediaId,
+          platformPostUrl: igResult.permalink,
+          metaApiResponse: null,
+          status: igResult.success ? "success" : "failed",
+          errorMessage: igResult.error || null,
+          postedAt: new Date(),
+        } as any);
+      } catch (logError) {
+        console.error("[Social] Failed to log IG result:", logError);
+      }
 
-    // Log the result
-    try {
-      await db.insert(socialPostsLog).values({
-        id: crypto.randomUUID(),
-        queueId: item.id,
-        platform: "instagram",
-        contentType: item.contentType as any,
-        sourceId: item.sourceId,
-        imageUrl: item.imageUrl,
-        caption: item.caption,
-        linkUrl: item.linkUrl,
-        platformPostId: igResult.mediaId,
-        platformPostUrl: igResult.permalink,
-        metaApiResponse: null,
-        status: igResult.success ? "success" : "failed",
-        errorMessage: igResult.error || null,
-        postedAt: new Date(),
-      } as any);
-    } catch (logError) {
-      console.error("[Social] Failed to log IG result:", logError);
+      if (igResult.success) {
+        postedPlatforms.push("instagram");
+      }
     }
-
-    if (igResult.success) {
-      postedPlatforms.push("instagram");
-    }
-  }
   } // End of standard image posting block
 
   // ===========================================
@@ -1952,7 +2263,9 @@ export async function processQueueItem(
     item.imageUrl &&
     item.contentType !== "event"
   ) {
-    console.log(`[Social] Also posting to Instagram Story: ${item.contentType} (${item.sourceId})`);
+    console.log(
+      `[Social] Also posting to Instagram Story: ${item.contentType} (${item.sourceId})`,
+    );
     try {
       // Extract the best link from the caption (Spotify > YouTube > any URL > fallback)
       // so the Story link sticker points to the same external link visible in the post.
@@ -1961,7 +2274,7 @@ export async function processQueueItem(
         item.imageUrl,
         caption,
         storyLink,
-        { composeForStory: true }
+        { composeForStory: true },
       );
 
       // Log the Story result separately so it shows up in admin history
@@ -1987,7 +2300,9 @@ export async function processQueueItem(
       }
 
       if (!igStoryResult.success) {
-        console.warn(`[Social] IG Story post failed (non-blocking): ${igStoryResult.error}`);
+        console.warn(
+          `[Social] IG Story post failed (non-blocking): ${igStoryResult.error}`,
+        );
       }
     } catch (err) {
       console.error("[Social] IG Story posting exception (non-blocking):", err);
@@ -2001,12 +2316,17 @@ export async function processQueueItem(
   }
 
   // Update queue item status
-  const allPlatformsNowPosted = platforms
-    .every((p) => postedPlatforms.includes(p));
+  const allPlatformsNowPosted = platforms.every((p) =>
+    postedPlatforms.includes(p),
+  );
   const anyPlatformSucceeded = postedPlatforms.length > 0;
   const anyFailed =
-    (!fbResult.success && platforms.includes("facebook") && !postedPlatforms.includes("facebook")) ||
-    (!igResult.success && platforms.includes("instagram") && !postedPlatforms.includes("instagram"));
+    (!fbResult.success &&
+      platforms.includes("facebook") &&
+      !postedPlatforms.includes("facebook")) ||
+    (!igResult.success &&
+      platforms.includes("instagram") &&
+      !postedPlatforms.includes("instagram"));
 
   let newStatus: "posted" | "failed" | "pending" = "pending";
   if (allPlatformsNowPosted) {
@@ -2029,8 +2349,10 @@ export async function processQueueItem(
 
   if (anyFailed) {
     const errors: string[] = [];
-    if (!fbResult.success && platforms.includes("facebook")) errors.push(`FB: ${fbResult.error || "unknown error"}`);
-    if (!igResult.success && platforms.includes("instagram")) errors.push(`IG: ${igResult.error || "unknown error"}`);
+    if (!fbResult.success && platforms.includes("facebook"))
+      errors.push(`FB: ${fbResult.error || "unknown error"}`);
+    if (!igResult.success && platforms.includes("instagram"))
+      errors.push(`IG: ${igResult.error || "unknown error"}`);
     updateData.errorMessage = errors.join(" | ");
   } else {
     updateData.errorMessage = null;
@@ -2045,7 +2367,12 @@ export async function processQueueItem(
     console.error("[Social] Failed to update queue item:", updateError);
   }
 
-  return { queueId: item.id, facebook: fbResult, instagram: igResult, instagramStory: igStoryResult };
+  return {
+    queueId: item.id,
+    facebook: fbResult,
+    instagram: igResult,
+    instagramStory: igStoryResult,
+  };
 }
 
 // ===========================================
@@ -2053,7 +2380,14 @@ export async function processQueueItem(
 // ===========================================
 
 export interface CaptionContext {
-  contentType: "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event";
+  contentType:
+    | "gallery_photo"
+    | "spotify_track"
+    | "artist_profile"
+    | "curated_track"
+    | "vertical_video"
+    | "youtube_video"
+    | "event";
   artistName?: string;
   artistRole?: string;
   releaseTitle?: string;
@@ -2094,7 +2428,9 @@ const CAPTION_VARIATIONS = {
     {
       withArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
         const location = ctx.photoLocation ? ` ${ctx.photoLocation}` : "";
-        const photoCredit = ctx.photographer ? `\nFoto: ${ctx.photographer}` : "";
+        const photoCredit = ctx.photographer
+          ? `\nFoto: ${ctx.photographer}`
+          : "";
         return [
           `${ctx.artistName} en acción${location}${photoCredit}`,
           "",
@@ -2103,9 +2439,15 @@ const CAPTION_VARIATIONS = {
           hashtags,
         ].join("\n");
       },
-      withoutArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      withoutArtist: (
+        ctx: CaptionContext,
+        siteUrl: string,
+        hashtags: string,
+      ) => {
         const location = ctx.photoLocation ? ` ${ctx.photoLocation}` : "";
-        const photoCredit = ctx.photographer ? `\nFoto: ${ctx.photographer}` : "";
+        const photoCredit = ctx.photographer
+          ? `\nFoto: ${ctx.photographer}`
+          : "";
         return [
           `Sonido Líquido Crew${location}${photoCredit}`,
           "",
@@ -2118,7 +2460,9 @@ const CAPTION_VARIATIONS = {
     {
       withArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
         const location = ctx.photoLocation ? ` desde ${ctx.photoLocation}` : "";
-        const photoCredit = ctx.photographer ? ` | Foto: ${ctx.photographer}` : "";
+        const photoCredit = ctx.photographer
+          ? ` | Foto: ${ctx.photographer}`
+          : "";
         return [
           `Capturando la esencia de ${ctx.artistName}${location}${photoCredit}`,
           "",
@@ -2127,9 +2471,15 @@ const CAPTION_VARIATIONS = {
           hashtags,
         ].join("\n");
       },
-      withoutArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      withoutArtist: (
+        ctx: CaptionContext,
+        siteUrl: string,
+        hashtags: string,
+      ) => {
         const location = ctx.photoLocation ? ` ${ctx.photoLocation}` : "";
-        const photoCredit = ctx.photographer ? `\nFoto: ${ctx.photographer}` : "";
+        const photoCredit = ctx.photographer
+          ? `\nFoto: ${ctx.photographer}`
+          : "";
         return [
           `El colectivo en su elemento${location}${photoCredit}`,
           "",
@@ -2150,7 +2500,11 @@ const CAPTION_VARIATIONS = {
           hashtags,
         ].join("\n");
       },
-      withoutArtist: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
+      withoutArtist: (
+        ctx: CaptionContext,
+        siteUrl: string,
+        hashtags: string,
+      ) => {
         const photoCredit = ctx.photographer ? `\n📸 ${ctx.photographer}` : "";
         return [
           `Sonido Líquido Crew — la familia del hip hop mexicano${photoCredit}`,
@@ -2166,7 +2520,14 @@ const CAPTION_VARIATIONS = {
   spotify_track: [
     {
       newRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
-        const typeLabel = ctx.releaseType === "album" ? "el álbum" : ctx.releaseType === "ep" ? "el EP" : ctx.releaseType === "mixtape" ? "la mixtape" : "el sencillo";
+        const typeLabel =
+          ctx.releaseType === "album"
+            ? "el álbum"
+            : ctx.releaseType === "ep"
+              ? "el EP"
+              : ctx.releaseType === "mixtape"
+                ? "la mixtape"
+                : "el sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
         return [
           `🔥 Nueva música de ${artistLine}`,
@@ -2178,7 +2539,14 @@ const CAPTION_VARIATIONS = {
         ].join("\n");
       },
       oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
-        const typeLabel = ctx.releaseType === "album" ? "el álbum" : ctx.releaseType === "ep" ? "el EP" : ctx.releaseType === "mixtape" ? "la mixtape" : "el sencillo";
+        const typeLabel =
+          ctx.releaseType === "album"
+            ? "el álbum"
+            : ctx.releaseType === "ep"
+              ? "el EP"
+              : ctx.releaseType === "mixtape"
+                ? "la mixtape"
+                : "el sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
         return [
           `🎶 Música de ${artistLine}`,
@@ -2216,7 +2584,14 @@ const CAPTION_VARIATIONS = {
     },
     {
       newRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
-        const typeLabel = ctx.releaseType === "album" ? "Álbum" : ctx.releaseType === "ep" ? "EP" : ctx.releaseType === "mixtape" ? "Mixtape" : "Sencillo";
+        const typeLabel =
+          ctx.releaseType === "album"
+            ? "Álbum"
+            : ctx.releaseType === "ep"
+              ? "EP"
+              : ctx.releaseType === "mixtape"
+                ? "Mixtape"
+                : "Sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
         return [
           `Nuevo ${typeLabel.toLowerCase()} de ${artistLine}: "${ctx.releaseTitle || "Nuevo lanzamiento"}"`,
@@ -2228,7 +2603,14 @@ const CAPTION_VARIATIONS = {
         ].join("\n");
       },
       oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
-        const typeLabel = ctx.releaseType === "album" ? "Álbum" : ctx.releaseType === "ep" ? "EP" : ctx.releaseType === "mixtape" ? "Mixtape" : "Sencillo";
+        const typeLabel =
+          ctx.releaseType === "album"
+            ? "Álbum"
+            : ctx.releaseType === "ep"
+              ? "EP"
+              : ctx.releaseType === "mixtape"
+                ? "Mixtape"
+                : "Sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
         return [
           `${typeLabel} de ${artistLine}: "${ctx.releaseTitle || "Lanzamiento"}"`,
@@ -2245,9 +2627,16 @@ const CAPTION_VARIATIONS = {
   artist_profile: [
     (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
       const roleLabels: Record<string, string> = {
-        mc: "MC", dj: "DJ", producer: "Productor", cantante: "Cantante", divo: "Divo", lado_b: "Lado B",
+        mc: "MC",
+        dj: "DJ",
+        producer: "Productor",
+        cantante: "Cantante",
+        divo: "Divo",
+        lado_b: "Lado B",
       };
-      const roleLabel = ctx.artistRole ? roleLabels[ctx.artistRole] || ctx.artistRole : "Artista";
+      const roleLabel = ctx.artistRole
+        ? roleLabels[ctx.artistRole] || ctx.artistRole
+        : "Artista";
       return [
         `${ctx.artistName} — ${roleLabel} de Sonido Líquido Crew`,
         "",
@@ -2260,9 +2649,16 @@ const CAPTION_VARIATIONS = {
     },
     (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
       const roleLabels: Record<string, string> = {
-        mc: "MC", dj: "DJ", producer: "Productor", cantante: "Cantante", divo: "Divo", lado_b: "Lado B",
+        mc: "MC",
+        dj: "DJ",
+        producer: "Productor",
+        cantante: "Cantante",
+        divo: "Divo",
+        lado_b: "Lado B",
       };
-      const roleLabel = ctx.artistRole ? roleLabels[ctx.artistRole] || ctx.artistRole : "Artista";
+      const roleLabel = ctx.artistRole
+        ? roleLabels[ctx.artistRole] || ctx.artistRole
+        : "Artista";
       return [
         `El roster de SLC: ${ctx.artistName} (${roleLabel})`,
         "",
@@ -2333,11 +2729,18 @@ const CAPTION_VARIATIONS = {
     (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
       const artistLine = ctx.artistName || "Sonido Líquido Crew";
       const titleLine = ctx.videoTitle || "Video exclusivo";
-      const platformLabel = ctx.videoPlatform === "youtube" ? "YouTube" : ctx.videoPlatform === "instagram" ? "Instagram" : "";
+      const platformLabel =
+        ctx.videoPlatform === "youtube"
+          ? "YouTube"
+          : ctx.videoPlatform === "instagram"
+            ? "Instagram"
+            : "";
       return [
         `${artistLine} — ${titleLine}`,
         "",
-        platformLabel ? `Mira el video completo en ${platformLabel}` : "Mira el video completo",
+        platformLabel
+          ? `Mira el video completo en ${platformLabel}`
+          : "Mira el video completo",
         "",
         `Más contenido: ${ctx.linkUrl || `${siteUrl}/reels`}`,
         "",
@@ -2429,7 +2832,9 @@ const CAPTION_VARIATIONS = {
         "",
         hashtags,
         "#Evento #EnVivo #HipHopMexico",
-      ].filter(Boolean).join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
     },
     (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
       const title = ctx.eventTitle || "Próximo evento";
@@ -2439,7 +2844,9 @@ const CAPTION_VARIATIONS = {
       const timeStr = ctx.eventTime || "";
       const location = [venue, city].filter(Boolean).join(", ");
       const dateTime = [dateStr, timeStr].filter(Boolean).join(" | ");
-      const ticketLine = ctx.ticketUrl ? `\nCompra tu boleto: ${ctx.ticketUrl}` : "";
+      const ticketLine = ctx.ticketUrl
+        ? `\nCompra tu boleto: ${ctx.ticketUrl}`
+        : "";
       return [
         `Se viene ${title}`,
         location ? ` ${location}` : "",
@@ -2450,7 +2857,9 @@ const CAPTION_VARIATIONS = {
         "",
         hashtags,
         "#EnVivo #Concierto #RapMexicano",
-      ].filter(Boolean).join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
     },
     (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
       const title = ctx.eventTitle || "Evento";
@@ -2472,7 +2881,9 @@ const CAPTION_VARIATIONS = {
         "",
         hashtags,
         "#EnVivo #HipHop #Evento",
-      ].filter(Boolean).join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
     },
   ],
 };
@@ -2482,8 +2893,18 @@ const CAPTION_VARIATIONS = {
  */
 function formatDateEs(date: Date): string {
   const months = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
   ];
   const d = new Date(date);
   return `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
@@ -2499,15 +2920,20 @@ function formatDateEs(date: Date): string {
  * - Releases >90 days old: "Música de..." (without "nueva")
  * - "años" always spelled with ñ (not "anos")
  */
-export function generateCaption(ctx: CaptionContext, variationIndex?: number): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+export function generateCaption(
+  ctx: CaptionContext,
+  variationIndex?: number,
+): string {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
   const hashtags = "#SonidoLiquido #HipHopMexico #HipHop #CDMX #RapMexicano";
   const isNew = isNewRelease(ctx.releaseDate);
 
   switch (ctx.contentType) {
     case "gallery_photo": {
       const variations = CAPTION_VARIATIONS.gallery_photo;
-      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const idx =
+        variationIndex !== undefined ? variationIndex % variations.length : 0;
       const variation = variations[idx];
       if (ctx.artistName) {
         return variation.withArtist(ctx, siteUrl, hashtags);
@@ -2517,7 +2943,8 @@ export function generateCaption(ctx: CaptionContext, variationIndex?: number): s
 
     case "spotify_track": {
       const variations = CAPTION_VARIATIONS.spotify_track;
-      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const idx =
+        variationIndex !== undefined ? variationIndex % variations.length : 0;
       const variation = variations[idx];
       if (isNew) {
         return variation.newRelease(ctx, siteUrl, hashtags);
@@ -2527,31 +2954,36 @@ export function generateCaption(ctx: CaptionContext, variationIndex?: number): s
 
     case "artist_profile": {
       const variations = CAPTION_VARIATIONS.artist_profile;
-      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const idx =
+        variationIndex !== undefined ? variationIndex % variations.length : 0;
       return variations[idx](ctx, siteUrl, hashtags);
     }
 
     case "curated_track": {
       const variations = CAPTION_VARIATIONS.curated_track;
-      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const idx =
+        variationIndex !== undefined ? variationIndex % variations.length : 0;
       return variations[idx](ctx, siteUrl, hashtags);
     }
 
     case "vertical_video": {
       const variations = CAPTION_VARIATIONS.vertical_video;
-      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const idx =
+        variationIndex !== undefined ? variationIndex % variations.length : 0;
       return variations[idx](ctx, siteUrl, hashtags);
     }
 
     case "youtube_video": {
       const variations = CAPTION_VARIATIONS.youtube_video;
-      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const idx =
+        variationIndex !== undefined ? variationIndex % variations.length : 0;
       return variations[idx](ctx, siteUrl, hashtags);
     }
 
     case "event": {
       const variations = CAPTION_VARIATIONS.event;
-      const idx = variationIndex !== undefined ? variationIndex % variations.length : 0;
+      const idx =
+        variationIndex !== undefined ? variationIndex % variations.length : 0;
       return variations[idx](ctx, siteUrl, hashtags);
     }
 
@@ -2581,15 +3013,22 @@ export function generateCaption(ctx: CaptionContext, variationIndex?: number): s
  *
  * Falls back to generateCaption() if AI fails.
  */
-export async function generateAICaption(ctx: CaptionContext, variationIndex?: number): Promise<string> {
+export async function generateAICaption(
+  ctx: CaptionContext,
+  variationIndex?: number,
+): Promise<string> {
   try {
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
     const zai = await ZAI.create();
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
     const isNew = isNewRelease(ctx.releaseDate);
     const daysSinceRelease = ctx.releaseDate
-      ? Math.floor((Date.now() - new Date(ctx.releaseDate).getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.floor(
+          (Date.now() - new Date(ctx.releaseDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
       : null;
 
     // Build context description for the AI
@@ -2599,20 +3038,27 @@ export async function generateAICaption(ctx: CaptionContext, variationIndex?: nu
     if (ctx.artistName) contextParts.push(`Artista: ${ctx.artistName}`);
     if (ctx.artistRole) contextParts.push(`Rol: ${ctx.artistRole}`);
     if (ctx.releaseTitle) contextParts.push(`Título: ${ctx.releaseTitle}`);
-    if (ctx.releaseType) contextParts.push(`Tipo de lanzamiento: ${ctx.releaseType}`);
+    if (ctx.releaseType)
+      contextParts.push(`Tipo de lanzamiento: ${ctx.releaseType}`);
     if (daysSinceRelease !== null) {
-      contextParts.push(`Días desde lanzamiento: ${daysSinceRelease} (${isNew ? "NUEVA — usar 'nueva música'" : "catálogo — NO usar 'nueva'"})`);
+      contextParts.push(
+        `Días desde lanzamiento: ${daysSinceRelease} (${isNew ? "NUEVA — usar 'nueva música'" : "catálogo — NO usar 'nueva'"})`,
+      );
     }
     if (ctx.trackName) contextParts.push(`Track: ${ctx.trackName}`);
     if (ctx.albumName) contextParts.push(`Álbum: ${ctx.albumName}`);
     if (ctx.photoLocation) contextParts.push(`Ubicación: ${ctx.photoLocation}`);
     if (ctx.photographer) contextParts.push(`Fotógrafo: ${ctx.photographer}`);
     if (ctx.videoTitle) contextParts.push(`Video: ${ctx.videoTitle}`);
-    if (ctx.videoPlatform) contextParts.push(`Plataforma video: ${ctx.videoPlatform}`);
+    if (ctx.videoPlatform)
+      contextParts.push(`Plataforma video: ${ctx.videoPlatform}`);
     if (ctx.eventTitle) contextParts.push(`Evento: ${ctx.eventTitle}`);
     if (ctx.eventVenue) contextParts.push(`Lugar: ${ctx.eventVenue}`);
     if (ctx.eventCity) contextParts.push(`Ciudad: ${ctx.eventCity}`);
-    if (ctx.eventDate) contextParts.push(`Fecha del evento: ${formatDateEs(ctx.eventDate)}${ctx.eventTime ? ` a las ${ctx.eventTime}` : ""}`);
+    if (ctx.eventDate)
+      contextParts.push(
+        `Fecha del evento: ${formatDateEs(ctx.eventDate)}${ctx.eventTime ? ` a las ${ctx.eventTime}` : ""}`,
+      );
     if (ctx.ticketUrl) contextParts.push(`Boletos: ${ctx.ticketUrl}`);
     if (ctx.linkUrl) contextParts.push(`Link: ${ctx.linkUrl}`);
     if (ctx.spotifyUrl) contextParts.push(`Spotify: ${ctx.spotifyUrl}`);
@@ -2657,10 +3103,15 @@ Responde SOLO con el caption, sin explicaciones adicionales.`;
       return safeCaption;
     }
 
-    console.warn("[Social AI] AI caption was too short or empty, falling back to template");
+    console.warn(
+      "[Social AI] AI caption was too short or empty, falling back to template",
+    );
     return generateCaption(ctx, variationIndex);
   } catch (error) {
-    console.warn("[Social AI] AI caption generation failed, falling back to template:", error);
+    console.warn(
+      "[Social AI] AI caption generation failed, falling back to template:",
+      error,
+    );
     return generateCaption(ctx, variationIndex);
   }
 }
@@ -2726,8 +3177,8 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
         .where(
           and(
             eq(socialPostQueue.status, "pending"),
-            eq(socialPostQueue.contentType, nextType)
-          )
+            eq(socialPostQueue.contentType, nextType),
+          ),
         )
         .orderBy(socialPostQueue.queueOrder, socialPostQueue.cycleNumber)
         .limit(1);
@@ -2738,19 +3189,24 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
         // Check if this image was recently posted (within last 48h) — prevents same-photo duplicates
         // NOTE: postedAt is stored as integer Unix timestamp, so we compare with unixepoch() not datetime()
         const recentlyPosted = await db
-          .select({ imageUrl: socialPostsLog.imageUrl, postedAt: socialPostsLog.postedAt })
+          .select({
+            imageUrl: socialPostsLog.imageUrl,
+            postedAt: socialPostsLog.postedAt,
+          })
           .from(socialPostsLog)
           .where(
             and(
               eq(socialPostsLog.status, "success"),
               eq(socialPostsLog.imageUrl, item.imageUrl!),
-              drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`
-            )
+              drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`,
+            ),
           )
           .limit(1);
 
         if (recentlyPosted.length > 0) {
-          console.log(`[Social] Skipping ${nextType} item ${item.id} — same image was posted in the last 48 hours. Marking as skipped.`);
+          console.log(
+            `[Social] Skipping ${nextType} item ${item.id} — same image was posted in the last 48 hours. Marking as skipped.`,
+          );
           await db
             .update(socialPostQueue)
             .set({
@@ -2766,20 +3222,25 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
         // Check if this exact contentType:sourceId was posted recently (within last 48h)
         // NOTE: postedAt is stored as integer Unix timestamp, so we compare with unixepoch() not datetime()
         const recentlyPostedSource = await db
-          .select({ sourceId: socialPostsLog.sourceId, postedAt: socialPostsLog.postedAt })
+          .select({
+            sourceId: socialPostsLog.sourceId,
+            postedAt: socialPostsLog.postedAt,
+          })
           .from(socialPostsLog)
           .where(
             and(
               eq(socialPostsLog.status, "success"),
               eq(socialPostsLog.contentType, item.contentType as any),
               eq(socialPostsLog.sourceId, item.sourceId!),
-              drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`
-            )
+              drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`,
+            ),
           )
           .limit(1);
 
         if (recentlyPostedSource.length > 0) {
-          console.log(`[Social] Skipping ${nextType} item ${item.id} — same content was posted in the last 48 hours. Marking as skipped.`);
+          console.log(
+            `[Social] Skipping ${nextType} item ${item.id} — same content was posted in the last 48 hours. Marking as skipped.`,
+          );
           await db
             .update(socialPostQueue)
             .set({
@@ -2798,18 +3259,22 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
           .where(
             and(
               eq(socialPostQueue.id, item.id),
-              eq(socialPostQueue.status, "pending") // Only claim if still pending
-            )
+              eq(socialPostQueue.status, "pending"), // Only claim if still pending
+            ),
           )
           .returning();
 
         if (claimed.length === 0) {
           // Another process claimed it first — skip and try next
-          console.log(`[Social] Item ${item.id} was claimed by another process. Skipping.`);
+          console.log(
+            `[Social] Item ${item.id} was claimed by another process. Skipping.`,
+          );
           continue;
         }
 
-        console.log(`[Social] Round-robin: last was ${lastContentType || "none"}, next is ${nextType}`);
+        console.log(
+          `[Social] Round-robin: last was ${lastContentType || "none"}, next is ${nextType}`,
+        );
         return claimed[0] as unknown as SocialPostQueueWithId;
       }
     }
@@ -2834,13 +3299,15 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
           and(
             eq(socialPostsLog.status, "success"),
             eq(socialPostsLog.imageUrl, item.imageUrl!),
-            drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`
-          )
+            drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`,
+          ),
         )
         .limit(1);
 
       if (recentlyPosted.length > 0) {
-        console.log(`[Social] Skipping fallback item ${item.id} — same image posted in last 48h. Marking as skipped.`);
+        console.log(
+          `[Social] Skipping fallback item ${item.id} — same image posted in last 48h. Marking as skipped.`,
+        );
         await db
           .update(socialPostQueue)
           .set({
@@ -2859,13 +3326,15 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
         .where(
           and(
             eq(socialPostQueue.id, item.id),
-            eq(socialPostQueue.status, "pending")
-          )
+            eq(socialPostQueue.status, "pending"),
+          ),
         )
         .returning();
 
       if (claimed.length > 0) {
-        console.log(`[Social] Round-robin: no rotation types pending, falling back to ${item.contentType}`);
+        console.log(
+          `[Social] Round-robin: no rotation types pending, falling back to ${item.contentType}`,
+        );
         return claimed[0] as unknown as SocialPostQueueWithId;
       }
     }
@@ -2889,9 +3358,13 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
  * Recursive wrapper for getNextPendingItem with depth limit.
  * Prevents infinite loops when a cycle reset triggers another search.
  */
-async function getNextPendingItemRecursive(depth: number): Promise<SocialPostQueueWithId | null> {
+async function getNextPendingItemRecursive(
+  depth: number,
+): Promise<SocialPostQueueWithId | null> {
   if (depth > 2) {
-    console.log("[Social] Max recursive depth reached in getNextPendingItem. Stopping.");
+    console.log(
+      "[Social] Max recursive depth reached in getNextPendingItem. Stopping.",
+    );
     return null;
   }
   return getNextPendingItem();
@@ -2916,13 +3389,15 @@ async function resetCycleIfNeeded(): Promise<boolean> {
       .where(
         and(
           eq(socialPostQueue.status, "processing"),
-          drizzleSql`${socialPostQueue.updatedAt} < (unixepoch() - 600)`
-        )
+          drizzleSql`${socialPostQueue.updatedAt} < (unixepoch() - 600)`,
+        ),
       )
       .returning();
 
     if (staleProcessing.length > 0) {
-      console.log(`[Social] Recovered ${staleProcessing.length} stuck "processing" items back to "pending"`);
+      console.log(
+        `[Social] Recovered ${staleProcessing.length} stuck "processing" items back to "pending"`,
+      );
     }
 
     // Get current max cycle number using raw SQL
@@ -2941,8 +3416,8 @@ async function resetCycleIfNeeded(): Promise<boolean> {
       .where(
         and(
           drizzleSql`CAST(${socialPostQueue.cycleNumber} AS INTEGER) = ${currentCycle}`,
-          eq(socialPostQueue.status, "pending")
-        )
+          eq(socialPostQueue.status, "pending"),
+        ),
       );
 
     if (Number(pendingCount[0]?.count) === 0) {
@@ -2969,8 +3444,7 @@ async function resetCycleIfNeeded(): Promise<boolean> {
         if (lastPostDay === todayDay) {
           // Same day — don't reset the cycle yet. Wait for a new day.
           console.log(
-            `[Social] All items posted/skipped in cycle ${currentCycle}, but last post was today (Mexico City). ` +
-            `Waiting for a new day before resetting cycle to prevent duplicates.`
+            `[Social] All items posted/skipped in cycle ${currentCycle}, but last post was today (Mexico City). Waiting for a new day before resetting cycle to prevent duplicates.`,
           );
           return false;
         }
@@ -2978,19 +3452,19 @@ async function resetCycleIfNeeded(): Promise<boolean> {
 
       // Either no posts exist yet, or the last post was on a previous day — safe to reset
       const nextCycle = currentCycle + 1;
-      console.log(`[Social] All items posted/skipped in cycle ${currentCycle}. Last post was on a previous day. Starting cycle ${nextCycle}.`);
+      console.log(
+        `[Social] All items posted/skipped in cycle ${currentCycle}. Last post was on a previous day. Starting cycle ${nextCycle}.`,
+      );
 
       // Reset all items to pending for the new cycle
-      await db
-        .update(socialPostQueue)
-        .set({
-          cycleNumber: nextCycle,
-          status: "pending",
-          postedPlatforms: "[]",
-          errorMessage: null,
-          postedAt: null,
-          updatedAt: new Date(),
-        } as any);
+      await db.update(socialPostQueue).set({
+        cycleNumber: nextCycle,
+        status: "pending",
+        postedPlatforms: "[]",
+        errorMessage: null,
+        postedAt: null,
+        updatedAt: new Date(),
+      } as any);
 
       return true;
     }
@@ -3006,11 +3480,17 @@ async function resetCycleIfNeeded(): Promise<boolean> {
  * Simple check if DB is available (avoids import cycle with client.ts)
  */
 function isDatabaseConfiguredLocal(): boolean {
-  const url = (process.env.DATABASE_URL ||
+  const url = (
+    process.env.DATABASE_URL ||
     process.env.TURSO_DATABASE_URL ||
-    process.env.LIBSQL_URL || "").trim();
-  const token = (process.env.DATABASE_AUTH_TOKEN ||
-    process.env.TURSO_AUTH_TOKEN || "").trim();
+    process.env.LIBSQL_URL ||
+    ""
+  ).trim();
+  const token = (
+    process.env.DATABASE_AUTH_TOKEN ||
+    process.env.TURSO_AUTH_TOKEN ||
+    ""
+  ).trim();
   const isLocal = url.startsWith("file:");
   return isLocal ? !!url : !!(url && token);
 }
@@ -3029,7 +3509,10 @@ function isDatabaseConfiguredLocal(): boolean {
  * return incorrect content-type headers, which causes IG container creation to fail.
  */
 export function ensurePublicImageUrl(imageUrl: string): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || "https://sonidoliquido.com";
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.URL ||
+    "https://sonidoliquido.com";
 
   // Hosts that need proxying for Meta API (incorrect content-type or auth requirements)
   const needsProxyHosts = [
@@ -3040,9 +3523,7 @@ export function ensurePublicImageUrl(imageUrl: string): string {
     "ucarecdn.com",
   ];
 
-  const needsProxy = needsProxyHosts.some(
-    (host) => imageUrl.includes(host)
-  );
+  const needsProxy = needsProxyHosts.some((host) => imageUrl.includes(host));
 
   if (needsProxy) {
     return `${siteUrl}/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;

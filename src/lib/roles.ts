@@ -1,4 +1,12 @@
-import { Mic, Disc3, Music2, MicVocal, Sparkles, Radio, LucideIcon } from "lucide-react";
+import {
+  Disc3,
+  type LucideIcon,
+  Mic,
+  MicVocal,
+  Music2,
+  Radio,
+  Sparkles,
+} from "lucide-react";
 
 export interface RoleConfig {
   value: string;
@@ -77,7 +85,9 @@ export function getRoleConfig(value: string): RoleConfig | undefined {
 /**
  * Get multiple role configurations from comma-separated string
  */
-export function getRolesFromString(rolesString: string | null | undefined): RoleConfig[] {
+export function getRolesFromString(
+  rolesString: string | null | undefined,
+): RoleConfig[] {
   if (!rolesString) return [];
   return rolesString
     .split(",")
@@ -90,7 +100,10 @@ export function getRolesFromString(rolesString: string | null | undefined): Role
 /**
  * Get display labels from roles string
  */
-export function getRoleLabels(rolesString: string | null | undefined, useShort = false): string[] {
+export function getRoleLabels(
+  rolesString: string | null | undefined,
+  useShort = false,
+): string[] {
   const roles = getRolesFromString(rolesString);
   return roles.map((r) => (useShort ? r.shortLabel : r.label));
 }
@@ -98,7 +111,10 @@ export function getRoleLabels(rolesString: string | null | undefined, useShort =
 /**
  * Get formatted display string from roles
  */
-export function getArtistRolesDisplay(rolesString: string | null | undefined, separator = " • "): string {
+export function getArtistRolesDisplay(
+  rolesString: string | null | undefined,
+  separator = " • ",
+): string {
   const labels = getRoleLabels(rolesString);
   return labels.length > 0 ? labels.join(separator) : "Artista";
 }

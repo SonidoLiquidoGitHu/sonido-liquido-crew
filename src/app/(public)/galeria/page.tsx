@@ -1,10 +1,11 @@
-import { Metadata } from "next";
 import { GallerySection } from "@/components/public";
 import { Camera } from "lucide-react";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Galería | Sonido Líquido Crew",
-  description: "Galería de fotos del crew. Conciertos, sesiones, detrás de cámaras y más momentos capturados.",
+  description:
+    "Galería de fotos del crew. Conciertos, sesiones, detrás de cámaras y más momentos capturados.",
 };
 
 export const dynamic = "force-dynamic";
@@ -29,8 +30,8 @@ export default function GalleryPage() {
           </h1>
 
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            Momentos capturados del crew en acción. Conciertos, sesiones de grabación,
-            detrás de cámaras y más.
+            Momentos capturados del crew en acción. Conciertos, sesiones de
+            grabación, detrás de cámaras y más.
           </p>
         </div>
       </section>

@@ -2,8 +2,8 @@
 // A/B TESTING ADMIN API
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { abTestingService } from "@/lib/services/ab-testing";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Get all tests or create new test
 export async function GET(request: NextRequest) {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     console.error("[AB Tests API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -52,11 +52,14 @@ export async function POST(request: NextRequest) {
     if (!name || !variants || variants.length < 2) {
       return NextResponse.json(
         { success: false, error: "Name and at least 2 variants required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const testId = await abTestingService.createVideoTemplateTest(name, variants);
+    const testId = await abTestingService.createVideoTemplateTest(
+      name,
+      variants,
+    );
 
     return NextResponse.json({
       success: true,
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
     console.error("[AB Tests API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -80,7 +83,7 @@ export async function PUT(request: NextRequest) {
     if (!testId) {
       return NextResponse.json(
         { success: false, error: "Test ID required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -93,7 +96,7 @@ export async function PUT(request: NextRequest) {
     console.error("[AB Tests API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

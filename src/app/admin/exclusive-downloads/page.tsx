@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
-  Plus,
-  Trash2,
-  Pencil,
-  Save,
-  X,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  FileText,
-  Link as LinkIcon,
+  CheckCircle,
   Eye,
   EyeOff,
+  FileText,
+  Link as LinkIcon,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useCallback, useEffect, useState } from "react";
 
 interface DownloadItem {
   id: string;
@@ -31,7 +31,10 @@ export default function ExclusiveDownloadsAdminPage() {
   const [downloads, setDownloads] = useState<DownloadItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -114,8 +117,14 @@ export default function ExclusiveDownloadsAdminPage() {
 
     const updated = downloads.map((d) =>
       d.id === editingId
-        ? { ...d, name: editForm.name, description: editForm.description, fileUrl: editForm.fileUrl, isActive: editForm.isActive }
-        : d
+        ? {
+            ...d,
+            name: editForm.name,
+            description: editForm.description,
+            fileUrl: editForm.fileUrl,
+            isActive: editForm.isActive,
+          }
+        : d,
     );
 
     saveDownloads(updated);
@@ -130,7 +139,7 @@ export default function ExclusiveDownloadsAdminPage() {
 
   const toggleActive = (id: string) => {
     const updated = downloads.map((d) =>
-      d.id === id ? { ...d, isActive: !d.isActive } : d
+      d.id === id ? { ...d, isActive: !d.isActive } : d,
     );
     saveDownloads(updated);
   };
@@ -171,10 +180,14 @@ export default function ExclusiveDownloadsAdminPage() {
             "mb-6 p-4 rounded-lg flex items-center gap-2",
             message.type === "success"
               ? "bg-green-500/10 border border-green-500/20 text-green-500"
-              : "bg-red-500/10 border border-red-500/20 text-red-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500",
           )}
         >
-          {message.type === "success" ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+          {message.type === "success" ? (
+            <CheckCircle className="w-5 h-5" />
+          ) : (
+            <AlertTriangle className="w-5 h-5" />
+          )}
           {message.text}
         </div>
       )}
@@ -185,18 +198,29 @@ export default function ExclusiveDownloadsAdminPage() {
           <h2 className="font-oswald text-lg uppercase mb-4">Nueva Descarga</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-slc-muted mb-1.5">Nombre *</label>
+              <label className="block text-sm text-slc-muted mb-1.5">
+                Nombre *
+              </label>
               <Input
                 value={addForm.name}
-                onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setAddForm((prev) => ({ ...prev, name: e.target.value }))
+                }
                 placeholder="Beat exclusivo 2025..."
               />
             </div>
             <div>
-              <label className="block text-sm text-slc-muted mb-1.5">Descripción</label>
+              <label className="block text-sm text-slc-muted mb-1.5">
+                Descripción
+              </label>
               <Input
                 value={addForm.description}
-                onChange={(e) => setAddForm((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setAddForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 placeholder="Descripción del archivo..."
               />
             </div>
@@ -206,7 +230,9 @@ export default function ExclusiveDownloadsAdminPage() {
               </label>
               <Input
                 value={addForm.fileUrl}
-                onChange={(e) => setAddForm((prev) => ({ ...prev, fileUrl: e.target.value }))}
+                onChange={(e) =>
+                  setAddForm((prev) => ({ ...prev, fileUrl: e.target.value }))
+                }
                 placeholder="https://dropbox.com/..."
               />
             </div>
@@ -214,17 +240,29 @@ export default function ExclusiveDownloadsAdminPage() {
               <input
                 type="checkbox"
                 checked={addForm.isActive}
-                onChange={(e) => setAddForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                onChange={(e) =>
+                  setAddForm((prev) => ({
+                    ...prev,
+                    isActive: e.target.checked,
+                  }))
+                }
                 className="w-4 h-4 rounded"
               />
               <span className="text-sm">Activo</span>
-              {addForm.isActive ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-red-500" />}
+              {addForm.isActive ? (
+                <Eye className="w-4 h-4 text-green-500" />
+              ) : (
+                <EyeOff className="w-4 h-4 text-red-500" />
+              )}
             </label>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowAdd(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleAdd} disabled={!addForm.name || !addForm.fileUrl}>
+              <Button
+                onClick={handleAdd}
+                disabled={!addForm.name || !addForm.fileUrl}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Agregar
               </Button>
@@ -246,24 +284,40 @@ export default function ExclusiveDownloadsAdminPage() {
               key={item.id}
               className={cn(
                 "bg-slc-card border rounded-xl p-6 transition-all",
-                item.isActive ? "border-slc-border" : "border-red-500/20 opacity-70"
+                item.isActive
+                  ? "border-slc-border"
+                  : "border-red-500/20 opacity-70",
               )}
             >
               {editingId === item.id ? (
                 /* Edit Mode */
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1.5">Nombre *</label>
+                    <label className="block text-sm text-slc-muted mb-1.5">
+                      Nombre *
+                    </label>
                     <Input
                       value={editForm.name}
-                      onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1.5">Descripción</label>
+                    <label className="block text-sm text-slc-muted mb-1.5">
+                      Descripción
+                    </label>
                     <Input
                       value={editForm.description}
-                      onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
                     />
                   </div>
                   <div>
@@ -272,20 +326,33 @@ export default function ExclusiveDownloadsAdminPage() {
                     </label>
                     <Input
                       value={editForm.fileUrl}
-                      onChange={(e) => setEditForm((prev) => ({ ...prev, fileUrl: e.target.value }))}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          fileUrl: e.target.value,
+                        }))
+                      }
                     />
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={editForm.isActive}
-                      onChange={(e) => setEditForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                      onChange={(e) =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          isActive: e.target.checked,
+                        }))
+                      }
                       className="w-4 h-4 rounded"
                     />
                     <span className="text-sm">Activo</span>
                   </label>
                   <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={() => setEditingId(null)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setEditingId(null)}
+                    >
                       Cancelar
                     </Button>
                     <Button onClick={handleSaveEdit}>
@@ -302,16 +369,24 @@ export default function ExclusiveDownloadsAdminPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-oswald text-lg uppercase">{item.name}</h3>
-                      <span className={cn(
-                        "px-2 py-0.5 rounded text-xs",
-                        item.isActive ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
-                      )}>
+                      <h3 className="font-oswald text-lg uppercase">
+                        {item.name}
+                      </h3>
+                      <span
+                        className={cn(
+                          "px-2 py-0.5 rounded text-xs",
+                          item.isActive
+                            ? "bg-green-500/10 text-green-500"
+                            : "bg-red-500/10 text-red-500",
+                        )}
+                      >
                         {item.isActive ? "Activo" : "Inactivo"}
                       </span>
                     </div>
                     {item.description && (
-                      <p className="text-slc-muted text-sm mt-1">{item.description}</p>
+                      <p className="text-slc-muted text-sm mt-1">
+                        {item.description}
+                      </p>
                     )}
                     <p className="text-slc-muted text-xs mt-2 truncate flex items-center gap-1">
                       <LinkIcon className="w-3 h-3" /> {item.fileUrl}
@@ -322,11 +397,17 @@ export default function ExclusiveDownloadsAdminPage() {
                       onClick={() => toggleActive(item.id)}
                       className={cn(
                         "p-2 rounded transition-colors",
-                        item.isActive ? "text-green-500 hover:bg-green-500/10" : "text-red-500 hover:bg-red-500/10"
+                        item.isActive
+                          ? "text-green-500 hover:bg-green-500/10"
+                          : "text-red-500 hover:bg-red-500/10",
                       )}
                       title={item.isActive ? "Desactivar" : "Activar"}
                     >
-                      {item.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      {item.isActive ? (
+                        <Eye className="w-4 h-4" />
+                      ) : (
+                        <EyeOff className="w-4 h-4" />
+                      )}
                     </button>
                     <button
                       onClick={() => openEdit(item)}
@@ -351,8 +432,12 @@ export default function ExclusiveDownloadsAdminPage() {
           {downloads.length === 0 && !loading && (
             <div className="text-center py-16">
               <FileText className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-              <h3 className="font-oswald text-xl uppercase mb-2">Sin descargas</h3>
-              <p className="text-slc-muted mb-6">Agrega archivos exclusivos para suscriptores.</p>
+              <h3 className="font-oswald text-xl uppercase mb-2">
+                Sin descargas
+              </h3>
+              <p className="text-slc-muted mb-6">
+                Agrega archivos exclusivos para suscriptores.
+              </p>
               <Button onClick={() => setShowAdd(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Agregar Descarga
@@ -366,7 +451,12 @@ export default function ExclusiveDownloadsAdminPage() {
       <div className="mt-8 pt-6 border-t border-slc-border">
         <p className="text-slc-muted text-sm">
           Página pública:{" "}
-          <a href="/descargas" target="_blank" className="text-primary hover:underline">
+          <a
+            href="/descargas"
+            target="_blank"
+            className="text-primary hover:underline"
+            rel="noreferrer"
+          >
             /descargas
           </a>
         </p>

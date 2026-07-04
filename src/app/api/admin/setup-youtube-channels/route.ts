@@ -1,5 +1,5 @@
+import { db, executeRaw, isDatabaseConfigured } from "@/db/client";
 import { NextResponse } from "next/server";
-import { db, isDatabaseConfigured, executeRaw } from "@/db/client";
 
 /**
  * POST - Create YouTube channels table if it doesn't exist
@@ -9,7 +9,7 @@ export async function POST() {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -34,14 +34,18 @@ export async function POST() {
 
     // Add channel_id column to videos table if it doesn't exist
     try {
-      await executeRaw(`ALTER TABLE videos ADD COLUMN channel_id TEXT REFERENCES youtube_channels(id) ON DELETE SET NULL`);
+      await executeRaw(
+        "ALTER TABLE videos ADD COLUMN channel_id TEXT REFERENCES youtube_channels(id) ON DELETE SET NULL",
+      );
     } catch (e) {
       // Column might already exist, ignore error
     }
 
     // Add is_active column to videos table if it doesn't exist
     try {
-      await executeRaw(`ALTER TABLE videos ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1`);
+      await executeRaw(
+        "ALTER TABLE videos ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1",
+      );
     } catch (e) {
       // Column might already exist, ignore error
     }
@@ -54,7 +58,7 @@ export async function POST() {
     console.error("[Setup] Error creating youtube_channels table:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

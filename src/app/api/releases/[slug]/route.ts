@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { releasesService } from "@/lib/services";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -12,7 +12,7 @@ export async function GET(
     if (!release) {
       return NextResponse.json(
         { success: false, error: "Release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -24,7 +24,7 @@ export async function GET(
     console.error("Error fetching release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

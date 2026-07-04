@@ -37,10 +37,10 @@ export {
 // UNIFIED SYNC FUNCTION
 // ===========================================
 
+import { syncJobsRepository } from "@/lib/repositories";
+import { syncDropbox } from "./dropbox-sync";
 import { syncSpotify } from "./spotify-sync";
 import { syncYouTube } from "./youtube-sync";
-import { syncDropbox } from "./dropbox-sync";
-import { syncJobsRepository } from "@/lib/repositories";
 
 export interface SyncAllOptions {
   spotify?: boolean;
@@ -71,7 +71,9 @@ export interface SyncAllResult {
 /**
  * Run all sync jobs
  */
-export async function syncAll(options: SyncAllOptions = {}): Promise<SyncAllResult> {
+export async function syncAll(
+  options: SyncAllOptions = {},
+): Promise<SyncAllResult> {
   const result: SyncAllResult = {
     overallSuccess: true,
   };
@@ -93,7 +95,7 @@ export async function syncAll(options: SyncAllOptions = {}): Promise<SyncAllResu
           errors: res.errors,
         };
         if (!res.success) result.overallSuccess = false;
-      })
+      }),
     );
   }
 
@@ -106,7 +108,7 @@ export async function syncAll(options: SyncAllOptions = {}): Promise<SyncAllResu
           errors: res.errors,
         };
         if (!res.success) result.overallSuccess = false;
-      })
+      }),
     );
   }
 
@@ -119,7 +121,7 @@ export async function syncAll(options: SyncAllOptions = {}): Promise<SyncAllResu
           errors: res.errors,
         };
         if (!res.success) result.overallSuccess = false;
-      })
+      }),
     );
   }
 
@@ -147,7 +149,7 @@ export async function getSyncHealth() {
       // Check if last sync was within 24 hours
       const hoursSinceSync = job.completedAt
         ? (Date.now() - new Date(job.completedAt).getTime()) / (1000 * 60 * 60)
-        : Infinity;
+        : Number.POSITIVE_INFINITY;
 
       if (hoursSinceSync > 24) return "stale";
       return "healthy";

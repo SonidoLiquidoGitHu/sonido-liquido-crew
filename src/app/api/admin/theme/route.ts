@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     console.error("[Theme API] Error fetching theme:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching theme" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     console.error("[Theme API] Error saving theme:", error);
     return NextResponse.json(
       { success: false, error: "Error saving theme" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

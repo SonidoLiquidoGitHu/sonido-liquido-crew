@@ -1,11 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { beats, fileAssets } from "@/db/schema";
-import { eq, desc, and, or, like, sql } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Track file asset for a URL if it's from Dropbox
-async function trackDropboxFile(url: string | null, beatId: string, fieldName: string) {
+async function trackDropboxFile(
+  url: string | null,
+  beatId: string,
+  fieldName: string,
+) {
   if (!url || !url.includes("dropbox")) return;
 
   try {
@@ -75,7 +79,7 @@ export async function GET() {
     console.error("[API] Error fetching beats:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch beats" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -86,7 +90,7 @@ export async function POST(request: NextRequest) {
       console.error("[API] Database not configured for beat creation");
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
     if (!body.title) {
       return NextResponse.json(
         { success: false, error: "Title is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -105,7 +109,11 @@ export async function POST(request: NextRequest) {
 
     // Validate styleSettings is proper JSON if provided
     let styleSettings = null;
-    if (body.styleSettings && typeof body.styleSettings === "object" && Object.keys(body.styleSettings).length > 0) {
+    if (
+      body.styleSettings &&
+      typeof body.styleSettings === "object" &&
+      Object.keys(body.styleSettings).length > 0
+    ) {
       styleSettings = body.styleSettings;
     }
 
@@ -163,7 +171,7 @@ export async function POST(request: NextRequest) {
       trackDropboxFile(beat.fullAudioUrl, beat.id, "fullAudioUrl"),
       trackDropboxFile(beat.stemPackUrl, beat.id, "stemPackUrl"),
       trackDropboxFile(beat.waveformImageUrl, beat.id, "waveformImageUrl"),
-    ]).catch(err => console.warn("[API] Failed to track some files:", err));
+    ]).catch((err) => console.warn("[API] Failed to track some files:", err));
 
     return NextResponse.json({
       success: true,
@@ -180,20 +188,23 @@ export async function POST(request: NextRequest) {
     if (error?.message?.includes("no such table")) {
       return NextResponse.json(
         { success: false, error: "Database table not found - run migrations" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (error?.message?.includes("UNIQUE constraint failed")) {
       return NextResponse.json(
         { success: false, error: "A beat with this slug already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     return NextResponse.json(
-      { success: false, error: `Failed to create beat: ${error?.message || "Unknown error"}` },
-      { status: 500 }
+      {
+        success: false,
+        error: `Failed to create beat: ${error?.message || "Unknown error"}`,
+      },
+      { status: 500 },
     );
   }
 }
@@ -204,7 +215,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -213,7 +224,7 @@ export async function PUT(request: NextRequest) {
     if (!body.id) {
       return NextResponse.json(
         { success: false, error: "Beat ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -266,7 +277,7 @@ export async function PUT(request: NextRequest) {
     if (!beat) {
       return NextResponse.json(
         { success: false, error: "Beat not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -279,7 +290,7 @@ export async function PUT(request: NextRequest) {
       trackDropboxFile(beat.fullAudioUrl, beat.id, "fullAudioUrl"),
       trackDropboxFile(beat.stemPackUrl, beat.id, "stemPackUrl"),
       trackDropboxFile(beat.waveformImageUrl, beat.id, "waveformImageUrl"),
-    ]).catch(err => console.warn("[API] Failed to track some files:", err));
+    ]).catch((err) => console.warn("[API] Failed to track some files:", err));
 
     return NextResponse.json({
       success: true,
@@ -292,8 +303,11 @@ export async function PUT(request: NextRequest) {
       code: error?.code,
     });
     return NextResponse.json(
-      { success: false, error: `Failed to update beat: ${error?.message || "Unknown error"}` },
-      { status: 500 }
+      {
+        success: false,
+        error: `Failed to update beat: ${error?.message || "Unknown error"}`,
+      },
+      { status: 500 },
     );
   }
 }
@@ -304,7 +318,7 @@ export async function PATCH(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -313,7 +327,7 @@ export async function PATCH(request: NextRequest) {
     if (!body.id) {
       return NextResponse.json(
         { success: false, error: "Beat ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -339,11 +353,13 @@ export async function PATCH(request: NextRequest) {
     if (!beat) {
       return NextResponse.json(
         { success: false, error: "Beat not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    console.log(`[API] Patched beat: ${beat.title} (isActive: ${beat.isActive})`);
+    console.log(
+      `[API] Patched beat: ${beat.title} (isActive: ${beat.isActive})`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -353,7 +369,7 @@ export async function PATCH(request: NextRequest) {
     console.error("[API] Error patching beat:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update beat" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -364,7 +380,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -374,7 +390,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Beat ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -390,7 +406,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[API] Error deleting beat:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete beat" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

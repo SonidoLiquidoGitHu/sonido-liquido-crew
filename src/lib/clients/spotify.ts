@@ -1,4 +1,4 @@
-import type { SpotifyArtist, SpotifyAlbum, SpotifyTrack } from "@/types";
+import type { SpotifyAlbum, SpotifyArtist, SpotifyTrack } from "@/types";
 
 // ===========================================
 // SPOTIFY API CLIENT
@@ -28,11 +28,13 @@ class SpotifyClient {
   private clientId: string;
   private clientSecret: string;
   private accessToken: string | null = null;
-  private tokenExpiry: number = 0;
+  private tokenExpiry = 0;
 
   constructor() {
-    this.clientId = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
-    this.clientSecret = process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
+    this.clientId =
+      process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
+    this.clientSecret =
+      process.env.SPOTIFY_CLIENT_SECRET || "d3cafe4dae714bea8eb93e0ce79770b6";
   }
 
   /**
@@ -55,7 +57,9 @@ class SpotifyClient {
       throw new Error("Spotify credentials not configured");
     }
 
-    const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64");
+    const credentials = Buffer.from(
+      `${this.clientId}:${this.clientSecret}`,
+    ).toString("base64");
 
     const response = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
@@ -68,7 +72,9 @@ class SpotifyClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to get Spotify access token: ${response.statusText}`);
+      throw new Error(
+        `Failed to get Spotify access token: ${response.statusText}`,
+      );
     }
 
     const data: SpotifyTokenResponse = await response.json();
@@ -83,7 +89,11 @@ class SpotifyClient {
   /**
    * Make authenticated API request with retry logic and timeout
    */
-  private async request<T>(endpoint: string, retries = 2, timeoutMs = 8_000): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    retries = 2,
+    timeoutMs = 8_000,
+  ): Promise<T> {
     const token = await this.getAccessToken();
     const url = `https://api.spotify.com/v1${endpoint}`;
 
@@ -102,10 +112,15 @@ class SpotifyClient {
 
         // Handle rate limiting
         if (response.status === 429) {
-          const retryAfter = parseInt(response.headers.get("Retry-After") || "5", 10);
+          const retryAfter = Number.parseInt(
+            response.headers.get("Retry-After") || "5",
+            10,
+          );
           const waitTime = Math.min((retryAfter + 1) * 1000, 10_000); // Cap at 10s
-          console.log(`[Spotify API] Rate limited, waiting ${retryAfter}s before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+          console.log(
+            `[Spotify API] Rate limited, waiting ${retryAfter}s before retry...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
           continue;
         }
 
@@ -115,13 +130,22 @@ class SpotifyClient {
         console.error(`[Spotify API] URL: ${url}`);
         // Include error body in message for 400 errors (helps debug bad requests)
         const detail = errorBody ? ` - ${errorBody.slice(0, 200)}` : "";
-        throw new Error(`Spotify API error: ${response.status} ${response.statusText}${detail}`);
+        throw new Error(
+          `Spotify API error: ${response.status} ${response.statusText}${detail}`,
+        );
       } catch (fetchError) {
         // Handle timeout errors
-        if (fetchError instanceof DOMException && fetchError.name === "TimeoutError") {
-          console.warn(`[Spotify API] Request timeout for ${endpoint} (attempt ${attempt + 1}/${retries})`);
+        if (
+          fetchError instanceof DOMException &&
+          fetchError.name === "TimeoutError"
+        ) {
+          console.warn(
+            `[Spotify API] Request timeout for ${endpoint} (attempt ${attempt + 1}/${retries})`,
+          );
           if (attempt < retries - 1) continue;
-          throw new Error(`Spotify API timeout: ${endpoint} failed after ${retries} attempts`);
+          throw new Error(
+            `Spotify API timeout: ${endpoint} failed after ${retries} attempts`,
+          );
         }
         // Re-throw other errors
         throw fetchError;
@@ -144,7 +168,7 @@ class SpotifyClient {
    */
   async getArtists(artistIds: string[]): Promise<SpotifyArtist[]> {
     // Filter out null, undefined, empty strings, and invalid IDs
-    const validIds = artistIds.filter(id => {
+    const validIds = artistIds.filter((id) => {
       if (!id || typeof id !== "string") return false;
       const trimmed = id.trim();
       // Spotify IDs are base62 encoded, typically 22 characters
@@ -156,7 +180,9 @@ class SpotifyClient {
       return [];
     }
 
-    console.log(`[Spotify API] Fetching ${validIds.length} artists individually...`);
+    console.log(
+      `[Spotify API] Fetching ${validIds.length} artists individually...`,
+    );
 
     // Fetch each artist individually (batch endpoint returns 403)
     const results: SpotifyArtist[] = [];
@@ -167,14 +193,18 @@ class SpotifyClient {
           results.push(artist);
         }
         // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (error) {
-        console.error(`[Spotify API] Failed to fetch artist ${id}: ${(error as Error).message}`);
+        console.error(
+          `[Spotify API] Failed to fetch artist ${id}: ${(error as Error).message}`,
+        );
         // Continue with other artists
       }
     }
 
-    console.log(`[Spotify API] Successfully fetched ${results.length}/${validIds.length} artists`);
+    console.log(
+      `[Spotify API] Successfully fetched ${results.length}/${validIds.length} artists`,
+    );
     return results;
   }
 
@@ -187,14 +217,16 @@ class SpotifyClient {
     // Try the dedicated top-tracks endpoint first
     try {
       const response = await this.request<{ tracks: SpotifyTrack[] }>(
-        `/artists/${artistId}/top-tracks?market=MX`
+        `/artists/${artistId}/top-tracks?market=MX`,
       );
       return response.tracks || [];
     } catch (error) {
       const errMsg = (error as Error).message || "";
       // If 403 (Spotify restricted this endpoint for client credentials), use fallback
       if (errMsg.includes("403")) {
-        console.log("[Spotify API] Top-tracks endpoint returned 403, using album-based fallback...");
+        console.log(
+          "[Spotify API] Top-tracks endpoint returned 403, using album-based fallback...",
+        );
         return this.getArtistTopTracksFallback(artistId);
       }
       throw error;
@@ -207,7 +239,9 @@ class SpotifyClient {
    * Strategy: fetch the artist's most recent singles/albums and extract tracks
    * If albums also 403, falls back to search-based track lookup
    */
-  private async getArtistTopTracksFallback(artistId: string): Promise<SpotifyTrack[]> {
+  private async getArtistTopTracksFallback(
+    artistId: string,
+  ): Promise<SpotifyTrack[]> {
     try {
       // Get artist's recent releases (singles first, then albums)
       const albumsResponse = await this.getArtistAlbums(artistId, {
@@ -216,7 +250,9 @@ class SpotifyClient {
       });
 
       if (!albumsResponse.items?.length) {
-        console.log("[Spotify API] Fallback: No albums found for artist, trying search...");
+        console.log(
+          "[Spotify API] Fallback: No albums found for artist, trying search...",
+        );
         return this.searchTopTracksFallback(artistId);
       }
 
@@ -226,10 +262,12 @@ class SpotifyClient {
         try {
           const fullAlbum = await this.getAlbum(album.id);
           const albumTracks = (fullAlbum as any).tracks?.items || [];
-          
+
           for (const t of albumTracks) {
             // Only include tracks where this artist is listed
-            const isByArtist = (t as any).artists?.some((a: any) => a.id === artistId);
+            const isByArtist = (t as any).artists?.some(
+              (a: any) => a.id === artistId,
+            );
             if (isByArtist) {
               // Enrich the track with album data (since album tracks don't include it)
               const enriched: any = {
@@ -247,22 +285,29 @@ class SpotifyClient {
           }
 
           // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
 
           // Stop once we have enough tracks
           if (tracks.length >= 10) break;
         } catch (albumErr) {
-          console.warn(`[Spotify API] Fallback: Could not fetch album ${album.id}:`, (albumErr as Error).message);
+          console.warn(
+            `[Spotify API] Fallback: Could not fetch album ${album.id}:`,
+            (albumErr as Error).message,
+          );
         }
       }
 
-      console.log(`[Spotify API] Fallback: Found ${tracks.length} tracks from recent albums`);
+      console.log(
+        `[Spotify API] Fallback: Found ${tracks.length} tracks from recent albums`,
+      );
       return tracks.slice(0, 10);
     } catch (fallbackErr) {
       const errMsg = (fallbackErr as Error).message || "";
       // If albums endpoint also 403'd, try search-based fallback before giving up
       if (errMsg.includes("403") || errMsg.includes("400")) {
-        console.log("[Spotify API] Album-based fallback also 403'd, trying search-based fallback...");
+        console.log(
+          "[Spotify API] Album-based fallback also 403'd, trying search-based fallback...",
+        );
         return this.searchTopTracksFallback(artistId);
       }
       console.error("[Spotify API] Album-based fallback failed:", fallbackErr);
@@ -275,7 +320,9 @@ class SpotifyClient {
    * Used when both /top-tracks and /albums endpoints return 403.
    * The search API is more permissive and rarely 403s.
    */
-  private async searchTopTracksFallback(artistId: string): Promise<SpotifyTrack[]> {
+  private async searchTopTracksFallback(
+    artistId: string,
+  ): Promise<SpotifyTrack[]> {
     try {
       // First get the artist name so we can search for their tracks
       const artist = await this.getArtist(artistId);
@@ -289,17 +336,22 @@ class SpotifyClient {
       const searchResult = await this.search(
         `artist:"${artistName}"`,
         ["track"],
-        10
+        10,
       );
 
-      const tracks = (searchResult.tracks?.items || []).filter(
-        (t: any) => t.artists?.some((a: any) => a.id === artistId)
+      const tracks = (searchResult.tracks?.items || []).filter((t: any) =>
+        t.artists?.some((a: any) => a.id === artistId),
       );
 
-      console.log(`[Spotify API] Search fallback: Found ${tracks.length} tracks for ${artistName}`);
+      console.log(
+        `[Spotify API] Search fallback: Found ${tracks.length} tracks for ${artistName}`,
+      );
       return tracks.slice(0, 10);
     } catch (searchErr) {
-      console.error("[Spotify API] Search-based fallback also failed:", (searchErr as Error).message);
+      console.error(
+        "[Spotify API] Search-based fallback also failed:",
+        (searchErr as Error).message,
+      );
       return [];
     }
   }
@@ -309,7 +361,7 @@ class SpotifyClient {
    */
   async getArtistAlbums(
     artistId: string,
-    options: { includeGroups?: string; limit?: number; offset?: number } = {}
+    options: { includeGroups?: string; limit?: number; offset?: number } = {},
   ): Promise<SpotifyArtistAlbumsResponse> {
     const includeGroups = options.includeGroups || "album,single";
     const limit = Math.min(options.limit || 10, 10); // Spotify reduced max limit to 10 for client credentials
@@ -320,7 +372,7 @@ class SpotifyClient {
       include_groups: includeGroups,
       limit: String(limit),
       offset: String(offset),
-      market: "MX"
+      market: "MX",
     });
 
     const url = `/artists/${artistId}/albums?${params.toString()}`;
@@ -347,7 +399,7 @@ class SpotifyClient {
         const response = await this.getArtistAlbums(artistId, {
           includeGroups,
           limit,
-          offset
+          offset,
         });
 
         // Filter out duplicates
@@ -364,7 +416,7 @@ class SpotifyClient {
         offset += limit;
 
         // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       return albums;
@@ -372,7 +424,9 @@ class SpotifyClient {
       const errMsg = (error as Error).message || "";
       // If 403/400, try fallback via search API
       if (errMsg.includes("403") || errMsg.includes("400")) {
-        console.log(`[Spotify API] Albums endpoint failed (${errMsg.slice(0, 80)}), using search-based fallback...`);
+        console.log(
+          `[Spotify API] Albums endpoint failed (${errMsg.slice(0, 80)}), using search-based fallback...`,
+        );
         return this.getAllArtistAlbumsFallback(artistId);
       }
       throw error;
@@ -384,7 +438,9 @@ class SpotifyClient {
    * Used when /artists/{id}/albums returns 400/403 (restricted for client credentials)
    * Strategy: search for the artist name + "album" / "single" to find their releases
    */
-  private async getAllArtistAlbumsFallback(artistId: string): Promise<SpotifyAlbum[]> {
+  private async getAllArtistAlbumsFallback(
+    artistId: string,
+  ): Promise<SpotifyAlbum[]> {
     try {
       // First get the artist name
       const artist = await this.getArtist(artistId);
@@ -403,14 +459,16 @@ class SpotifyClient {
         const searchResult = await this.search(
           `artist:"${artistName}"`,
           ["album"],
-          10
+          10,
         );
 
         const items = searchResult.albums?.items;
         if (items) {
           for (const album of items) {
             // Only include albums where this artist is credited
-            const isByArtist = (album as any).artists?.some((a: any) => a.id === artistId);
+            const isByArtist = (album as any).artists?.some(
+              (a: any) => a.id === artistId,
+            );
             if (isByArtist && !seenIds.has(album.id)) {
               seenIds.add(album.id);
               albums.push(album);
@@ -418,7 +476,10 @@ class SpotifyClient {
           }
         }
       } catch (searchErr) {
-        console.warn(`[Spotify API] Fallback: Album search failed:`, (searchErr as Error).message);
+        console.warn(
+          "[Spotify API] Fallback: Album search failed:",
+          (searchErr as Error).message,
+        );
       }
 
       // Sort by release date (newest first)
@@ -428,7 +489,9 @@ class SpotifyClient {
         return dateB.localeCompare(dateA);
       });
 
-      console.log(`[Spotify API] Fallback: Found ${albums.length} albums via search for ${artistName}`);
+      console.log(
+        `[Spotify API] Fallback: Found ${albums.length} albums via search for ${artistName}`,
+      );
       return albums;
     } catch (fallbackErr) {
       console.error("[Spotify API] Album search fallback failed:", fallbackErr);
@@ -467,30 +530,38 @@ class SpotifyClient {
           try {
             const album = await this.getAlbum(albumId);
             results.push(album);
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           } catch (err) {
-            console.warn(`[Spotify API] Failed to fetch album ${albumId}:`, (err as Error).message);
+            console.warn(
+              `[Spotify API] Failed to fetch album ${albumId}:`,
+              (err as Error).message,
+            );
           }
         }
       } else {
         try {
           const response = await this.request<{ albums: SpotifyAlbum[] }>(
-            `/albums?ids=${chunk.join(",")}&market=MX`
+            `/albums?ids=${chunk.join(",")}&market=MX`,
           );
           results.push(...response.albums);
         } catch (error) {
           const errMsg = (error as Error).message || "";
           if (errMsg.includes("400") || errMsg.includes("403")) {
-            console.log(`[Spotify API] Batch albums endpoint failed (${errMsg}), falling back to one-by-one...`);
+            console.log(
+              `[Spotify API] Batch albums endpoint failed (${errMsg}), falling back to one-by-one...`,
+            );
             useFallback = true;
             // Retry this chunk one by one
             for (const albumId of chunk) {
               try {
                 const album = await this.getAlbum(albumId);
                 results.push(album);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise((resolve) => setTimeout(resolve, 100));
               } catch (err) {
-                console.warn(`[Spotify API] Failed to fetch album ${albumId}:`, (err as Error).message);
+                console.warn(
+                  `[Spotify API] Failed to fetch album ${albumId}:`,
+                  (err as Error).message,
+                );
               }
             }
           } else {
@@ -516,7 +587,7 @@ class SpotifyClient {
   async search(
     query: string,
     types: ("artist" | "album" | "track")[] = ["artist"],
-    limit = 10
+    limit = 10,
   ): Promise<SpotifySearchResponse> {
     const cappedLimit = Math.min(limit, 10); // Spotify reduced max limit to 10 for client credentials
     const params = new URLSearchParams({
@@ -543,7 +614,9 @@ class SpotifyClient {
     items: { total: number };
     external_urls: { spotify: string };
   }> {
-    return this.request(`/playlists/${playlistId}?fields=id,name,description,images,items.total,tracks.total,external_urls`);
+    return this.request(
+      `/playlists/${playlistId}?fields=id,name,description,images,items.total,tracks.total,external_urls`,
+    );
   }
 
   /**
@@ -605,7 +678,8 @@ class SpotifyClient {
         limit: String(limit),
         offset: String(offset),
         market: "MX",
-        fields: "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
+        fields:
+          "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
       });
 
       const response = await this.request<{
@@ -685,7 +759,7 @@ class SpotifyClient {
     }
 
     console.log(
-      `[Spotify API] Fetched ${tracks.length} tracks from playlist ${playlistId}`
+      `[Spotify API] Fetched ${tracks.length} tracks from playlist ${playlistId}`,
     );
 
     return {
@@ -707,7 +781,7 @@ class SpotifyClient {
     //   https://open.spotify.com/intl-es/artist/XXXXX  (locale prefix)
     //   https://open.spotify.com/embed/artist/XXXXX
     //   spotify:artist:XXXXX  (Spotify URI)
-    const types = ['artist', 'album', 'track', 'playlist'];
+    const types = ["artist", "album", "track", "playlist"];
 
     // Try Spotify URI format first: spotify:artist:XXXXX
     for (const type of types) {
@@ -720,7 +794,9 @@ class SpotifyClient {
     //   spotify.com/embed/artist/XXXXX
     for (const type of types) {
       const urlMatch = url.match(
-        new RegExp(`spotify\\.com/(?:embed/)?(?:intl-[a-z]{2}/)?${type}/([a-zA-Z0-9]+)`)
+        new RegExp(
+          `spotify\\.com/(?:embed/)?(?:intl-[a-z]{2}/)?${type}/([a-zA-Z0-9]+)`,
+        ),
       );
       if (urlMatch) return urlMatch[1];
     }
@@ -731,7 +807,10 @@ class SpotifyClient {
   /**
    * Get embed URL for Spotify content
    */
-  static getEmbedUrl(type: "artist" | "album" | "track" | "playlist", id: string): string {
+  static getEmbedUrl(
+    type: "artist" | "album" | "track" | "playlist",
+    id: string,
+  ): string {
     return `https://open.spotify.com/embed/${type}/${id}`;
   }
 }

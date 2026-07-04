@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { executeRaw, isDatabaseConfigured, checkConnection } from "@/db/client";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { checkConnection, executeRaw, isDatabaseConfigured } from "@/db/client";
 import { db } from "@/db/client";
-import { artists, artistExternalProfiles } from "@/db/schema";
+import { artistExternalProfiles, artists } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -393,58 +393,58 @@ const ENSURE_TABLES_SQL = [
 // SQL statements to add missing columns to existing tables
 const ADD_COLUMNS_SQL = [
   // Missing columns in curated_playlists (migration 0015 only created basic columns)
-  `ALTER TABLE curated_playlists ADD COLUMN cover_color TEXT`,
-  `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_id TEXT`,
-  `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_url TEXT`,
-  `ALTER TABLE curated_playlists ADD COLUMN track_count INTEGER DEFAULT 0`,
+  "ALTER TABLE curated_playlists ADD COLUMN cover_color TEXT",
+  "ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_id TEXT",
+  "ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_url TEXT",
+  "ALTER TABLE curated_playlists ADD COLUMN track_count INTEGER DEFAULT 0",
 
   // Missing columns in playlist_tracks (some installs may lack these)
-  `ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT`,
-  `ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT`,
+  "ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT",
+  "ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT",
 
   // Media releases - attached press kit IDs (JSON array of press kit IDs from roster artists)
-  `ALTER TABLE media_releases ADD COLUMN attached_press_kit_ids TEXT`,
+  "ALTER TABLE media_releases ADD COLUMN attached_press_kit_ids TEXT",
 
   // === ARTISTS TABLE - columns expected by Drizzle schema but missing from old migrations ===
   // Migration 0002 used different column names (header_image_url, origin, active_since, etc.)
   // These are the correct column names that match the Drizzle schema
-  `ALTER TABLE artists ADD COLUMN real_name TEXT`,
-  `ALTER TABLE artists ADD COLUMN banner_image_url TEXT`,
-  `ALTER TABLE artists ADD COLUMN country TEXT`,
-  `ALTER TABLE artists ADD COLUMN year_started INTEGER`,
-  `ALTER TABLE artists ADD COLUMN booking_email TEXT`,
-  `ALTER TABLE artists ADD COLUMN management_email TEXT`,
-  `ALTER TABLE artists ADD COLUMN website_url TEXT`,
-  `ALTER TABLE artists ADD COLUMN monthly_listeners INTEGER`,
-  `ALTER TABLE artists ADD COLUMN followers INTEGER`,
-  `ALTER TABLE artists ADD COLUMN location TEXT`,
-  `ALTER TABLE artists ADD COLUMN labels TEXT`,
+  "ALTER TABLE artists ADD COLUMN real_name TEXT",
+  "ALTER TABLE artists ADD COLUMN banner_image_url TEXT",
+  "ALTER TABLE artists ADD COLUMN country TEXT",
+  "ALTER TABLE artists ADD COLUMN year_started INTEGER",
+  "ALTER TABLE artists ADD COLUMN booking_email TEXT",
+  "ALTER TABLE artists ADD COLUMN management_email TEXT",
+  "ALTER TABLE artists ADD COLUMN website_url TEXT",
+  "ALTER TABLE artists ADD COLUMN monthly_listeners INTEGER",
+  "ALTER TABLE artists ADD COLUMN followers INTEGER",
+  "ALTER TABLE artists ADD COLUMN location TEXT",
+  "ALTER TABLE artists ADD COLUMN labels TEXT",
 ];
 
 const ENSURE_INDEXES_SQL = [
-  `CREATE INDEX IF NOT EXISTS idx_fan_wall_approved ON fan_wall_messages(is_approved)`,
-  `CREATE INDEX IF NOT EXISTS idx_fan_wall_featured ON fan_wall_messages(is_featured)`,
-  `CREATE INDEX IF NOT EXISTS idx_fan_wall_artist ON fan_wall_messages(artist_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_playlists_owner ON user_playlists(owner_email)`,
-  `CREATE INDEX IF NOT EXISTS idx_playlists_slug ON user_playlists(slug)`,
-  `CREATE INDEX IF NOT EXISTS idx_playlists_public ON user_playlists(is_public)`,
-  `CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON user_playlist_tracks(playlist_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_collaborators_playlist ON playlist_collaborators(playlist_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_collaborators_email ON playlist_collaborators(email)`,
-  `CREATE INDEX IF NOT EXISTS idx_memories_event ON concert_memories(event_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_memories_approved ON concert_memories(is_approved)`,
-  `CREATE INDEX IF NOT EXISTS idx_gallery_photos_artist ON gallery_photos(artist_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_gallery_photos_album ON gallery_photos(album_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_gallery_photos_published ON gallery_photos(is_published)`,
-  `CREATE INDEX IF NOT EXISTS idx_artist_gallery_assets_artist ON artist_gallery_assets(artist_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_artist_external_profiles_artist ON artist_external_profiles(artist_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_curated_playlists_slug ON curated_playlists(slug)`,
-  `CREATE INDEX IF NOT EXISTS idx_curated_playlists_public ON curated_playlists(is_public)`,
-  `CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlist_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_playlist_tracks_active ON playlist_tracks(is_active)`,
-  `CREATE INDEX IF NOT EXISTS idx_curated_tracks_channel ON curated_tracks(curated_channel_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_curated_spotify_channels_active ON curated_spotify_channels(is_active)`,
-  `CREATE INDEX IF NOT EXISTS idx_deleted_releases_blocklist_spotify_id ON deleted_releases_blocklist(spotify_id)`,
+  "CREATE INDEX IF NOT EXISTS idx_fan_wall_approved ON fan_wall_messages(is_approved)",
+  "CREATE INDEX IF NOT EXISTS idx_fan_wall_featured ON fan_wall_messages(is_featured)",
+  "CREATE INDEX IF NOT EXISTS idx_fan_wall_artist ON fan_wall_messages(artist_id)",
+  "CREATE INDEX IF NOT EXISTS idx_playlists_owner ON user_playlists(owner_email)",
+  "CREATE INDEX IF NOT EXISTS idx_playlists_slug ON user_playlists(slug)",
+  "CREATE INDEX IF NOT EXISTS idx_playlists_public ON user_playlists(is_public)",
+  "CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON user_playlist_tracks(playlist_id)",
+  "CREATE INDEX IF NOT EXISTS idx_collaborators_playlist ON playlist_collaborators(playlist_id)",
+  "CREATE INDEX IF NOT EXISTS idx_collaborators_email ON playlist_collaborators(email)",
+  "CREATE INDEX IF NOT EXISTS idx_memories_event ON concert_memories(event_id)",
+  "CREATE INDEX IF NOT EXISTS idx_memories_approved ON concert_memories(is_approved)",
+  "CREATE INDEX IF NOT EXISTS idx_gallery_photos_artist ON gallery_photos(artist_id)",
+  "CREATE INDEX IF NOT EXISTS idx_gallery_photos_album ON gallery_photos(album_id)",
+  "CREATE INDEX IF NOT EXISTS idx_gallery_photos_published ON gallery_photos(is_published)",
+  "CREATE INDEX IF NOT EXISTS idx_artist_gallery_assets_artist ON artist_gallery_assets(artist_id)",
+  "CREATE INDEX IF NOT EXISTS idx_artist_external_profiles_artist ON artist_external_profiles(artist_id)",
+  "CREATE INDEX IF NOT EXISTS idx_curated_playlists_slug ON curated_playlists(slug)",
+  "CREATE INDEX IF NOT EXISTS idx_curated_playlists_public ON curated_playlists(is_public)",
+  "CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlist_id)",
+  "CREATE INDEX IF NOT EXISTS idx_playlist_tracks_active ON playlist_tracks(is_active)",
+  "CREATE INDEX IF NOT EXISTS idx_curated_tracks_channel ON curated_tracks(curated_channel_id)",
+  "CREATE INDEX IF NOT EXISTS idx_curated_spotify_channels_active ON curated_spotify_channels(is_active)",
+  "CREATE INDEX IF NOT EXISTS idx_deleted_releases_blocklist_spotify_id ON deleted_releases_blocklist(spotify_id)",
 ];
 
 // Data fixes
@@ -457,7 +457,7 @@ export async function POST() {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -465,7 +465,7 @@ export async function POST() {
     if (!connected) {
       return NextResponse.json(
         { success: false, error: "Database connection failed" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -499,7 +499,11 @@ export async function POST() {
         if (msg.includes("duplicate column name")) {
           results.push({ table: `${tableName}.${colName}`, status: "exists" });
         } else {
-          results.push({ table: `${tableName}.${colName}`, status: "error", error: msg });
+          results.push({
+            table: `${tableName}.${colName}`,
+            status: "error",
+            error: msg,
+          });
         }
       }
     }
@@ -517,7 +521,11 @@ export async function POST() {
     for (const sql of DATA_FIXES_SQL) {
       try {
         await executeRaw(sql);
-        results.push({ table: "data_fix", status: "applied", error: sql.substring(0, 80) });
+        results.push({
+          table: "data_fix",
+          status: "applied",
+          error: sql.substring(0, 80),
+        });
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         results.push({ table: "data_fix", status: "error", error: msg });
@@ -528,7 +536,9 @@ export async function POST() {
     try {
       // Check how many artists already have profiles using drizzle
       const [profileCountRow] = await db
-        .select({ count: sql<number>`COUNT(DISTINCT ${artistExternalProfiles.artistId})` })
+        .select({
+          count: sql<number>`COUNT(DISTINCT ${artistExternalProfiles.artistId})`,
+        })
         .from(artistExternalProfiles);
       const profileCount = profileCountRow?.count ?? 0;
 
@@ -542,43 +552,108 @@ export async function POST() {
       // If some artists don't have profiles, seed them
       if (profileCount < artistCount) {
         // Read social URLs from JSON file
-        const socialUrlsPath = join(process.cwd(), "data", "artist-social-urls.json");
-        let socialData: Record<string, {
-          name?: string;
-          spotify?: string;
-          spotifyId?: string;
-          instagram?: string | null;
-        }> = {};
+        const socialUrlsPath = join(
+          process.cwd(),
+          "data",
+          "artist-social-urls.json",
+        );
+        let socialData: Record<
+          string,
+          {
+            name?: string;
+            spotify?: string;
+            spotifyId?: string;
+            instagram?: string | null;
+          }
+        > = {};
         try {
           const fileContents = readFileSync(socialUrlsPath, "utf-8");
           socialData = JSON.parse(fileContents).artists || {};
         } catch {
-          results.push({ table: "artist_profiles_seed", status: "skipped", error: "Could not read artist-social-urls.json" });
+          results.push({
+            table: "artist_profiles_seed",
+            status: "skipped",
+            error: "Could not read artist-social-urls.json",
+          });
         }
 
         // YouTube channel data from components (RosterSocials.tsx / ArtistChannels.tsx)
-        const youtubeData: Record<string, { channelUrl: string; channelHandle: string }> = {
-          "brez": { channelUrl: "https://youtube.com/@brezhiphopmexicoslc25", channelHandle: "@brezhiphopmexicoslc25" },
-          "bruno-grasso": { channelUrl: "https://youtube.com/@brunograssosl", channelHandle: "@brunograssosl" },
-          "chas-7p": { channelUrl: "https://youtube.com/@chas7p347", channelHandle: "@chas7p347" },
-          "codak": { channelUrl: "https://youtube.com/@codak", channelHandle: "@codak" },
-          "dilema": { channelUrl: "https://youtube.com/@dilema999", channelHandle: "@dilema999" },
-          "fancy-freak": { channelUrl: "https://youtube.com/@fancyfreakdj", channelHandle: "@fancyfreakdj" },
-          "hassyel": { channelUrl: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A", channelHandle: "Hassyel" },
-          "kev-cabrone": { channelUrl: "https://youtube.com/@kevcabrone", channelHandle: "@kevcabrone" },
-          "latin-geisha": { channelUrl: "https://youtube.com/@latingeishamx", channelHandle: "@latingeishamx" },
-          "pepe-levine": { channelUrl: "https://youtube.com/@pepelevineonline", channelHandle: "@pepelevineonline" },
-          "q-master-weed": { channelUrl: "https://youtube.com/@qmasterw", channelHandle: "@qmasterw" },
-          "reick-one": { channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA", channelHandle: "Reick Uno" },
-          "x-santa-ana": { channelUrl: "https://youtube.com/@xsanta-ana", channelHandle: "@xsanta-ana" },
-          "zaque": { channelUrl: "https://youtube.com/@zakeuno", channelHandle: "@zakeuno" },
+        const youtubeData: Record<
+          string,
+          { channelUrl: string; channelHandle: string }
+        > = {
+          brez: {
+            channelUrl: "https://youtube.com/@brezhiphopmexicoslc25",
+            channelHandle: "@brezhiphopmexicoslc25",
+          },
+          "bruno-grasso": {
+            channelUrl: "https://youtube.com/@brunograssosl",
+            channelHandle: "@brunograssosl",
+          },
+          "chas-7p": {
+            channelUrl: "https://youtube.com/@chas7p347",
+            channelHandle: "@chas7p347",
+          },
+          codak: {
+            channelUrl: "https://youtube.com/@codak",
+            channelHandle: "@codak",
+          },
+          dilema: {
+            channelUrl: "https://youtube.com/@dilema999",
+            channelHandle: "@dilema999",
+          },
+          "fancy-freak": {
+            channelUrl: "https://youtube.com/@fancyfreakdj",
+            channelHandle: "@fancyfreakdj",
+          },
+          hassyel: {
+            channelUrl: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A",
+            channelHandle: "Hassyel",
+          },
+          "kev-cabrone": {
+            channelUrl: "https://youtube.com/@kevcabrone",
+            channelHandle: "@kevcabrone",
+          },
+          "latin-geisha": {
+            channelUrl: "https://youtube.com/@latingeishamx",
+            channelHandle: "@latingeishamx",
+          },
+          "pepe-levine": {
+            channelUrl: "https://youtube.com/@pepelevineonline",
+            channelHandle: "@pepelevineonline",
+          },
+          "q-master-weed": {
+            channelUrl: "https://youtube.com/@qmasterw",
+            channelHandle: "@qmasterw",
+          },
+          "reick-one": {
+            channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA",
+            channelHandle: "Reick Uno",
+          },
+          "x-santa-ana": {
+            channelUrl: "https://youtube.com/@xsanta-ana",
+            channelHandle: "@xsanta-ana",
+          },
+          zaque: {
+            channelUrl: "https://youtube.com/@zakeuno",
+            channelHandle: "@zakeuno",
+          },
         };
 
         // Mixcloud data from RosterSocials.tsx
         const mixcloudData: Record<string, { url: string; handle: string }> = {
-          "fancy-freak": { url: "https://www.mixcloud.com/fancyfreak1/", handle: "fancyfreak1" },
-          "q-master-weed": { url: "https://www.mixcloud.com/q-masterw/", handle: "q-masterw" },
-          "reick-one": { url: "https://www.mixcloud.com/reickuno/", handle: "reickuno" },
+          "fancy-freak": {
+            url: "https://www.mixcloud.com/fancyfreak1/",
+            handle: "fancyfreak1",
+          },
+          "q-master-weed": {
+            url: "https://www.mixcloud.com/q-masterw/",
+            handle: "q-masterw",
+          },
+          "reick-one": {
+            url: "https://www.mixcloud.com/reickuno/",
+            handle: "reickuno",
+          },
         };
 
         // Get all active artists
@@ -598,81 +673,128 @@ export async function POST() {
           if (socialInfo?.spotify && socialInfo?.spotifyId) {
             try {
               await executeRaw(
-                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_id, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
-                `VALUES ('sp-${slug}', '${artist.id}', 'spotify', '${socialInfo.spotifyId}', '${socialInfo.spotify}', '${socialInfo.spotifyId}', 1, 1, unixepoch(), unixepoch())`
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_id, external_url, handle, is_verified, is_primary, created_at, updated_at) VALUES ('sp-${slug}', '${artist.id}', 'spotify', '${socialInfo.spotifyId}', '${socialInfo.spotify}', '${socialInfo.spotifyId}', 1, 1, unixepoch(), unixepoch())`,
               );
               seededCount++;
-            } catch { /* ignore duplicate */ }
+            } catch {
+              /* ignore duplicate */
+            }
           }
 
           // Instagram profile
           if (socialInfo?.instagram) {
-            const igHandle = socialInfo.instagram.replace("https://www.instagram.com/", "").replace("/", "");
+            const igHandle = socialInfo.instagram
+              .replace("https://www.instagram.com/", "")
+              .replace("/", "");
             try {
               await executeRaw(
-                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
-                `VALUES ('ig-${slug}', '${artist.id}', 'instagram', '${socialInfo.instagram}', '${igHandle}', 0, 1, unixepoch(), unixepoch())`
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) VALUES ('ig-${slug}', '${artist.id}', 'instagram', '${socialInfo.instagram}', '${igHandle}', 0, 1, unixepoch(), unixepoch())`,
               );
               seededCount++;
-            } catch { /* ignore duplicate */ }
+            } catch {
+              /* ignore duplicate */
+            }
           }
 
           // YouTube profile
           if (ytInfo) {
             try {
               await executeRaw(
-                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
-                `VALUES ('yt-${slug}', '${artist.id}', 'youtube', '${ytInfo.channelUrl}', '${ytInfo.channelHandle}', 0, 1, unixepoch(), unixepoch())`
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) VALUES ('yt-${slug}', '${artist.id}', 'youtube', '${ytInfo.channelUrl}', '${ytInfo.channelHandle}', 0, 1, unixepoch(), unixepoch())`,
               );
               seededCount++;
-            } catch { /* ignore duplicate */ }
+            } catch {
+              /* ignore duplicate */
+            }
           }
 
           // Mixcloud profile
           if (mcInfo) {
             try {
               await executeRaw(
-                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) ` +
-                `VALUES ('mc-${slug}', '${artist.id}', 'mixcloud', '${mcInfo.url}', '${mcInfo.handle}', 0, 1, unixepoch(), unixepoch())`
+                `INSERT OR IGNORE INTO artist_external_profiles (id, artist_id, platform, external_url, handle, is_verified, is_primary, created_at, updated_at) VALUES ('mc-${slug}', '${artist.id}', 'mixcloud', '${mcInfo.url}', '${mcInfo.handle}', 0, 1, unixepoch(), unixepoch())`,
               );
               seededCount++;
-            } catch { /* ignore duplicate */ }
+            } catch {
+              /* ignore duplicate */
+            }
           }
         }
 
-        results.push({ table: "artist_profiles_seed", status: "seeded", error: `${seededCount} profiles inserted for ${artistsRows.length} artists` });
+        results.push({
+          table: "artist_profiles_seed",
+          status: "seeded",
+          error: `${seededCount} profiles inserted for ${artistsRows.length} artists`,
+        });
       } else {
-        results.push({ table: "artist_profiles_seed", status: "exists", error: `All ${artistCount} artists already have profiles` });
+        results.push({
+          table: "artist_profiles_seed",
+          status: "exists",
+          error: `All ${artistCount} artists already have profiles`,
+        });
       }
     } catch (seedError) {
-      const msg = seedError instanceof Error ? seedError.message : String(seedError);
-      results.push({ table: "artist_profiles_seed", status: "error", error: msg });
+      const msg =
+        seedError instanceof Error ? seedError.message : String(seedError);
+      results.push({
+        table: "artist_profiles_seed",
+        status: "error",
+        error: msg,
+      });
     }
 
     // === SEED CREW SOCIAL LINKS IN SITE_SETTINGS ===
     try {
       const crewSocialSettings = [
-        { key: "spotify_playlist_url", value: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez", type: "string" },
-        { key: "youtube_channel_url", value: "https://www.youtube.com/@sonidoliquidocrew", type: "string" },
-        { key: "instagram_url", value: "https://www.instagram.com/sonidoliquido/", type: "string" },
-        { key: "facebook_url", value: "https://www.facebook.com/sonidoliquidocrew/", type: "string" },
+        {
+          key: "spotify_playlist_url",
+          value: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
+          type: "string",
+        },
+        {
+          key: "youtube_channel_url",
+          value: "https://www.youtube.com/@sonidoliquidocrew",
+          type: "string",
+        },
+        {
+          key: "instagram_url",
+          value: "https://www.instagram.com/sonidoliquido/",
+          type: "string",
+        },
+        {
+          key: "facebook_url",
+          value: "https://www.facebook.com/sonidoliquidocrew/",
+          type: "string",
+        },
       ];
 
       let seededSettings = 0;
       for (const setting of crewSocialSettings) {
         try {
           await executeRaw(
-            `INSERT OR IGNORE INTO site_settings (id, key, value, type, created_at, updated_at) ` +
-            `VALUES ('crew-${setting.key}', '${setting.key}', '${setting.value}', '${setting.type}', unixepoch(), unixepoch())`
+            `INSERT OR IGNORE INTO site_settings (id, key, value, type, created_at, updated_at) VALUES ('crew-${setting.key}', '${setting.key}', '${setting.value}', '${setting.type}', unixepoch(), unixepoch())`,
           );
           seededSettings++;
-        } catch { /* ignore duplicate */ }
+        } catch {
+          /* ignore duplicate */
+        }
       }
 
-      results.push({ table: "crew_social_settings", status: "seeded", error: `${seededSettings} crew social settings ensured` });
+      results.push({
+        table: "crew_social_settings",
+        status: "seeded",
+        error: `${seededSettings} crew social settings ensured`,
+      });
     } catch (settingsError) {
-      const msg = settingsError instanceof Error ? settingsError.message : String(settingsError);
-      results.push({ table: "crew_social_settings", status: "error", error: msg });
+      const msg =
+        settingsError instanceof Error
+          ? settingsError.message
+          : String(settingsError);
+      results.push({
+        table: "crew_social_settings",
+        status: "error",
+        error: msg,
+      });
     }
 
     // === CLEANUP: Remove Doctor Destino from ALL database tables ===
@@ -703,183 +825,205 @@ export async function POST() {
       // Also check social_post_queue for orphaned items with Doctor Destino captions
       if (!artistId) {
         try {
-          const queueRows = await executeRaw(
-            `SELECT DISTINCT artist_id FROM social_post_queue WHERE caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%' OR link_url LIKE '%doctor-destino%' LIMIT 1`
-          ) as unknown as Array<{ artist_id: string }>;
+          const queueRows = (await executeRaw(
+            `SELECT DISTINCT artist_id FROM social_post_queue WHERE caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%' OR link_url LIKE '%doctor-destino%' LIMIT 1`,
+          )) as unknown as Array<{ artist_id: string }>;
           if (queueRows && queueRows.length > 0 && queueRows[0].artist_id) {
             artistId = queueRows[0].artist_id;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       // Also check release_artists for releases with Doctor Destino slug
       if (!artistId) {
         try {
-          const releaseRows = await executeRaw(
-            `SELECT DISTINCT ra.artist_id FROM release_artists ra JOIN releases r ON ra.release_id = r.id WHERE r.slug LIKE '%doctor-destino%' LIMIT 1`
-          ) as unknown as Array<{ artist_id: string }>;
-          if (releaseRows && releaseRows.length > 0 && releaseRows[0].artist_id) {
+          const releaseRows = (await executeRaw(
+            `SELECT DISTINCT ra.artist_id FROM release_artists ra JOIN releases r ON ra.release_id = r.id WHERE r.slug LIKE '%doctor-destino%' LIMIT 1`,
+          )) as unknown as Array<{ artist_id: string }>;
+          if (
+            releaseRows &&
+            releaseRows.length > 0 &&
+            releaseRows[0].artist_id
+          ) {
             artistId = releaseRows[0].artist_id;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       // 1. Delete the artist row (cascade handles: profiles, gallery assets, relations, EPK, release_artists)
       if (artistId) {
         await db.delete(artists).where(eq(artists.id, artistId));
-        cleanupResults.push(`Deleted artist row (${existingBySlug?.name || artistId})`);
+        cleanupResults.push(
+          `Deleted artist row (${existingBySlug?.name || artistId})`,
+        );
       }
 
       // 2. Social post queue — no FK cascade, must delete manually
       if (artistId) {
         const queueResult = await executeRaw(
-          `DELETE FROM social_post_queue WHERE artist_id = '${artistId}'`
+          `DELETE FROM social_post_queue WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted social_post_queue items`);
+        cleanupResults.push("Deleted social_post_queue items");
       }
       // Also try by Spotify ID in link_url or caption
       await executeRaw(
-        `DELETE FROM social_post_queue WHERE link_url LIKE '%doctor-destino%' OR caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%'`
+        `DELETE FROM social_post_queue WHERE link_url LIKE '%doctor-destino%' OR caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%'`,
       );
 
       // 3. Social posts log — no artist_id column, match by source_id from queue
       // Delete log entries where source_id matches any Doctor Destino related IDs
       if (artistId) {
         await executeRaw(
-          `DELETE FROM social_posts_log WHERE source_id = '${artistId}'`
+          `DELETE FROM social_posts_log WHERE source_id = '${artistId}'`,
         );
       }
       await executeRaw(
-        `DELETE FROM social_posts_log WHERE caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%'`
+        `DELETE FROM social_posts_log WHERE caption LIKE '%Doctor Destino%' OR caption LIKE '%doctor destino%'`,
       );
 
       // 4. Gallery photos — artist_id is SET NULL, but we want to DELETE them
       if (artistId) {
         await executeRaw(
-          `DELETE FROM gallery_photos WHERE artist_id = '${artistId}'`
+          `DELETE FROM gallery_photos WHERE artist_id = '${artistId}'`,
         );
       }
       // Also delete by caption/alt text
       await executeRaw(
-        `DELETE FROM gallery_photos WHERE alt_text LIKE '%Doctor Destino%' OR alt_text LIKE '%doctor destino%'`
+        `DELETE FROM gallery_photos WHERE alt_text LIKE '%Doctor Destino%' OR alt_text LIKE '%doctor destino%'`,
       );
-      cleanupResults.push(`Deleted gallery_photos`);
+      cleanupResults.push("Deleted gallery_photos");
 
       // 5. Vertical videos — artist_id is SET NULL, delete them
       if (artistId) {
         await executeRaw(
-          `DELETE FROM vertical_videos WHERE artist_id = '${artistId}'`
+          `DELETE FROM vertical_videos WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted vertical_videos`);
+        cleanupResults.push("Deleted vertical_videos");
       }
 
       // 6. Vertical video events
       if (artistId) {
         await executeRaw(
-          `DELETE FROM vertical_video_events WHERE artist_id = '${artistId}'`
+          `DELETE FROM vertical_video_events WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted vertical_video_events`);
+        cleanupResults.push("Deleted vertical_video_events");
       }
 
       // 7. Videos (YouTube)
       if (artistId) {
-        await executeRaw(
-          `DELETE FROM videos WHERE artist_id = '${artistId}'`
-        );
-        cleanupResults.push(`Deleted videos`);
+        await executeRaw(`DELETE FROM videos WHERE artist_id = '${artistId}'`);
+        cleanupResults.push("Deleted videos");
       }
 
       // 8. YouTube channels
       if (artistId) {
         await executeRaw(
-          `DELETE FROM youtube_channels WHERE artist_id = '${artistId}'`
+          `DELETE FROM youtube_channels WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted youtube_channels`);
+        cleanupResults.push("Deleted youtube_channels");
       }
 
       // 9. Media releases
       if (artistId) {
         await executeRaw(
-          `DELETE FROM media_releases WHERE artist_id = '${artistId}'`
+          `DELETE FROM media_releases WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted media_releases`);
+        cleanupResults.push("Deleted media_releases");
       }
 
       // 10. Campaigns
       if (artistId) {
         await executeRaw(
-          `DELETE FROM campaigns WHERE artist_id = '${artistId}'`
+          `DELETE FROM campaigns WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted campaigns`);
+        cleanupResults.push("Deleted campaigns");
       }
 
       // 11. Fan wall messages
       if (artistId) {
         await executeRaw(
-          `DELETE FROM fan_wall_messages WHERE artist_id = '${artistId}'`
+          `DELETE FROM fan_wall_messages WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted fan_wall_messages`);
+        cleanupResults.push("Deleted fan_wall_messages");
       }
 
       // 12. Curated Spotify channels — match by Spotify artist ID
       await executeRaw(
-        `DELETE FROM curated_spotify_channels WHERE spotify_artist_id = '${doctorDestinoSpotifyId}'`
+        `DELETE FROM curated_spotify_channels WHERE spotify_artist_id = '${doctorDestinoSpotifyId}'`,
       );
-      cleanupResults.push(`Deleted curated_spotify_channels`);
+      cleanupResults.push("Deleted curated_spotify_channels");
 
       // 13. Curated tracks — match by artist_name text field or artist_ids JSON containing Spotify ID
       await executeRaw(
-        `DELETE FROM curated_tracks WHERE artist_name LIKE '%Doctor Destino%' OR artist_name LIKE '%doctor destino%' OR artist_ids LIKE '%${doctorDestinoSpotifyId}%'`
+        `DELETE FROM curated_tracks WHERE artist_name LIKE '%Doctor Destino%' OR artist_name LIKE '%doctor destino%' OR artist_ids LIKE '%${doctorDestinoSpotifyId}%'`,
       );
-      cleanupResults.push(`Deleted curated_tracks`);
+      cleanupResults.push("Deleted curated_tracks");
 
       // 14. Releases that only belong to Doctor Destino (no other artists)
       if (artistId) {
         await executeRaw(
-          `DELETE FROM releases WHERE id IN (SELECT r.id FROM releases r LEFT JOIN release_artists ra ON r.id = ra.release_id WHERE ra.artist_id = '${artistId}' AND r.id NOT IN (SELECT DISTINCT release_id FROM release_artists WHERE artist_id != '${artistId}'))`
+          `DELETE FROM releases WHERE id IN (SELECT r.id FROM releases r LEFT JOIN release_artists ra ON r.id = ra.release_id WHERE ra.artist_id = '${artistId}' AND r.id NOT IN (SELECT DISTINCT release_id FROM release_artists WHERE artist_id != '${artistId}'))`,
         );
-        cleanupResults.push(`Deleted releases (solo Doctor Destino by artistId)`);
+        cleanupResults.push(
+          "Deleted releases (solo Doctor Destino by artistId)",
+        );
         // Delete remaining release_artists associations
         await executeRaw(
-          `DELETE FROM release_artists WHERE artist_id = '${artistId}'`
+          `DELETE FROM release_artists WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted release_artists`);
+        cleanupResults.push("Deleted release_artists");
       }
 
       // 14b. Also delete releases by slug pattern (catches orphaned releases without release_artists)
       await executeRaw(
-        `DELETE FROM release_artists WHERE release_id IN (SELECT id FROM releases WHERE slug LIKE '%doctor-destino%')`
+        `DELETE FROM release_artists WHERE release_id IN (SELECT id FROM releases WHERE slug LIKE '%doctor-destino%')`,
       );
       await executeRaw(
-        `DELETE FROM releases WHERE slug LIKE '%doctor-destino%'`
+        `DELETE FROM releases WHERE slug LIKE '%doctor-destino%'`,
       );
-      cleanupResults.push(`Deleted releases (by slug pattern)`);
+      cleanupResults.push("Deleted releases (by slug pattern)");
 
       // 15. Concert memories — tagged_artists is a text field
       await executeRaw(
-        `DELETE FROM concert_memories WHERE tagged_artists LIKE '%Doctor Destino%' OR tagged_artists LIKE '%doctor destino%'`
+        `DELETE FROM concert_memories WHERE tagged_artists LIKE '%Doctor Destino%' OR tagged_artists LIKE '%doctor destino%'`,
       );
 
       // 16. Upcoming releases subscribers — if any upcoming releases were Doctor Destino's
       if (artistId) {
         await executeRaw(
-          `DELETE FROM upcoming_release_subscribers WHERE release_id IN (SELECT id FROM upcoming_releases WHERE artist_id = '${artistId}')`
+          `DELETE FROM upcoming_release_subscribers WHERE release_id IN (SELECT id FROM upcoming_releases WHERE artist_id = '${artistId}')`,
         );
         await executeRaw(
-          `DELETE FROM upcoming_releases WHERE artist_id = '${artistId}'`
+          `DELETE FROM upcoming_releases WHERE artist_id = '${artistId}'`,
         );
-        cleanupResults.push(`Deleted upcoming_releases + subscribers`);
+        cleanupResults.push("Deleted upcoming_releases + subscribers");
       }
 
-      console.log(`[Ensure Tables] Doctor Destino cleanup: ${cleanupResults.join(', ')}`);
+      console.log(
+        `[Ensure Tables] Doctor Destino cleanup: ${cleanupResults.join(", ")}`,
+      );
       results.push({
         table: "cleanup_doctor_destino",
         status: cleanupResults.length > 0 ? "removed" : "skipped",
-        error: cleanupResults.length > 0 ? cleanupResults.join('; ') : "No Doctor Destino data found",
+        error:
+          cleanupResults.length > 0
+            ? cleanupResults.join("; ")
+            : "No Doctor Destino data found",
       });
     } catch (cleanupError) {
-      const msg = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
-      results.push({ table: "cleanup_doctor_destino", status: "error", error: msg });
+      const msg =
+        cleanupError instanceof Error
+          ? cleanupError.message
+          : String(cleanupError);
+      results.push({
+        table: "cleanup_doctor_destino",
+        status: "error",
+        error: msg,
+      });
     }
 
     const hasErrors = results.some((r) => r.status === "error");
@@ -895,7 +1039,7 @@ export async function POST() {
     console.error("[Ensure Tables] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to ensure tables" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -907,7 +1051,8 @@ export async function GET() {
       return NextResponse.json({
         success: false,
         configured: false,
-        message: "Database not configured - set DATABASE_URL and DATABASE_AUTH_TOKEN",
+        message:
+          "Database not configured - set DATABASE_URL and DATABASE_AUTH_TOKEN",
       });
     }
 

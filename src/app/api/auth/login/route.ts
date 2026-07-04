@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { createHash, randomBytes } from "node:crypto";
 import { db } from "@/db/client";
-import { users, sessions } from "@/db/schema";
+import { sessions, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { createHash, randomBytes } from "crypto";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Admin login endpoint.
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (!username || !password) {
       return NextResponse.json(
         { success: false, error: "Username and password are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -41,11 +41,13 @@ export async function POST(request: NextRequest) {
         .limit(1);
 
       if (!existingAdmin) {
-        console.log(`[Auth] Admin user "${adminUsername}" not found — creating default admin`);
+        console.log(
+          `[Auth] Admin user "${adminUsername}" not found — creating default admin`,
+        );
         const salt = randomBytes(16).toString("hex");
-        const hashedPassword = salt + ":" + createHash("sha256")
+        const hashedPassword = `${salt}:${createHash("sha256")
           .update(salt + adminPassword)
-          .digest("hex");
+          .digest("hex")}`;
 
         await db.insert(users).values({
           id: crypto.randomUUID(),
@@ -58,7 +60,10 @@ export async function POST(request: NextRequest) {
         console.log(`[Auth] Default admin user created: "${adminUsername}"`);
       }
     } catch (seedError) {
-      console.warn("[Auth] Auto-seed failed (may be expected if users table doesn't exist yet):", seedError);
+      console.warn(
+        "[Auth] Auto-seed failed (may be expected if users table doesn't exist yet):",
+        seedError,
+      );
     }
 
     // Look up user by username (name field) only
@@ -72,7 +77,7 @@ export async function POST(request: NextRequest) {
       console.log(`[Auth] Login failed: user "${username}" not found`);
       return NextResponse.json(
         { success: false, error: "Invalid credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -81,17 +86,19 @@ export async function POST(request: NextRequest) {
       console.log(`[Auth] Login failed: user "${user.name}" is inactive`);
       return NextResponse.json(
         { success: false, error: "Account is disabled" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     // Verify password
     const passwordMatch = verifyPassword(password, user.passwordHash);
     if (!passwordMatch) {
-      console.log(`[Auth] Login failed: wrong password for user "${user.name}"`);
+      console.log(
+        `[Auth] Login failed: wrong password for user "${user.name}"`,
+      );
       return NextResponse.json(
         { success: false, error: "Invalid credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -138,7 +145,7 @@ export async function POST(request: NextRequest) {
     console.error("[Auth] Login error:", error);
     return NextResponse.json(
       { success: false, error: "Login failed. Please try again." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

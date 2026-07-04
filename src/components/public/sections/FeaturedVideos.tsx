@@ -1,8 +1,8 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { VideoCard } from "../cards/VideoCard";
-import type { Video } from "@/types";
 import { Button } from "@/components/ui/button";
+import type { Video } from "@/types";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { VideoCard } from "../cards/VideoCard";
 
 interface FeaturedVideosProps {
   videos: Video[];

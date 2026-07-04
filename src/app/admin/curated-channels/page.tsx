@@ -1,27 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
-  Music,
-  Plus,
-  Search,
-  Loader2,
-  Trash2,
-  RefreshCw,
-  ExternalLink,
-  CheckCircle,
   AlertCircle,
-  Users,
+  CheckCircle,
   Disc3,
+  ExternalLink,
   Eye,
   EyeOff,
+  Loader2,
+  Music,
+  Plus,
+  RefreshCw,
+  Search,
   Star,
+  Trash2,
+  Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface CuratedChannel {
   id: string;
@@ -84,7 +84,9 @@ export default function CuratedChannelsPage() {
   const fetchChannels = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/curated-channels?active=${!showInactive}`);
+      const res = await fetch(
+        `/api/admin/curated-channels?active=${!showInactive}`,
+      );
       const data = await res.json();
       if (data.success) {
         setChannels(data.data);
@@ -122,7 +124,9 @@ export default function CuratedChannelsPage() {
         setShowAddModal(false);
         setNewSpotifyUrl("");
         setNewDescription("");
-        const topInfo = data.data?.topTracksAdded ? ` (${data.data.topTracksAdded} top tracks)` : '';
+        const topInfo = data.data?.topTracksAdded
+          ? ` (${data.data.topTracksAdded} top tracks)`
+          : "";
         alert(`Canal "${data.data?.name}" agregado${topInfo}`);
         fetchChannels();
       } else {
@@ -141,26 +145,36 @@ export default function CuratedChannelsPage() {
     try {
       // First try the fast "recent tracks" method (~3-5 seconds)
       // Much more reliable than full album sync on Netlify
-      const topRes = await fetch(`/api/admin/curated-channels/${channelId}/top-tracks`, {
-        method: "POST",
-      });
+      const topRes = await fetch(
+        `/api/admin/curated-channels/${channelId}/top-tracks`,
+        {
+          method: "POST",
+        },
+      );
 
       if (topRes.ok) {
         const topData = await topRes.json();
         if (topData.success) {
           if (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0) {
-            alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
+            alert(
+              topData.message ||
+                `${topData.data.tracksAdded} tracks sincronizados`,
+            );
             fetchChannels();
             return;
           }
           // Top-tracks worked but found nothing new — try full sync
         } else {
           // Top-tracks returned an error — show it and stop
-          alert(`Error en tracks recientes: ${topData.error || "Error desconocido"}`);
+          alert(
+            `Error en tracks recientes: ${topData.error || "Error desconocido"}`,
+          );
           return;
         }
       } else if (topRes.status === 504 || topRes.status === 502) {
-        alert("El servidor tardó en responder. Intenta usar el botón ★ (Tracks Recientes) primero.");
+        alert(
+          "El servidor tardó en responder. Intenta usar el botón ★ (Tracks Recientes) primero.",
+        );
         return;
       }
       // If top-tracks returned non-ok status other than timeout, try full sync
@@ -173,9 +187,12 @@ export default function CuratedChannelsPage() {
       let totalAlbums = 0;
 
       while (true) {
-        const res = await fetch(`/api/admin/curated-channels/${channelId}/sync?offset=${offset}`, {
-          method: "POST",
-        });
+        const res = await fetch(
+          `/api/admin/curated-channels/${channelId}/sync?offset=${offset}`,
+          {
+            method: "POST",
+          },
+        );
 
         if (!res.ok) {
           let errorMsg = `Error al sincronizar (HTTP ${res.status})`;
@@ -202,19 +219,22 @@ export default function CuratedChannelsPage() {
 
         if (data.data.hasMore) {
           offset = data.data.nextOffset;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
         } else {
           break;
         }
       }
 
-      const msg = totalErrors > 0
-        ? `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes (${totalErrors} errores)`
-        : `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes`;
+      const msg =
+        totalErrors > 0
+          ? `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes (${totalErrors} errores)`
+          : `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes`;
       alert(msg);
       fetchChannels();
     } catch (error) {
-      alert("Error de conexión - la sincronización tarda. Intenta usar ★ (Tracks Recientes) primero.");
+      alert(
+        "Error de conexión - la sincronización tarda. Intenta usar ★ (Tracks Recientes) primero.",
+      );
     } finally {
       setSyncing(null);
     }
@@ -223,9 +243,12 @@ export default function CuratedChannelsPage() {
   const handleFetchTopTracks = async (channel: CuratedChannel) => {
     setFetchingTop(channel.id);
     try {
-      const res = await fetch(`/api/admin/curated-channels/${channel.id}/top-tracks`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        `/api/admin/curated-channels/${channel.id}/top-tracks`,
+        {
+          method: "POST",
+        },
+      );
       const data = await res.json();
       if (data.success) {
         alert(data.message || "Top tracks actualizados");
@@ -273,12 +296,13 @@ export default function CuratedChannelsPage() {
   };
 
   const filteredChannels = channels.filter((channel) => {
-    const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !filterCategory || channel.category === filterCategory;
+    const matchesSearch = channel.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      !filterCategory || channel.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
-
-
 
   return (
     <div className="min-h-screen bg-slc-black p-6">
@@ -290,7 +314,8 @@ export default function CuratedChannelsPage() {
               Canales Curados de Spotify
             </h1>
             <p className="text-slc-muted">
-              Administra qué artistas de Spotify están disponibles para agregar canciones a las playlists
+              Administra qué artistas de Spotify están disponibles para agregar
+              canciones a las playlists
             </p>
           </div>
 
@@ -333,7 +358,9 @@ export default function CuratedChannelsPage() {
           >
             <option value="">Todas las categorías</option>
             {Object.entries(categoryLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
 
@@ -341,7 +368,11 @@ export default function CuratedChannelsPage() {
             variant={showInactive ? "default" : "outline"}
             onClick={() => setShowInactive(!showInactive)}
           >
-            {showInactive ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
+            {showInactive ? (
+              <Eye className="w-4 h-4 mr-2" />
+            ) : (
+              <EyeOff className="w-4 h-4 mr-2" />
+            )}
             {showInactive ? "Mostrando todos" : "Mostrar inactivos"}
           </Button>
         </div>
@@ -365,7 +396,9 @@ export default function CuratedChannelsPage() {
                 <CheckCircle className="w-5 h-5 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-oswald">{channels.filter(c => c.isActive).length}</p>
+                <p className="text-2xl font-oswald">
+                  {channels.filter((c) => c.isActive).length}
+                </p>
                 <p className="text-xs text-slc-muted">Activos</p>
               </div>
             </div>
@@ -376,7 +409,9 @@ export default function CuratedChannelsPage() {
                 <Star className="w-5 h-5 text-orange-500" />
               </div>
               <div>
-                <p className="text-2xl font-oswald">{channels.filter(c => c.category === "roster").length}</p>
+                <p className="text-2xl font-oswald">
+                  {channels.filter((c) => c.category === "roster").length}
+                </p>
                 <p className="text-xs text-slc-muted">Del Roster</p>
               </div>
             </div>
@@ -387,7 +422,9 @@ export default function CuratedChannelsPage() {
                 <Disc3 className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-oswald">{channels.filter(c => c.category === "collaborator").length}</p>
+                <p className="text-2xl font-oswald">
+                  {channels.filter((c) => c.category === "collaborator").length}
+                </p>
                 <p className="text-xs text-slc-muted">Colaboradores</p>
               </div>
             </div>
@@ -402,7 +439,9 @@ export default function CuratedChannelsPage() {
         ) : filteredChannels.length === 0 ? (
           <div className="text-center py-20">
             <Music className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-            <h3 className="text-xl font-oswald uppercase mb-2">No hay canales</h3>
+            <h3 className="text-xl font-oswald uppercase mb-2">
+              No hay canales
+            </h3>
             <p className="text-slc-muted mb-4">
               {searchQuery || filterCategory
                 ? "No se encontraron canales con estos filtros"
@@ -422,7 +461,7 @@ export default function CuratedChannelsPage() {
                 key={channel.id}
                 className={cn(
                   "bg-slc-card border border-slc-border rounded-xl overflow-hidden transition-all hover:border-primary/50",
-                  !channel.isActive && "opacity-50"
+                  !channel.isActive && "opacity-50",
                 )}
               >
                 {/* Channel Header - Clickable */}
@@ -444,11 +483,15 @@ export default function CuratedChannelsPage() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-oswald text-lg truncate">{channel.name}</h3>
-                    <span className={cn(
-                      "inline-flex text-xs px-2 py-0.5 rounded-full border",
-                      categoryColors[channel.category]
-                    )}>
+                    <h3 className="font-oswald text-lg truncate">
+                      {channel.name}
+                    </h3>
+                    <span
+                      className={cn(
+                        "inline-flex text-xs px-2 py-0.5 rounded-full border",
+                        categoryColors[channel.category],
+                      )}
+                    >
                       {categoryLabels[channel.category]}
                     </span>
                   </div>
@@ -540,11 +583,15 @@ export default function CuratedChannelsPage() {
             onClick={() => setShowAddModal(false)}
           />
           <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-lg mx-auto bg-slc-dark border border-slc-border rounded-2xl p-6">
-            <h2 className="font-oswald text-xl uppercase mb-4">Agregar Canal de Spotify</h2>
+            <h2 className="font-oswald text-xl uppercase mb-4">
+              Agregar Canal de Spotify
+            </h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm mb-2">URL del Artista en Spotify *</label>
+                <label className="block text-sm mb-2">
+                  URL del Artista en Spotify *
+                </label>
                 <Input
                   value={newSpotifyUrl}
                   onChange={(e) => setNewSpotifyUrl(e.target.value)}
@@ -560,13 +607,17 @@ export default function CuratedChannelsPage() {
                   className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
                 >
                   {Object.entries(categoryLabels).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm mb-2">Descripción (opcional)</label>
+                <label className="block text-sm mb-2">
+                  Descripción (opcional)
+                </label>
                 <Input
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}

@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import {
-  Youtube,
+  AlertCircle,
+  Check,
   ExternalLink,
   Headphones,
-  Sparkles,
-  Music2,
-  Mail,
-  Lock,
-  Unlock,
   Loader2,
-  Check,
-  AlertCircle,
+  Lock,
+  Mail,
   Music,
+  Music2,
+  Sparkles,
+  Unlock,
+  Youtube,
 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 // Resources are fetched from the API (DB-backed) instead of the JSON file
 // so that admin CRUD changes are immediately reflected.
 
@@ -113,8 +113,12 @@ function ResourceEmbed({ resource }: { resource: SamplingResource }) {
         <Youtube className="w-9 h-9 text-white" />
       </div>
       <div className="relative text-center px-4">
-        <p className="font-oswald text-lg uppercase text-white tracking-wide">{resource.handle}</p>
-        <p className="text-xs text-slc-muted uppercase tracking-widest mt-1">Abrir canal</p>
+        <p className="font-oswald text-lg uppercase text-white tracking-wide">
+          {resource.handle}
+        </p>
+        <p className="text-xs text-slc-muted uppercase tracking-widest mt-1">
+          Abrir canal
+        </p>
       </div>
     </Link>
   );
@@ -186,7 +190,9 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
-  const [status, setStatus] = useState<"idle" | "submitting" | "error" | "success">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "error" | "success"
+  >("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -219,7 +225,7 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
             method: "email",
             email,
             grantedAt: new Date().toISOString(),
-          })
+          }),
         );
       } catch {
         // localStorage may be unavailable (private mode) — non-critical
@@ -334,7 +340,8 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
 
       {/* Legal note */}
       <p className="text-[11px] text-slc-muted/80 leading-relaxed text-center pt-1">
-        Al continuar aceptas recibir comunicaciones de Sonido Líquido Crew. Puedes darte de baja en cualquier momento.
+        Al continuar aceptas recibir comunicaciones de Sonido Líquido Crew.
+        Puedes darte de baja en cualquier momento.
       </p>
     </form>
   );
@@ -344,7 +351,11 @@ function EmailGate({ onUnlock }: { onUnlock: () => void }) {
 // Pre-save Gate
 // ===========================================
 
-function PresaveGate({ presaveUrl, presaveCta, onUnlock }: { presaveUrl: string; presaveCta: string; onUnlock: () => void }) {
+function PresaveGate({
+  presaveUrl,
+  presaveCta,
+  onUnlock,
+}: { presaveUrl: string; presaveCta: string; onUnlock: () => void }) {
   const [status, setStatus] = useState<"idle" | "clicked" | "success">("idle");
 
   const handleClick = () => {
@@ -360,7 +371,7 @@ function PresaveGate({ presaveUrl, presaveCta, onUnlock }: { presaveUrl: string;
         JSON.stringify({
           method: "presave",
           grantedAt: new Date().toISOString(),
-        })
+        }),
       );
     } catch {
       // localStorage may be unavailable — non-critical
@@ -381,7 +392,8 @@ function PresaveGate({ presaveUrl, presaveCta, onUnlock }: { presaveUrl: string;
       </div>
 
       <p className="text-center text-sm text-slc-muted leading-relaxed">
-        Apoya el próximo lanzamiento pre-guardándolo en Spotify y desbloquea acceso instantáneo a los recursos.
+        Apoya el próximo lanzamiento pre-guardándolo en Spotify y desbloquea
+        acceso instantáneo a los recursos.
       </p>
 
       {status === "success" && (
@@ -420,12 +432,17 @@ function PresaveGate({ presaveUrl, presaveCta, onUnlock }: { presaveUrl: string;
 // Gate Wrapper — renders the correct gate based on config
 // ===========================================
 
-function AccessGate({ gateConfig, onUnlock }: { gateConfig: GateConfig; onUnlock: () => void }) {
+function AccessGate({
+  gateConfig,
+  onUnlock,
+}: { gateConfig: GateConfig; onUnlock: () => void }) {
   const { gateType, presaveUrl, presaveCta } = gateConfig;
 
   const gateDescription: Record<GateType, string> = {
-    email: "Ingresa tu email para desbloquear la curaduría de canales, videos y playlists de YouTube.",
-    presave: "Pre-guarda el próximo lanzamiento en Spotify y desbloquea la curaduría de recursos para sampling.",
+    email:
+      "Ingresa tu email para desbloquear la curaduría de canales, videos y playlists de YouTube.",
+    presave:
+      "Pre-guarda el próximo lanzamiento en Spotify y desbloquea la curaduría de recursos para sampling.",
     both: "Desbloquea la curaduría de canales, videos y playlists de YouTube con tu email o pre-guardando en Spotify.",
   };
 
@@ -463,26 +480,34 @@ function AccessGate({ gateConfig, onUnlock }: { gateConfig: GateConfig; onUnlock
         </div>
 
         {/* Email only */}
-        {gateType === "email" && (
-          <EmailGate onUnlock={onUnlock} />
-        )}
+        {gateType === "email" && <EmailGate onUnlock={onUnlock} />}
 
         {/* Pre-save only */}
         {gateType === "presave" && presaveUrl && (
-          <PresaveGate presaveUrl={presaveUrl} presaveCta={presaveCta} onUnlock={onUnlock} />
+          <PresaveGate
+            presaveUrl={presaveUrl}
+            presaveCta={presaveCta}
+            onUnlock={onUnlock}
+          />
         )}
 
         {/* Both — user can choose */}
         {gateType === "both" && (
           <div className="space-y-4">
             {presaveUrl && (
-              <PresaveGate presaveUrl={presaveUrl} presaveCta={presaveCta} onUnlock={onUnlock} />
+              <PresaveGate
+                presaveUrl={presaveUrl}
+                presaveCta={presaveCta}
+                onUnlock={onUnlock}
+              />
             )}
 
             {/* Divider */}
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-slc-border" />
-              <span className="text-xs text-slc-muted uppercase tracking-wider">o</span>
+              <span className="text-xs text-slc-muted uppercase tracking-wider">
+                o
+              </span>
               <div className="h-px flex-1 bg-slc-border" />
             </div>
 
@@ -503,7 +528,10 @@ export default function SamplingResourcesClient() {
   const [hydrated, setHydrated] = useState(false);
 
   const [resources, setResources] = useState<SamplingResource[]>([]);
-  const [pageMeta, setPageMeta] = useState({ title: "Recursos para Sampling", subtitle: "" });
+  const [pageMeta, setPageMeta] = useState({
+    title: "Recursos para Sampling",
+    subtitle: "",
+  });
   const [gateConfig, setGateConfig] = useState<GateConfig>({
     gateType: "email",
     presaveUrl: "",
@@ -528,7 +556,10 @@ export default function SamplingResourcesClient() {
       .then((json) => {
         if (json.success && json.data) {
           setResources(json.data.resources || []);
-          setPageMeta({ title: json.data.title || "Recursos para Sampling", subtitle: json.data.subtitle || "" });
+          setPageMeta({
+            title: json.data.title || "Recursos para Sampling",
+            subtitle: json.data.subtitle || "",
+          });
           setGateConfig({
             gateType: json.data.gateType || "email",
             presaveUrl: json.data.presaveUrl || "",
@@ -541,7 +572,7 @@ export default function SamplingResourcesClient() {
 
   // Group by category
   const categories = Array.from(
-    new Set(resources.map((r) => r.category))
+    new Set(resources.map((r) => r.category)),
   ) as string[];
 
   const grouped = categories.map((cat) => ({
@@ -565,7 +596,12 @@ export default function SamplingResourcesClient() {
   }
 
   if (!accessGranted) {
-    return <AccessGate gateConfig={gateConfig} onUnlock={() => setAccessGranted(true)} />;
+    return (
+      <AccessGate
+        gateConfig={gateConfig}
+        onUnlock={() => setAccessGranted(true)}
+      />
+    );
   }
 
   return (
@@ -602,23 +638,39 @@ export default function SamplingResourcesClient() {
             <div className="flex flex-wrap items-center gap-3 mt-8">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slc-card border border-slc-border">
                 <Youtube className="w-4 h-4 text-red-500" />
-                <span className="text-sm text-white font-medium">{counts.channel}</span>
-                <span className="text-xs text-slc-muted uppercase tracking-wide">Canales</span>
+                <span className="text-sm text-white font-medium">
+                  {counts.channel}
+                </span>
+                <span className="text-xs text-slc-muted uppercase tracking-wide">
+                  Canales
+                </span>
               </div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slc-card border border-slc-border">
                 <Youtube className="w-4 h-4 text-red-500" />
-                <span className="text-sm text-white font-medium">{counts.video}</span>
-                <span className="text-xs text-slc-muted uppercase tracking-wide">Videos</span>
+                <span className="text-sm text-white font-medium">
+                  {counts.video}
+                </span>
+                <span className="text-xs text-slc-muted uppercase tracking-wide">
+                  Videos
+                </span>
               </div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slc-card border border-slc-border">
                 <Music2 className="w-4 h-4 text-purple-400" />
-                <span className="text-sm text-white font-medium">{counts.playlist}</span>
-                <span className="text-xs text-slc-muted uppercase tracking-wide">Playlists</span>
+                <span className="text-sm text-white font-medium">
+                  {counts.playlist}
+                </span>
+                <span className="text-xs text-slc-muted uppercase tracking-wide">
+                  Playlists
+                </span>
               </div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm text-primary font-medium">{resources.length}</span>
-                <span className="text-xs text-primary/80 uppercase tracking-wide">Recursos</span>
+                <span className="text-sm text-primary font-medium">
+                  {resources.length}
+                </span>
+                <span className="text-xs text-primary/80 uppercase tracking-wide">
+                  Recursos
+                </span>
               </div>
             </div>
           </div>
@@ -651,7 +703,9 @@ export default function SamplingResourcesClient() {
         <div className="section-container py-10">
           <div className="max-w-3xl mx-auto text-center">
             <p className="text-sm text-slc-muted leading-relaxed">
-              Curaduría de recursos para sampling de Sonido Líquido Crew. Canales, videos y playlists de YouTube para encontrar música sampleable.
+              Curaduría de recursos para sampling de Sonido Líquido Crew.
+              Canales, videos y playlists de YouTube para encontrar música
+              sampleable.
             </p>
           </div>
         </div>

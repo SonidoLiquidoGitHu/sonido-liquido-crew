@@ -1,34 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  FileText,
-  Download,
-  ExternalLink,
-  Copy,
   Check,
-  RefreshCw,
-  User,
-  Music,
-  Instagram,
-  Youtube,
-  Mail,
   ChevronDown,
   ChevronUp,
-  Quote,
-  Video,
+  Copy,
+  Download,
   Edit,
+  ExternalLink,
   Eye,
-  Loader2,
-  Plus,
-  Trash2,
-  Save,
-  X,
+  FileText,
   GripVertical,
+  Instagram,
+  Loader2,
+  Mail,
+  Music,
+  Plus,
+  Quote,
+  RefreshCw,
+  Save,
+  Trash2,
+  User,
+  Video,
+  X,
+  Youtube,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface PressQuote {
   quote: string;
@@ -71,7 +71,9 @@ export default function AdminPressKitsPage() {
   const [syncing, setSyncing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
-  const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
+  const [selectedArtists, setSelectedArtists] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Edit mode state
   const [editingArtist, setEditingArtist] = useState<string | null>(null);
@@ -118,7 +120,7 @@ export default function AdminPressKitsPage() {
     } else {
       setExpandedArtist(id);
       // Load current data for editing
-      const artist = artists.find(a => a.id === id);
+      const artist = artists.find((a) => a.id === id);
       if (artist) {
         setEditQuotes(parseJson<PressQuote[]>(artist.pressQuotes, []));
         setEditVideos(parseJson<FeaturedVideo[]>(artist.featuredVideos, []));
@@ -144,7 +146,10 @@ export default function AdminPressKitsPage() {
     }
   };
 
-  const parseJson = <T,>(value: string | null | undefined, defaultValue: T): T => {
+  const parseJson = <T,>(
+    value: string | null | undefined,
+    defaultValue: T,
+  ): T => {
     if (!value) return defaultValue;
     try {
       return JSON.parse(value);
@@ -165,7 +170,7 @@ export default function AdminPressKitsPage() {
 
   // Edit mode functions
   const startEditing = (artistId: string) => {
-    const artist = artists.find(a => a.id === artistId);
+    const artist = artists.find((a) => a.id === artistId);
     if (artist) {
       setEditQuotes(parseJson<PressQuote[]>(artist.pressQuotes, []));
       setEditVideos(parseJson<FeaturedVideo[]>(artist.featuredVideos, []));
@@ -176,7 +181,7 @@ export default function AdminPressKitsPage() {
   const cancelEditing = () => {
     setEditingArtist(null);
     // Reset to original data
-    const artist = artists.find(a => a.id === expandedArtist);
+    const artist = artists.find((a) => a.id === expandedArtist);
     if (artist) {
       setEditQuotes(parseJson<PressQuote[]>(artist.pressQuotes, []));
       setEditVideos(parseJson<FeaturedVideo[]>(artist.featuredVideos, []));
@@ -198,20 +203,22 @@ export default function AdminPressKitsPage() {
       const result = await res.json();
       if (result.success) {
         // Update local state
-        setArtists(prev => prev.map(a =>
-          a.id === artistId
-            ? {
-                ...a,
-                pressQuotes: JSON.stringify(editQuotes),
-                featuredVideos: JSON.stringify(editVideos),
-              }
-            : a
-        ));
+        setArtists((prev) =>
+          prev.map((a) =>
+            a.id === artistId
+              ? {
+                  ...a,
+                  pressQuotes: JSON.stringify(editQuotes),
+                  featuredVideos: JSON.stringify(editVideos),
+                }
+              : a,
+          ),
+        );
         setEditingArtist(null);
         setSaveSuccess(artistId);
         setTimeout(() => setSaveSuccess(null), 3000);
       } else {
-        alert("Error al guardar: " + (result.error || "Error desconocido"));
+        alert(`Error al guardar: ${result.error || "Error desconocido"}`);
       }
     } catch (error) {
       console.error("Error saving:", error);
@@ -226,7 +233,11 @@ export default function AdminPressKitsPage() {
     setEditQuotes([...editQuotes, { quote: "", source: "", sourceUrl: "" }]);
   };
 
-  const updateQuote = (index: number, field: keyof PressQuote, value: string) => {
+  const updateQuote = (
+    index: number,
+    field: keyof PressQuote,
+    value: string,
+  ) => {
     const updated = [...editQuotes];
     updated[index] = { ...updated[index], [field]: value };
     setEditQuotes(updated);
@@ -238,16 +249,23 @@ export default function AdminPressKitsPage() {
 
   // Video editing functions
   const addVideo = () => {
-    setEditVideos([...editVideos, {
-      videoUrl: "",
-      title: "",
-      platform: "youtube",
-      views: 0,
-      thumbnailUrl: ""
-    }]);
+    setEditVideos([
+      ...editVideos,
+      {
+        videoUrl: "",
+        title: "",
+        platform: "youtube",
+        views: 0,
+        thumbnailUrl: "",
+      },
+    ]);
   };
 
-  const updateVideo = (index: number, field: keyof FeaturedVideo, value: string | number) => {
+  const updateVideo = (
+    index: number,
+    field: keyof FeaturedVideo,
+    value: string | number,
+  ) => {
     const updated = [...editVideos];
     updated[index] = { ...updated[index], [field]: value };
     setEditVideos(updated);
@@ -281,10 +299,10 @@ export default function AdminPressKitsPage() {
     const selectedData = artists.filter((a) => selectedArtists.has(a.id));
     const data = selectedData.length > 0 ? selectedData : artists;
 
-    let markdown = `# SONIDO LÍQUIDO CREW - PRESS KIT\n\n`;
-    markdown += `**El colectivo de Hip Hop más representativo de México**\n`;
-    markdown += `Fundado en 1999 en la Ciudad de México.\n\n`;
-    markdown += `---\n\n`;
+    let markdown = "# SONIDO LÍQUIDO CREW - PRESS KIT\n\n";
+    markdown += "**El colectivo de Hip Hop más representativo de México**\n";
+    markdown += "Fundado en 1999 en la Ciudad de México.\n\n";
+    markdown += "---\n\n";
     markdown += `## ROSTER DE ARTISTAS (${data.length})\n\n`;
 
     for (const artist of data) {
@@ -295,31 +313,31 @@ export default function AdminPressKitsPage() {
       // Press quotes
       const quotes = parseJson<PressQuote[]>(artist.pressQuotes, []);
       if (quotes.length > 0) {
-        markdown += `**Citas de Prensa:**\n`;
+        markdown += "**Citas de Prensa:**\n";
         for (const q of quotes) {
           markdown += `- "${q.quote}" - ${q.source}\n`;
         }
-        markdown += `\n`;
+        markdown += "\n";
       }
 
       // Videos
       const videos = parseJson<FeaturedVideo[]>(artist.featuredVideos, []);
       if (videos.length > 0) {
-        markdown += `**Videos Destacados:**\n`;
+        markdown += "**Videos Destacados:**\n";
         for (const v of videos) {
           markdown += `- ${v.title} (${v.views?.toLocaleString() || 0} views): ${v.videoUrl}\n`;
         }
-        markdown += `\n`;
+        markdown += "\n";
       }
 
-      markdown += `---\n\n`;
+      markdown += "---\n\n";
     }
 
-    markdown += `## CONTACTO\n\n`;
-    markdown += `**Email:** prensasonidoliquido@gmail.com\n`;
-    markdown += `**Teléfono:** +52 55 2801 1881\n`;
-    markdown += `**Website:** https://sonidoliquido.com\n\n`;
-    markdown += `---\n\n`;
+    markdown += "## CONTACTO\n\n";
+    markdown += "**Email:** prensasonidoliquido@gmail.com\n";
+    markdown += "**Teléfono:** +52 55 2801 1881\n";
+    markdown += "**Website:** https://sonidoliquido.com\n\n";
+    markdown += "---\n\n";
     markdown += `*Generado el ${new Date().toLocaleDateString("es-MX", { dateStyle: "full" })}*\n`;
 
     const blob = new Blob([markdown], { type: "text/markdown" });
@@ -371,7 +389,9 @@ export default function AdminPressKitsPage() {
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-lg text-primary hover:bg-primary/20 transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
-          <span className="text-sm font-medium">Ver página pública de prensa</span>
+          <span className="text-sm font-medium">
+            Ver página pública de prensa
+          </span>
         </Link>
         <Link
           href="/epk/zaque"
@@ -388,7 +408,8 @@ export default function AdminPressKitsPage() {
         <div>
           <h1 className="font-oswald text-3xl uppercase">Press Kits</h1>
           <p className="text-slc-muted mt-1">
-            Información de prensa y recursos para medios - {artists.length} artistas
+            Información de prensa y recursos para medios - {artists.length}{" "}
+            artistas
           </p>
         </div>
         <div className="flex gap-2">
@@ -402,7 +423,8 @@ export default function AdminPressKitsPage() {
           </Button>
           <Button onClick={exportPressKit} variant="outline">
             <Download className="w-4 h-4 mr-2" />
-            Exportar {selectedArtists.size > 0 ? `(${selectedArtists.size})` : "Todo"}
+            Exportar{" "}
+            {selectedArtists.size > 0 ? `(${selectedArtists.size})` : "Todo"}
           </Button>
           <Button asChild>
             <Link href="/admin/press-kits/edit">
@@ -416,19 +438,29 @@ export default function AdminPressKitsPage() {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-primary">{artists.length}</div>
+          <div className="font-oswald text-2xl text-primary">
+            {artists.length}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Artistas</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-cyan-500">{artistsWithQuotes}</div>
-          <div className="text-xs text-slc-muted uppercase">Con Citas de Prensa</div>
+          <div className="font-oswald text-2xl text-cyan-500">
+            {artistsWithQuotes}
+          </div>
+          <div className="text-xs text-slc-muted uppercase">
+            Con Citas de Prensa
+          </div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-red-500">{artistsWithVideos}</div>
+          <div className="font-oswald text-2xl text-red-500">
+            {artistsWithVideos}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Con Videos</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-yellow-500">{totalQuotes}</div>
+          <div className="font-oswald text-2xl text-yellow-500">
+            {totalQuotes}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Total Citas</div>
         </div>
       </div>
@@ -438,17 +470,23 @@ export default function AdminPressKitsPage() {
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={selectedArtists.size === artists.length && artists.length > 0}
+            checked={
+              selectedArtists.size === artists.length && artists.length > 0
+            }
             onChange={selectAll}
             className="w-4 h-4 rounded border-slc-border"
           />
           <span className="text-sm">
-            {selectedArtists.size === artists.length ? "Deseleccionar todos" : "Seleccionar todos"}
+            {selectedArtists.size === artists.length
+              ? "Deseleccionar todos"
+              : "Seleccionar todos"}
           </span>
         </label>
         {selectedArtists.size > 0 && (
           <span className="text-sm text-slc-muted">
-            {selectedArtists.size} artista{selectedArtists.size !== 1 ? "s" : ""} seleccionado{selectedArtists.size !== 1 ? "s" : ""}
+            {selectedArtists.size} artista
+            {selectedArtists.size !== 1 ? "s" : ""} seleccionado
+            {selectedArtists.size !== 1 ? "s" : ""}
           </span>
         )}
       </div>
@@ -462,7 +500,10 @@ export default function AdminPressKitsPage() {
         <div className="space-y-4">
           {artists.map((artist) => {
             const quotes = parseJson<PressQuote[]>(artist.pressQuotes, []);
-            const videos = parseJson<FeaturedVideo[]>(artist.featuredVideos, []);
+            const videos = parseJson<FeaturedVideo[]>(
+              artist.featuredVideos,
+              [],
+            );
             const spotifyProfile = getExternalProfile(artist, "spotify");
             const instagramProfile = getExternalProfile(artist, "instagram");
             const youtubeProfile = getExternalProfile(artist, "youtube");
@@ -473,7 +514,9 @@ export default function AdminPressKitsPage() {
               <div
                 key={artist.id}
                 className={`bg-slc-dark border rounded-xl overflow-hidden transition-all ${
-                  selectedArtists.has(artist.id) ? "border-primary" : "border-slc-border"
+                  selectedArtists.has(artist.id)
+                    ? "border-primary"
+                    : "border-slc-border"
                 } ${saveSuccess === artist.id ? "ring-2 ring-green-500/50" : ""}`}
               >
                 {/* Artist Header */}
@@ -507,8 +550,12 @@ export default function AdminPressKitsPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-oswald text-xl uppercase">{artist.name}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${getRoleBadge(artist.role)}`}>
+                      <h3 className="font-oswald text-xl uppercase">
+                        {artist.name}
+                      </h3>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs ${getRoleBadge(artist.role)}`}
+                      >
                         {getRoleLabel(artist.role)}
                       </span>
                       {saveSuccess === artist.id && (
@@ -532,7 +579,9 @@ export default function AdminPressKitsPage() {
                         </span>
                       )}
                       {quotes.length === 0 && videos.length === 0 && (
-                        <span className="text-yellow-500/70">Sin contenido de prensa</span>
+                        <span className="text-yellow-500/70">
+                          Sin contenido de prensa
+                        </span>
                       )}
                     </div>
                   </div>
@@ -588,11 +637,7 @@ export default function AdminPressKitsPage() {
                   </Button>
 
                   {/* View Public EPK */}
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                  >
+                  <Button asChild variant="outline" size="sm">
                     <Link href={`/epk/${artist.slug}`} target="_blank">
                       <Eye className="w-4 h-4 mr-1" />
                       Ver EPK
@@ -604,7 +649,11 @@ export default function AdminPressKitsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => toggleArtist(artist.id)}
-                    className={isExpanded ? "bg-primary/10 border-primary text-primary" : ""}
+                    className={
+                      isExpanded
+                        ? "bg-primary/10 border-primary text-primary"
+                        : ""
+                    }
                   >
                     <Edit className="w-4 h-4 mr-1" />
                     {isExpanded ? "Cerrar" : "Citas & Videos"}
@@ -634,7 +683,10 @@ export default function AdminPressKitsPage() {
                       </h4>
                       <div className="flex gap-2">
                         {!isEditing ? (
-                          <Button size="sm" onClick={() => startEditing(artist.id)}>
+                          <Button
+                            size="sm"
+                            onClick={() => startEditing(artist.id)}
+                          >
                             <Edit className="w-4 h-4 mr-1" />
                             Editar
                           </Button>
@@ -671,10 +723,16 @@ export default function AdminPressKitsPage() {
                       <div className="flex items-center justify-between mb-4">
                         <h5 className="font-oswald text-sm uppercase flex items-center gap-2">
                           <Quote className="w-4 h-4 text-cyan-500" />
-                          Citas de Prensa ({isEditing ? editQuotes.length : quotes.length})
+                          Citas de Prensa (
+                          {isEditing ? editQuotes.length : quotes.length})
                         </h5>
                         {isEditing && (
-                          <Button type="button" variant="outline" size="sm" onClick={addQuote}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addQuote}
+                          >
                             <Plus className="w-4 h-4 mr-1" />
                             Agregar Cita
                           </Button>
@@ -687,11 +745,17 @@ export default function AdminPressKitsPage() {
                           {editQuotes.length === 0 ? (
                             <div className="text-center py-8 text-slc-muted bg-slc-dark rounded-lg">
                               <Quote className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                              <p className="text-sm">No hay citas. Haz clic en "Agregar Cita" para comenzar.</p>
+                              <p className="text-sm">
+                                No hay citas. Haz clic en "Agregar Cita" para
+                                comenzar.
+                              </p>
                             </div>
                           ) : (
                             editQuotes.map((quote, index) => (
-                              <div key={index} className="p-4 bg-slc-dark rounded-lg border border-slc-border">
+                              <div
+                                key={index}
+                                className="p-4 bg-slc-dark rounded-lg border border-slc-border"
+                              >
                                 <div className="flex items-start gap-3">
                                   <div className="pt-2">
                                     <GripVertical className="w-4 h-4 text-slc-muted" />
@@ -699,7 +763,13 @@ export default function AdminPressKitsPage() {
                                   <div className="flex-1 space-y-3">
                                     <textarea
                                       value={quote.quote}
-                                      onChange={(e) => updateQuote(index, "quote", e.target.value)}
+                                      onChange={(e) =>
+                                        updateQuote(
+                                          index,
+                                          "quote",
+                                          e.target.value,
+                                        )
+                                      }
                                       placeholder="La cita textual..."
                                       rows={3}
                                       className="w-full px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm resize-none focus:outline-none focus:border-primary"
@@ -708,14 +778,26 @@ export default function AdminPressKitsPage() {
                                       <input
                                         type="text"
                                         value={quote.source}
-                                        onChange={(e) => updateQuote(index, "source", e.target.value)}
+                                        onChange={(e) =>
+                                          updateQuote(
+                                            index,
+                                            "source",
+                                            e.target.value,
+                                          )
+                                        }
                                         placeholder="Fuente (ej: Rolling Stone, Blog, Podcast)"
                                         className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                                       />
                                       <input
                                         type="url"
                                         value={quote.sourceUrl}
-                                        onChange={(e) => updateQuote(index, "sourceUrl", e.target.value)}
+                                        onChange={(e) =>
+                                          updateQuote(
+                                            index,
+                                            "sourceUrl",
+                                            e.target.value,
+                                          )
+                                        }
                                         placeholder="URL de la fuente (opcional)"
                                         className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                                       />
@@ -742,17 +824,28 @@ export default function AdminPressKitsPage() {
                             <div className="text-center py-8 text-slc-muted bg-slc-dark rounded-lg">
                               <Quote className="w-10 h-10 mx-auto mb-2 opacity-30" />
                               <p className="text-sm">No hay citas de prensa.</p>
-                              <Button size="sm" className="mt-3" onClick={() => startEditing(artist.id)}>
+                              <Button
+                                size="sm"
+                                className="mt-3"
+                                onClick={() => startEditing(artist.id)}
+                              >
                                 <Plus className="w-4 h-4 mr-1" />
                                 Agregar Primera Cita
                               </Button>
                             </div>
                           ) : (
                             quotes.map((quote, index) => (
-                              <div key={index} className="p-3 bg-slc-card rounded-lg border-l-2 border-cyan-500">
-                                <p className="text-sm italic">"{quote.quote}"</p>
+                              <div
+                                key={index}
+                                className="p-3 bg-slc-card rounded-lg border-l-2 border-cyan-500"
+                              >
+                                <p className="text-sm italic">
+                                  "{quote.quote}"
+                                </p>
                                 <div className="flex items-center justify-between mt-2">
-                                  <span className="text-xs text-slc-muted">— {quote.source}</span>
+                                  <span className="text-xs text-slc-muted">
+                                    — {quote.source}
+                                  </span>
                                   {quote.sourceUrl && (
                                     <a
                                       href={quote.sourceUrl}
@@ -776,10 +869,16 @@ export default function AdminPressKitsPage() {
                       <div className="flex items-center justify-between mb-4">
                         <h5 className="font-oswald text-sm uppercase flex items-center gap-2">
                           <Video className="w-4 h-4 text-red-500" />
-                          Videos Destacados ({isEditing ? editVideos.length : videos.length})
+                          Videos Destacados (
+                          {isEditing ? editVideos.length : videos.length})
                         </h5>
                         {isEditing && (
-                          <Button type="button" variant="outline" size="sm" onClick={addVideo}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addVideo}
+                          >
                             <Plus className="w-4 h-4 mr-1" />
                             Agregar Video
                           </Button>
@@ -792,11 +891,17 @@ export default function AdminPressKitsPage() {
                           {editVideos.length === 0 ? (
                             <div className="text-center py-8 text-slc-muted bg-slc-dark rounded-lg">
                               <Video className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                              <p className="text-sm">No hay videos. Haz clic en "Agregar Video" para comenzar.</p>
+                              <p className="text-sm">
+                                No hay videos. Haz clic en "Agregar Video" para
+                                comenzar.
+                              </p>
                             </div>
                           ) : (
                             editVideos.map((video, index) => (
-                              <div key={index} className="p-4 bg-slc-dark rounded-lg border border-slc-border">
+                              <div
+                                key={index}
+                                className="p-4 bg-slc-dark rounded-lg border border-slc-border"
+                              >
                                 <div className="flex items-start gap-3">
                                   <div className="pt-2">
                                     <GripVertical className="w-4 h-4 text-slc-muted" />
@@ -806,7 +911,13 @@ export default function AdminPressKitsPage() {
                                       <input
                                         type="text"
                                         value={video.title}
-                                        onChange={(e) => updateVideo(index, "title", e.target.value)}
+                                        onChange={(e) =>
+                                          updateVideo(
+                                            index,
+                                            "title",
+                                            e.target.value,
+                                          )
+                                        }
                                         placeholder="Título del video"
                                         className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                                       />
@@ -815,10 +926,24 @@ export default function AdminPressKitsPage() {
                                           type="url"
                                           value={video.videoUrl}
                                           onChange={(e) => {
-                                            updateVideo(index, "videoUrl", e.target.value);
+                                            updateVideo(
+                                              index,
+                                              "videoUrl",
+                                              e.target.value,
+                                            );
                                             // Auto-fetch thumbnail when URL changes
-                                            if (e.target.value.includes("youtube.com") || e.target.value.includes("youtu.be")) {
-                                              fetchYouTubeThumbnail(e.target.value, index);
+                                            if (
+                                              e.target.value.includes(
+                                                "youtube.com",
+                                              ) ||
+                                              e.target.value.includes(
+                                                "youtu.be",
+                                              )
+                                            ) {
+                                              fetchYouTubeThumbnail(
+                                                e.target.value,
+                                                index,
+                                              );
                                             }
                                           }}
                                           placeholder="URL del video (YouTube)"
@@ -829,7 +954,13 @@ export default function AdminPressKitsPage() {
                                     <div className="grid gap-3 sm:grid-cols-3">
                                       <select
                                         value={video.platform}
-                                        onChange={(e) => updateVideo(index, "platform", e.target.value)}
+                                        onChange={(e) =>
+                                          updateVideo(
+                                            index,
+                                            "platform",
+                                            e.target.value,
+                                          )
+                                        }
                                         className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                                       >
                                         <option value="youtube">YouTube</option>
@@ -839,14 +970,27 @@ export default function AdminPressKitsPage() {
                                       <input
                                         type="number"
                                         value={video.views}
-                                        onChange={(e) => updateVideo(index, "views", parseInt(e.target.value) || 0)}
+                                        onChange={(e) =>
+                                          updateVideo(
+                                            index,
+                                            "views",
+                                            Number.parseInt(e.target.value) ||
+                                              0,
+                                          )
+                                        }
                                         placeholder="Vistas"
                                         className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                                       />
                                       <input
                                         type="url"
                                         value={video.thumbnailUrl}
-                                        onChange={(e) => updateVideo(index, "thumbnailUrl", e.target.value)}
+                                        onChange={(e) =>
+                                          updateVideo(
+                                            index,
+                                            "thumbnailUrl",
+                                            e.target.value,
+                                          )
+                                        }
                                         placeholder="URL de miniatura (auto para YT)"
                                         className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                                       />
@@ -881,8 +1025,14 @@ export default function AdminPressKitsPage() {
                           {videos.length === 0 ? (
                             <div className="col-span-full text-center py-8 text-slc-muted bg-slc-dark rounded-lg">
                               <Video className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                              <p className="text-sm">No hay videos destacados.</p>
-                              <Button size="sm" className="mt-3" onClick={() => startEditing(artist.id)}>
+                              <p className="text-sm">
+                                No hay videos destacados.
+                              </p>
+                              <Button
+                                size="sm"
+                                className="mt-3"
+                                onClick={() => startEditing(artist.id)}
+                              >
                                 <Plus className="w-4 h-4 mr-1" />
                                 Agregar Primer Video
                               </Button>
@@ -964,7 +1114,9 @@ export default function AdminPressKitsPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => copyToClipboard("prensasonidoliquido@gmail.com", "email")}
+                onClick={() =>
+                  copyToClipboard("prensasonidoliquido@gmail.com", "email")
+                }
               >
                 {copiedId === "email" ? (
                   <Check className="w-4 h-4 text-green-500" />

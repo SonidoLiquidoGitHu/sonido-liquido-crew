@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Image proxy - fixes Dropbox content-type issues for mobile browsers
 // Dropbox shared links return content-type: application/json even though the body is an image.
@@ -47,26 +47,52 @@ function detectImageType(body: ArrayBuffer): string | null {
   }
 
   // PNG: 89 50 4E 47
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+  if (
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
     return "image/png";
   }
 
   // GIF: 47 49 46 38
-  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+  if (
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38
+  ) {
     return "image/gif";
   }
 
   // WebP: 52 49 46 46 ... 57 45 42 50
-  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
-      bytes.byteLength >= 12 &&
-      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes.byteLength >= 12 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
     return "image/webp";
   }
 
   // AVIF: 00 00 00 ... 66 74 79 70 61 76 69 66 (ftyp avif)
-  if (bytes.byteLength >= 12 &&
-      bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70 &&
-      bytes[8] === 0x61 && bytes[9] === 0x76 && bytes[10] === 0x69 && bytes[11] === 0x66) {
+  if (
+    bytes.byteLength >= 12 &&
+    bytes[4] === 0x66 &&
+    bytes[5] === 0x74 &&
+    bytes[6] === 0x79 &&
+    bytes[7] === 0x70 &&
+    bytes[8] === 0x61 &&
+    bytes[9] === 0x76 &&
+    bytes[10] === 0x69 &&
+    bytes[11] === 0x66
+  ) {
     return "image/avif";
   }
 
@@ -77,7 +103,10 @@ function detectImageType(body: ArrayBuffer): string | null {
 
   // SVG (text-based): starts with <?xml or <svg
   if (body.byteLength > 10) {
-    const header = new TextDecoder().decode(body.slice(0, 100)).trim().toLowerCase();
+    const header = new TextDecoder()
+      .decode(body.slice(0, 100))
+      .trim()
+      .toLowerCase();
     if (header.startsWith("<?xml") || header.startsWith("<svg")) {
       return "image/svg+xml";
     }
@@ -93,20 +122,28 @@ function detectImageType(body: ArrayBuffer): string | null {
  */
 function isHtmlResponse(body: ArrayBuffer): boolean {
   if (body.byteLength < 20) return false;
-  const header = new TextDecoder().decode(body.slice(0, 200)).trim().toLowerCase();
-  return header.startsWith("<!doctype") || header.startsWith("<html") || header.startsWith("<head");
+  const header = new TextDecoder()
+    .decode(body.slice(0, 200))
+    .trim()
+    .toLowerCase();
+  return (
+    header.startsWith("<!doctype") ||
+    header.startsWith("<html") ||
+    header.startsWith("<head")
+  );
 }
 
 function getMimeType(url: string, contentType?: string): string {
   // If the upstream already returns a proper image content-type, use it
-  if (contentType && contentType.startsWith("image/")) {
+  if (contentType?.startsWith("image/")) {
     return contentType;
   }
 
   // Infer from URL path extension
   const pathname = new URL(url).pathname.toLowerCase();
   if (pathname.endsWith(".png")) return "image/png";
-  if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg")) return "image/jpeg";
+  if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg"))
+    return "image/jpeg";
   if (pathname.endsWith(".webp")) return "image/webp";
   if (pathname.endsWith(".gif")) return "image/gif";
   if (pathname.endsWith(".svg")) return "image/svg+xml";
@@ -127,16 +164,20 @@ function errorResponse(message: string, status: number): NextResponse {
       status,
       headers: {
         "Cache-Control": CACHE_NO_STORE,
-        "Pragma": "no-cache",
+        Pragma: "no-cache",
       },
-    }
+    },
   );
 }
 
 /**
  * Create a successful image response with aggressive caching.
  */
-function imageResponse(body: ArrayBuffer, mimeType: string, cacheControl: string = CACHE_SUCCESS): NextResponse {
+function imageResponse(
+  body: ArrayBuffer,
+  mimeType: string,
+  cacheControl: string = CACHE_SUCCESS,
+): NextResponse {
   return new NextResponse(body, {
     status: 200,
     headers: {
@@ -155,14 +196,18 @@ function imageResponse(body: ArrayBuffer, mimeType: string, cacheControl: string
  * Try to resolve a Dropbox shared link via the Dropbox API to get a temporary direct link.
  * This is the fallback when ?raw=1 doesn't work (common with /scl/fi/ URLs).
  */
-async function tryDropboxApiResolution(imageUrl: string): Promise<NextResponse | null> {
+async function tryDropboxApiResolution(
+  imageUrl: string,
+): Promise<NextResponse | null> {
   try {
     const { dropboxClient } = await import("@/lib/clients/dropbox");
 
     // Convert the URL back to a format the metadata API can resolve
     let sharedLink = imageUrl;
     if (sharedLink.includes("raw=1")) {
-      sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+      sharedLink = sharedLink
+        .replace("?raw=1", "?dl=0")
+        .replace("&raw=1", "&dl=0");
     }
 
     const token = await dropboxClient.getAccessToken();
@@ -175,7 +220,7 @@ async function tryDropboxApiResolution(imageUrl: string): Promise<NextResponse |
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ url: sharedLink }),
-      }
+      },
     );
 
     if (metaResponse.ok) {
@@ -192,7 +237,7 @@ async function tryDropboxApiResolution(imageUrl: string): Promise<NextResponse |
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ path: filePath }),
-          }
+          },
         );
 
         if (tempLinkResponse.ok) {
@@ -202,7 +247,10 @@ async function tryDropboxApiResolution(imageUrl: string): Promise<NextResponse |
           if (tempLink) {
             // Fetch from the temporary link (has proper CORS + content-type)
             const tempController = new AbortController();
-            const tempTimeout = setTimeout(() => tempController.abort(), TIMEOUT_MS);
+            const tempTimeout = setTimeout(
+              () => tempController.abort(),
+              TIMEOUT_MS,
+            );
 
             const tempResponse = await fetch(tempLink, {
               signal: tempController.signal,
@@ -216,11 +264,15 @@ async function tryDropboxApiResolution(imageUrl: string): Promise<NextResponse |
               if (tempBody.byteLength <= MAX_SIZE) {
                 // Use magic bytes to detect the actual image type
                 const detectedType = detectImageType(tempBody);
-                const tempContentType = tempResponse.headers.get("content-type") || "";
+                const tempContentType =
+                  tempResponse.headers.get("content-type") || "";
 
                 if (detectedType || tempContentType.startsWith("image/")) {
-                  const mimeType = detectedType || getMimeType(tempLink, tempContentType);
-                  console.log(`[image-proxy] Dropbox API resolution SUCCESS: ${mimeType}`);
+                  const mimeType =
+                    detectedType || getMimeType(tempLink, tempContentType);
+                  console.log(
+                    `[image-proxy] Dropbox API resolution SUCCESS: ${mimeType}`,
+                  );
                   return imageResponse(tempBody, mimeType, CACHE_TEMP_LINK);
                 }
               }
@@ -230,9 +282,14 @@ async function tryDropboxApiResolution(imageUrl: string): Promise<NextResponse |
       }
     }
 
-    console.warn("[image-proxy] Dropbox API resolution: metadata/temp link failed");
+    console.warn(
+      "[image-proxy] Dropbox API resolution: metadata/temp link failed",
+    );
   } catch (apiErr) {
-    console.warn("[image-proxy] Dropbox API resolution failed:", (apiErr as Error).message);
+    console.warn(
+      "[image-proxy] Dropbox API resolution failed:",
+      (apiErr as Error).message,
+    );
   }
 
   return null;
@@ -250,24 +307,34 @@ export async function GET(request: NextRequest) {
   // shared links (/scl/fi/...?rlkey=...). Convert to www.dropbox.com?raw=1 which
   // works with ALL formats. This must happen before validation/fetching.
   if (imageUrl.includes("dl.dropboxusercontent.com")) {
-    const fixed = imageUrl
-      .replace("dl.dropboxusercontent.com", "www.dropbox.com");
+    const fixed = imageUrl.replace(
+      "dl.dropboxusercontent.com",
+      "www.dropbox.com",
+    );
     if (!fixed.includes("raw=1")) {
-      imageUrl = fixed + (fixed.includes("?") ? "&" : "?") + "raw=1";
+      imageUrl = `${fixed + (fixed.includes("?") ? "&" : "?")}raw=1`;
     } else {
       imageUrl = fixed;
     }
-    console.log(`[image-proxy] Normalized dl.dropboxusercontent.com → ${imageUrl.substring(0, 100)}`);
+    console.log(
+      `[image-proxy] Normalized dl.dropboxusercontent.com → ${imageUrl.substring(0, 100)}`,
+    );
   }
 
   // Also normalize Dropbox URLs missing raw=1 parameter
-  if (imageUrl.includes("dropbox.com") && !imageUrl.includes("raw=1") && !imageUrl.includes("dl.dropboxusercontent.com")) {
+  if (
+    imageUrl.includes("dropbox.com") &&
+    !imageUrl.includes("raw=1") &&
+    !imageUrl.includes("dl.dropboxusercontent.com")
+  ) {
     if (imageUrl.includes("dl=0")) {
       imageUrl = imageUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
     } else {
-      imageUrl = imageUrl + (imageUrl.includes("?") ? "&" : "?") + "raw=1";
+      imageUrl = `${imageUrl + (imageUrl.includes("?") ? "&" : "?")}raw=1`;
     }
-    console.log(`[image-proxy] Added raw=1 to Dropbox URL → ${imageUrl.substring(0, 100)}`);
+    console.log(
+      `[image-proxy] Added raw=1 to Dropbox URL → ${imageUrl.substring(0, 100)}`,
+    );
   }
 
   // Validate the URL is from an allowed host
@@ -279,14 +346,17 @@ export async function GET(request: NextRequest) {
   }
 
   const isAllowed = ALLOWED_HOSTS.some(
-    (host) => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
+    (host) =>
+      parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`),
   );
 
   if (!isAllowed) {
     return errorResponse("Host not allowed", 403);
   }
 
-  const isDropbox = imageUrl.includes("dropbox.com") || imageUrl.includes("dropboxusercontent.com");
+  const isDropbox =
+    imageUrl.includes("dropbox.com") ||
+    imageUrl.includes("dropboxusercontent.com");
 
   try {
     // Fetch with timeout
@@ -306,12 +376,17 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       // For Dropbox URLs with non-200 response, try API resolution as fallback
       if (isDropbox) {
-        console.log(`[image-proxy] Upstream returned ${response.status}, trying Dropbox API fallback`);
+        console.log(
+          `[image-proxy] Upstream returned ${response.status}, trying Dropbox API fallback`,
+        );
         const apiResult = await tryDropboxApiResolution(imageUrl);
         if (apiResult) return apiResult;
       }
 
-      return errorResponse(`Upstream returned ${response.status}`, response.status >= 500 ? 502 : response.status);
+      return errorResponse(
+        `Upstream returned ${response.status}`,
+        response.status >= 500 ? 502 : response.status,
+      );
     }
 
     const body = await response.arrayBuffer();
@@ -321,10 +396,11 @@ export async function GET(request: NextRequest) {
       return errorResponse("Image too large", 413);
     }
 
-    const upstreamContentType = response.headers.get("content-type") || undefined;
+    const upstreamContentType =
+      response.headers.get("content-type") || undefined;
 
     // STEP 1: If content-type is image/*, serve directly (happy path)
-    if (upstreamContentType && upstreamContentType.startsWith("image/")) {
+    if (upstreamContentType?.startsWith("image/")) {
       const mimeType = getMimeType(imageUrl, upstreamContentType);
       return imageResponse(body, mimeType);
     }
@@ -336,14 +412,18 @@ export async function GET(request: NextRequest) {
     const detectedType = detectImageType(body);
 
     if (detectedType && !isHtmlResponse(body)) {
-      console.log(`[image-proxy] Detected ${detectedType} via magic bytes despite content-type: ${upstreamContentType}`);
+      console.log(
+        `[image-proxy] Detected ${detectedType} via magic bytes despite content-type: ${upstreamContentType}`,
+      );
       return imageResponse(body, detectedType);
     }
 
     // STEP 3: If the response looks like HTML (Dropbox login/error page), reject it.
     // We must NOT serve HTML as an image.
     if (isHtmlResponse(body)) {
-      console.warn(`[image-proxy] Upstream returned HTML page instead of image for: ${imageUrl.substring(0, 100)}`);
+      console.warn(
+        `[image-proxy] Upstream returned HTML page instead of image for: ${imageUrl.substring(0, 100)}`,
+      );
 
       // For Dropbox URLs, try API resolution to get a working link
       if (isDropbox) {
@@ -358,7 +438,9 @@ export async function GET(request: NextRequest) {
     // try the Dropbox API resolution as a fallback.
     // This handles /scl/fi/ URLs where ?raw=1 returns a JSON redirect.
     if (isDropbox) {
-      console.log(`[image-proxy] Upstream returned ${upstreamContentType}, trying Dropbox API fallback`);
+      console.log(
+        `[image-proxy] Upstream returned ${upstreamContentType}, trying Dropbox API fallback`,
+      );
       const apiResult = await tryDropboxApiResolution(imageUrl);
       if (apiResult) return apiResult;
     }
@@ -368,17 +450,30 @@ export async function GET(request: NextRequest) {
     // This handles edge cases where magic bytes don't match known signatures.
     if (body.byteLength > 100 && !isPrintableText(body)) {
       const mimeType = getMimeType(imageUrl, undefined);
-      console.log(`[image-proxy] Serving unknown binary data as ${mimeType} (last resort)`);
-      return imageResponse(body, mimeType, "public, max-age=3600, stale-while-revalidate=86400");
+      console.log(
+        `[image-proxy] Serving unknown binary data as ${mimeType} (last resort)`,
+      );
+      return imageResponse(
+        body,
+        mimeType,
+        "public, max-age=3600, stale-while-revalidate=86400",
+      );
     }
 
-    console.warn(`[image-proxy] Upstream returned non-image content-type: ${upstreamContentType} for URL: ${imageUrl.substring(0, 100)}`);
-    return errorResponse(`Upstream returned non-image content type: ${upstreamContentType}`, 502);
+    console.warn(
+      `[image-proxy] Upstream returned non-image content-type: ${upstreamContentType} for URL: ${imageUrl.substring(0, 100)}`,
+    );
+    return errorResponse(
+      `Upstream returned non-image content type: ${upstreamContentType}`,
+      502,
+    );
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       // For Dropbox timeouts, try API resolution as fallback
       if (isDropbox) {
-        console.log(`[image-proxy] Upstream timeout, trying Dropbox API fallback`);
+        console.log(
+          "[image-proxy] Upstream timeout, trying Dropbox API fallback",
+        );
         const apiResult = await tryDropboxApiResolution(imageUrl);
         if (apiResult) return apiResult;
       }
@@ -409,5 +504,5 @@ function isPrintableText(body: ArrayBuffer): boolean {
   }
 
   // If more than 85% of the sample is printable, it's probably text
-  return (printable / sampleSize) > 0.85;
+  return printable / sampleSize > 0.85;
 }

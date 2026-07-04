@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { stripeClient } from "@/lib/clients";
 import { productsRepository } from "@/lib/repositories";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     if (!stripeClient.isConfigured()) {
       return NextResponse.json(
         { success: false, error: "E-commerce is not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { success: false, error: "No items provided" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,21 +31,27 @@ export async function POST(request: NextRequest) {
       if (!product) {
         return NextResponse.json(
           { success: false, error: `Product not found: ${item.productId}` },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (!product.isActive) {
         return NextResponse.json(
-          { success: false, error: `Product is not available: ${product.name}` },
-          { status: 400 }
+          {
+            success: false,
+            error: `Product is not available: ${product.name}`,
+          },
+          { status: 400 },
         );
       }
 
       if (!product.stripePriceId) {
         return NextResponse.json(
-          { success: false, error: `Product not configured for checkout: ${product.name}` },
-          { status: 400 }
+          {
+            success: false,
+            error: `Product not configured for checkout: ${product.name}`,
+          },
+          { status: 400 },
         );
       }
 
@@ -56,9 +62,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get base URL
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
-                    request.headers.get("origin") ||
-                    "http://localhost:3000";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      request.headers.get("origin") ||
+      "http://localhost:3000";
 
     // Create checkout session
     const session = await stripeClient.createCheckoutSession({
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating checkout session:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create checkout session" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

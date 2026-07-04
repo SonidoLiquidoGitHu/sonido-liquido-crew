@@ -1,82 +1,85 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists } from "@/db/schema/artists";
 import { artistExternalProfiles } from "@/db/schema";
+import { artists } from "@/db/schema/artists";
 import { youtubeChannels } from "@/db/schema/videos";
-import { eq, and } from "drizzle-orm";
-import { generateUUID } from "@/lib/utils";
 import { youtubeClient } from "@/lib/clients";
+import { generateUUID } from "@/lib/utils";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 // YouTube channel data for each artist.
 // For handles (@something), the sync will resolve them to real UC... IDs.
 // For direct channel IDs (UC...), they can be used as-is.
-const artistChannels: Record<string, { handle?: string; channelId?: string; channelUrl: string }> = {
-  "brez": {
+const artistChannels: Record<
+  string,
+  { handle?: string; channelId?: string; channelUrl: string }
+> = {
+  brez: {
     handle: "brezhiphopmexicoslc25",
-    channelUrl: "https://youtube.com/@brezhiphopmexicoslc25"
+    channelUrl: "https://youtube.com/@brezhiphopmexicoslc25",
   },
   "bruno-grasso": {
     handle: "brunograssosl",
-    channelUrl: "https://youtube.com/@brunograssosl"
+    channelUrl: "https://youtube.com/@brunograssosl",
   },
   "chas-7p": {
     handle: "chas7p347",
-    channelUrl: "https://youtube.com/@chas7p347"
+    channelUrl: "https://youtube.com/@chas7p347",
   },
-  "codak": {
+  codak: {
     handle: "codak",
-    channelUrl: "https://youtube.com/@codak"
+    channelUrl: "https://youtube.com/@codak",
   },
-  "dilema": {
+  dilema: {
     handle: "dilema999",
-    channelUrl: "https://youtube.com/@dilema999"
+    channelUrl: "https://youtube.com/@dilema999",
   },
   "fancy-freak": {
     handle: "fancyfreakdj",
-    channelUrl: "https://youtube.com/@fancyfreakdj"
+    channelUrl: "https://youtube.com/@fancyfreakdj",
   },
-  "hassyel": {
+  hassyel: {
     channelId: "UCZp_YCv7jK3-lEtvSONNs8A",
-    channelUrl: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A"
+    channelUrl: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A",
   },
   "kev-cabrone": {
     handle: "kevcabrone",
-    channelUrl: "https://youtube.com/@kevcabrone"
+    channelUrl: "https://youtube.com/@kevcabrone",
   },
   "latin-geisha": {
     handle: "latingeishamx",
-    channelUrl: "https://youtube.com/@latingeishamx"
+    channelUrl: "https://youtube.com/@latingeishamx",
   },
   "pepe-levine": {
     handle: "pepelevine",
-    channelUrl: "https://youtube.com/@pepelevine"
+    channelUrl: "https://youtube.com/@pepelevine",
   },
   "q-master-weed": {
     handle: "qmasterw",
-    channelUrl: "https://youtube.com/@qmasterw"
+    channelUrl: "https://youtube.com/@qmasterw",
   },
-  "qmw": {
+  qmw: {
     handle: "qmasterw",
-    channelUrl: "https://youtube.com/@qmasterw"
+    channelUrl: "https://youtube.com/@qmasterw",
   },
   "reick-uno": {
     channelId: "UCMvZBwXGDTnXVV7NbYKWfaA",
-    channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA"
+    channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA",
   },
   "reick-one": {
     channelId: "UCMvZBwXGDTnXVV7NbYKWfaA",
-    channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA"
+    channelUrl: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA",
   },
   "x-santa-ana": {
     handle: "xsanta-ana",
-    channelUrl: "https://youtube.com/@xsanta-ana"
+    channelUrl: "https://youtube.com/@xsanta-ana",
   },
-  "zaque": {
+  zaque: {
     handle: "zakeuno",
-    channelUrl: "https://youtube.com/@zakeuno"
-  }
+    channelUrl: "https://youtube.com/@zakeuno",
+  },
 };
 
 /**
@@ -86,7 +89,9 @@ const artistChannels: Record<string, { handle?: string; channelId?: string; chan
 async function resolveChannelId(handle: string): Promise<string> {
   if (!youtubeClient.isConfigured()) {
     // API not configured — return the handle prefixed so we know it needs resolution later
-    console.warn(`[YouTube Channels] API key not configured, cannot resolve @${handle}. Channel will be resolved on first sync.`);
+    console.warn(
+      `[YouTube Channels] API key not configured, cannot resolve @${handle}. Channel will be resolved on first sync.`,
+    );
     return `@${handle}`;
   }
 
@@ -96,7 +101,9 @@ async function resolveChannelId(handle: string): Promise<string> {
       console.log(`[YouTube Channels] Resolved @${handle} → ${channel.id}`);
       return channel.id;
     }
-    console.warn(`[YouTube Channels] Could not resolve @${handle}, no channel returned`);
+    console.warn(
+      `[YouTube Channels] Could not resolve @${handle}, no channel returned`,
+    );
     return `@${handle}`;
   } catch (err) {
     console.warn(`[YouTube Channels] Error resolving @${handle}:`, err);
@@ -109,11 +116,16 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    const results: Array<{ artist: string; status: string; channelId?: string; channelUrl?: string }> = [];
+    const results: Array<{
+      artist: string;
+      status: string;
+      channelId?: string;
+      channelUrl?: string;
+    }> = [];
 
     // Get all artists
     const allArtists = await db.select().from(artists);
@@ -168,10 +180,12 @@ export async function POST(request: NextRequest) {
         const existing = await db
           .select()
           .from(artistExternalProfiles)
-          .where(and(
-            eq(artistExternalProfiles.artistId, artist.id),
-            eq(artistExternalProfiles.platform, "youtube")
-          ))
+          .where(
+            and(
+              eq(artistExternalProfiles.artistId, artist.id),
+              eq(artistExternalProfiles.platform, "youtube"),
+            ),
+          )
           .limit(1);
 
         if (existing.length > 0) {
@@ -196,7 +210,10 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (profileErr) {
-        console.warn(`[YouTube Channels] Could not update external profile for ${artist.name}:`, profileErr);
+        console.warn(
+          `[YouTube Channels] Could not update external profile for ${artist.name}:`,
+          profileErr,
+        );
       }
 
       results.push({
@@ -214,12 +231,14 @@ export async function POST(request: NextRequest) {
       results,
       summary: {
         total: results.length,
-        created: results.filter(r => r.status === "created").length,
-        skipped: results.filter(r => r.status.startsWith("skipped")).length,
-        resolvedIds: results.filter(r => r.channelId?.startsWith("UC")).length,
-        pendingResolution: results.filter(r => r.channelId?.startsWith("@")).length,
+        created: results.filter((r) => r.status === "created").length,
+        skipped: results.filter((r) => r.status.startsWith("skipped")).length,
+        resolvedIds: results.filter((r) => r.channelId?.startsWith("UC"))
+          .length,
+        pendingResolution: results.filter((r) => r.channelId?.startsWith("@"))
+          .length,
       },
-      note: results.some(r => r.channelId?.startsWith("@"))
+      note: results.some((r) => r.channelId?.startsWith("@"))
         ? "Some channels have handles instead of IDs (prefixed with @). They will be resolved to real IDs during the first YouTube sync."
         : undefined,
     });
@@ -227,7 +246,7 @@ export async function POST(request: NextRequest) {
     console.error("[Update YouTube Channels] Error:", error);
     return NextResponse.json(
       { success: false, error: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -238,11 +257,19 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    const preview: Array<{ artist: string; slug: string; currentUrl?: string; currentChannelId?: string; newUrl?: string; newChannelId?: string; status: string }> = [];
+    const preview: Array<{
+      artist: string;
+      slug: string;
+      currentUrl?: string;
+      currentChannelId?: string;
+      newUrl?: string;
+      newChannelId?: string;
+      status: string;
+    }> = [];
 
     const allArtists = await db.select().from(artists);
 
@@ -270,7 +297,9 @@ export async function GET(request: NextRequest) {
 
       if (existingChannels.length > 0) {
         const channel = existingChannels[0];
-        const needsUpdate = channel.channelUrl !== channelData.channelUrl || channel.channelId !== newChannelId;
+        const needsUpdate =
+          channel.channelUrl !== channelData.channelUrl ||
+          channel.channelId !== newChannelId;
 
         preview.push({
           artist: artist.name,
@@ -297,18 +326,19 @@ export async function GET(request: NextRequest) {
       preview,
       summary: {
         total: preview.length,
-        needsUpdate: preview.filter(p => p.status === "needs_update").length,
-        willCreate: preview.filter(p => p.status === "will_create").length,
-        upToDate: preview.filter(p => p.status === "up_to_date").length,
-        noMapping: preview.filter(p => p.status === "no_mapping").length,
+        needsUpdate: preview.filter((p) => p.status === "needs_update").length,
+        willCreate: preview.filter((p) => p.status === "will_create").length,
+        upToDate: preview.filter((p) => p.status === "up_to_date").length,
+        noMapping: preview.filter((p) => p.status === "no_mapping").length,
       },
-      instructions: "Call this endpoint with POST to apply the changes. Handles will be resolved to real channel IDs if YOUTUBE_API_KEY is set.",
+      instructions:
+        "Call this endpoint with POST to apply the changes. Handles will be resolved to real channel IDs if YOUTUBE_API_KEY is set.",
     });
   } catch (error) {
     console.error("[Update YouTube Channels Preview] Error:", error);
     return NextResponse.json(
       { success: false, error: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

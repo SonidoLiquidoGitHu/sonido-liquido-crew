@@ -1,33 +1,33 @@
 import { relations } from "drizzle-orm";
 import {
-  users,
-  sessions,
-  artists,
+  events,
   artistExternalProfiles,
   artistGalleryAssets,
   artistRelations,
-  releases,
-  releaseArtists,
-  playlists,
-  videos,
-  events,
-  products,
-  orders,
-  orderItems,
-  subscribers,
-  segments,
+  artists,
+  downloadGateActions,
+  downloadGates,
   emailCampaigns,
   fileAssets,
-  downloadGates,
-  downloadGateActions,
   mediaReleases,
+  orderItems,
+  orders,
+  playlists,
   pressKits,
-  syncJobs,
-  syncLogs,
-  tags,
-  tagAssignments,
+  products,
+  releaseArtists,
+  releases,
+  segments,
+  sessions,
   socialPostQueue,
   socialPostsLog,
+  subscribers,
+  syncJobs,
+  syncLogs,
+  tagAssignments,
+  tags,
+  users,
+  videos,
 } from "./schema";
 
 // ===========================================
@@ -59,32 +59,41 @@ export const artistsRelations = relations(artists, ({ many }) => ({
   pressKits: many(pressKits),
 }));
 
-export const artistExternalProfilesRelations = relations(artistExternalProfiles, ({ one }) => ({
-  artist: one(artists, {
-    fields: [artistExternalProfiles.artistId],
-    references: [artists.id],
+export const artistExternalProfilesRelations = relations(
+  artistExternalProfiles,
+  ({ one }) => ({
+    artist: one(artists, {
+      fields: [artistExternalProfiles.artistId],
+      references: [artists.id],
+    }),
   }),
-}));
+);
 
-export const artistGalleryAssetsRelations = relations(artistGalleryAssets, ({ one }) => ({
-  artist: one(artists, {
-    fields: [artistGalleryAssets.artistId],
-    references: [artists.id],
+export const artistGalleryAssetsRelations = relations(
+  artistGalleryAssets,
+  ({ one }) => ({
+    artist: one(artists, {
+      fields: [artistGalleryAssets.artistId],
+      references: [artists.id],
+    }),
   }),
-}));
+);
 
-export const artistRelationsRelations = relations(artistRelations, ({ one }) => ({
-  artist: one(artists, {
-    fields: [artistRelations.artistId],
-    references: [artists.id],
-    relationName: "artist",
+export const artistRelationsRelations = relations(
+  artistRelations,
+  ({ one }) => ({
+    artist: one(artists, {
+      fields: [artistRelations.artistId],
+      references: [artists.id],
+      relationName: "artist",
+    }),
+    relatedArtist: one(artists, {
+      fields: [artistRelations.relatedArtistId],
+      references: [artists.id],
+      relationName: "relatedArtist",
+    }),
   }),
-  relatedArtist: one(artists, {
-    fields: [artistRelations.relatedArtistId],
-    references: [artists.id],
-    relationName: "relatedArtist",
-  }),
-}));
+);
 
 // ===========================================
 // RELEASE RELATIONS
@@ -163,20 +172,26 @@ export const segmentsRelations = relations(segments, ({ many }) => ({
 // DOWNLOAD GATE RELATIONS
 // ===========================================
 
-export const downloadGatesRelations = relations(downloadGates, ({ one, many }) => ({
-  fileAsset: one(fileAssets, {
-    fields: [downloadGates.fileAssetId],
-    references: [fileAssets.id],
+export const downloadGatesRelations = relations(
+  downloadGates,
+  ({ one, many }) => ({
+    fileAsset: one(fileAssets, {
+      fields: [downloadGates.fileAssetId],
+      references: [fileAssets.id],
+    }),
+    actions: many(downloadGateActions),
   }),
-  actions: many(downloadGateActions),
-}));
+);
 
-export const downloadGateActionsRelations = relations(downloadGateActions, ({ one }) => ({
-  downloadGate: one(downloadGates, {
-    fields: [downloadGateActions.downloadGateId],
-    references: [downloadGates.id],
+export const downloadGateActionsRelations = relations(
+  downloadGateActions,
+  ({ one }) => ({
+    downloadGate: one(downloadGates, {
+      fields: [downloadGateActions.downloadGateId],
+      references: [downloadGates.id],
+    }),
   }),
-}));
+);
 
 export const fileAssetsRelations = relations(fileAssets, ({ many }) => ({
   downloadGates: many(downloadGates),
@@ -227,9 +242,12 @@ export const tagAssignmentsRelations = relations(tagAssignments, ({ one }) => ({
 // SOCIAL POST QUEUE RELATIONS
 // ===========================================
 
-export const socialPostQueueRelations = relations(socialPostQueue, ({ many }) => ({
-  logs: many(socialPostsLog),
-}));
+export const socialPostQueueRelations = relations(
+  socialPostQueue,
+  ({ many }) => ({
+    logs: many(socialPostsLog),
+  }),
+);
 
 export const socialPostsLogRelations = relations(socialPostsLog, ({ one }) => ({
   queueItem: one(socialPostQueue, {

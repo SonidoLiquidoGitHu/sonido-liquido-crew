@@ -1,40 +1,43 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { CompactTracklist, CompactAudioPlayer } from "@/components/ui/compact-audio-player";
 import { PressToolkit } from "@/components/press/PressToolkit";
 import { CountdownTimer } from "@/components/public/CountdownTimer";
+import { Button } from "@/components/ui/button";
 import {
-  Newspaper,
-  Calendar,
+  CompactAudioPlayer,
+  CompactTracklist,
+} from "@/components/ui/compact-audio-player";
+import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  Clock,
-  Disc,
-  Users,
-  Eye,
-  Download,
-  Mail,
-  Phone,
-  ExternalLink,
-  Share2,
-  Quote,
-  Loader2,
-  Music,
-  Video,
-  Package,
-  Image as ImageIcon,
-  FileDown,
-  Copy,
+  Calendar,
   Check,
-  AlertTriangle,
-  Hash,
+  Clock,
+  Copy,
+  Disc,
+  Download,
+  ExternalLink,
+  Eye,
+  FileDown,
   FileText,
   Globe,
+  Hash,
+  Image as ImageIcon,
+  Loader2,
+  Mail,
+  Music,
+  Newspaper,
+  Package,
+  Phone,
+  Quote,
+  Share2,
+  Users,
+  Video,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { use, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 interface AudioTrack {
@@ -111,7 +114,11 @@ const categoryLabels: Record<string, string> = {
 };
 
 // Copy button component
-function CopyButton({ text, label, className }: { text: string; label: string; className?: string }) {
+function CopyButton({
+  text,
+  label,
+  className,
+}: { text: string; label: string; className?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -139,7 +146,9 @@ function CopyButton({ text, label, className }: { text: string; label: string; c
   );
 }
 
-export default function MediaReleasePage({ params }: { params: Promise<{ slug: string }> }) {
+export default function MediaReleasePage({
+  params,
+}: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [release, setRelease] = useState<MediaRelease | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,27 +160,27 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
     const urlParams = new URLSearchParams(window.location.search);
     const preview = urlParams.get("preview") === "true";
     setIsPreview(preview);
-    fetchRelease(preview);
-  }, [slug]);
 
-  const fetchRelease = async (preview = false) => {
-    try {
-      const url = preview
-        ? `/api/media-releases/${slug}?preview=true`
-        : `/api/media-releases/${slug}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.success) {
-        setRelease(data.data);
-      } else {
-        setError(data.error || "Media release not found");
+    async function fetchReleaseData() {
+      try {
+        const url = preview
+          ? `/api/media-releases/${slug}?preview=true`
+          : `/api/media-releases/${slug}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.success) {
+          setRelease(data.data);
+        } else {
+          setError(data.error || "Media release not found");
+        }
+      } catch (err) {
+        setError("Failed to load media release");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError("Failed to load media release");
-    } finally {
-      setLoading(false);
     }
-  };
+    fetchReleaseData();
+  }, [slug]);
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -194,9 +203,13 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
     setGeneratingPdf(true);
     try {
       const previewParam = isPreview ? "?preview=true" : "";
-      const res = await fetch(`/api/media-releases/${slug}/epk-pdf${previewParam}`);
+      const res = await fetch(
+        `/api/media-releases/${slug}/epk-pdf${previewParam}`,
+      );
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: "Error al generar PDF" }));
+        const errorData = await res
+          .json()
+          .catch(() => ({ error: "Error al generar PDF" }));
         throw new Error(errorData.error || "Error al generar PDF");
       }
       const contentDisposition = res.headers.get("Content-Disposition");
@@ -234,8 +247,12 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Newspaper className="w-16 h-16 text-slc-muted mb-4" />
-        <h1 className="text-2xl font-oswald uppercase mb-2">Comunicado No Encontrado</h1>
-        <p className="text-slc-muted mb-6">{error || "Este comunicado no existe"}</p>
+        <h1 className="text-2xl font-oswald uppercase mb-2">
+          Comunicado No Encontrado
+        </h1>
+        <p className="text-slc-muted mb-6">
+          {error || "Este comunicado no existe"}
+        </p>
         <Button asChild>
           <Link href="/prensa/comunicados">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -247,8 +264,12 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
   }
 
   // Parse JSON fields
-  const galleryImages = release.galleryImages ? JSON.parse(release.galleryImages) : [];
-  const externalLinks = release.externalLinks ? JSON.parse(release.externalLinks) : [];
+  const galleryImages = release.galleryImages
+    ? JSON.parse(release.galleryImages)
+    : [];
+  const externalLinks = release.externalLinks
+    ? JSON.parse(release.externalLinks)
+    : [];
   const tags = release.tags ? JSON.parse(release.tags) : [];
   let audioTracks: AudioTrack[] = [];
   try {
@@ -263,7 +284,7 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
   const totalDuration = audioTracks.reduce((acc, track) => {
     const parts = track.duration?.split(":") || [];
     if (parts.length === 2) {
-      return acc + parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      return acc + Number.parseInt(parts[0]) * 60 + Number.parseInt(parts[1]);
     }
     return acc;
   }, 0);
@@ -275,7 +296,8 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
   };
 
   // Check if embargo is active
-  const isEmbargoed = release.embargoDate && new Date(release.embargoDate) > new Date();
+  const isEmbargoed =
+    release.embargoDate && new Date(release.embargoDate) > new Date();
 
   return (
     <div className="min-h-screen bg-slc-black">
@@ -283,9 +305,15 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
       <div className="print-only print-header hidden">
         <p className="text-sm text-slc-muted mb-2">COMUNICADO DE PRENSA</p>
         <h1 className="text-2xl font-bold">{release.title}</h1>
-        {release.subtitle && <p className="text-lg text-primary">{release.subtitle}</p>}
+        {release.subtitle && (
+          <p className="text-lg text-primary">{release.subtitle}</p>
+        )}
         <p className="text-sm mt-2">
-          {new Date(release.publishDate).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" })}
+          {new Date(release.publishDate).toLocaleDateString("es-MX", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
           {" • "}Sonido Líquido Crew
         </p>
       </div>
@@ -306,7 +334,7 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
             <AlertTriangle className="w-5 h-5" />
             <span className="font-medium">
               EMBARGO ACTIVO - No publicar antes del{" "}
-              {new Date(release.embargoDate!).toLocaleDateString("es-MX", {
+              {new Date(release.embargoDate as string).toLocaleDateString("es-MX", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
@@ -388,7 +416,9 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                 </span>
                 <span className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
-                  {release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
+                  {release.resolvedArtistName ||
+                    release.mainArtistName ||
+                    "Sonido Líquido Crew"}
                 </span>
                 {audioTracks.length > 0 && (
                   <>
@@ -510,13 +540,14 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                 </h2>
                 <div className="rounded-lg overflow-hidden">
                   <iframe
-                    src={`https://open.spotify.com/embed/track/${release.spotifyEmbedUrl.split('/').pop()?.split('?')[0]}`}
+                    src={`https://open.spotify.com/embed/track/${release.spotifyEmbedUrl.split("/").pop()?.split("?")[0]}`}
                     width="100%"
                     height="152"
                     allowFullScreen
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                     loading="lazy"
                     className="rounded-lg"
+                    title="Reproductor de Spotify"
                   />
                 </div>
               </div>
@@ -537,6 +568,7 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     className="rounded-lg"
+                    title="Video de YouTube"
                   />
                 </div>
               </div>
@@ -550,7 +582,10 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                     <FileText className="w-5 h-5 text-primary" />
                     Comunicado Completo
                   </h2>
-                  <CopyButton text={release.content.replace(/[*#_]/g, "")} label="Copiar texto" />
+                  <CopyButton
+                    text={release.content.replace(/[*#_]/g, "")}
+                    label="Copiar texto"
+                  />
                 </div>
                 <div className="prose prose-invert prose-sm max-w-none">
                   <ReactMarkdown>{release.content}</ReactMarkdown>
@@ -566,7 +601,9 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                     <ImageIcon className="w-5 h-5 text-primary" />
                     Imágenes ({galleryImages.length})
                   </h2>
-                  <span className="text-xs text-slc-muted">Click para ver/descargar</span>
+                  <span className="text-xs text-slc-muted">
+                    Click para ver/descargar
+                  </span>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {galleryImages.map((url: string, index: number) => (
@@ -613,7 +650,8 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                 EPK en PDF
               </h3>
               <p className="text-xs text-slc-muted mb-4">
-                Electronic Press Kit con info del lanzamiento, biografia del artista, estadisticas de streaming, citas de prensa y contactos.
+                Electronic Press Kit con info del lanzamiento, biografia del
+                artista, estadisticas de streaming, citas de prensa y contactos.
               </p>
               <Button
                 onClick={handleGeneratePdf}
@@ -638,104 +676,139 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
             {/* Press Toolkit - All the new features */}
             <PressToolkit
               release={release as Parameters<typeof PressToolkit>[0]["release"]}
-              pageUrl={typeof window !== "undefined" ? window.location.href : `https://sonidoliquido.com/prensa/comunicados/${release.slug}`}
-              artistName={release.resolvedArtistName || release.mainArtistName || "Sonido Líquido Crew"}
+              pageUrl={
+                typeof window !== "undefined"
+                  ? window.location.href
+                  : `https://sonidoliquido.com/prensa/comunicados/${release.slug}`
+              }
+              artistName={
+                release.resolvedArtistName ||
+                release.mainArtistName ||
+                "Sonido Líquido Crew"
+              }
             />
 
             {/* Attached Press Kits from Roster Artists */}
-            {release.attachedPressKits && release.attachedPressKits.length > 0 && (
-              <div className="bg-slc-card border border-slc-border rounded-xl p-5">
-                <h3 className="font-oswald text-sm uppercase mb-3 flex items-center gap-2">
-                  <Package className="w-4 h-4 text-primary" />
-                  Press Kits de Artistas
-                </h3>
-                <p className="text-xs text-slc-muted mb-3">
-                  {release.attachedPressKits.length} press kit{release.attachedPressKits.length !== 1 ? "s" : ""} disponible{release.attachedPressKits.length !== 1 ? "s" : ""} para descarga
-                </p>
-                {(() => {
-                  // Group by artist
-                  const grouped: Record<string, { artistName: string; kits: AttachedPressKit[] }> = {};
-                  const ungrouped: AttachedPressKit[] = [];
-                  for (const kit of release.attachedPressKits!) {
-                    if (kit.artistName) {
-                      if (!grouped[kit.artistName]) {
-                        grouped[kit.artistName] = { artistName: kit.artistName, kits: [] };
+            {release.attachedPressKits &&
+              release.attachedPressKits.length > 0 && (
+                <div className="bg-slc-card border border-slc-border rounded-xl p-5">
+                  <h3 className="font-oswald text-sm uppercase mb-3 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-primary" />
+                    Press Kits de Artistas
+                  </h3>
+                  <p className="text-xs text-slc-muted mb-3">
+                    {release.attachedPressKits.length} press kit
+                    {release.attachedPressKits.length !== 1 ? "s" : ""}{" "}
+                    disponible
+                    {release.attachedPressKits.length !== 1 ? "s" : ""} para
+                    descarga
+                  </p>
+                  {(() => {
+                    // Group by artist
+                    const grouped: Record<
+                      string,
+                      { artistName: string; kits: AttachedPressKit[] }
+                    > = {};
+                    const ungrouped: AttachedPressKit[] = [];
+                    for (const kit of release.attachedPressKits as AttachedPressKit[]) {
+                      if (kit.artistName) {
+                        if (!grouped[kit.artistName]) {
+                          grouped[kit.artistName] = {
+                            artistName: kit.artistName,
+                            kits: [],
+                          };
+                        }
+                        grouped[kit.artistName].kits.push(kit);
+                      } else {
+                        ungrouped.push(kit);
                       }
-                      grouped[kit.artistName].kits.push(kit);
-                    } else {
-                      ungrouped.push(kit);
                     }
-                  }
-                  return (
-                    <div className="space-y-3">
-                      {Object.entries(grouped).map(([artistKey, group]) => (
-                        <div key={artistKey}>
-                          <div className="flex items-center gap-2 text-xs text-slc-muted uppercase tracking-wider mb-1.5">
-                            <Users className="w-3 h-3" />
-                            <span className="font-medium">{group.artistName}</span>
-                          </div>
-                          <div className="space-y-1.5 ml-5">
-                            {group.kits.map((kit) => (
-                              <a
-                                key={kit.id}
-                                href={kit.downloadUrl}
-                                download
-                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors group"
-                              >
-                                <FileDown className="w-4 h-4 text-primary flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <span className="truncate block group-hover:text-primary transition-colors">{kit.title}</span>
-                                </div>
-                                {kit.fileSize && (
-                                  <span className="text-xs text-slc-muted flex-shrink-0">
-                                    {(kit.fileSize / 1024 / 1024).toFixed(1)} MB
-                                  </span>
-                                )}
-                                <Download className="w-3.5 h-3.5 text-slc-muted group-hover:text-primary flex-shrink-0 transition-colors" />
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      {ungrouped.length > 0 && (
-                        <div>
-                          {Object.keys(grouped).length > 0 && (
+                    return (
+                      <div className="space-y-3">
+                        {Object.entries(grouped).map(([artistKey, group]) => (
+                          <div key={artistKey}>
                             <div className="flex items-center gap-2 text-xs text-slc-muted uppercase tracking-wider mb-1.5">
-                              <Package className="w-3 h-3" />
-                              <span className="font-medium">General</span>
+                              <Users className="w-3 h-3" />
+                              <span className="font-medium">
+                                {group.artistName}
+                              </span>
                             </div>
-                          )}
-                          <div className={Object.keys(grouped).length > 0 ? "space-y-1.5 ml-5" : "space-y-1.5"}>
-                            {ungrouped.map((kit) => (
-                              <a
-                                key={kit.id}
-                                href={kit.downloadUrl}
-                                download
-                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors group"
-                              >
-                                <FileDown className="w-4 h-4 text-primary flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <span className="truncate block group-hover:text-primary transition-colors">{kit.title}</span>
-                                </div>
-                                {kit.fileSize && (
-                                  <span className="text-xs text-slc-muted flex-shrink-0">
-                                    {(kit.fileSize / 1024 / 1024).toFixed(1)} MB
-                                  </span>
-                                )}
-                                <Download className="w-3.5 h-3.5 text-slc-muted group-hover:text-primary flex-shrink-0 transition-colors" />
-                              </a>
-                            ))}
+                            <div className="space-y-1.5 ml-5">
+                              {group.kits.map((kit) => (
+                                <a
+                                  key={kit.id}
+                                  href={kit.downloadUrl}
+                                  download
+                                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors group"
+                                >
+                                  <FileDown className="w-4 h-4 text-primary flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="truncate block group-hover:text-primary transition-colors">
+                                      {kit.title}
+                                    </span>
+                                  </div>
+                                  {kit.fileSize && (
+                                    <span className="text-xs text-slc-muted flex-shrink-0">
+                                      {(kit.fileSize / 1024 / 1024).toFixed(1)}{" "}
+                                      MB
+                                    </span>
+                                  )}
+                                  <Download className="w-3.5 h-3.5 text-slc-muted group-hover:text-primary flex-shrink-0 transition-colors" />
+                                </a>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
+                        ))}
+                        {ungrouped.length > 0 && (
+                          <div>
+                            {Object.keys(grouped).length > 0 && (
+                              <div className="flex items-center gap-2 text-xs text-slc-muted uppercase tracking-wider mb-1.5">
+                                <Package className="w-3 h-3" />
+                                <span className="font-medium">General</span>
+                              </div>
+                            )}
+                            <div
+                              className={
+                                Object.keys(grouped).length > 0
+                                  ? "space-y-1.5 ml-5"
+                                  : "space-y-1.5"
+                              }
+                            >
+                              {ungrouped.map((kit) => (
+                                <a
+                                  key={kit.id}
+                                  href={kit.downloadUrl}
+                                  download
+                                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors group"
+                                >
+                                  <FileDown className="w-4 h-4 text-primary flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="truncate block group-hover:text-primary transition-colors">
+                                      {kit.title}
+                                    </span>
+                                  </div>
+                                  {kit.fileSize && (
+                                    <span className="text-xs text-slc-muted flex-shrink-0">
+                                      {(kit.fileSize / 1024 / 1024).toFixed(1)}{" "}
+                                      MB
+                                    </span>
+                                  )}
+                                  <Download className="w-3.5 h-3.5 text-slc-muted group-hover:text-primary flex-shrink-0 transition-colors" />
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
             {/* Downloads */}
-            {(release.pressKitUrl || release.highResImagesUrl || release.linerNotesUrl) && (
+            {(release.pressKitUrl ||
+              release.highResImagesUrl ||
+              release.linerNotesUrl) && (
               <div className="bg-slc-card border border-slc-border rounded-xl p-5">
                 <h3 className="font-oswald text-sm uppercase mb-3 flex items-center gap-2">
                   <Download className="w-4 h-4 text-primary" />
@@ -780,7 +853,9 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
             )}
 
             {/* Key Dates */}
-            {(release.releaseDate || release.eventDate || release.embargoDate) && (
+            {(release.releaseDate ||
+              release.eventDate ||
+              release.embargoDate) && (
               <div className="bg-slc-card border border-slc-border rounded-xl p-5">
                 <h3 className="font-oswald text-sm uppercase mb-3 flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-primary" />
@@ -789,25 +864,35 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                 <div className="space-y-3 text-sm">
                   {release.embargoDate && (
                     <div className={isEmbargoed ? "text-red-400" : ""}>
-                      <p className="text-xs text-slc-muted uppercase">Embargo</p>
+                      <p className="text-xs text-slc-muted uppercase">
+                        Embargo
+                      </p>
                       <p className="font-medium">
-                        {new Date(release.embargoDate).toLocaleDateString("es-MX", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
+                        {new Date(release.embargoDate).toLocaleDateString(
+                          "es-MX",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          },
+                        )}
                       </p>
                     </div>
                   )}
                   {release.releaseDate && (
                     <div>
-                      <p className="text-xs text-slc-muted uppercase">Lanzamiento</p>
+                      <p className="text-xs text-slc-muted uppercase">
+                        Lanzamiento
+                      </p>
                       <p className="font-medium">
-                        {new Date(release.releaseDate).toLocaleDateString("es-MX", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
+                        {new Date(release.releaseDate).toLocaleDateString(
+                          "es-MX",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          },
+                        )}
                       </p>
                     </div>
                   )}
@@ -815,11 +900,14 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                     <div>
                       <p className="text-xs text-slc-muted uppercase">Evento</p>
                       <p className="font-medium">
-                        {new Date(release.eventDate).toLocaleDateString("es-MX", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
+                        {new Date(release.eventDate).toLocaleDateString(
+                          "es-MX",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          },
+                        )}
                       </p>
                     </div>
                   )}
@@ -835,18 +923,20 @@ export default function MediaReleasePage({ params }: { params: Promise<{ slug: s
                   Enlaces
                 </h3>
                 <div className="space-y-2">
-                  {externalLinks.map((link: { label: string; url: string }, index: number) => (
-                    <a
-                      key={index}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-slc-muted hover:text-primary transition-colors"
-                    >
-                      <ArrowRight className="w-3 h-3" />
-                      {link.label}
-                    </a>
-                  ))}
+                  {externalLinks.map(
+                    (link: { label: string; url: string }, index: number) => (
+                      <a
+                        key={index}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-slc-muted hover:text-primary transition-colors"
+                      >
+                        <ArrowRight className="w-3 h-3" />
+                        {link.label}
+                      </a>
+                    ),
+                  )}
                 </div>
               </div>
             )}

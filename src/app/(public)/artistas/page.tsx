@@ -1,11 +1,12 @@
-import { Suspense } from "react";
 import { ArtistCard } from "@/components/public/cards/ArtistCard";
-import { artistsService } from "@/lib/services";
 import { Skeleton } from "@/components/ui/skeleton";
+import { artistsService } from "@/lib/services";
+import { Suspense } from "react";
 
 export const metadata = {
   title: "Artistas | Sonido Líquido Crew",
-  description: "Conoce a los artistas del colectivo de Hip Hop más representativo de México.",
+  description:
+    "Conoce a los artistas del colectivo de Hip Hop más representativo de México.",
 };
 
 export const dynamic = "force-dynamic";
@@ -46,10 +47,11 @@ async function ArtistsGrid() {
             {/* Placeholder colored squares for empty slots */}
             {Array.from({ length: emptySlots }).map((_, i) => {
               const colorIndex = artistCount + i;
-              const color = placeholderColors[colorIndex % placeholderColors.length];
+              const color =
+                placeholderColors[colorIndex % placeholderColors.length];
               return (
                 <div
-                  key={`placeholder-${i}`}
+                    key={`artist-placeholder-${colorIndex}`}
                   className="aspect-square border-[1px] border-[#1a1a1a]/40"
                   style={{
                     background: `linear-gradient(135deg, ${color.highlight} 0%, ${color.bg} 50%, ${color.shadow} 100%)`,
@@ -60,7 +62,7 @@ async function ArtistsGrid() {
                     className="w-full h-full opacity-10"
                     style={{
                       backgroundImage: `radial-gradient(circle, ${color.shadow} 1px, transparent 1px)`,
-                      backgroundSize: '4px 4px',
+                      backgroundSize: "4px 4px",
                     }}
                   />
                 </div>
@@ -78,9 +80,15 @@ async function ArtistsGrid() {
 
 function ArtistsGridSkeleton() {
   const colors = [
-    "#3D7A7A", "#D4A520", "#5A7590",
-    "#C45A3A", "#C09020", "#B54A30",
-    "#7A4A4A", "#4A9070", "#C06A50",
+    "#3D7A7A",
+    "#D4A520",
+    "#5A7590",
+    "#C45A3A",
+    "#C09020",
+    "#B54A30",
+    "#7A4A4A",
+    "#4A9070",
+    "#C06A50",
   ];
 
   return (
@@ -90,7 +98,7 @@ function ArtistsGridSkeleton() {
           <div className="grid grid-cols-3">
             {Array.from({ length: 9 }).map((_, i) => (
               <div
-                key={i}
+                key={`swatch-${colors[i % colors.length]}`}
                 className="aspect-square animate-pulse"
                 style={{ backgroundColor: colors[i % colors.length] }}
               />
@@ -125,8 +133,10 @@ export default function ArtistasPage() {
         {/* Stats */}
         <div className="mt-16 text-center">
           <p className="text-gray-400">
-            <span className="text-primary font-oswald text-2xl">15+</span> artistas activos ·
-            <span className="text-primary font-oswald text-2xl ml-2">25+</span> años de historia
+            <span className="text-primary font-oswald text-2xl">15+</span>{" "}
+            artistas activos ·
+            <span className="text-primary font-oswald text-2xl ml-2">25+</span>{" "}
+            años de historia
           </p>
         </div>
       </div>

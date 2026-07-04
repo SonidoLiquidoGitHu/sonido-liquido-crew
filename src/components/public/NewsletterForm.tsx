@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Mail, Check, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Check, Download, Loader2, Mail } from "lucide-react";
+import { useRef, useState } from "react";
 
 interface NewsletterFormProps {
   source?: string;
@@ -21,9 +21,16 @@ export function NewsletterForm({
 }: NewsletterFormProps) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [message, setMessage] = useState("");
-  const [downloadFile, setDownloadFile] = useState<{ url: string; name: string; buttonText: string; description: string } | null>(null);
+  const [downloadFile, setDownloadFile] = useState<{
+    url: string;
+    name: string;
+    buttonText: string;
+    description: string;
+  } | null>(null);
   // Honeypot ref — hidden field that bots fill but real users don't
   const honeypotRef = useRef<HTMLInputElement>(null);
 
@@ -159,7 +166,12 @@ export function NewsletterForm({
 
   if (variant === "card") {
     return (
-      <div className={cn("bg-slc-card border border-slc-border rounded-xl p-6", className)}>
+      <div
+        className={cn(
+          "bg-slc-card border border-slc-border rounded-xl p-6",
+          className,
+        )}
+      >
         <h3 className="font-oswald text-xl uppercase mb-2">Newsletter</h3>
         <p className="text-slc-muted text-sm mb-4">
           Recibe noticias y lanzamientos exclusivos.
@@ -190,10 +202,12 @@ export function NewsletterForm({
           </Button>
         </form>
         {message && (
-          <p className={cn(
-            "text-xs mt-2",
-            status === "success" ? "text-green-500" : "text-red-500"
-          )}>
+          <p
+            className={cn(
+              "text-xs mt-2",
+              status === "success" ? "text-green-500" : "text-red-500",
+            )}
+          >
             {message}
           </p>
         )}
@@ -205,7 +219,10 @@ export function NewsletterForm({
 
   // Default variant
   return (
-    <form onSubmit={handleSubmit} className={cn("relative space-y-4", className)}>
+    <form
+      onSubmit={handleSubmit}
+      className={cn("relative space-y-4", className)}
+    >
       {honeypotField}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input
@@ -238,13 +255,17 @@ export function NewsletterForm({
         ) : (
           <Mail className="w-4 h-4 mr-2" />
         )}
-        {status === "success" ? "Suscrito exitosamente" : "Suscribirse al Newsletter"}
+        {status === "success"
+          ? "Suscrito exitosamente"
+          : "Suscribirse al Newsletter"}
       </Button>
       {message && (
-        <p className={cn(
-          "text-sm",
-          status === "success" ? "text-green-500" : "text-red-500"
-        )}>
+        <p
+          className={cn(
+            "text-sm",
+            status === "success" ? "text-green-500" : "text-red-500",
+          )}
+        >
           {message}
         </p>
       )}

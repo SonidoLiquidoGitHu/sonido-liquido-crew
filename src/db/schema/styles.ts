@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { artists } from "./artists";
 
 // ===========================================
@@ -39,23 +39,31 @@ export const customStyles = sqliteTable("custom_styles", {
 
   // Categorization
   category: text("category", {
-    enum: ["campaign", "beat", "media", "general", "artist"]
+    enum: ["campaign", "beat", "media", "general", "artist"],
   }).default("general"),
 
   // Link to artist for inheritance
-  artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
+  artistId: text("artist_id").references(() => artists.id, {
+    onDelete: "set null",
+  }),
 
   // Sharing
   isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
-  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  isDefault: integer("is_default", { mode: "boolean" })
+    .notNull()
+    .default(false),
 
   // Usage tracking
   usageCount: integer("usage_count").notNull().default(0),
 
   // Metadata
   createdBy: text("created_by"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -65,7 +73,9 @@ export const customStyles = sqliteTable("custom_styles", {
 
 export const artistStyles = sqliteTable("artist_styles", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
 
   // Default style settings for this artist
   settings: text("settings", { mode: "json" }).notNull().$type<{
@@ -91,10 +101,16 @@ export const artistStyles = sqliteTable("artist_styles", {
   }>(),
 
   // Use this style by default for new content
-  applyToNewContent: integer("apply_to_new_content", { mode: "boolean" }).notNull().default(true),
+  applyToNewContent: integer("apply_to_new_content", { mode: "boolean" })
+    .notNull()
+    .default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

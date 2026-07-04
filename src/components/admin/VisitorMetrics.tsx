@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
-  Eye,
-  Users,
-  Monitor,
-  Smartphone,
-  TrendingUp,
-  TrendingDown,
-  Globe,
-  ArrowRight,
   Activity,
+  ArrowRight,
   BarChart3,
   Clock,
+  Eye,
+  Globe,
+  Monitor,
+  Smartphone,
+  TrendingDown,
+  TrendingUp,
+  Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface VisitorData {
   totalViews: number;
@@ -43,8 +43,8 @@ interface VisitorMetricsProps {
 }
 
 function formatNumber(n: number): string {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return String(n);
 }
 
@@ -61,10 +61,11 @@ function formatPagePath(path: string | null): string {
   };
   if (map[path]) return map[path];
   // Handle dynamic routes
-  if (path.startsWith("/prensa/")) return "Prensa → " + path.split("/").pop();
-  if (path.startsWith("/artistas/")) return "Artista → " + path.split("/").pop();
-  if (path.startsWith("/beats/")) return "Beat → " + path.split("/").pop();
-  if (path.length > 20) return "..." + path.slice(-17);
+  if (path.startsWith("/prensa/")) return `Prensa → ${path.split("/").pop()}`;
+  if (path.startsWith("/artistas/"))
+    return `Artista → ${path.split("/").pop()}`;
+  if (path.startsWith("/beats/")) return `Beat → ${path.split("/").pop()}`;
+  if (path.length > 20) return `...${path.slice(-17)}`;
   return path;
 }
 
@@ -110,21 +111,21 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
 
   const todayVsYesterdayViews = data?.yesterdayViews
     ? Math.round(
-        ((data.todayViews - data.yesterdayViews) / data.yesterdayViews) * 100
+        ((data.todayViews - data.yesterdayViews) / data.yesterdayViews) * 100,
       )
     : data?.todayViews
-    ? 100
-    : 0;
+      ? 100
+      : 0;
 
   const todayVsYesterdaySessions = data?.yesterdaySessions
     ? Math.round(
         ((data.todaySessions - data.yesterdaySessions) /
           data.yesterdaySessions) *
-          100
+          100,
       )
     : data?.todaySessions
-    ? 100
-    : 0;
+      ? 100
+      : 0;
 
   const totalDevices =
     (data?.devices.desktop || 0) + (data?.devices.mobile || 0);
@@ -166,7 +167,9 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
               <p className="font-oswald text-3xl mt-1">
                 {loading ? "—" : formatNumber(data?.todaySessions || 0)}
               </p>
-              <p className={`text-xs mt-2 flex items-center gap-1 ${todayVsYesterdaySessions >= 0 ? "text-green-500" : "text-red-500"}`}>
+              <p
+                className={`text-xs mt-2 flex items-center gap-1 ${todayVsYesterdaySessions >= 0 ? "text-green-500" : "text-red-500"}`}
+              >
                 {todayVsYesterdaySessions >= 0 ? (
                   <TrendingUp className="w-3 h-3" />
                 ) : (
@@ -190,7 +193,9 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
               <p className="font-oswald text-3xl mt-1">
                 {loading ? "—" : formatNumber(data?.todayViews || 0)}
               </p>
-              <p className={`text-xs mt-2 flex items-center gap-1 ${todayVsYesterdayViews >= 0 ? "text-green-500" : "text-red-500"}`}>
+              <p
+                className={`text-xs mt-2 flex items-center gap-1 ${todayVsYesterdayViews >= 0 ? "text-green-500" : "text-red-500"}`}
+              >
                 {todayVsYesterdayViews >= 0 ? (
                   <TrendingUp className="w-3 h-3" />
                 ) : (
@@ -210,13 +215,13 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
         <div className="admin-metric-card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-slc-muted text-sm">
-                Visitantes {period}d
-              </p>
+              <p className="text-slc-muted text-sm">Visitantes {period}d</p>
               <p className="font-oswald text-3xl mt-1">
                 {loading ? "—" : formatNumber(data?.uniqueSessions || 0)}
               </p>
-              <p className={`text-xs mt-2 flex items-center gap-1 ${(data?.sessionsTrend || 0) >= 0 ? "text-green-500" : "text-red-500"}`}>
+              <p
+                className={`text-xs mt-2 flex items-center gap-1 ${(data?.sessionsTrend || 0) >= 0 ? "text-green-500" : "text-red-500"}`}
+              >
                 {(data?.sessionsTrend || 0) >= 0 ? (
                   <TrendingUp className="w-3 h-3" />
                 ) : (
@@ -236,9 +241,7 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
         <div className="admin-metric-card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-slc-muted text-sm">
-                Vistas {period}d
-              </p>
+              <p className="text-slc-muted text-sm">Vistas {period}d</p>
               <p className="font-oswald text-3xl mt-1">
                 {loading ? "—" : formatNumber(data?.totalViews || 0)}
               </p>
@@ -269,7 +272,7 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
                 </div>
                 <span className="text-sm font-medium">
                   {Math.round(
-                    ((data?.devices.desktop || 0) / totalDevices) * 100
+                    ((data?.devices.desktop || 0) / totalDevices) * 100,
                   )}
                   %{" "}
                   <span className="text-slc-muted">
@@ -293,7 +296,7 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
                 </div>
                 <span className="text-sm font-medium">
                   {Math.round(
-                    ((data?.devices.mobile || 0) / totalDevices) * 100
+                    ((data?.devices.mobile || 0) / totalDevices) * 100,
                   )}
                   %{" "}
                   <span className="text-slc-muted">
@@ -358,9 +361,7 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
                   className="flex items-center justify-between text-sm"
                 >
                   <span className="truncate flex-1 mr-2">
-                    {ref.referrer === "direct"
-                      ? "Directo"
-                      : ref.referrer}
+                    {ref.referrer === "direct" ? "Directo" : ref.referrer}
                   </span>
                   <span className="text-primary font-medium whitespace-nowrap">
                     {formatNumber(ref.count)}
@@ -385,10 +386,9 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
           <div className="flex items-end gap-1 h-24">
             {data.viewsByDay.slice(-30).map((day, i) => {
               const maxViews = Math.max(
-                ...data.viewsByDay.slice(-30).map((d) => d.views)
+                ...data.viewsByDay.slice(-30).map((d) => d.views),
               );
-              const height =
-                maxViews > 0 ? (day.views / maxViews) * 100 : 0;
+              const height = maxViews > 0 ? (day.views / maxViews) * 100 : 0;
               return (
                 <div
                   key={i}
@@ -404,12 +404,8 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
             })}
           </div>
           <div className="flex justify-between mt-2 text-xs text-slc-muted">
-            <span>
-              {data.viewsByDay[0]?.date}
-            </span>
-            <span>
-              {data.viewsByDay[data.viewsByDay.length - 1]?.date}
-            </span>
+            <span>{data.viewsByDay[0]?.date}</span>
+            <span>{data.viewsByDay[data.viewsByDay.length - 1]?.date}</span>
           </div>
         </div>
       )}
@@ -422,10 +418,7 @@ export function VisitorMetrics({ initialData }: VisitorMetricsProps) {
           </h3>
           <div className="space-y-2">
             {data.recentActivity.slice(0, 8).map((event, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 text-sm py-1.5"
-              >
+              <div key={i} className="flex items-center gap-3 text-sm py-1.5">
                 <div
                   className={`w-2 h-2 rounded-full ${
                     event.eventType === "page_view"

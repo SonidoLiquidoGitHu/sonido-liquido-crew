@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { dropboxLinkCache } from "@/db/schema";
+import { eq, lt, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Public video proxy — fast, cached redirect to Dropbox CDN.
@@ -69,15 +69,22 @@ function memSet(url: string, tempLink: string): void {
 async function dbGet(dropboxUrl: string): Promise<string | null> {
   try {
     const rows = await db
-      .select({ tempLink: dropboxLinkCache.tempLink, expiresAt: dropboxLinkCache.expiresAt })
+      .select({
+        tempLink: dropboxLinkCache.tempLink,
+        expiresAt: dropboxLinkCache.expiresAt,
+      })
       .from(dropboxLinkCache)
       .where(eq(dropboxLinkCache.dropboxUrl, dropboxUrl))
       .limit(1);
     if (rows.length === 0) return null;
-    const expiresAt = rows[0].expiresAt ? new Date(rows[0].expiresAt as unknown as string).getTime() : 0;
+    const expiresAt = rows[0].expiresAt
+      ? new Date(rows[0].expiresAt as unknown as string).getTime()
+      : 0;
     if (Date.now() >= expiresAt) {
       // Stale — delete it
-      await db.delete(dropboxLinkCache).where(eq(dropboxLinkCache.dropboxUrl, dropboxUrl));
+      await db
+        .delete(dropboxLinkCache)
+        .where(eq(dropboxLinkCache.dropboxUrl, dropboxUrl));
       return null;
     }
     return rows[0].tempLink;
@@ -115,7 +122,10 @@ export async function GET(request: NextRequest) {
   let videoUrl = searchParams.get("url");
 
   if (!videoUrl) {
-    return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing url parameter" },
+      { status: 400 },
+    );
   }
 
   // Strip cache-buster params (e.g. _retry=1_1234567890)
@@ -126,20 +136,27 @@ export async function GET(request: NextRequest) {
 
   // Normalize dl.dropboxusercontent.com URLs → www.dropbox.com?raw=1
   if (videoUrl.includes("dl.dropboxusercontent.com")) {
-    const fixed = videoUrl.replace("dl.dropboxusercontent.com", "www.dropbox.com");
+    const fixed = videoUrl.replace(
+      "dl.dropboxusercontent.com",
+      "www.dropbox.com",
+    );
     if (!fixed.includes("raw=1")) {
-      videoUrl = fixed + (fixed.includes("?") ? "&" : "?") + "raw=1";
+      videoUrl = `${fixed + (fixed.includes("?") ? "&" : "?")}raw=1`;
     } else {
       videoUrl = fixed;
     }
   }
 
   // Add raw=1 to Dropbox URLs missing it
-  if (videoUrl.includes("dropbox.com") && !videoUrl.includes("raw=1") && !videoUrl.includes("dl.dropboxusercontent.com")) {
+  if (
+    videoUrl.includes("dropbox.com") &&
+    !videoUrl.includes("raw=1") &&
+    !videoUrl.includes("dl.dropboxusercontent.com")
+  ) {
     if (videoUrl.includes("dl=0")) {
       videoUrl = videoUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
     } else {
-      videoUrl = videoUrl + (videoUrl.includes("?") ? "&" : "?") + "raw=1";
+      videoUrl = `${videoUrl + (videoUrl.includes("?") ? "&" : "?")}raw=1`;
     }
   }
 
@@ -152,13 +169,16 @@ export async function GET(request: NextRequest) {
   }
 
   const isAllowed = ALLOWED_HOSTS.some(
-    (host) => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
+    (host) =>
+      parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`),
   );
   if (!isAllowed) {
     return NextResponse.json({ error: "Host not allowed" }, { status: 403 });
   }
 
-  const isDropbox = videoUrl.includes("dropbox.com") && !videoUrl.includes("dl.dropboxusercontent.com");
+  const isDropbox =
+    videoUrl.includes("dropbox.com") &&
+    !videoUrl.includes("dl.dropboxusercontent.com");
 
   // ============================================================
   // DROPBOX PATH: cached redirect
@@ -168,7 +188,10 @@ export async function GET(request: NextRequest) {
     const memHit = memGet(videoUrl);
     if (memHit) {
       const res = NextResponse.redirect(memHit, 302);
-      res.headers.set("Cache-Control", "public, max-age=1800, stale-while-revalidate=300");
+      res.headers.set(
+        "Cache-Control",
+        "public, max-age=1800, stale-while-revalidate=300",
+      );
       return res;
     }
 
@@ -177,7 +200,10 @@ export async function GET(request: NextRequest) {
     if (dbHit) {
       memSet(videoUrl, dbHit); // populate in-memory for next hit
       const res = NextResponse.redirect(dbHit, 302);
-      res.headers.set("Cache-Control", "public, max-age=1800, stale-while-revalidate=300");
+      res.headers.set(
+        "Cache-Control",
+        "public, max-age=1800, stale-while-revalidate=300",
+      );
       return res;
     }
 
@@ -188,21 +214,30 @@ export async function GET(request: NextRequest) {
         memSet(videoUrl, tempLink);
         await dbSet(videoUrl, tempLink);
         const res = NextResponse.redirect(tempLink, 302);
-        res.headers.set("Cache-Control", "public, max-age=1800, stale-while-revalidate=300");
+        res.headers.set(
+          "Cache-Control",
+          "public, max-age=1800, stale-while-revalidate=300",
+        );
         return res;
       }
       // API returned null — link is invalid or Dropbox is having issues.
       // Do NOT fall back to streaming (it's broken on Netlify). Return 502.
-      console.error("[video-proxy] Dropbox API returned no temp link for:", videoUrl);
+      console.error(
+        "[video-proxy] Dropbox API returned no temp link for:",
+        videoUrl,
+      );
       return NextResponse.json(
-        { error: "Could not resolve Dropbox link. The shared link may be invalid or deleted." },
-        { status: 502 }
+        {
+          error:
+            "Could not resolve Dropbox link. The shared link may be invalid or deleted.",
+        },
+        { status: 502 },
       );
     } catch (err) {
       console.error("[video-proxy] Dropbox API resolution failed:", err);
       return NextResponse.json(
         { error: "Dropbox API resolution failed" },
-        { status: 502 }
+        { status: 502 },
       );
     }
   }
@@ -219,7 +254,7 @@ export async function GET(request: NextRequest) {
     const fetchHeaders: Record<string, string> = {
       "User-Agent": "SonidoLiquido-VideoProxy/1.0",
     };
-    if (rangeHeader) fetchHeaders["Range"] = rangeHeader;
+    if (rangeHeader) fetchHeaders.Range = rangeHeader;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
@@ -233,12 +268,12 @@ export async function GET(request: NextRequest) {
     if (!response.ok && response.status !== 206) {
       return NextResponse.json(
         { error: `Upstream returned ${response.status}` },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
     const contentLength = response.headers.get("content-length");
-    const bodyLength = contentLength ? parseInt(contentLength, 10) : 0;
+    const bodyLength = contentLength ? Number.parseInt(contentLength, 10) : 0;
 
     // If body is too large, refuse to stream — it would be silently truncated
     if (bodyLength > SMALL_FILE_LIMIT) {
@@ -246,13 +281,16 @@ export async function GET(request: NextRequest) {
         {
           error: `Video too large to proxy (${bodyLength} bytes). Use a Dropbox URL or CDN instead.`,
         },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
     // Determine content type
     let contentType = response.headers.get("content-type") || "video/mp4";
-    if (!contentType.startsWith("video/") && !contentType.startsWith("application/octet-stream")) {
+    if (
+      !contentType.startsWith("video/") &&
+      !contentType.startsWith("application/octet-stream")
+    ) {
       const pathname = new URL(videoUrl).pathname.toLowerCase();
       contentType = pathname.includes(".webm") ? "video/webm" : "video/mp4";
     } else if (contentType.startsWith("application/octet-stream")) {
@@ -279,26 +317,36 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ error: "No response body from upstream" }, { status: 502 });
+    return NextResponse.json(
+      { error: "No response body from upstream" },
+      { status: 502 },
+    );
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       return NextResponse.json({ error: "Upstream timeout" }, { status: 504 });
     }
     console.error("[video-proxy] Error fetching:", videoUrl, error);
-    return NextResponse.json({ error: "Failed to fetch video" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch video" },
+      { status: 500 },
+    );
   }
 }
 
 // ============================================================
 // DROPBOX API RESOLUTION (only called on cache miss)
 // ============================================================
-async function resolveDropboxTempLink(sharedLinkUrl: string): Promise<string | null> {
+async function resolveDropboxTempLink(
+  sharedLinkUrl: string,
+): Promise<string | null> {
   const { dropboxClient } = await import("@/lib/clients/dropbox");
 
   // Convert URL to a format the metadata API can resolve
   let sharedLink = sharedLinkUrl;
   if (sharedLink.includes("raw=1")) {
-    sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+    sharedLink = sharedLink
+      .replace("?raw=1", "?dl=0")
+      .replace("&raw=1", "&dl=0");
   }
   if (!sharedLink.includes("?")) {
     sharedLink += "?dl=0";
@@ -316,11 +364,13 @@ async function resolveDropboxTempLink(sharedLinkUrl: string): Promise<string | n
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ url: sharedLink }),
-    }
+    },
   );
 
   if (!metaResponse.ok) {
-    console.warn(`[video-proxy] Dropbox metadata API returned ${metaResponse.status}`);
+    console.warn(
+      `[video-proxy] Dropbox metadata API returned ${metaResponse.status}`,
+    );
     return null;
   }
 
@@ -342,11 +392,13 @@ async function resolveDropboxTempLink(sharedLinkUrl: string): Promise<string | n
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ path: filePath }),
-    }
+    },
   );
 
   if (!tempLinkResponse.ok) {
-    console.warn(`[video-proxy] Dropbox temp link API returned ${tempLinkResponse.status}`);
+    console.warn(
+      `[video-proxy] Dropbox temp link API returned ${tempLinkResponse.status}`,
+    );
     return null;
   }
 

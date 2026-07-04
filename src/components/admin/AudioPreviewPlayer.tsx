@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface AudioPreviewPlayerProps {
   url: string;
@@ -10,7 +10,11 @@ interface AudioPreviewPlayerProps {
   className?: string;
 }
 
-export function AudioPreviewPlayer({ url, filename, className = "" }: AudioPreviewPlayerProps) {
+export function AudioPreviewPlayer({
+  url,
+  filename,
+  className = "",
+}: AudioPreviewPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -97,7 +101,7 @@ export function AudioPreviewPlayer({ url, filename, className = "" }: AudioPrevi
   };
 
   const formatTime = (seconds: number) => {
-    if (isNaN(seconds) || !isFinite(seconds)) return "0:00";
+    if (Number.isNaN(seconds) || !Number.isFinite(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -107,7 +111,9 @@ export function AudioPreviewPlayer({ url, filename, className = "" }: AudioPrevi
 
   if (!isAudioFile) {
     return (
-      <div className={`p-3 bg-slc-card border border-slc-border rounded-lg text-center text-sm text-slc-muted ${className}`}>
+      <div
+        className={`p-3 bg-slc-card border border-slc-border rounded-lg text-center text-sm text-slc-muted ${className}`}
+      >
         No es un archivo de audio (ZIP, RAR, etc.)
       </div>
     );
@@ -115,14 +121,18 @@ export function AudioPreviewPlayer({ url, filename, className = "" }: AudioPrevi
 
   if (error) {
     return (
-      <div className={`p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center text-sm text-red-400 ${className}`}>
+      <div
+        className={`p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center text-sm text-red-400 ${className}`}
+      >
         {error}
       </div>
     );
   }
 
   return (
-    <div className={`bg-slc-card border border-slc-border rounded-lg p-4 ${className}`}>
+    <div
+      className={`bg-slc-card border border-slc-border rounded-lg p-4 ${className}`}
+    >
       <audio ref={audioRef} src={url} preload="metadata" />
 
       {/* Filename */}

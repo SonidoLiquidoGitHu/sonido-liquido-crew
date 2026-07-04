@@ -1,39 +1,39 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Instagram,
-  Youtube,
-  Twitter,
-  Facebook,
-  Download,
-  Copy,
-  Check,
-  ExternalLink,
-  Loader2,
-  Share2,
-  Smartphone,
-  Monitor,
-  Image as ImageIcon,
-  Video,
-  FileText,
-  Sparkles,
-  Calendar,
-  Link as LinkIcon,
-  Music,
   AlertTriangle,
-  Info,
+  Calendar,
+  Check,
   ChevronDown,
   ChevronUp,
+  Copy,
+  Download,
+  ExternalLink,
+  Facebook,
+  FileText,
+  Image as ImageIcon,
+  Info,
+  Instagram,
+  Link as LinkIcon,
+  Loader2,
+  Monitor,
+  Music,
   Send,
+  Share2,
+  Smartphone,
+  Sparkles,
+  Twitter,
+  Video,
+  Youtube,
 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 
 // Spotify icon
 function SpotifyIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
     </svg>
   );
 }
@@ -107,7 +107,12 @@ const PLATFORMS: Platform[] = [
     },
     captionLimit: 0,
     hashtagsLimit: 10,
-    features: ["Link sticker (10K+ seguidores)", "Música", "Encuestas", "Countdown sticker"],
+    features: [
+      "Link sticker (10K+ seguidores)",
+      "Música",
+      "Encuestas",
+      "Countdown sticker",
+    ],
     uploadUrl: "https://www.instagram.com/",
   },
   {
@@ -206,13 +211,16 @@ interface SocialPublisherProps {
 // Caption templates
 const CAPTION_TEMPLATES = {
   presave: {
-    short: "🔥 PRE-GUARDA AHORA ⬇️\n\n{title} por {artist}\nSale {date}\n\n🎧 {link}",
-    medium: "🚨 ¡NUEVA MÚSICA! 🚨\n\n{title} por {artist}\n📅 {date}\n\n¡No te lo pierdas! Pre-guarda ahora y sé de los primeros en escucharlo 🎧\n\n🔗 Link en bio o ⬇️\n{link}\n\n{hashtags}",
-    long: "🎵 ¡NUEVO LANZAMIENTO! 🎵\n\n{artist} presenta: \"{title}\"\n\n📅 Fecha de lanzamiento: {date}\n\n¡Pre-guarda ahora para no perderte el estreno! Al hacer pre-save, la música se guardará automáticamente en tu biblioteca el día del lanzamiento 💿\n\n🔗 Pre-save: {link}\n\n¡Comparte con alguien que necesita escuchar esto! 🔊\n\n{hashtags}",
+    short:
+      "🔥 PRE-GUARDA AHORA ⬇️\n\n{title} por {artist}\nSale {date}\n\n🎧 {link}",
+    medium:
+      "🚨 ¡NUEVA MÚSICA! 🚨\n\n{title} por {artist}\n📅 {date}\n\n¡No te lo pierdas! Pre-guarda ahora y sé de los primeros en escucharlo 🎧\n\n🔗 Link en bio o ⬇️\n{link}\n\n{hashtags}",
+    long: '🎵 ¡NUEVO LANZAMIENTO! 🎵\n\n{artist} presenta: "{title}"\n\n📅 Fecha de lanzamiento: {date}\n\n¡Pre-guarda ahora para no perderte el estreno! Al hacer pre-save, la música se guardará automáticamente en tu biblioteca el día del lanzamiento 💿\n\n🔗 Pre-save: {link}\n\n¡Comparte con alguien que necesita escuchar esto! 🔊\n\n{hashtags}',
   },
   release: {
     short: "🎵 YA DISPONIBLE 🎵\n\n{title} - {artist}\n\n🎧 {link}",
-    medium: "🚀 ¡YA DISPONIBLE! 🚀\n\n{title} por {artist}\n\nEscúchalo ahora en todas las plataformas 🎧\n\n🔗 {link}\n\n{hashtags}",
+    medium:
+      "🚀 ¡YA DISPONIBLE! 🚀\n\n{title} por {artist}\n\nEscúchalo ahora en todas las plataformas 🎧\n\n🔗 {link}\n\n{hashtags}",
   },
 };
 
@@ -229,8 +237,11 @@ export function SocialPublisher({
   releaseId,
   className = "",
 }: SocialPublisherProps) {
-  const [selectedPlatform, setSelectedPlatform] = useState<string>("instagram-reels");
-  const [captionType, setCaptionType] = useState<"short" | "medium" | "long">("medium");
+  const [selectedPlatform, setSelectedPlatform] =
+    useState<string>("instagram-reels");
+  const [captionType, setCaptionType] = useState<"short" | "medium" | "long">(
+    "medium",
+  );
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
@@ -267,7 +278,9 @@ export function SocialPublisher({
 
   // Generate caption
   const generateCaption = useCallback(() => {
-    const template = CAPTION_TEMPLATES.presave[captionType] || CAPTION_TEMPLATES.presave.medium;
+    const template =
+      CAPTION_TEMPLATES.presave[captionType] ||
+      CAPTION_TEMPLATES.presave.medium;
 
     const formattedDate = releaseDate
       ? releaseDate.toLocaleDateString("es-MX", {
@@ -287,7 +300,15 @@ export function SocialPublisher({
       .replace("{date}", formattedDate)
       .replace("{link}", presaveUrl || "[LINK]")
       .replace("{hashtags}", formattedHashtags);
-  }, [releaseTitle, artistName, releaseDate, presaveUrl, captionType, customHashtags, hashtags]);
+  }, [
+    releaseTitle,
+    artistName,
+    releaseDate,
+    presaveUrl,
+    captionType,
+    customHashtags,
+    hashtags,
+  ]);
 
   // Copy caption
   const copyCaption = useCallback(async () => {
@@ -306,30 +327,56 @@ export function SocialPublisher({
   }, [presaveUrl]);
 
   // Helper: Safely parse JSON from API response, handling HTML error pages
-  const safeParseJson = async (response: Response): Promise<Record<string, unknown>> => {
+  const safeParseJson = async (
+    response: Response,
+  ): Promise<Record<string, unknown>> => {
     const contentType = response.headers.get("content-type") || "";
     const text = await response.text();
 
-    if (contentType.includes("application/json") || text.trim().startsWith("{")) {
+    if (
+      contentType.includes("application/json") ||
+      text.trim().startsWith("{")
+    ) {
       try {
         return JSON.parse(text);
       } catch {
-        return { success: false, message: "Error al procesar la respuesta del servidor" };
+        return {
+          success: false,
+          message: "Error al procesar la respuesta del servidor",
+        };
       }
     }
 
     // Server returned HTML (Netlify error page, Next.js error page, etc.)
-    console.error("[SocialPublisher] Received non-JSON response:", text.substring(0, 200));
+    console.error(
+      "[SocialPublisher] Received non-JSON response:",
+      text.substring(0, 200),
+    );
     if (response.status === 502 || response.status === 504) {
-      return { success: false, message: "El servidor está tardando demasiado. Intenta de nuevo en unos segundos." };
+      return {
+        success: false,
+        message:
+          "El servidor está tardando demasiado. Intenta de nuevo en unos segundos.",
+      };
     }
     if (response.status === 500) {
-      return { success: false, message: "Error interno del servidor. Verifica la configuración de las credenciales Meta en /admin/social." };
+      return {
+        success: false,
+        message:
+          "Error interno del servidor. Verifica la configuración de las credenciales Meta en /admin/social.",
+      };
     }
     if (!response.ok) {
-      return { success: false, message: `Error del servidor (${response.status}). Verifica que las credenciales Meta estén configuradas.` };
+      return {
+        success: false,
+        message: `Error del servidor (${response.status}). Verifica que las credenciales Meta estén configuradas.`,
+      };
     }
-    return { success: false, message: "Respuesta inesperada del servidor. Verifica la configuración de credenciales." };
+    return {
+      success: false,
+      message:
+        "Respuesta inesperada del servidor. Verifica la configuración de credenciales.",
+    };
   };
 
   // Auto-post to Facebook and Instagram
@@ -359,13 +406,18 @@ export function SocialPublisher({
         setAutoPostResult({
           success: true,
           message: (data.message as string) || "¡Publicación exitosa!",
-          fbPostUrl: (data.results as Record<string, Record<string, string>>)?.facebook?.postUrl,
-          igPostUrl: (data.results as Record<string, Record<string, string>>)?.instagram?.permalink,
+          fbPostUrl: (data.results as Record<string, Record<string, string>>)
+            ?.facebook?.postUrl,
+          igPostUrl: (data.results as Record<string, Record<string, string>>)
+            ?.instagram?.permalink,
         });
       } else {
         setAutoPostResult({
           success: false,
-          message: (data.message as string) || (data.error as string) || "Error al publicar",
+          message:
+            (data.message as string) ||
+            (data.error as string) ||
+            "Error al publicar",
         });
       }
     } catch (err) {
@@ -386,8 +438,12 @@ export function SocialPublisher({
 
     try {
       // Get selected platforms
-      const igCheckbox = document.getElementById("reel-platform-ig") as HTMLInputElement;
-      const fbCheckbox = document.getElementById("reel-platform-fb") as HTMLInputElement;
+      const igCheckbox = document.getElementById(
+        "reel-platform-ig",
+      ) as HTMLInputElement;
+      const fbCheckbox = document.getElementById(
+        "reel-platform-fb",
+      ) as HTMLInputElement;
       const platforms: string[] = [];
       if (igCheckbox?.checked) platforms.push("instagram");
       if (fbCheckbox?.checked) platforms.push("facebook");
@@ -421,13 +477,18 @@ export function SocialPublisher({
         setReelPostResult({
           success: true,
           message: (data.message as string) || "¡Reel publicado exitosamente!",
-          igReelUrl: (data.results as Record<string, Record<string, string>>)?.instagram?.permalink,
-          fbReelUrl: (data.results as Record<string, Record<string, string>>)?.facebook?.postUrl,
+          igReelUrl: (data.results as Record<string, Record<string, string>>)
+            ?.instagram?.permalink,
+          fbReelUrl: (data.results as Record<string, Record<string, string>>)
+            ?.facebook?.postUrl,
         });
       } else {
         setReelPostResult({
           success: false,
-          message: (data.message as string) || (data.error as string) || "Error al publicar Reel",
+          message:
+            (data.message as string) ||
+            (data.error as string) ||
+            "Error al publicar Reel",
         });
       }
     } catch (err) {
@@ -442,7 +503,12 @@ export function SocialPublisher({
 
   // Validate Meta token for reel posting
   const handleValidateReelToken = useCallback(async () => {
-    setTokenStatus({ checked: false, valid: false, message: "", checking: true });
+    setTokenStatus({
+      checked: false,
+      valid: false,
+      message: "",
+      checking: true,
+    });
     try {
       const response = await fetch("/api/admin/social", {
         method: "POST",
@@ -462,7 +528,10 @@ export function SocialPublisher({
         setTokenStatus({
           checked: true,
           valid: false,
-          message: (result?.message as string) || (data.message as string) || "Token inválido",
+          message:
+            (result?.message as string) ||
+            (data.message as string) ||
+            "Token inválido",
           guidance: (result?.guidance as string) || undefined,
           checking: false,
         });
@@ -479,8 +548,8 @@ export function SocialPublisher({
 
   // Get recommended video for platform
   const getRecommendedVideo = useCallback(() => {
-    const isVertical = platform.videoSpecs.dimensions.some(
-      (d) => d.orientation.includes("9:16")
+    const isVertical = platform.videoSpecs.dimensions.some((d) =>
+      d.orientation.includes("9:16"),
     );
 
     if (isVertical && verticalVideoUrl) {
@@ -492,8 +561,8 @@ export function SocialPublisher({
     return verticalVideoUrl
       ? { url: verticalVideoUrl, type: "vertical" }
       : videoUrl
-      ? { url: videoUrl, type: "horizontal" }
-      : null;
+        ? { url: videoUrl, type: "horizontal" }
+        : null;
   }, [platform, videoUrl, verticalVideoUrl]);
 
   const recommendedVideo = getRecommendedVideo();
@@ -544,14 +613,18 @@ export function SocialPublisher({
             </div>
             <div>
               <h4 className="font-oswald text-lg">{platform.name}</h4>
-              <p className="text-xs text-slc-muted">Especificaciones técnicas</p>
+              <p className="text-xs text-slc-muted">
+                Especificaciones técnicas
+              </p>
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() =>
-              setExpandedPlatform(expandedPlatform === platform.id ? null : platform.id)
+              setExpandedPlatform(
+                expandedPlatform === platform.id ? null : platform.id,
+              )
             }
           >
             {expandedPlatform === platform.id ? (
@@ -663,7 +736,10 @@ export function SocialPublisher({
               className={`w-4 h-4 ${recommendedVideo ? "text-green-500" : "text-slc-muted"}`}
             />
             <span className="text-sm">
-              Video {recommendedVideo?.type === "vertical" ? "vertical" : "horizontal"}
+              Video{" "}
+              {recommendedVideo?.type === "vertical"
+                ? "vertical"
+                : "horizontal"}
             </span>
             {recommendedVideo ? (
               <Check className="w-4 h-4 text-green-500 ml-auto" />
@@ -710,7 +786,11 @@ export function SocialPublisher({
                     : "bg-slc-card text-slc-muted hover:text-white"
                 }`}
               >
-                {type === "short" ? "Corto" : type === "medium" ? "Medio" : "Largo"}
+                {type === "short"
+                  ? "Corto"
+                  : type === "medium"
+                    ? "Medio"
+                    : "Largo"}
               </button>
             ))}
           </div>
@@ -764,7 +844,11 @@ export function SocialPublisher({
       {/* Quick actions */}
       <div className="grid gap-3 sm:grid-cols-2">
         {presaveUrl && (
-          <Button variant="outline" onClick={copyLink} className="justify-start">
+          <Button
+            variant="outline"
+            onClick={copyLink}
+            className="justify-start"
+          >
             {copiedLink ? (
               <>
                 <Check className="w-4 h-4 mr-2 text-green-500" />
@@ -781,7 +865,11 @@ export function SocialPublisher({
 
         {platform.uploadUrl && (
           <Button variant="outline" asChild className="justify-start">
-            <a href={platform.uploadUrl} target="_blank" rel="noopener noreferrer">
+            <a
+              href={platform.uploadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <ExternalLink className="w-4 h-4 mr-2" />
               Abrir {platform.name}
             </a>
@@ -796,7 +884,7 @@ export function SocialPublisher({
         <div className="grid gap-2 sm:grid-cols-2">
           {coverImageUrl && (
             <Button variant="outline" asChild className="justify-start">
-              <a href={coverImageUrl} download target="_blank">
+              <a href={coverImageUrl} download target="_blank" rel="noreferrer">
                 <ImageIcon className="w-4 h-4 mr-2" />
                 Descargar portada
               </a>
@@ -805,7 +893,12 @@ export function SocialPublisher({
 
           {recommendedVideo && (
             <Button variant="outline" asChild className="justify-start">
-              <a href={recommendedVideo.url} download target="_blank">
+              <a
+                href={recommendedVideo.url}
+                download
+                target="_blank"
+                rel="noreferrer"
+              >
                 <Video className="w-4 h-4 mr-2" />
                 Descargar video {recommendedVideo.type}
               </a>
@@ -818,11 +911,14 @@ export function SocialPublisher({
       <div className="p-4 bg-slc-card rounded-xl border border-primary/30 space-y-4">
         <div className="flex items-center gap-2">
           <Send className="w-5 h-5 text-primary" />
-          <h4 className="font-oswald text-sm uppercase">Publicación automática</h4>
+          <h4 className="font-oswald text-sm uppercase">
+            Publicación automática
+          </h4>
         </div>
         <p className="text-xs text-slc-muted">
-          Publica la portada con el caption directamente en Facebook e Instagram con un clic.
-          Se usará la portada como imagen y el caption generado arriba.
+          Publica la portada con el caption directamente en Facebook e Instagram
+          con un clic. Se usará la portada como imagen y el caption generado
+          arriba.
         </p>
 
         <div className="flex items-center gap-3">
@@ -861,7 +957,9 @@ export function SocialPublisher({
             }`}
           >
             <p className="font-medium mb-1">
-              {autoPostResult.success ? "✓ Publicación exitosa" : "✗ Error al publicar"}
+              {autoPostResult.success
+                ? "✓ Publicación exitosa"
+                : "✗ Error al publicar"}
             </p>
             <p className="text-xs opacity-80">{autoPostResult.message}</p>
             {autoPostResult.success && (
@@ -899,9 +997,9 @@ export function SocialPublisher({
           <h4 className="font-oswald text-sm uppercase">Publicar como Reel</h4>
         </div>
         <p className="text-xs text-slc-muted">
-          Publica el video vertical directamente como Reel en Instagram y Facebook.
-          El video debe estar en formato MP4, vertical (9:16), máximo 90 segundos.
-          Se usará el caption generado arriba.
+          Publica el video vertical directamente como Reel en Instagram y
+          Facebook. El video debe estar en formato MP4, vertical (9:16), máximo
+          90 segundos. Se usará el caption generado arriba.
         </p>
 
         {verticalVideoUrl ? (
@@ -910,7 +1008,9 @@ export function SocialPublisher({
             <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
               <Video className="w-5 h-5 text-green-500" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-green-400">Video vertical disponible</p>
+                <p className="text-sm font-medium text-green-400">
+                  Video vertical disponible
+                </p>
                 <p className="text-xs text-slc-muted truncate max-w-[300px]">
                   {verticalVideoUrl}
                 </p>
@@ -930,12 +1030,20 @@ export function SocialPublisher({
                   className="text-xs"
                 >
                   {tokenStatus.checking ? (
-                    <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Validando...</>
+                    <>
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />{" "}
+                      Validando...
+                    </>
                   ) : tokenStatus.checked ? (
                     tokenStatus.valid ? (
-                      <><Check className="w-3 h-3 mr-1 text-green-500" /> Válido</>
+                      <>
+                        <Check className="w-3 h-3 mr-1 text-green-500" /> Válido
+                      </>
                     ) : (
-                      <><AlertTriangle className="w-3 h-3 mr-1 text-red-500" /> Inválido</>
+                      <>
+                        <AlertTriangle className="w-3 h-3 mr-1 text-red-500" />{" "}
+                        Inválido
+                      </>
                     )
                   ) : (
                     "Verificar token"
@@ -943,13 +1051,19 @@ export function SocialPublisher({
                 </Button>
               </div>
               {tokenStatus.checked && (
-                <p className={`text-xs ${tokenStatus.valid ? "text-green-400" : "text-red-400"}`}>
+                <p
+                  className={`text-xs ${tokenStatus.valid ? "text-green-400" : "text-red-400"}`}
+                >
                   {tokenStatus.message}
                 </p>
               )}
-              {tokenStatus.checked && !tokenStatus.valid && tokenStatus.guidance && (
-                <p className="text-xs text-yellow-400">{tokenStatus.guidance}</p>
-              )}
+              {tokenStatus.checked &&
+                !tokenStatus.valid &&
+                tokenStatus.guidance && (
+                  <p className="text-xs text-yellow-400">
+                    {tokenStatus.guidance}
+                  </p>
+                )}
               {!tokenStatus.checked && !tokenStatus.checking && (
                 <p className="text-xs text-slc-muted">
                   Verifica el token antes de publicar para evitar errores.
@@ -1014,7 +1128,9 @@ export function SocialPublisher({
                 }`}
               >
                 <p className="font-medium mb-1">
-                  {reelPostResult.success ? "✓ Reel publicado" : "✗ Error al publicar Reel"}
+                  {reelPostResult.success
+                    ? "✓ Reel publicado"
+                    : "✗ Error al publicar Reel"}
                 </p>
                 <p className="text-xs opacity-80">{reelPostResult.message}</p>
                 {reelPostResult.success && (
@@ -1048,7 +1164,8 @@ export function SocialPublisher({
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <p className="text-xs text-yellow-400 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
-              No hay video vertical disponible. Sube un video vertical (MP4, 9:16) en la pestaña "Videos" para poder publicar como Reel.
+              No hay video vertical disponible. Sube un video vertical (MP4,
+              9:16) en la pestaña "Videos" para poder publicar como Reel.
             </p>
           </div>
         )}

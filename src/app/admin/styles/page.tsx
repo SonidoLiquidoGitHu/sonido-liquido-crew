@@ -1,37 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  type StyleSettings,
+  availableFonts,
+  defaultStyleSettings,
+  getFontClass,
+} from "@/lib/style-config";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Copy,
+  Edit3,
+  Eye,
+  Filter,
+  Globe,
+  Loader2,
+  Lock,
+  Megaphone,
+  MoreVertical,
+  Music,
+  Newspaper,
   Palette,
   Plus,
   Search,
-  Loader2,
-  Trash2,
-  Edit3,
-  Copy,
-  CheckCircle,
-  AlertTriangle,
-  Eye,
   Star,
-  Globe,
-  Lock,
-  Filter,
-  MoreVertical,
-  Wand2,
+  Trash2,
   User,
-  Music,
-  Megaphone,
-  Newspaper,
+  Wand2,
 } from "lucide-react";
-import {
-  type StyleSettings,
-  defaultStyleSettings,
-  availableFonts,
-  getFontClass,
-} from "@/lib/style-config";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface CustomStyle {
   id: string;
@@ -63,7 +63,10 @@ export default function StyleLibraryPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingStyle, setEditingStyle] = useState<CustomStyle | null>(null);
   const [previewStyle, setPreviewStyle] = useState<CustomStyle | null>(null);
@@ -102,7 +105,9 @@ export default function StyleLibraryPage() {
     if (!confirm("¿Estás seguro de eliminar este estilo?")) return;
 
     try {
-      const res = await fetch(`/api/admin/styles?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/styles?id=${id}`, {
+        method: "DELETE",
+      });
       const data = await res.json();
       if (data.success) {
         showMessage("success", "Estilo eliminado");
@@ -143,7 +148,7 @@ export default function StyleLibraryPage() {
   const filteredStyles = styles.filter(
     (s) =>
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      s.description?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -315,12 +320,16 @@ function StyleCard({
               settings.titleStyle === "uppercase" ? "uppercase" : ""
             }`}
             style={{
-              color: settings.titleStyle === "gradient" ? "transparent" : settings.primaryColor,
+              color:
+                settings.titleStyle === "gradient"
+                  ? "transparent"
+                  : settings.primaryColor,
               background:
                 settings.titleStyle === "gradient"
                   ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
                   : undefined,
-              WebkitBackgroundClip: settings.titleStyle === "gradient" ? "text" : undefined,
+              WebkitBackgroundClip:
+                settings.titleStyle === "gradient" ? "text" : undefined,
             }}
           >
             Título
@@ -338,8 +347,8 @@ function StyleCard({
                 settings.buttonStyle === "gradient"
                   ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
                   : settings.buttonStyle === "solid"
-                  ? settings.primaryColor
-                  : "transparent",
+                    ? settings.primaryColor
+                    : "transparent",
               border:
                 settings.buttonStyle === "outline"
                   ? `1px solid ${settings.primaryColor}`
@@ -348,13 +357,16 @@ function StyleCard({
                 settings.buttonRounded === "full"
                   ? "9999px"
                   : settings.buttonRounded === "lg"
-                  ? "8px"
-                  : settings.buttonRounded === "md"
-                  ? "6px"
-                  : settings.buttonRounded === "sm"
-                  ? "4px"
-                  : "0",
-              color: settings.buttonStyle === "outline" ? settings.primaryColor : "white",
+                    ? "8px"
+                    : settings.buttonRounded === "md"
+                      ? "6px"
+                      : settings.buttonRounded === "sm"
+                        ? "4px"
+                        : "0",
+              color:
+                settings.buttonStyle === "outline"
+                  ? settings.primaryColor
+                  : "white",
             }}
           >
             Botón
@@ -406,7 +418,9 @@ function StyleCard({
           <div className="flex-1 min-w-0">
             <h3 className="font-medium truncate">{style.name}</h3>
             {style.description && (
-              <p className="text-xs text-slc-muted truncate mt-0.5">{style.description}</p>
+              <p className="text-xs text-slc-muted truncate mt-0.5">
+                {style.description}
+              </p>
             )}
           </div>
 
@@ -420,7 +434,10 @@ function StyleCard({
             </button>
             {showMenu && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowMenu(false)}
+                />
                 <div className="absolute right-0 top-full mt-1 z-20 bg-slc-card border border-slc-border rounded-lg shadow-xl py-1 min-w-[140px]">
                   <button
                     onClick={() => {
@@ -460,7 +477,9 @@ function StyleCard({
           <span className="text-xs text-slc-muted">
             Usado {style.usageCount} {style.usageCount === 1 ? "vez" : "veces"}
           </span>
-          <span className="text-xs text-slc-muted capitalize">{style.category}</span>
+          <span className="text-xs text-slc-muted capitalize">
+            {style.category}
+          </span>
         </div>
       </div>
     </div>
@@ -523,21 +542,30 @@ function StyleEditorModal({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-slc-muted mb-2">Nombre *</label>
+              <label className="block text-sm text-slc-muted mb-2">
+                Nombre *
+              </label>
               <Input
                 value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
                 placeholder="Mi estilo personalizado"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+              <label className="block text-sm text-slc-muted mb-2">
+                Descripción
+              </label>
               <textarea
                 value={formData.description}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
                 }
                 placeholder="Descripción opcional..."
                 rows={2}
@@ -546,10 +574,14 @@ function StyleEditorModal({
             </div>
 
             <div>
-              <label className="block text-sm text-slc-muted mb-2">Categoría</label>
+              <label className="block text-sm text-slc-muted mb-2">
+                Categoría
+              </label>
               <select
                 value={formData.category}
-                onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, category: e.target.value }))
+                }
                 className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
               >
                 <option value="general">General</option>
@@ -566,7 +598,10 @@ function StyleEditorModal({
                   type="checkbox"
                   checked={formData.isPublic}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, isPublic: e.target.checked }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      isPublic: e.target.checked,
+                    }))
                   }
                   className="w-4 h-4 rounded border-slc-border"
                 />
@@ -577,7 +612,10 @@ function StyleEditorModal({
                   type="checkbox"
                   checked={formData.isDefault}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, isDefault: e.target.checked }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      isDefault: e.target.checked,
+                    }))
                   }
                   className="w-4 h-4 rounded border-slc-border"
                 />
@@ -586,11 +624,18 @@ function StyleEditorModal({
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1"
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving} className="flex-1">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
                 {style ? "Guardar" : "Crear"}
               </Button>
             </div>
@@ -609,7 +654,9 @@ function StylePreviewModal({
   style: CustomStyle;
   onClose: () => void;
 }) {
-  const [viewMode, setViewMode] = useState<"mobile" | "tablet" | "desktop">("desktop");
+  const [viewMode, setViewMode] = useState<"mobile" | "tablet" | "desktop">(
+    "desktop",
+  );
   const settings = { ...defaultStyleSettings, ...style.settings };
 
   const viewSizes = {
@@ -659,8 +706,10 @@ function StylePreviewModal({
           <div
             className="transition-all duration-300 overflow-hidden rounded-lg shadow-2xl"
             style={{
-              width: viewMode === "desktop" ? "100%" : viewSizes[viewMode].width,
-              height: viewMode === "desktop" ? "auto" : viewSizes[viewMode].height,
+              width:
+                viewMode === "desktop" ? "100%" : viewSizes[viewMode].width,
+              height:
+                viewMode === "desktop" ? "auto" : viewSizes[viewMode].height,
               maxHeight: "70vh",
             }}
           >
@@ -706,13 +755,14 @@ function StylePreviewModal({
                       settings.titleStyle === "gradient"
                         ? "transparent"
                         : settings.darkMode
-                        ? settings.textColor
-                        : "#1a1a1a",
+                          ? settings.textColor
+                          : "#1a1a1a",
                     background:
                       settings.titleStyle === "gradient"
                         ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
                         : undefined,
-                    WebkitBackgroundClip: settings.titleStyle === "gradient" ? "text" : undefined,
+                    WebkitBackgroundClip:
+                      settings.titleStyle === "gradient" ? "text" : undefined,
                   }}
                 >
                   Título del Track
@@ -730,11 +780,13 @@ function StylePreviewModal({
                 <p
                   className={`max-w-md text-sm ${getFontClass(settings.bodyFont)}`}
                   style={{
-                    color: settings.darkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
+                    color: settings.darkMode
+                      ? "rgba(255,255,255,0.6)"
+                      : "rgba(0,0,0,0.6)",
                   }}
                 >
-                  Esta es una descripción de ejemplo para ver cómo se ve el texto
-                  del cuerpo con este estilo aplicado.
+                  Esta es una descripción de ejemplo para ver cómo se ve el
+                  texto del cuerpo con este estilo aplicado.
                 </p>
 
                 {/* Button */}
@@ -745,28 +797,34 @@ function StylePreviewModal({
                       settings.buttonStyle === "gradient"
                         ? `linear-gradient(to right, ${settings.primaryColor}, ${settings.secondaryColor})`
                         : settings.buttonStyle === "solid"
-                        ? settings.primaryColor
-                        : settings.buttonStyle === "glass"
-                        ? "rgba(255,255,255,0.1)"
-                        : "transparent",
+                          ? settings.primaryColor
+                          : settings.buttonStyle === "glass"
+                            ? "rgba(255,255,255,0.1)"
+                            : "transparent",
                     border:
                       settings.buttonStyle === "outline"
                         ? `2px solid ${settings.primaryColor}`
                         : settings.buttonStyle === "glass"
-                        ? "1px solid rgba(255,255,255,0.2)"
-                        : "none",
-                    backdropFilter: settings.buttonStyle === "glass" ? "blur(10px)" : undefined,
+                          ? "1px solid rgba(255,255,255,0.2)"
+                          : "none",
+                    backdropFilter:
+                      settings.buttonStyle === "glass"
+                        ? "blur(10px)"
+                        : undefined,
                     borderRadius:
                       settings.buttonRounded === "full"
                         ? "9999px"
                         : settings.buttonRounded === "lg"
-                        ? "0.5rem"
-                        : settings.buttonRounded === "md"
-                        ? "0.375rem"
-                        : settings.buttonRounded === "sm"
-                        ? "0.25rem"
-                        : "0",
-                    color: settings.buttonStyle === "outline" ? settings.primaryColor : "white",
+                          ? "0.5rem"
+                          : settings.buttonRounded === "md"
+                            ? "0.375rem"
+                            : settings.buttonRounded === "sm"
+                              ? "0.25rem"
+                              : "0",
+                    color:
+                      settings.buttonStyle === "outline"
+                        ? settings.primaryColor
+                        : "white",
                     boxShadow: settings.enableGlow
                       ? `0 10px 30px -5px ${settings.primaryColor}50`
                       : undefined,

@@ -1,30 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
+  ArrowLeft,
+  Award,
+  Camera,
+  Check,
+  Crown,
+  Instagram,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Plus,
   Shield,
   ShieldCheck,
   ShieldPlus,
-  Star,
-  User,
-  Mail,
-  Instagram,
-  Trash2,
-  Loader2,
-  ArrowLeft,
-  MessageCircle,
-  Camera,
-  Check,
-  X,
   Sparkles,
-  Crown,
-  Award,
-  Plus,
+  Star,
+  Trash2,
+  User,
+  X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface TrustedContributor {
   id: string;
@@ -207,7 +207,11 @@ export default function TrustedContributorsPage() {
               <h2 className="font-oswald text-xl uppercase">
                 Agregar Contribuidor
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowAddForm(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowAddForm(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -217,12 +221,14 @@ export default function TrustedContributorsPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, identifierType: "email" })}
+                  onClick={() =>
+                    setFormData({ ...formData, identifierType: "email" })
+                  }
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors",
                     formData.identifierType === "email"
                       ? "bg-primary text-white border-primary"
-                      : "border-slc-border text-slc-muted hover:text-white"
+                      : "border-slc-border text-slc-muted hover:text-white",
                   )}
                 >
                   <Mail className="w-4 h-4" />
@@ -230,12 +236,14 @@ export default function TrustedContributorsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, identifierType: "instagram" })}
+                  onClick={() =>
+                    setFormData({ ...formData, identifierType: "instagram" })
+                  }
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border transition-colors",
                     formData.identifierType === "instagram"
                       ? "bg-pink-500 text-white border-pink-500"
-                      : "border-slc-border text-slc-muted hover:text-white"
+                      : "border-slc-border text-slc-muted hover:text-white",
                   )}
                 >
                   <Instagram className="w-4 h-4" />
@@ -246,12 +254,17 @@ export default function TrustedContributorsPage() {
               {/* Identifier Value */}
               <div>
                 <label className="block text-sm text-slc-muted mb-1.5">
-                  {formData.identifierType === "email" ? "Email" : "Usuario de Instagram"}
+                  {formData.identifierType === "email"
+                    ? "Email"
+                    : "Usuario de Instagram"}
                 </label>
                 <Input
                   value={formData.identifierValue}
                   onChange={(e) =>
-                    setFormData({ ...formData, identifierValue: e.target.value })
+                    setFormData({
+                      ...formData,
+                      identifierValue: e.target.value,
+                    })
                   }
                   placeholder={
                     formData.identifierType === "email"
@@ -286,12 +299,14 @@ export default function TrustedContributorsPage() {
                     <button
                       key={level}
                       type="button"
-                      onClick={() => setFormData({ ...formData, trustLevel: level })}
+                      onClick={() =>
+                        setFormData({ ...formData, trustLevel: level })
+                      }
                       className={cn(
                         "flex-1 flex flex-col items-center gap-1 py-3 rounded-lg border transition-colors",
                         formData.trustLevel === level
                           ? "bg-slc-dark border-primary"
-                          : "border-slc-border hover:border-primary/50"
+                          : "border-slc-border hover:border-primary/50",
                       )}
                     >
                       <Icon className={cn("w-5 h-5", color)} />
@@ -308,7 +323,10 @@ export default function TrustedContributorsPage() {
                     type="checkbox"
                     checked={formData.autoApproveMessages}
                     onChange={(e) =>
-                      setFormData({ ...formData, autoApproveMessages: e.target.checked })
+                      setFormData({
+                        ...formData,
+                        autoApproveMessages: e.target.checked,
+                      })
                     }
                     className="w-4 h-4 rounded"
                   />
@@ -321,7 +339,10 @@ export default function TrustedContributorsPage() {
                     type="checkbox"
                     checked={formData.autoApprovePhotos}
                     onChange={(e) =>
-                      setFormData({ ...formData, autoApprovePhotos: e.target.checked })
+                      setFormData({
+                        ...formData,
+                        autoApprovePhotos: e.target.checked,
+                      })
                     }
                     className="w-4 h-4 rounded"
                   />
@@ -334,7 +355,10 @@ export default function TrustedContributorsPage() {
                     type="checkbox"
                     checked={formData.autoFeature}
                     onChange={(e) =>
-                      setFormData({ ...formData, autoFeature: e.target.checked })
+                      setFormData({
+                        ...formData,
+                        autoFeature: e.target.checked,
+                      })
                     }
                     className="w-4 h-4 rounded"
                   />
@@ -350,7 +374,9 @@ export default function TrustedContributorsPage() {
                 </label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                   placeholder="Razón para agregar, etc..."
                   rows={2}
                   className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -359,7 +385,11 @@ export default function TrustedContributorsPage() {
 
               {/* Submit */}
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAddForm(false)}
+                >
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={saving}>
@@ -384,7 +414,9 @@ export default function TrustedContributorsPage() {
       ) : contributors.length === 0 ? (
         <div className="text-center py-16 bg-slc-card rounded-xl">
           <ShieldCheck className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-          <h3 className="font-oswald text-xl uppercase mb-2">Sin Contribuidores</h3>
+          <h3 className="font-oswald text-xl uppercase mb-2">
+            Sin Contribuidores
+          </h3>
           <p className="text-slc-muted mb-4">
             Agrega usuarios de confianza para auto-aprobar su contenido
           </p>
@@ -396,7 +428,9 @@ export default function TrustedContributorsPage() {
       ) : (
         <div className="space-y-3">
           {contributors.map((contributor) => {
-            const trustLevel = TRUST_LEVELS.find((t) => t.level === contributor.trustLevel);
+            const trustLevel = TRUST_LEVELS.find(
+              (t) => t.level === contributor.trustLevel,
+            );
             const TrustIcon = trustLevel?.icon || Shield;
 
             return (
@@ -404,7 +438,9 @@ export default function TrustedContributorsPage() {
                 key={contributor.id}
                 className={cn(
                   "bg-slc-card border rounded-xl p-4 transition-all",
-                  contributor.isActive ? "border-slc-border" : "border-red-500/30 opacity-60"
+                  contributor.isActive
+                    ? "border-slc-border"
+                    : "border-red-500/30 opacity-60",
                 )}
               >
                 <div className="flex items-center gap-4">
@@ -415,8 +451,8 @@ export default function TrustedContributorsPage() {
                       contributor.trustLevel === 3
                         ? "bg-yellow-500/20"
                         : contributor.trustLevel === 2
-                        ? "bg-green-500/20"
-                        : "bg-blue-500/20"
+                          ? "bg-green-500/20"
+                          : "bg-blue-500/20",
                     )}
                   >
                     <TrustIcon className={cn("w-6 h-6", trustLevel?.color)} />
@@ -448,8 +484,8 @@ export default function TrustedContributorsPage() {
                           contributor.trustLevel === 3
                             ? "bg-yellow-500/10"
                             : contributor.trustLevel === 2
-                            ? "bg-green-500/10"
-                            : "bg-blue-500/10"
+                              ? "bg-green-500/10"
+                              : "bg-blue-500/10",
                         )}
                       >
                         {trustLevel?.label}
@@ -491,7 +527,9 @@ export default function TrustedContributorsPage() {
                     <Button
                       size="sm"
                       variant={contributor.isActive ? "outline" : "default"}
-                      onClick={() => toggleActive(contributor.id, contributor.isActive)}
+                      onClick={() =>
+                        toggleActive(contributor.id, contributor.isActive)
+                      }
                     >
                       {contributor.isActive ? "Desactivar" : "Activar"}
                     </Button>

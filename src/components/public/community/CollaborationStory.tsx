@@ -1,29 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  Users,
-  Music,
-  Mic2,
-  Headphones,
-  Disc,
   Camera,
-  Play,
-  Quote,
-  ExternalLink,
-  Instagram,
-  Twitter,
-  Globe,
   ChevronLeft,
   ChevronRight,
-  X,
+  Disc,
+  ExternalLink,
+  Globe,
+  Headphones,
+  Instagram,
+  Mic2,
+  Music,
+  Play,
+  Quote,
   Sparkles,
+  Twitter,
   User,
+  Users,
+  X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
 
 interface Collaborator {
   id: string;
@@ -94,20 +94,25 @@ export function CollaborationStory({
   media = [],
   className = "",
 }: CollaborationStoryProps) {
-  const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(
+    null,
+  );
   const [expandedQuotes, setExpandedQuotes] = useState<string[]>([]);
 
   // Group collaborators by role
-  const groupedCollaborators = collaborators.reduce((acc, collab) => {
-    const role = collab.role.toLowerCase();
-    if (!acc[role]) acc[role] = [];
-    acc[role].push(collab);
-    return acc;
-  }, {} as Record<string, Collaborator[]>);
+  const groupedCollaborators = collaborators.reduce(
+    (acc, collab) => {
+      const role = collab.role.toLowerCase();
+      if (!acc[role]) acc[role] = [];
+      acc[role].push(collab);
+      return acc;
+    },
+    {} as Record<string, Collaborator[]>,
+  );
 
   const toggleQuote = (id: string) => {
     setExpandedQuotes((prev) =>
-      prev.includes(id) ? prev.filter((q) => q !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((q) => q !== id) : [...prev, id],
     );
   };
 
@@ -121,7 +126,12 @@ export function CollaborationStory({
   };
 
   return (
-    <div className={cn("bg-slc-card border border-slc-border rounded-2xl overflow-hidden", className)}>
+    <div
+      className={cn(
+        "bg-slc-card border border-slc-border rounded-2xl overflow-hidden",
+        className,
+      )}
+    >
       {/* Header with release info */}
       <div className="relative p-6 border-b border-slc-border">
         {/* Background blur */}
@@ -167,7 +177,11 @@ export function CollaborationStory({
 
           {releaseSpotifyUrl && (
             <Button asChild variant="outline" size="sm" className="shrink-0">
-              <a href={releaseSpotifyUrl} target="_blank" rel="noopener noreferrer">
+              <a
+                href={releaseSpotifyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Escuchar
               </a>
@@ -201,7 +215,9 @@ export function CollaborationStory({
           <div className="space-y-8">
             {Object.entries(groupedCollaborators).map(([role, members]) => {
               const RoleIcon = roleIcons[role] || roleIcons.default;
-              const roleLabel = roleLabels[role] || role.charAt(0).toUpperCase() + role.slice(1);
+              const roleLabel =
+                roleLabels[role] ||
+                role.charAt(0).toUpperCase() + role.slice(1);
 
               return (
                 <div key={role}>
@@ -269,7 +285,9 @@ export function CollaborationStory({
                 )}
                 {item.caption && (
                   <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-xs text-white line-clamp-2">{item.caption}</p>
+                    <p className="text-xs text-white line-clamp-2">
+                      {item.caption}
+                    </p>
                   </div>
                 )}
               </button>
@@ -389,7 +407,9 @@ function CollaboratorCard({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-white truncate">{collaborator.name}</h4>
+          <h4 className="font-medium text-white truncate">
+            {collaborator.name}
+          </h4>
           {collaborator.contribution && (
             <p className="text-xs text-slc-muted mt-0.5 line-clamp-2">
               {collaborator.contribution}
@@ -406,7 +426,11 @@ function CollaboratorCard({
                   rel="noopener noreferrer"
                   className="text-slc-muted hover:text-spotify transition-colors"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
                   </svg>
                 </a>

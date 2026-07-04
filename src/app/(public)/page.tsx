@@ -1,73 +1,103 @@
-import { Suspense } from "react";
-import dynamic from "next/dynamic";
 import {
+  FeaturedArtists,
   HeroSection,
   MarqueeBanner,
-  FeaturedArtists,
-  UpcomingReleasesHero,
   ReelsStoriesBar,
+  UpcomingReleasesHero,
 } from "@/components/public";
-import { FeaturedBeats } from "@/components/public/sections/FeaturedBeats";
+import { BackToTopFab } from "@/components/public/BackToTopFab";
 import {
-  LazySection,
-  ReleasesSkeleton,
   EventsSkeleton,
   GallerySkeleton,
+  LazySection,
+  ReleasesSkeleton,
 } from "@/components/public/LazySection";
-import { BackToTopFab } from "@/components/public/BackToTopFab";
 import { SectionNavDots } from "@/components/public/SectionNavDots";
+import { FeaturedBeats } from "@/components/public/sections/FeaturedBeats";
+import { db, isDatabaseConfigured } from "@/db/client";
+import {
+  artists,
+  releaseArtists,
+  releases as releasesTable,
+  upcomingReleases,
+  verticalVideos,
+} from "@/db/schema";
 import {
   artistsService,
+  beatsService,
+  eventsService,
   releasesService,
   videosService,
-  eventsService,
-  beatsService,
 } from "@/lib/services";
-import { db, isDatabaseConfigured } from "@/db/client";
-import { upcomingReleases, releaseArtists, artists, releases as releasesTable, verticalVideos } from "@/db/schema";
-import { eq, and, gte, inArray, like, desc } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like } from "drizzle-orm";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 
 // ===========================================
 // PERFORMANCE: Lazy load below-the-fold sections
 // ===========================================
 const LatestReleases = dynamic(
-  () => import("@/components/public/sections/LatestReleases").then(m => ({ default: m.LatestReleases })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/LatestReleases").then((m) => ({
+      default: m.LatestReleases,
+    })),
+  { ssr: true },
 );
 
 const MusicaSection = dynamic(
-  () => import("@/components/public/sections/MusicaSection").then(m => ({ default: m.MusicaSection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/MusicaSection").then((m) => ({
+      default: m.MusicaSection,
+    })),
+  { ssr: true },
 );
 
 const VideosSection = dynamic(
-  () => import("@/components/public/sections/VideosSection").then(m => ({ default: m.VideosSection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/VideosSection").then((m) => ({
+      default: m.VideosSection,
+    })),
+  { ssr: true },
 );
 
 const GallerySection = dynamic(
-  () => import("@/components/public/sections/GallerySection").then(m => ({ default: m.GallerySection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/GallerySection").then((m) => ({
+      default: m.GallerySection,
+    })),
+  { ssr: true },
 );
 
 const EventsSection = dynamic(
-  () => import("@/components/public/sections/EventsSection").then(m => ({ default: m.EventsSection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/EventsSection").then((m) => ({
+      default: m.EventsSection,
+    })),
+  { ssr: true },
 );
 
 const NewsletterSection = dynamic(
-  () => import("@/components/public/sections/NewsletterSection").then(m => ({ default: m.NewsletterSection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/NewsletterSection").then((m) => ({
+      default: m.NewsletterSection,
+    })),
+  { ssr: true },
 );
 
 const StatsSection = dynamic(
-  () => import("@/components/public/sections/StatsSection").then(m => ({ default: m.StatsSection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/StatsSection").then((m) => ({
+      default: m.StatsSection,
+    })),
+  { ssr: true },
 );
 
 const VerticalVideoSection = dynamic(
-  () => import("@/components/public/sections/VerticalVideoSection").then(m => ({ default: m.VerticalVideoSection })),
-  { ssr: true }
+  () =>
+    import("@/components/public/sections/VerticalVideoSection").then((m) => ({
+      default: m.VerticalVideoSection,
+    })),
+  { ssr: true },
 );
 
 // ===========================================
@@ -99,8 +129,8 @@ async function getUpcomingReleases() {
       .where(
         and(
           eq(upcomingReleases.isActive, true),
-          gte(upcomingReleases.releaseDate, now)
-        )
+          gte(upcomingReleases.releaseDate, now),
+        ),
       )
       .orderBy(upcomingReleases.releaseDate)
       .limit(4);
@@ -119,18 +149,25 @@ async function getUpcomingReleases() {
             .where(eq(releasesTable.slug, upcoming.slug))
             .limit(1);
 
-          const match = matchBySlug || (await db
-            .select({ releaseType: releasesTable.releaseType })
-            .from(releasesTable)
-            .where(like(releasesTable.title, `%${upcoming.title}%`))
-            .limit(1))[0];
+          const match =
+            matchBySlug ||
+            (
+              await db
+                .select({ releaseType: releasesTable.releaseType })
+                .from(releasesTable)
+                .where(like(releasesTable.title, `%${upcoming.title}%`))
+                .limit(1)
+            )[0];
 
           if (match && match.releaseType !== upcoming.releaseType) {
             // Override in memory so the display is correct.
             // The autoConvertUpcomingReleases cron will persist the fix.
-            (upcoming as Record<string, unknown>).releaseType = match.releaseType;
+            (upcoming as Record<string, unknown>).releaseType =
+              match.releaseType;
           }
-        } catch { /* non-critical per-item check */ }
+        } catch {
+          /* non-critical per-item check */
+        }
       }
     }
 
@@ -145,10 +182,7 @@ export default async function HomePage() {
   // ===========================================
   // CRITICAL PATH: Fetch only above-the-fold data first
   // ===========================================
-  const [
-    allArtists,
-    upcomingReleasesList,
-  ] = await Promise.all([
+  const [allArtists, upcomingReleasesList] = await Promise.all([
     safeFetch(artistsService.getAll({ limit: 15 }), []),
     getUpcomingReleases(),
   ]);
@@ -170,24 +204,28 @@ export default async function HomePage() {
     safeFetch(eventsService.getPast(100), []),
     safeFetch(beatsService.getFeatured(5), []),
     safeFetch(
-      db.select({
-        id: verticalVideos.id,
-        title: verticalVideos.title,
-        thumbnailUrl: verticalVideos.thumbnailUrl,
-        videoUrl: verticalVideos.videoUrl,
-        platform: verticalVideos.platform,
-        platformUrl: verticalVideos.platformUrl,
-        embedUrl: verticalVideos.embedUrl,
-        isFeatured: verticalVideos.isFeatured,
-        artistName: artists.name,
-        artistSlug: artists.slug,
-      })
-      .from(verticalVideos)
-      .leftJoin(artists, eq(verticalVideos.artistId, artists.id))
-      .where(eq(verticalVideos.isPublished, true))
-      .orderBy(desc(verticalVideos.isFeatured), desc(verticalVideos.createdAt))
-      .limit(15),
-      []
+      db
+        .select({
+          id: verticalVideos.id,
+          title: verticalVideos.title,
+          thumbnailUrl: verticalVideos.thumbnailUrl,
+          videoUrl: verticalVideos.videoUrl,
+          platform: verticalVideos.platform,
+          platformUrl: verticalVideos.platformUrl,
+          embedUrl: verticalVideos.embedUrl,
+          isFeatured: verticalVideos.isFeatured,
+          artistName: artists.name,
+          artistSlug: artists.slug,
+        })
+        .from(verticalVideos)
+        .leftJoin(artists, eq(verticalVideos.artistId, artists.id))
+        .where(eq(verticalVideos.isPublished, true))
+        .orderBy(
+          desc(verticalVideos.isFeatured),
+          desc(verticalVideos.createdAt),
+        )
+        .limit(15),
+      [],
     ),
   ]);
 
@@ -196,35 +234,49 @@ export default async function HomePage() {
   // to eliminate the sequential dependency. Tracked as performance bottleneck.
   //
   // Enrich releases with artist info (same pattern as discografia page)
-  let latestReleases: (typeof rawLatestReleases[number] & { artistName?: string | null; artistSlug?: string | null })[] = rawLatestReleases;
+  let latestReleases: ((typeof rawLatestReleases)[number] & {
+    artistName?: string | null;
+    artistSlug?: string | null;
+  })[] = rawLatestReleases;
   try {
     if (rawLatestReleases.length > 0) {
-      const releaseIds = rawLatestReleases.map(r => r.id);
+      const releaseIds = rawLatestReleases.map((r) => r.id);
 
       // Fetch release-artist associations and artists in parallel
       const [releaseArtistsForReleases, allArtists] = await Promise.all([
-        db.select({
-          releaseId: releaseArtists.releaseId,
-          artistId: releaseArtists.artistId,
-          isPrimary: releaseArtists.isPrimary,
-        }).from(releaseArtists).where(inArray(releaseArtists.releaseId, releaseIds)),
-        db.select({ id: artists.id, name: artists.name, slug: artists.slug }).from(artists),
+        db
+          .select({
+            releaseId: releaseArtists.releaseId,
+            artistId: releaseArtists.artistId,
+            isPrimary: releaseArtists.isPrimary,
+          })
+          .from(releaseArtists)
+          .where(inArray(releaseArtists.releaseId, releaseIds)),
+        db
+          .select({ id: artists.id, name: artists.name, slug: artists.slug })
+          .from(artists),
       ]);
 
-      const artistMap = new Map(allArtists.map(a => [a.id, a]));
+      const artistMap = new Map(allArtists.map((a) => [a.id, a]));
 
       // Build releaseId → primary artist lookup (prefer primary, fall back to first)
-      const releaseArtistMap = new Map<string, { artistName: string; artistSlug: string }>();
+      const releaseArtistMap = new Map<
+        string,
+        { artistName: string; artistSlug: string }
+      >();
       for (const ra of releaseArtistsForReleases) {
         if (!releaseArtistMap.has(ra.releaseId) || ra.isPrimary) {
           const artist = artistMap.get(ra.artistId);
           if (artist) {
-            releaseArtistMap.set(ra.releaseId, { artistName: artist.name, artistSlug: artist.slug });
+            releaseArtistMap.set(ra.releaseId, {
+              artistName: artist.name,
+              artistSlug: artist.slug,
+            });
           }
         }
       }
 
-      latestReleases = rawLatestReleases.map(r => ({
+      latestReleases = rawLatestReleases.map((r) => ({
         ...r,
         artistName: releaseArtistMap.get(r.id)?.artistName || null,
         artistSlug: releaseArtistMap.get(r.id)?.artistSlug || null,
@@ -340,7 +392,10 @@ export default async function HomePage() {
           =========================================== */}
       <section id="eventos">
         <LazySection fallback={<EventsSkeleton />} minHeight="600px">
-          <EventsSection upcomingEvents={upcomingEvents} pastEvents={pastEvents} />
+          <EventsSection
+            upcomingEvents={upcomingEvents}
+            pastEvents={pastEvents}
+          />
         </LazySection>
       </section>
 

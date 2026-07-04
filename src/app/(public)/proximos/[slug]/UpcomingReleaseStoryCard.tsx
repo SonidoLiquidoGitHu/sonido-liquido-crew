@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import {
-  X,
-  Instagram,
-  Download,
-  Share2,
-  Loader2,
-  CheckCircle,
-  Copy,
-  Check,
-  AlertCircle,
-  ExternalLink,
-  ClipboardCopy,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { proxyImageUrl } from "@/hooks/use-proxied-image";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  ClipboardCopy,
+  Copy,
+  Download,
+  ExternalLink,
+  Instagram,
+  Loader2,
+  Share2,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ===========================================
 // TYPES
@@ -78,7 +78,7 @@ function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
-  maxLines: number
+  maxLines: number,
 ): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
@@ -101,15 +101,15 @@ function wrapText(
 
   if (lines.length === maxLines && line) {
     const lastLine = lines[maxLines - 1];
-    if (ctx.measureText(lastLine + "...").width > maxWidth) {
+    if (ctx.measureText(`${lastLine}...`).width > maxWidth) {
       let truncated = lastLine;
       while (
-        ctx.measureText(truncated + "...").width > maxWidth &&
+        ctx.measureText(`${truncated}...`).width > maxWidth &&
         truncated.length > 0
       ) {
         truncated = truncated.slice(0, -1);
       }
-      lines[maxLines - 1] = truncated + "...";
+      lines[maxLines - 1] = `${truncated}...`;
     }
   }
 
@@ -129,7 +129,9 @@ async function loadOswaldFont(): Promise<void> {
   }
 }
 
-async function loadCoverImage(coverImageUrl: string | null): Promise<HTMLImageElement | null> {
+async function loadCoverImage(
+  coverImageUrl: string | null,
+): Promise<HTMLImageElement | null> {
   if (!coverImageUrl) return null;
   try {
     const { src: proxiedUrl } = proxyImageUrl(coverImageUrl);
@@ -156,7 +158,7 @@ function drawRoundedRect(
   y: number,
   w: number,
   h: number,
-  r: number
+  r: number,
 ) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -225,7 +227,7 @@ function drawCountdownBoxes(
   centerX: number,
   y: number,
   time: TimeRemaining,
-  scale: number = 1
+  scale = 1,
 ) {
   const boxes = [
     { value: time.days, label: "DÍAS" },
@@ -282,7 +284,7 @@ function drawPresaveCta(
   ctx: CanvasRenderingContext2D,
   centerX: number,
   y: number,
-  scale: number = 1
+  scale = 1,
 ) {
   const ctaWidth = 540 * scale;
   const ctaHeight = 76 * scale;
@@ -308,7 +310,7 @@ function drawPresaveCta(
 // --- STORY: 1080x1920 (9:16) ---
 async function generateStoryCard(
   canvas: HTMLCanvasElement,
-  release: ReleaseData
+  release: ReleaseData,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -363,7 +365,8 @@ async function generateStoryCard(
 
   // Release type badge (if applicable)
   if (release.releaseType) {
-    const typeLabel = releaseTypeLabels[release.releaseType] || release.releaseType;
+    const typeLabel =
+      releaseTypeLabels[release.releaseType] || release.releaseType;
     const badgeW = 220;
     const badgeH = 36;
     const badgeX = (W - badgeW) / 2;
@@ -399,9 +402,20 @@ async function generateStoryCard(
     } else {
       drawH = coverSize / imgAspect;
     }
-    ctx.drawImage(coverImg, coverX + (coverSize - drawW) / 2, coverY + (coverSize - drawH) / 2, drawW, drawH);
+    ctx.drawImage(
+      coverImg,
+      coverX + (coverSize - drawW) / 2,
+      coverY + (coverSize - drawH) / 2,
+      drawW,
+      drawH,
+    );
   } else {
-    const placeholderGrad = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+    const placeholderGrad = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize,
+    );
     placeholderGrad.addColorStop(0, "#1a1a2e");
     placeholderGrad.addColorStop(1, "#16213e");
     ctx.fillStyle = placeholderGrad;
@@ -486,7 +500,11 @@ async function generateStoryCard(
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(255,255,255,0.5)";
   ctx.font = "22px monospace";
-  ctx.fillText(`sonidoliquido.com/proximos/${release.slug}`, W / 2, bottomY + 40);
+  ctx.fillText(
+    `sonidoliquido.com/proximos/${release.slug}`,
+    W / 2,
+    bottomY + 40,
+  );
 
   ctx.fillStyle = "#a855f7";
   ctx.font = "bold 20px 'Oswald', sans-serif";
@@ -496,7 +514,7 @@ async function generateStoryCard(
 // --- POST: 1080x1080 (1:1 square) ---
 async function generatePostCard(
   canvas: HTMLCanvasElement,
-  release: ReleaseData
+  release: ReleaseData,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -555,9 +573,20 @@ async function generatePostCard(
     } else {
       drawH = coverSize / imgAspect;
     }
-    ctx.drawImage(coverImg, coverX + (coverSize - drawW) / 2, coverY + (coverSize - drawH) / 2, drawW, drawH);
+    ctx.drawImage(
+      coverImg,
+      coverX + (coverSize - drawW) / 2,
+      coverY + (coverSize - drawH) / 2,
+      drawW,
+      drawH,
+    );
   } else {
-    const placeholderGrad = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+    const placeholderGrad = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize,
+    );
     placeholderGrad.addColorStop(0, "#1a1a2e");
     placeholderGrad.addColorStop(1, "#16213e");
     ctx.fillStyle = placeholderGrad;
@@ -624,7 +653,7 @@ async function generatePostCard(
     ctx.fillText(
       `FALTAN ${time.days}D ${String(time.hours).padStart(2, "0")}H ${String(time.minutes).padStart(2, "0")}M`,
       W / 2,
-      metaY + 30
+      metaY + 30,
     );
   }
 
@@ -635,13 +664,17 @@ async function generatePostCard(
   ctx.fillText("SONIDO LÍQUIDO CREW", W / 2, bottomY - 10);
   ctx.fillStyle = "rgba(255,255,255,0.4)";
   ctx.font = "14px monospace";
-  ctx.fillText(`sonidoliquido.com/proximos/${release.slug}`, W / 2, bottomY + 8);
+  ctx.fillText(
+    `sonidoliquido.com/proximos/${release.slug}`,
+    W / 2,
+    bottomY + 8,
+  );
 }
 
 // --- REEL: 1080x1920 (9:16 with CTA) ---
 async function generateReelCard(
   canvas: HTMLCanvasElement,
-  release: ReleaseData
+  release: ReleaseData,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -730,9 +763,20 @@ async function generateReelCard(
     } else {
       drawH = coverSize / imgAspect;
     }
-    ctx.drawImage(coverImg, coverX + (coverSize - drawW) / 2, coverY + (coverSize - drawH) / 2, drawW, drawH);
+    ctx.drawImage(
+      coverImg,
+      coverX + (coverSize - drawW) / 2,
+      coverY + (coverSize - drawH) / 2,
+      drawW,
+      drawH,
+    );
   } else {
-    const placeholderGrad = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+    const placeholderGrad = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize,
+    );
     placeholderGrad.addColorStop(0, "#1a1a2e");
     placeholderGrad.addColorStop(1, "#16213e");
     ctx.fillStyle = placeholderGrad;
@@ -835,7 +879,10 @@ async function generateReelCard(
 // GENERATOR MAP
 // ===========================================
 
-const GENERATORS: Record<FormatTab, (canvas: HTMLCanvasElement, release: ReleaseData) => Promise<void>> = {
+const GENERATORS: Record<
+  FormatTab,
+  (canvas: HTMLCanvasElement, release: ReleaseData) => Promise<void>
+> = {
   story: generateStoryCard,
   post: generatePostCard,
   reel: generateReelCard,
@@ -859,7 +906,9 @@ const FILE_SUFFIX: Record<FormatTab, string> = {
 
 function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+    navigator.userAgent,
+  );
 }
 
 export function UpcomingReleaseStoryCard({
@@ -898,17 +947,20 @@ export function UpcomingReleaseStoryCard({
       });
   }, [release, selectedFormat]);
 
-  const getCanvasBlob = useCallback(async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
-    try {
-      return await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/png", 1.0)
-      );
-    } catch (err) {
-      console.error("Canvas tainted, cannot extract blob:", err);
-      setShareError("No se pudo generar la imagen. Intenta descargarla.");
-      return null;
-    }
-  }, []);
+  const getCanvasBlob = useCallback(
+    async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+      try {
+        return await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/png", 1.0),
+        );
+      } catch (err) {
+        console.error("Canvas tainted, cannot extract blob:", err);
+        setShareError("No se pudo generar la imagen. Intenta descargarla.");
+        return null;
+      }
+    },
+    [],
+  );
 
   const downloadCard = useCallback(async () => {
     const canvas = previewCanvasRef.current;
@@ -916,7 +968,9 @@ export function UpcomingReleaseStoryCard({
 
     const blob = await getCanvasBlob(canvas);
     if (!blob) {
-      setShareError("No se pudo descargar. La imagen de portada tiene restricciones de seguridad.");
+      setShareError(
+        "No se pudo descargar. La imagen de portada tiene restricciones de seguridad.",
+      );
       return;
     }
 
@@ -957,7 +1011,9 @@ export function UpcomingReleaseStoryCard({
         }
       }
 
-      setShareError("Tu navegador no soporta copiar imágenes. Descarga la imagen y súbelo manualmente.");
+      setShareError(
+        "Tu navegador no soporta copiar imágenes. Descarga la imagen y súbelo manualmente.",
+      );
     } catch (err) {
       console.error("Copy image failed:", err);
       setShareError("No se pudo copiar la imagen. Intenta descargarla.");
@@ -977,7 +1033,7 @@ export function UpcomingReleaseStoryCard({
       const file = new File(
         [blob],
         `${release.slug || release.id}-${FILE_SUFFIX[selectedFormat]}.png`,
-        { type: "image/png" }
+        { type: "image/png" },
       );
 
       const releaseShareUrl = `https://sonidoliquido.com/proximos/${release.slug}`;
@@ -993,8 +1049,8 @@ export function UpcomingReleaseStoryCard({
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return;
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === "AbortError") return;
         }
       }
 
@@ -1008,8 +1064,8 @@ export function UpcomingReleaseStoryCard({
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return;
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === "AbortError") return;
         }
       }
 
@@ -1030,11 +1086,9 @@ export function UpcomingReleaseStoryCard({
       const blob = await getCanvasBlob(canvas);
       if (!blob) return;
 
-      const file = new File(
-        [blob],
-        `${release.slug || release.id}-story.png`,
-        { type: "image/png" }
-      );
+      const file = new File([blob], `${release.slug || release.id}-story.png`, {
+        type: "image/png",
+      });
 
       if (isMobile) {
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -1046,8 +1100,8 @@ export function UpcomingReleaseStoryCard({
             setShareSuccess(true);
             setTimeout(() => setShareSuccess(false), 2000);
             return;
-          } catch (err: any) {
-            if (err?.name === "AbortError") return;
+          } catch (err: unknown) {
+            if (err instanceof Error && err.name === "AbortError") return;
           }
         }
 
@@ -1066,7 +1120,9 @@ export function UpcomingReleaseStoryCard({
 
             setTimeout(() => {
               if (document.visibilityState === "visible") {
-                setShareError("No se pudo abrir Instagram. Descarga la imagen y compártela manualmente.");
+                setShareError(
+                  "No se pudo abrir Instagram. Descarga la imagen y compártela manualmente.",
+                );
               }
             }, 2000);
             return;
@@ -1076,21 +1132,32 @@ export function UpcomingReleaseStoryCard({
         }
 
         await downloadCard();
-        setShareError("Descarga la imagen y ábrela en Instagram para subirla a tu Story.");
+        setShareError(
+          "Descarga la imagen y ábrela en Instagram para subirla a tu Story.",
+        );
       } else {
         await downloadCard();
         window.open("https://www.instagram.com/", "_blank");
       }
     } catch (err) {
       console.error("Instagram Story share failed:", err);
-      setShareError("No se pudo compartir en Instagram. Intenta descargar la imagen.");
+      setShareError(
+        "No se pudo compartir en Instagram. Intenta descargar la imagen.",
+      );
     }
-  }, [getCanvasBlob, isMobile, downloadCard, release.slug, release.id, release.title]);
+  }, [
+    getCanvasBlob,
+    isMobile,
+    downloadCard,
+    release.slug,
+    release.id,
+    release.title,
+  ]);
 
   const releaseShareUrl = `https://sonidoliquido.com/proximos/${release.slug}`;
   const encodedUrl = encodeURIComponent(releaseShareUrl);
   const encodedTitle = encodeURIComponent(
-    `Haz pre-save de "${release.title}" antes de su lanzamiento en Sonido Líquido Crew`
+    `Haz pre-save de "${release.title}" antes de su lanzamiento en Sonido Líquido Crew`,
   );
 
   const copyLink = async () => {
@@ -1103,11 +1170,17 @@ export function UpcomingReleaseStoryCard({
     }
   };
 
-  const aspectStyle = selectedFormat === "post"
-    ? { aspectRatio: "1/1", maxHeight: "50vh" }
-    : { aspectRatio: "9/16", maxHeight: "60vh" };
+  const aspectStyle =
+    selectedFormat === "post"
+      ? { aspectRatio: "1/1", maxHeight: "50vh" }
+      : { aspectRatio: "9/16", maxHeight: "60vh" };
 
-  const formatLabel = selectedFormat === "post" ? "publicación" : selectedFormat === "reel" ? "reel" : "historia";
+  const formatLabel =
+    selectedFormat === "post"
+      ? "publicación"
+      : selectedFormat === "reel"
+        ? "reel"
+        : "historia";
 
   return (
     <div
@@ -1242,21 +1315,38 @@ export function UpcomingReleaseStoryCard({
             </Button>
 
             <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs text-white/60 font-oswald uppercase tracking-wide">Como compartir en {formatLabel}:</p>
+              <p className="text-xs text-white/60 font-oswald uppercase tracking-wide">
+                Como compartir en {formatLabel}:
+              </p>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">1</span>
-                <span>Da clic en <strong className="text-white/70">Descargar y Abrir Instagram</strong></span>
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  1
+                </span>
+                <span>
+                  Da clic en{" "}
+                  <strong className="text-white/70">
+                    Descargar y Abrir Instagram
+                  </strong>
+                </span>
               </div>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">2</span>
-                <span>En Instagram, crea una nueva {formatLabel} (icono +)</span>
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  2
+                </span>
+                <span>
+                  En Instagram, crea una nueva {formatLabel} (icono +)
+                </span>
               </div>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">3</span>
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  3
+                </span>
                 <span>Selecciona la imagen descargada y publicala</span>
               </div>
               <p className="text-[10px] text-white/30 pt-1 border-t border-white/5">
-                Tip: Tambien puedes usar <strong className="text-white/50">Copiar Imagen</strong> y pegar directamente con Ctrl+V
+                Tip: Tambien puedes usar{" "}
+                <strong className="text-white/50">Copiar Imagen</strong> y pegar
+                directamente con Ctrl+V
               </p>
             </div>
           </div>

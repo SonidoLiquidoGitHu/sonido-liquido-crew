@@ -1,42 +1,42 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import Image from "next/image";
+import { Button } from "@/components/ui/button";
 import {
-  Copy,
+  Calendar,
   Check,
-  Share2,
-  Code,
-  Instagram,
-  Twitter,
-  Facebook,
   CheckCircle,
-  XCircle,
-  Mail,
-  MessageSquare,
-  Image as ImageIcon,
-  Music,
-  Video,
-  FileText,
-  Package,
   ChevronDown,
   ChevronUp,
+  Clock,
+  Code,
+  Copy,
+  Disc3,
   Download,
   ExternalLink,
-  Linkedin,
-  QrCode,
-  Loader2,
-  Sparkles,
-  Calendar,
-  Clock,
-  Users,
-  Disc3,
-  Link2,
   Eye,
-  Zap,
+  Facebook,
+  FileText,
+  Image as ImageIcon,
+  Instagram,
+  Link2,
+  Linkedin,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Music,
+  Package,
+  QrCode,
   Send,
+  Share2,
+  Sparkles,
+  Twitter,
+  Users,
+  Video,
+  XCircle,
+  Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { useCallback, useState } from "react";
 
 interface MediaRelease {
   id: string;
@@ -70,7 +70,11 @@ interface PressToolkitProps {
 }
 
 // Copy button component
-function CopyBtn({ text, label, variant = "default" }: { text: string; label: string; variant?: "default" | "primary" }) {
+function CopyBtn({
+  text,
+  label,
+  variant = "default",
+}: { text: string; label: string; variant?: "default" | "primary" }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -83,18 +87,24 @@ function CopyBtn({ text, label, variant = "default" }: { text: string; label: st
     }
   };
 
-  const baseClasses = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all";
-  const variantClasses = variant === "primary"
-    ? copied
-      ? "bg-green-500 text-white"
-      : "bg-primary text-white hover:bg-primary/90"
-    : copied
-      ? "bg-green-500/20 text-green-500 border border-green-500/30"
-      : "bg-slc-dark text-slc-muted hover:text-white hover:bg-slc-card border border-slc-border";
+  const baseClasses =
+    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all";
+  const variantClasses =
+    variant === "primary"
+      ? copied
+        ? "bg-green-500 text-white"
+        : "bg-primary text-white hover:bg-primary/90"
+      : copied
+        ? "bg-green-500/20 text-green-500 border border-green-500/30"
+        : "bg-slc-dark text-slc-muted hover:text-white hover:bg-slc-card border border-slc-border";
 
   return (
     <button onClick={handleCopy} className={`${baseClasses} ${variantClasses}`}>
-      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? (
+        <Check className="w-3.5 h-3.5" />
+      ) : (
+        <Copy className="w-3.5 h-3.5" />
+      )}
       {copied ? "Copiado!" : label}
     </button>
   );
@@ -141,9 +151,7 @@ function Section({
       </button>
 
       {expanded && (
-        <div className="p-4 pt-0 border-t border-slc-border/50">
-          {children}
-        </div>
+        <div className="p-4 pt-0 border-t border-slc-border/50">{children}</div>
       )}
     </div>
   );
@@ -171,12 +179,16 @@ function SocialCard({
     <div className="p-4 bg-slc-dark/50 rounded-xl border border-slc-border/50">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}>
+          <div
+            className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}
+          >
             <Icon className="w-4 h-4 text-white" />
           </div>
           <span className="font-medium text-sm">{platform}</span>
           {charLimit && (
-            <span className={`text-xs px-2 py-0.5 rounded ${isOverLimit ? "bg-red-500/20 text-red-500" : "bg-slc-card text-slc-muted"}`}>
+            <span
+              className={`text-xs px-2 py-0.5 rounded ${isOverLimit ? "bg-red-500/20 text-red-500" : "bg-slc-card text-slc-muted"}`}
+            >
               {caption.length}/{charLimit}
             </span>
           )}
@@ -198,7 +210,7 @@ function SocialCard({
 function TikTokIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
     </svg>
   );
 }
@@ -207,7 +219,7 @@ function TikTokIcon({ className }: { className?: string }) {
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
     </svg>
   );
 }
@@ -219,7 +231,9 @@ export function PressToolkit({
   contactEmail = "prensasonidoliquido@gmail.com",
   contactPhone = "+52 55 2801 1881",
 }: PressToolkitProps) {
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["social"]));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(["social"]),
+  );
   const [generatingImage, setGeneratingImage] = useState(false);
   const [generatingQR, setGeneratingQR] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
@@ -238,13 +252,22 @@ export function PressToolkit({
 
   // Parse tags
   const tags = release.tags ? JSON.parse(release.tags) : [];
-  const hashtags = tags.map((t: string) => `#${t.replace(/\s+/g, "")}`).join(" ");
-  const baseHashtags = "#SonidoLiquido #HipHopMexicano #RapMexicano #MusicaMexicana";
+  const hashtags = tags
+    .map((t: string) => `#${t.replace(/\s+/g, "")}`)
+    .join(" ");
+  const baseHashtags =
+    "#SonidoLiquido #HipHopMexicano #RapMexicano #MusicaMexicana";
 
   // Format release date
-  const releaseDate = release.releaseDate ? new Date(release.releaseDate) : null;
+  const releaseDate = release.releaseDate
+    ? new Date(release.releaseDate)
+    : null;
   const formattedDate = releaseDate
-    ? releaseDate.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+    ? releaseDate.toLocaleDateString("es-MX", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
     : null;
 
   // ============================================
@@ -352,14 +375,44 @@ ${hashtags}`;
   // ============================================
 
   const assets = [
-    { name: "Portada HD", available: !!release.coverImageUrl, icon: ImageIcon, url: release.coverImageUrl },
-    { name: "Banner", available: !!release.bannerImageUrl, icon: ImageIcon, url: release.bannerImageUrl },
-    { name: "Galería", available: !!release.galleryImages && JSON.parse(release.galleryImages).length > 0, icon: ImageIcon },
-    { name: "Audio Preview", available: !!release.audioPreviewUrl, icon: Music, url: release.audioPreviewUrl },
+    {
+      name: "Portada HD",
+      available: !!release.coverImageUrl,
+      icon: ImageIcon,
+      url: release.coverImageUrl,
+    },
+    {
+      name: "Banner",
+      available: !!release.bannerImageUrl,
+      icon: ImageIcon,
+      url: release.bannerImageUrl,
+    },
+    {
+      name: "Galería",
+      available:
+        !!release.galleryImages && JSON.parse(release.galleryImages).length > 0,
+      icon: ImageIcon,
+    },
+    {
+      name: "Audio Preview",
+      available: !!release.audioPreviewUrl,
+      icon: Music,
+      url: release.audioPreviewUrl,
+    },
     { name: "Video", available: !!release.youtubeVideoId, icon: Video },
     { name: "Spotify", available: !!release.spotifyEmbedUrl, icon: Music },
-    { name: "Press Kit PDF", available: !!release.pressKitUrl, icon: Package, url: release.pressKitUrl },
-    { name: "Fotos Hi-Res", available: !!release.highResImagesUrl, icon: ImageIcon, url: release.highResImagesUrl },
+    {
+      name: "Press Kit PDF",
+      available: !!release.pressKitUrl,
+      icon: Package,
+      url: release.pressKitUrl,
+    },
+    {
+      name: "Fotos Hi-Res",
+      available: !!release.highResImagesUrl,
+      icon: ImageIcon,
+      url: release.highResImagesUrl,
+    },
     { name: "Créditos", available: !!release.credits, icon: FileText },
   ];
 
@@ -373,7 +426,9 @@ ${hashtags}`;
     { label: "Título", value: release.title, icon: Disc3 },
     { label: "Artista", value: release.artistName || artistName, icon: Users },
     { label: "Categoría", value: release.category, icon: FileText },
-    ...(formattedDate ? [{ label: "Fecha", value: formattedDate, icon: Calendar }] : []),
+    ...(formattedDate
+      ? [{ label: "Fecha", value: formattedDate, icon: Calendar }]
+      : []),
   ];
 
   // ============================================
@@ -432,7 +487,10 @@ ${formattedDate || "Disponible ahora"}
 ${release.summary || ""}
 
 MATERIAL DISPONIBLE:
-${assets.filter(a => a.available).map(a => `✓ ${a.name}`).join("\n")}
+${assets
+  .filter((a) => a.available)
+  .map((a) => `✓ ${a.name}`)
+  .join("\n")}
 
 CONTACTO:
 ${contactEmail}
@@ -480,7 +538,11 @@ Para darse de baja de esta lista, responda a este correo.`;
       // Title
       ctx.font = "bold 72px sans-serif";
       ctx.fillStyle = "#ffffff";
-      const titleLines = wrapText(ctx, release.title.toUpperCase(), canvas.width - 100);
+      const titleLines = wrapText(
+        ctx,
+        release.title.toUpperCase(),
+        canvas.width - 100,
+      );
       let titleY = 280;
       for (const line of titleLines.slice(0, 3)) {
         ctx.fillText(line, canvas.width / 2, titleY);
@@ -548,7 +610,11 @@ Para darse de baja de esta lista, responda a este correo.`;
       // Artist name
       ctx.font = "bold 36px sans-serif";
       ctx.fillStyle = "#f97316";
-      ctx.fillText(release.artistName || artistName, canvas.width / 2, canvas.height - 280);
+      ctx.fillText(
+        release.artistName || artistName,
+        canvas.width / 2,
+        canvas.height - 280,
+      );
 
       // CTA
       ctx.font = "bold 42px sans-serif";
@@ -569,7 +635,11 @@ Para darse de baja de esta lista, responda a este correo.`;
   }, [release, artistName]);
 
   // Helper function to wrap text
-  function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  function wrapText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number,
+  ): string[] {
     const words = text.split(" ");
     const lines: string[] = [];
     let currentLine = "";
@@ -589,7 +659,14 @@ Para darse de baja de esta lista, responda a este correo.`;
   }
 
   // Helper function for rounded rectangles
-  function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  function roundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number,
+  ) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + w - r, y);
@@ -665,7 +742,7 @@ Para darse de baja de esta lista, responda a este correo.`;
       <Section
         title="Social Media Kit"
         icon={Share2}
-        badge={`6 plataformas`}
+        badge={"6 plataformas"}
         expanded={expandedSections.has("social")}
         onToggle={() => toggleSection("social")}
       >
@@ -736,15 +813,29 @@ Para darse de baja de esta lista, responda a este correo.`;
           {tags.length > 0 && (
             <div className="p-4 bg-slc-dark/50 rounded-xl border border-slc-border/50">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs text-slc-muted uppercase tracking-wider">Hashtags Recomendados</span>
-                <CopyBtn text={`${hashtags} ${baseHashtags}`} label="Copiar todos" />
+                <span className="text-xs text-slc-muted uppercase tracking-wider">
+                  Hashtags Recomendados
+                </span>
+                <CopyBtn
+                  text={`${hashtags} ${baseHashtags}`}
+                  label="Copiar todos"
+                />
               </div>
               <div className="flex flex-wrap gap-2">
-                {[...tags, "SonidoLiquido", "HipHopMexicano", "RapMexicano"].map((tag: string, index: number) => (
+                {[
+                  ...tags,
+                  "SonidoLiquido",
+                  "HipHopMexicano",
+                  "RapMexicano",
+                ].map((tag: string, index: number) => (
                   <span
                     key={index}
                     className="px-3 py-1 bg-slc-card rounded-full text-xs text-slc-muted hover:text-white hover:bg-primary/20 cursor-pointer transition-colors"
-                    onClick={() => navigator.clipboard.writeText(`#${tag.replace(/\s+/g, "")}`)}
+                    onClick={() =>
+                      navigator.clipboard.writeText(
+                        `#${tag.replace(/\s+/g, "")}`,
+                      )
+                    }
                   >
                     #{tag.replace(/\s+/g, "")}
                   </span>
@@ -764,7 +855,8 @@ Para darse de baja de esta lista, responda a este correo.`;
       >
         <div className="mt-4 space-y-4">
           <p className="text-sm text-slc-muted">
-            Genera una imagen optimizada para Stories de Instagram/TikTok (1080x1920).
+            Genera una imagen optimizada para Stories de Instagram/TikTok
+            (1080x1920).
           </p>
           <Button
             onClick={downloadShareImage}
@@ -940,7 +1032,9 @@ Para darse de baja de esta lista, responda a este correo.`;
           {/* Download Links */}
           {assets.filter((a) => a.available && a.url).length > 0 && (
             <div className="pt-4 border-t border-slc-border/50">
-              <h4 className="text-xs text-slc-muted uppercase mb-3">Descargas Directas</h4>
+              <h4 className="text-xs text-slc-muted uppercase mb-3">
+                Descargas Directas
+              </h4>
               <div className="flex flex-wrap gap-2">
                 {assets
                   .filter((a) => a.available && a.url)

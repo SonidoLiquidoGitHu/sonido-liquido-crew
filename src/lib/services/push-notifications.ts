@@ -2,15 +2,20 @@
 // PUSH NOTIFICATION SERVICE
 // ===========================================
 
-import webpush from "web-push";
 import { db } from "@/db/client";
-import { pushSubscriptions, scheduledNotifications, notificationPreferences } from "@/db/schema";
-import { eq, lt, and } from "drizzle-orm";
+import {
+  notificationPreferences,
+  pushSubscriptions,
+  scheduledNotifications,
+} from "@/db/schema";
+import { and, eq, lt } from "drizzle-orm";
+import webpush from "web-push";
 
 // Configure VAPID keys
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:prensasonidoliquido@gmail.com";
+const VAPID_SUBJECT =
+  process.env.VAPID_SUBJECT || "mailto:prensasonidoliquido@gmail.com";
 
 // Initialize web-push with VAPID keys
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
@@ -54,7 +59,10 @@ class PushNotificationService {
   /**
    * Save a push subscription to the database
    */
-  async saveSubscription(subscription: SubscriptionData, userAgent?: string): Promise<string> {
+  async saveSubscription(
+    subscription: SubscriptionData,
+    userAgent?: string,
+  ): Promise<string> {
     const existing = await db
       .select()
       .from(pushSubscriptions)
@@ -109,7 +117,7 @@ class PushNotificationService {
    */
   async sendToSubscription(
     subscription: { endpoint: string; keysP256dh: string; keysAuth: string },
-    payload: PushNotificationPayload
+    payload: PushNotificationPayload,
   ): Promise<boolean> {
     if (!this.isConfigured()) {
       console.warn("[Push] VAPID keys not configured");
@@ -125,19 +133,23 @@ class PushNotificationService {
         },
       };
 
-      await webpush.sendNotification(
-        pushSubscription,
-        JSON.stringify(payload)
-      );
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload));
 
-      console.log(`[Push] Notification sent to ${subscription.endpoint.substring(0, 50)}...`);
+      console.log(
+        `[Push] Notification sent to ${subscription.endpoint.substring(0, 50)}...`,
+      );
       return true;
-    } catch (error: any) {
-      console.error(`[Push] Error sending notification:`, error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[Push] Error sending notification:", message);
 
       // If subscription is no longer valid, remove it
-      if (error.statusCode === 404 || error.statusCode === 410) {
-        console.log(`[Push] Removing invalid subscription`);
+      if (
+        error instanceof Error &&
+        "statusCode" in error &&
+        (error.statusCode === 404 || error.statusCode === 410)
+      ) {
+        console.log("[Push] Removing invalid subscription");
         await this.removeSubscription(subscription.endpoint);
       }
 
@@ -150,7 +162,7 @@ class PushNotificationService {
    */
   async sendToAll(
     payload: PushNotificationPayload,
-    options?: { notificationType?: string }
+    options?: { notificationType?: string },
   ): Promise<{ sent: number; failed: number }> {
     const subscriptions = await db.select().from(pushSubscriptions);
 
@@ -231,8 +243,8 @@ class PushNotificationService {
       .where(
         and(
           eq(scheduledNotifications.status, "pending"),
-          lt(scheduledNotifications.scheduledFor, now)
-        )
+          lt(scheduledNotifications.scheduledFor, now),
+        ),
       );
 
     let processed = 0;

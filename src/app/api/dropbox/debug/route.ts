@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { inArray } from "drizzle-orm";
 import { testDropboxConnection } from "@/lib/clients/dropbox";
+import { inArray } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 /**
  * GET - Debug endpoint to check Dropbox OAuth configuration and token status
@@ -37,8 +37,8 @@ export async function GET() {
             inArray(siteSettings.key, [
               "dropbox_access_token",
               "dropbox_refresh_token",
-              "dropbox_token_expiry"
-            ])
+              "dropbox_token_expiry",
+            ]),
           );
 
         let accessToken: string | null = null;
@@ -57,7 +57,9 @@ export async function GET() {
 
         dbTokenInfo = {
           hasAccessToken: !!accessToken,
-          tokenPreview: accessToken ? `${accessToken.slice(0, 15)}...${accessToken.slice(-4)}` : null,
+          tokenPreview: accessToken
+            ? `${accessToken.slice(0, 15)}...${accessToken.slice(-4)}`
+            : null,
           hasRefreshToken: !!refreshToken,
           expiry: expiry,
           updatedAt: updatedAt?.toISOString() || null,
@@ -73,8 +75,16 @@ export async function GET() {
   }
 
   // Test tokens
-  let dbTokenTest: { success: boolean; error?: string; accountName?: string } | null = null;
-  let envTokenTest: { success: boolean; error?: string; accountName?: string } | null = null;
+  let dbTokenTest: {
+    success: boolean;
+    error?: string;
+    accountName?: string;
+  } | null = null;
+  let envTokenTest: {
+    success: boolean;
+    error?: string;
+    accountName?: string;
+  } | null = null;
 
   if (dbTokenInfo?.hasAccessToken) {
     // Extract actual token from preview is not possible, so we need to query again
@@ -83,7 +93,9 @@ export async function GET() {
         .select()
         .from(siteSettings)
         .where(inArray(siteSettings.key, ["dropbox_access_token"]));
-      const token = results.find(r => r.key === "dropbox_access_token")?.value;
+      const token = results.find(
+        (r) => r.key === "dropbox_access_token",
+      )?.value;
       if (token) {
         const result = await testDropboxConnection(token);
         dbTokenTest = {
@@ -113,7 +125,10 @@ export async function GET() {
     // Token priority explanation
     tokenPriority: {
       note: "Database tokens have HIGHER priority than environment tokens",
-      order: ["1. Database token (user-saved)", "2. Environment token (fallback only)"],
+      order: [
+        "1. Database token (user-saved)",
+        "2. Environment token (fallback only)",
+      ],
     },
 
     // Database token status
@@ -128,21 +143,31 @@ export async function GET() {
       hasToken: !!envAccessToken,
       tokenPreview: envAccessToken ? `${envAccessToken.slice(0, 15)}...` : null,
       testResult: envTokenTest,
-      warning: envAccessToken ? "⚠️ Environment tokens are only used as FALLBACK when no database token exists" : null,
+      warning: envAccessToken
+        ? "⚠️ Environment tokens are only used as FALLBACK when no database token exists"
+        : null,
     },
 
     // OAuth config
     oauthConfig: {
-      DROPBOX_APP_KEY: appKey ? `${appKey.substring(0, 4)}...${appKey.substring(appKey.length - 4)} (length: ${appKey.length})` : "❌ NOT SET",
-      DROPBOX_APP_SECRET: appSecret ? `SET (length: ${appSecret.length})` : "❌ NOT SET",
+      DROPBOX_APP_KEY: appKey
+        ? `${appKey.substring(0, 4)}...${appKey.substring(appKey.length - 4)} (length: ${appKey.length})`
+        : "❌ NOT SET",
+      DROPBOX_APP_SECRET: appSecret
+        ? `SET (length: ${appSecret.length})`
+        : "❌ NOT SET",
       configured: !!(appKey && appSecret),
       redirectUri: "https://sonidoliquido.com/api/dropbox/callback",
     },
 
     // Database config
     databaseConfig: {
-      DATABASE_URL: databaseUrl ? `${databaseUrl.substring(0, 30)}... (length: ${databaseUrl.length})` : "❌ NOT SET",
-      DATABASE_AUTH_TOKEN: databaseAuthToken ? `SET (length: ${databaseAuthToken.length})` : "❌ NOT SET",
+      DATABASE_URL: databaseUrl
+        ? `${databaseUrl.substring(0, 30)}... (length: ${databaseUrl.length})`
+        : "❌ NOT SET",
+      DATABASE_AUTH_TOKEN: databaseAuthToken
+        ? `SET (length: ${databaseAuthToken.length})`
+        : "❌ NOT SET",
     },
 
     instructions: {

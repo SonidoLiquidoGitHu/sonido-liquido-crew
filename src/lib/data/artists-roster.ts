@@ -38,7 +38,9 @@ function extractInstagramHandle(url: string): string {
  * Extract YouTube handle from URL
  */
 function extractYouTubeHandle(url: string): string {
-  const match = url.match(/youtube\.com\/@([^/?]+)|youtube\.com\/channel\/([^/?]+)/);
+  const match = url.match(
+    /youtube\.com\/@([^/?]+)|youtube\.com\/channel\/([^/?]+)/,
+  );
   if (match) {
     return match[1] ? `@${match[1]}` : match[2] || "";
   }
@@ -227,7 +229,9 @@ export function getArtistByName(name: string): ArtistRosterData | undefined {
 /**
  * Get artist by Spotify ID
  */
-export function getArtistBySpotifyId(spotifyId: string): ArtistRosterData | undefined {
+export function getArtistBySpotifyId(
+  spotifyId: string,
+): ArtistRosterData | undefined {
   return artistsRoster.find((a) => a.spotifyId === spotifyId);
 }
 

@@ -1,23 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  ListMusic,
-  Music,
-  ExternalLink,
-  Share2,
   Check,
-  Copy,
   ChevronRight,
-  Sparkles,
-  Play,
+  Copy,
+  ExternalLink,
+  ListMusic,
   Loader2,
+  Music,
+  Play,
+  Share2,
+  Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { PlaylistStoryCard, type PlaylistShareData } from "../../PlaylistStoryCard";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  type PlaylistShareData,
+  PlaylistStoryCard,
+} from "../../PlaylistStoryCard";
 
 // ===========================================
 // Types — mirror the shape returned by /api/playlists?id=...
@@ -51,7 +54,8 @@ const FALLBACK_PLAYLISTS: CuratedPlaylistDetail[] = [
     coverColor: "#f97316",
     coverImageUrl: null,
     spotifyPlaylistId: "2y0Z7WdObJY1IvCLCXwUez",
-    spotifyPlaylistUrl: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
+    spotifyPlaylistUrl:
+      "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
     trackCount: 0,
   },
   {
@@ -113,7 +117,7 @@ export default function CuratedPlaylistDetailClient({
 
   useEffect(() => {
     setHasNativeShare(
-      typeof navigator !== "undefined" && typeof navigator.share === "function"
+      typeof navigator !== "undefined" && typeof navigator.share === "function",
     );
   }, []);
 
@@ -126,7 +130,7 @@ export default function CuratedPlaylistDetailClient({
         // Fetch the specific playlist
         const detailRes = await fetch(
           `/api/playlists?id=${encodeURIComponent(playlistId)}`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         );
         const detailData = await detailRes.json();
 
@@ -155,16 +159,16 @@ export default function CuratedPlaylistDetailClient({
         }
 
         // Fetch all playlists for the "others" grid
-        const listRes = await fetch(`/api/playlists`, { cache: "no-store" });
+        const listRes = await fetch("/api/playlists", { cache: "no-store" });
         const listData = await listRes.json();
 
         if (cancelled) return;
 
         if (listData.success && Array.isArray(listData.data)) {
-          const otherPlaylists = listData.data
-            .filter((p: any) => p.id !== playlistId)
+          const otherPlaylists = (listData.data as Array<{ id: string; name: string; description?: string; coverColor?: string; coverImageUrl?: string | null; spotifyPlaylistId?: string | null; spotifyPlaylistUrl?: string | null; trackCount?: number }>)
+            .filter((p) => p.id !== playlistId)
             .slice(0, 4)
-            .map((p: any) => ({
+            .map((p) => ({
               id: p.id,
               name: p.name,
               description: p.description || "",
@@ -463,9 +467,7 @@ export default function CuratedPlaylistDetailClient({
                     Reproductor · Spotify
                   </span>
                 </div>
-                <span className="text-xs text-slc-muted">
-                  {playlist.name}
-                </span>
+                <span className="text-xs text-slc-muted">{playlist.name}</span>
               </div>
               <div className="p-3 md:p-4">
                 <iframe

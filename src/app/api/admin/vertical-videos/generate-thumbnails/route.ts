@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { execFile } from "child_process";
-import { promisify } from "util";
-import { writeFile, readFile, unlink, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
-import sharp from "sharp";
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { promisify } from "node:util";
 import { db } from "@/db/client";
-import { verticalVideos, artists } from "@/db/schema";
-import { eq, isNull } from "drizzle-orm";
+import { artists, verticalVideos } from "@/db/schema";
 import { dropboxClient } from "@/lib/clients/dropbox";
+import { eq, isNull } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
 const execFileAsync = promisify(execFile);
 
@@ -48,7 +48,9 @@ async function ensureTmpDir() {
 function isMostlyBlack(jpegBuffer: Buffer): boolean {
   // Method 1: File size check — black JPEGs are very small
   if (jpegBuffer.length < 3000) {
-    console.log(`[Thumbnail Gen] File very small (${jpegBuffer.length} bytes), likely black/empty`);
+    console.log(
+      `[Thumbnail Gen] File very small (${jpegBuffer.length} bytes), likely black/empty`,
+    );
     return true;
   }
 
@@ -56,7 +58,7 @@ function isMostlyBlack(jpegBuffer: Buffer): boolean {
   // Find the Start of Scan marker (FF DA)
   let foundSOS = false;
   for (let i = 0; i < Math.min(jpegBuffer.length - 1, 50000); i++) {
-    if (jpegBuffer[i] === 0xFF && jpegBuffer[i + 1] === 0xDA) {
+    if (jpegBuffer[i] === 0xff && jpegBuffer[i + 1] === 0xda) {
       foundSOS = true;
       const headerLen = jpegBuffer[i + 2] * 256 + jpegBuffer[i + 3];
       const dataStart = i + 2 + headerLen;
@@ -74,7 +76,9 @@ function isMostlyBlack(jpegBuffer: Buffer): boolean {
       }
 
       const lowRatio = lowValueCount / sampleSize;
-      console.log(`[Thumbnail Gen] Black detection (byte scan): low=${(lowRatio * 100).toFixed(1)}%`);
+      console.log(
+        `[Thumbnail Gen] Black detection (byte scan): low=${(lowRatio * 100).toFixed(1)}%`,
+      );
 
       if (lowRatio > 0.85) {
         return true;
@@ -85,7 +89,9 @@ function isMostlyBlack(jpegBuffer: Buffer): boolean {
 
   // Method 3: If no SOS marker found and file is small, likely black
   if (!foundSOS && jpegBuffer.length < 8000) {
-    console.log(`[Thumbnail Gen] No SOS marker and small file (${jpegBuffer.length} bytes), likely black`);
+    console.log(
+      `[Thumbnail Gen] No SOS marker and small file (${jpegBuffer.length} bytes), likely black`,
+    );
     return true;
   }
 
@@ -95,43 +101,56 @@ function isMostlyBlack(jpegBuffer: Buffer): boolean {
 /**
  * Resolve a Dropbox shared link URL to a file path using the Dropbox API.
  */
-async function resolveDropboxFilePath(videoUrl: string): Promise<string | null> {
+async function resolveDropboxFilePath(
+  videoUrl: string,
+): Promise<string | null> {
   try {
     const token = await dropboxClient.getAccessToken();
 
     // Convert dl.dropboxusercontent.com URL back to www.dropbox.com shared link
     let sharedLink = videoUrl;
     if (sharedLink.includes("dl.dropboxusercontent.com")) {
-      sharedLink = sharedLink.replace("dl.dropboxusercontent.com", "www.dropbox.com");
+      sharedLink = sharedLink.replace(
+        "dl.dropboxusercontent.com",
+        "www.dropbox.com",
+      );
     }
     // Handle ?raw=1 URLs — convert back to standard shared link format
     if (sharedLink.includes("raw=1")) {
-      sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+      sharedLink = sharedLink
+        .replace("?raw=1", "?dl=0")
+        .replace("&raw=1", "&dl=0");
     }
     // Ensure it has ?dl=0 for the metadata API
     if (!sharedLink.includes("?")) {
       sharedLink += "?dl=0";
     }
 
-    const metaResponse = await fetch("https://api.dropboxapi.com/2/sharing/get_shared_link_metadata", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const metaResponse = await fetch(
+      "https://api.dropboxapi.com/2/sharing/get_shared_link_metadata",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: sharedLink }),
       },
-      body: JSON.stringify({ url: sharedLink }),
-    });
+    );
 
     if (metaResponse.ok) {
       const metaData = await metaResponse.json();
       const filePath = metaData.path_lower || metaData.path_display;
       console.log("[Thumbnail Gen] Resolved shared link to path:", filePath);
       return filePath;
-    } else {
-      const errText = await metaResponse.text();
-      console.warn("[Thumbnail Gen] Could not resolve shared link:", metaResponse.status, errText);
-      return null;
     }
+    const errText = await metaResponse.text();
+    console.warn(
+      "[Thumbnail Gen] Could not resolve shared link:",
+      metaResponse.status,
+      errText,
+    );
+    return null;
   } catch (err) {
     console.warn("[Thumbnail Gen] Shared link metadata error:", err);
     return null;
@@ -142,28 +161,36 @@ async function resolveDropboxFilePath(videoUrl: string): Promise<string | null> 
  * Get a temporary direct download link for a Dropbox file.
  * These links are valid for 4 hours and allow direct HTTP access.
  */
-async function getDropboxTemporaryLink(filePath: string): Promise<string | null> {
+async function getDropboxTemporaryLink(
+  filePath: string,
+): Promise<string | null> {
   try {
     const token = await dropboxClient.getAccessToken();
 
-    const response = await fetch("https://api.dropboxapi.com/2/files/get_temporary_link", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://api.dropboxapi.com/2/files/get_temporary_link",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ path: filePath }),
       },
-      body: JSON.stringify({ path: filePath }),
-    });
+    );
 
     if (response.ok) {
       const data = await response.json();
       console.log("[Thumbnail Gen] Got temporary link for:", filePath);
       return data.link;
-    } else {
-      const errText = await response.text();
-      console.warn("[Thumbnail Gen] get_temporary_link failed:", response.status, errText);
-      return null;
     }
+    const errText = await response.text();
+    console.warn(
+      "[Thumbnail Gen] get_temporary_link failed:",
+      response.status,
+      errText,
+    );
+    return null;
   } catch (err) {
     console.warn("[Thumbnail Gen] Temporary link error:", err);
     return null;
@@ -185,41 +212,58 @@ async function getDropboxThumbnail(videoUrl: string): Promise<Buffer | null> {
 
     const token = await dropboxClient.getAccessToken();
 
-    const thumbResponse = await fetch("https://content.dropboxapi.com/2/files/get_thumbnail_v2", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/octet-stream",
-        "Dropbox-API-Arg": JSON.stringify({
-          resource: { ".tag": "path", path: filePath },
-          format: { ".tag": "jpeg" },
-          size: { ".tag": "w2048h1536" },
-          mode: { ".tag": "bestfit" },
-        }),
+    const thumbResponse = await fetch(
+      "https://content.dropboxapi.com/2/files/get_thumbnail_v2",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({
+            resource: { ".tag": "path", path: filePath },
+            format: { ".tag": "jpeg" },
+            size: { ".tag": "w2048h1536" },
+            mode: { ".tag": "bestfit" },
+          }),
+        },
+        body: "",
       },
-      body: "",
-    });
+    );
 
     if (!thumbResponse.ok) {
       const errText = await thumbResponse.text();
-      console.warn("[Thumbnail Gen] get_thumbnail_v2 failed:", thumbResponse.status, errText);
+      console.warn(
+        "[Thumbnail Gen] get_thumbnail_v2 failed:",
+        thumbResponse.status,
+        errText,
+      );
       return null;
     }
 
     const thumbnailBuffer = Buffer.from(await thumbResponse.arrayBuffer());
     if (thumbnailBuffer.length < 100) {
-      console.warn("[Thumbnail Gen] Thumbnail too small, likely failed:", thumbnailBuffer.length, "bytes");
+      console.warn(
+        "[Thumbnail Gen] Thumbnail too small, likely failed:",
+        thumbnailBuffer.length,
+        "bytes",
+      );
       return null;
     }
 
     // Check if the thumbnail is mostly black — Dropbox API often returns
     // blank black frames for vertical videos
     if (isMostlyBlack(thumbnailBuffer)) {
-      console.warn("[Thumbnail Gen] Dropbox API returned a mostly-black thumbnail, rejecting");
+      console.warn(
+        "[Thumbnail Gen] Dropbox API returned a mostly-black thumbnail, rejecting",
+      );
       return null;
     }
 
-    console.log("[Thumbnail Gen] Got thumbnail from Dropbox API, size:", thumbnailBuffer.length, "bytes");
+    console.log(
+      "[Thumbnail Gen] Got thumbnail from Dropbox API, size:",
+      thumbnailBuffer.length,
+      "bytes",
+    );
     return thumbnailBuffer;
   } catch (error) {
     console.error("[Thumbnail Gen] Dropbox thumbnail API error:", error);
@@ -234,7 +278,7 @@ async function getDropboxThumbnail(videoUrl: string): Promise<Buffer | null> {
 async function downloadVideoPartial(
   url: string,
   localPath: string,
-  maxBytes: number = 15 * 1024 * 1024
+  maxBytes: number = 15 * 1024 * 1024,
 ): Promise<boolean> {
   try {
     // Try with Range header first to limit download
@@ -275,24 +319,29 @@ async function downloadVideoPartial(
  */
 async function extractThumbnailFfmpeg(
   videoPath: string,
-  thumbnailPath: string
+  thumbnailPath: string,
 ): Promise<boolean> {
   try {
     // First, get the video duration
     let duration = 10; // default to 10 seconds
     try {
       const { stdout } = await execFileAsync("ffprobe", [
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
         videoPath,
       ]);
-      const parsed = parseFloat(stdout.trim());
-      if (!isNaN(parsed) && parsed > 0) {
+      const parsed = Number.parseFloat(stdout.trim());
+      if (!Number.isNaN(parsed) && parsed > 0) {
         duration = parsed;
       }
     } catch {
-      console.warn("[Thumbnail Gen] Could not get video duration, using default");
+      console.warn(
+        "[Thumbnail Gen] Could not get video duration, using default",
+      );
     }
 
     // Try multiple seek positions to find a non-black frame
@@ -313,11 +362,16 @@ async function extractThumbnailFfmpeg(
         // a simpler approach: extract the frame and check if it's black
         await execFileAsync("ffmpeg", [
           "-y",
-          "-ss", seekTime.toString(),
-          "-i", videoPath,
-          "-frames:v", "1",
-          "-q:v", "2",
-          "-vf", "scale='min(720,iw)':-2",
+          "-ss",
+          seekTime.toString(),
+          "-i",
+          videoPath,
+          "-frames:v",
+          "1",
+          "-q:v",
+          "2",
+          "-vf",
+          "scale='min(720,iw)':-2",
           thumbnailPath,
         ]);
 
@@ -330,7 +384,9 @@ async function extractThumbnailFfmpeg(
           return true;
         }
 
-        console.log(`[Thumbnail Gen] Frame at ${seekTime}s is black, trying next position...`);
+        console.log(
+          `[Thumbnail Gen] Frame at ${seekTime}s is black, trying next position...`,
+        );
       } catch {
         // Continue to next seek position
       }
@@ -341,17 +397,23 @@ async function extractThumbnailFfmpeg(
     try {
       await execFileAsync("ffmpeg", [
         "-y",
-        "-i", videoPath,
-        "-frames:v", "1",
-        "-q:v", "2",
-        "-vf", "scale='min(720,iw)':-2",
+        "-i",
+        videoPath,
+        "-frames:v",
+        "1",
+        "-q:v",
+        "2",
+        "-vf",
+        "scale='min(720,iw)':-2",
         thumbnailPath,
       ]);
 
       if (existsSync(thumbnailPath)) {
         const thumbData = await readFile(thumbnailPath);
         if (!isMostlyBlack(thumbData)) {
-          console.log("[Thumbnail Gen] Got non-black frame from first frame (no seek)");
+          console.log(
+            "[Thumbnail Gen] Got non-black frame from first frame (no seek)",
+          );
           return true;
         }
       }
@@ -372,13 +434,16 @@ async function extractThumbnailFfmpeg(
  */
 async function uploadThumbnailToDropbox(
   thumbnailBuffer: Buffer,
-  videoId: string
+  videoId: string,
 ): Promise<string | null> {
   try {
     const dropboxPath = `/vertical-videos/thumbnails/${videoId}.jpg`;
 
     const cleanBuffer = new Uint8Array(thumbnailBuffer);
-    await dropboxClient.uploadFile(dropboxPath, cleanBuffer.buffer as ArrayBuffer);
+    await dropboxClient.uploadFile(
+      dropboxPath,
+      cleanBuffer.buffer as ArrayBuffer,
+    );
     const sharedUrl = await dropboxClient.getSharedLink(dropboxPath);
 
     return sharedUrl;
@@ -419,7 +484,7 @@ async function cleanup(...paths: string[]) {
 async function addTextOverlayToThumbnail(
   thumbnailBuffer: Buffer,
   title: string | null,
-  artistName: string | null
+  artistName: string | null,
 ): Promise<Buffer> {
   try {
     const image = sharp(thumbnailBuffer);
@@ -430,12 +495,14 @@ async function addTextOverlayToThumbnail(
     // Truncate long text to prevent overflow
     const maxTitleLen = 40;
     const maxArtistLen = 30;
-    const displayTitle = title && title.length > maxTitleLen
-      ? title.substring(0, maxTitleLen - 3) + "..."
-      : title;
-    const displayArtist = artistName && artistName.length > maxArtistLen
-      ? artistName.substring(0, maxArtistLen - 3) + "..."
-      : artistName;
+    const displayTitle =
+      title && title.length > maxTitleLen
+        ? `${title.substring(0, maxTitleLen - 3)}...`
+        : title;
+    const displayArtist =
+      artistName && artistName.length > maxArtistLen
+        ? `${artistName.substring(0, maxArtistLen - 3)}...`
+        : artistName;
 
     // Font size scales with image width
     const titleFontSize = Math.max(Math.round(width * 0.065), 24);
@@ -453,7 +520,11 @@ async function addTextOverlayToThumbnail(
 
     // Escape special XML characters in text
     const escapeXml = (str: string) =>
-      str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 
     const titleLine = displayTitle
       ? `<text x="${width / 2}" y="${titleY}" text-anchor="middle" fill="white" font-size="${titleFontSize}" font-weight="bold" font-family="Oswald, Arial, sans-serif" letter-spacing="1">${escapeXml(displayTitle)}</text>`
@@ -487,18 +558,25 @@ async function addTextOverlayToThumbnail(
     const overlayBuffer = Buffer.from(svgOverlay);
 
     const resultBuffer = await image
-      .composite([{
-        input: overlayBuffer,
-        top: 0,
-        left: 0,
-      }])
+      .composite([
+        {
+          input: overlayBuffer,
+          top: 0,
+          left: 0,
+        },
+      ])
       .jpeg({ quality: 85 })
       .toBuffer();
 
-    console.log(`[Thumbnail Gen] Added text overlay: "${displayTitle}" by "${displayArtist}"`);
+    console.log(
+      `[Thumbnail Gen] Added text overlay: "${displayTitle}" by "${displayArtist}"`,
+    );
     return resultBuffer;
   } catch (error) {
-    console.warn("[Thumbnail Gen] Text overlay failed, using original thumbnail:", error);
+    console.warn(
+      "[Thumbnail Gen] Text overlay failed, using original thumbnail:",
+      error,
+    );
     return thumbnailBuffer;
   }
 }
@@ -509,7 +587,12 @@ async function addTextOverlayToThumbnail(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { videoId, all, force, fixUrls } = body as { videoId?: string; all?: boolean; force?: boolean; fixUrls?: boolean };
+    const { videoId, all, force, fixUrls } = body as {
+      videoId?: string;
+      all?: boolean;
+      force?: boolean;
+      fixUrls?: boolean;
+    };
 
     // ===========================================
     // Fix broken thumbnail URLs (dl.dropboxusercontent.com → ?raw=1)
@@ -523,11 +606,15 @@ export async function POST(request: NextRequest) {
         let newVideoUrl = video.videoUrl;
 
         // Fix thumbnail URLs: dl.dropboxusercontent.com → www.dropbox.com?raw=1
-        if (newThumbnailUrl && newThumbnailUrl.includes("dl.dropboxusercontent.com")) {
-          newThumbnailUrl = newThumbnailUrl
-            .replace("dl.dropboxusercontent.com", "www.dropbox.com");
+        if (newThumbnailUrl?.includes("dl.dropboxusercontent.com")) {
+          newThumbnailUrl = newThumbnailUrl.replace(
+            "dl.dropboxusercontent.com",
+            "www.dropbox.com",
+          );
           if (newThumbnailUrl.includes("?")) {
-            newThumbnailUrl = newThumbnailUrl.replace(/\?dl=\d+/, "?raw=1").replace(/&dl=\d+/, "&raw=1");
+            newThumbnailUrl = newThumbnailUrl
+              .replace(/\?dl=\d+/, "?raw=1")
+              .replace(/&dl=\d+/, "&raw=1");
             if (!newThumbnailUrl.includes("raw=1")) {
               newThumbnailUrl += "&raw=1";
             }
@@ -538,11 +625,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Fix video URLs: dl.dropboxusercontent.com → www.dropbox.com?raw=1
-        if (newVideoUrl && newVideoUrl.includes("dl.dropboxusercontent.com")) {
-          newVideoUrl = newVideoUrl
-            .replace("dl.dropboxusercontent.com", "www.dropbox.com");
+        if (newVideoUrl?.includes("dl.dropboxusercontent.com")) {
+          newVideoUrl = newVideoUrl.replace(
+            "dl.dropboxusercontent.com",
+            "www.dropbox.com",
+          );
           if (newVideoUrl.includes("?")) {
-            newVideoUrl = newVideoUrl.replace(/\?dl=\d+/, "?raw=1").replace(/&dl=\d+/, "&raw=1");
+            newVideoUrl = newVideoUrl
+              .replace(/\?dl=\d+/, "?raw=1")
+              .replace(/&dl=\d+/, "&raw=1");
             if (!newVideoUrl.includes("raw=1")) {
               newVideoUrl += "&raw=1";
             }
@@ -554,7 +645,8 @@ export async function POST(request: NextRequest) {
 
         if (needsUpdate) {
           const updateData: Record<string, unknown> = { updatedAt: new Date() };
-          if (newThumbnailUrl !== video.thumbnailUrl) updateData.thumbnailUrl = newThumbnailUrl;
+          if (newThumbnailUrl !== video.thumbnailUrl)
+            updateData.thumbnailUrl = newThumbnailUrl;
           if (newVideoUrl !== video.videoUrl) updateData.videoUrl = newVideoUrl;
           await db
             .update(verticalVideos)
@@ -577,7 +669,7 @@ export async function POST(request: NextRequest) {
     if (!dropboxReady) {
       return NextResponse.json(
         { success: false, error: "Dropbox no está configurado" },
-        { status: 501 }
+        { status: 501 },
       );
     }
 
@@ -594,9 +686,7 @@ export async function POST(request: NextRequest) {
         .from(verticalVideos)
         .where(eq(verticalVideos.id, videoId));
     } else if (all || force) {
-      videos = await db
-        .select()
-        .from(verticalVideos);
+      videos = await db.select().from(verticalVideos);
     } else {
       videos = await db
         .select()
@@ -623,10 +713,12 @@ export async function POST(request: NextRequest) {
     let generated = 0;
 
     // Fetch all artists once for name lookup (used in text overlay)
-    const allArtists = await db.select({
-      id: artists.id,
-      name: artists.name,
-    }).from(artists);
+    const allArtists = await db
+      .select({
+        id: artists.id,
+        name: artists.name,
+      })
+      .from(artists);
     const artistMap = new Map(allArtists.map((a) => [a.id, a.name]));
 
     for (const video of videos) {
@@ -648,11 +740,13 @@ export async function POST(request: NextRequest) {
         // Strategy 1: If ffmpeg is available, download video + extract frame
         // This is the most reliable method - it extracts actual video frames
         if (hasFfmpeg) {
-          console.log("[Thumbnail Gen] Trying ffmpeg extraction (most reliable)...");
-          
+          console.log(
+            "[Thumbnail Gen] Trying ffmpeg extraction (most reliable)...",
+          );
+
           // Get a direct download URL for the video
           let downloadUrl = video.videoUrl;
-          
+
           // For Dropbox URLs, get a temporary direct link
           if (downloadUrl.includes("dropbox")) {
             const filePath = await resolveDropboxFilePath(downloadUrl);
@@ -666,32 +760,43 @@ export async function POST(request: NextRequest) {
                 if (downloadUrl.includes("dl.dropboxusercontent.com")) {
                   // Old format — keep as-is
                 } else if (downloadUrl.includes("www.dropbox.com")) {
-                  downloadUrl = downloadUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+                  downloadUrl = downloadUrl
+                    .replace("?dl=0", "?raw=1")
+                    .replace("&dl=0", "&raw=1");
                   if (!downloadUrl.includes("raw=1")) {
-                    downloadUrl += (downloadUrl.includes("?") ? "&" : "?") + "raw=1";
+                    downloadUrl += `${downloadUrl.includes("?") ? "&" : "?"}raw=1`;
                   }
                 }
               }
             }
           }
-          
+
           const videoTmpPath = path.join(TMP_DIR, `${video.id}_video.tmp`);
           const thumbnailTmpPath = path.join(TMP_DIR, `${video.id}_thumb.jpg`);
 
           try {
-            const downloaded = await downloadVideoPartial(downloadUrl, videoTmpPath);
+            const downloaded = await downloadVideoPartial(
+              downloadUrl,
+              videoTmpPath,
+            );
             if (downloaded) {
-              const extracted = await extractThumbnailFfmpeg(videoTmpPath, thumbnailTmpPath);
+              const extracted = await extractThumbnailFfmpeg(
+                videoTmpPath,
+                thumbnailTmpPath,
+              );
               if (extracted) {
                 thumbnailBuffer = await readFile(thumbnailTmpPath);
               }
             }
           } catch (dlErr) {
-            console.warn("[Thumbnail Gen] Download/ffmpeg extraction failed:", dlErr);
+            console.warn(
+              "[Thumbnail Gen] Download/ffmpeg extraction failed:",
+              dlErr,
+            );
           } finally {
             await cleanup(
               path.join(TMP_DIR, `${video.id}_video.tmp`),
-              path.join(TMP_DIR, `${video.id}_thumb.jpg`)
+              path.join(TMP_DIR, `${video.id}_thumb.jpg`),
             );
           }
         }
@@ -700,7 +805,9 @@ export async function POST(request: NextRequest) {
         // This is less reliable — it often returns black frames for vertical videos
         // We still try it but with strict black-frame detection
         if (!thumbnailBuffer) {
-          console.log("[Thumbnail Gen] Trying Dropbox thumbnail API (unreliable for videos)...");
+          console.log(
+            "[Thumbnail Gen] Trying Dropbox thumbnail API (unreliable for videos)...",
+          );
           thumbnailBuffer = await getDropboxThumbnail(video.videoUrl);
         }
 
@@ -708,7 +815,9 @@ export async function POST(request: NextRequest) {
         // and extracting a frame with ffmpeg from the downloaded file
         // (Only works if ffmpeg is available — skip on Netlify)
         if (!thumbnailBuffer && hasFfmpeg) {
-          console.log("[Thumbnail Gen] Trying full download + ffmpeg extraction...");
+          console.log(
+            "[Thumbnail Gen] Trying full download + ffmpeg extraction...",
+          );
           let downloadUrl = video.videoUrl;
           if (downloadUrl.includes("dropbox")) {
             const filePath = await resolveDropboxFilePath(downloadUrl);
@@ -718,17 +827,30 @@ export async function POST(request: NextRequest) {
             }
           }
           const videoTmpPath = path.join(TMP_DIR, `${video.id}_full_video.tmp`);
-          const thumbnailTmpPath = path.join(TMP_DIR, `${video.id}_full_thumb.jpg`);
+          const thumbnailTmpPath = path.join(
+            TMP_DIR,
+            `${video.id}_full_thumb.jpg`,
+          );
           try {
-            const downloaded = await downloadVideoPartial(downloadUrl, videoTmpPath, 50 * 1024 * 1024);
+            const downloaded = await downloadVideoPartial(
+              downloadUrl,
+              videoTmpPath,
+              50 * 1024 * 1024,
+            );
             if (downloaded) {
-              const extracted = await extractThumbnailFfmpeg(videoTmpPath, thumbnailTmpPath);
+              const extracted = await extractThumbnailFfmpeg(
+                videoTmpPath,
+                thumbnailTmpPath,
+              );
               if (extracted) {
                 thumbnailBuffer = await readFile(thumbnailTmpPath);
               }
             }
           } catch (dlErr) {
-            console.warn("[Thumbnail Gen] Full download + ffmpeg extraction failed:", dlErr);
+            console.warn(
+              "[Thumbnail Gen] Full download + ffmpeg extraction failed:",
+              dlErr,
+            );
           } finally {
             await cleanup(videoTmpPath, thumbnailTmpPath);
           }
@@ -738,7 +860,9 @@ export async function POST(request: NextRequest) {
         // Sharp can sometimes extract embedded thumbnails from MP4/MOV files.
         // This works on Netlify where ffmpeg is not available.
         if (!thumbnailBuffer && !hasFfmpeg) {
-          console.log("[Thumbnail Gen] Trying download + Sharp extraction (Netlify fallback)...");
+          console.log(
+            "[Thumbnail Gen] Trying download + Sharp extraction (Netlify fallback)...",
+          );
           try {
             let downloadUrl = video.videoUrl;
             if (downloadUrl.includes("dropbox")) {
@@ -749,9 +873,11 @@ export async function POST(request: NextRequest) {
                 else {
                   // Convert to direct download URL
                   if (downloadUrl.includes("www.dropbox.com")) {
-                    downloadUrl = downloadUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+                    downloadUrl = downloadUrl
+                      .replace("?dl=0", "?raw=1")
+                      .replace("&dl=0", "&raw=1");
                     if (!downloadUrl.includes("raw=1")) {
-                      downloadUrl += (downloadUrl.includes("?") ? "&" : "?") + "raw=1";
+                      downloadUrl += `${downloadUrl.includes("?") ? "&" : "?"}raw=1`;
                     }
                   }
                 }
@@ -759,8 +885,15 @@ export async function POST(request: NextRequest) {
             }
 
             // Download up to 30MB of the video
-            const videoTmpPath = path.join(TMP_DIR, `${video.id}_sharp_video.tmp`);
-            const downloaded = await downloadVideoPartial(downloadUrl, videoTmpPath, 30 * 1024 * 1024);
+            const videoTmpPath = path.join(
+              TMP_DIR,
+              `${video.id}_sharp_video.tmp`,
+            );
+            const downloaded = await downloadVideoPartial(
+              downloadUrl,
+              videoTmpPath,
+              30 * 1024 * 1024,
+            );
             if (downloaded) {
               try {
                 // Try to use Sharp to read the video file — it may find embedded thumbnails
@@ -769,10 +902,19 @@ export async function POST(request: NextRequest) {
                 const metadata = await sharp(videoData).metadata();
 
                 // If Sharp detected an image format (some videos have embedded JPEG thumbnails)
-                if (metadata.format && ['jpeg', 'png', 'webp', 'tiff'].includes(metadata.format)) {
-                  console.log("[Thumbnail Gen] Sharp detected embedded image:", metadata.format);
+                if (
+                  metadata.format &&
+                  ["jpeg", "png", "webp", "tiff"].includes(metadata.format)
+                ) {
+                  console.log(
+                    "[Thumbnail Gen] Sharp detected embedded image:",
+                    metadata.format,
+                  );
                   const processedBuffer = await sharp(videoData)
-                    .resize(720, 1280, { fit: 'inside', withoutEnlargement: true })
+                    .resize(720, 1280, {
+                      fit: "inside",
+                      withoutEnlargement: true,
+                    })
                     .jpeg({ quality: 85 })
                     .toBuffer();
 
@@ -782,12 +924,18 @@ export async function POST(request: NextRequest) {
                 }
               } catch (sharpErr) {
                 // Sharp can't process this video format — expected for most MP4 files
-                console.log("[Thumbnail Gen] Sharp couldn't extract thumbnail (expected for most videos):", (sharpErr as Error).message?.substring(0, 80));
+                console.log(
+                  "[Thumbnail Gen] Sharp couldn't extract thumbnail (expected for most videos):",
+                  (sharpErr as Error).message?.substring(0, 80),
+                );
               }
               await cleanup(videoTmpPath);
             }
           } catch (dlErr) {
-            console.warn("[Thumbnail Gen] Download + Sharp extraction failed:", dlErr);
+            console.warn(
+              "[Thumbnail Gen] Download + Sharp extraction failed:",
+              dlErr,
+            );
           }
         }
 
@@ -804,11 +952,20 @@ export async function POST(request: NextRequest) {
         }
 
         // Add title + artist name text overlay
-        const artistName = video.artistId ? artistMap.get(video.artistId) || null : null;
-        thumbnailBuffer = await addTextOverlayToThumbnail(thumbnailBuffer, video.title, artistName);
+        const artistName = video.artistId
+          ? artistMap.get(video.artistId) || null
+          : null;
+        thumbnailBuffer = await addTextOverlayToThumbnail(
+          thumbnailBuffer,
+          video.title,
+          artistName,
+        );
 
         // Upload thumbnail to Dropbox
-        const thumbnailUrl = await uploadThumbnailToDropbox(thumbnailBuffer, video.id);
+        const thumbnailUrl = await uploadThumbnailToDropbox(
+          thumbnailBuffer,
+          video.id,
+        );
         if (!thumbnailUrl) {
           results.push({
             videoId: video.id,
@@ -833,7 +990,9 @@ export async function POST(request: NextRequest) {
         });
         generated++;
 
-        console.log(`[Thumbnail Gen] Success: ${video.title} → ${thumbnailUrl}`);
+        console.log(
+          `[Thumbnail Gen] Success: ${video.title} → ${thumbnailUrl}`,
+        );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         console.error(`[Thumbnail Gen] Failed for ${video.id}:`, errorMsg);
@@ -864,7 +1023,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Error desconocido",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

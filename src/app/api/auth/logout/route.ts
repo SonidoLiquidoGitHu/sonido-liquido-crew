@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Admin logout endpoint.
@@ -14,9 +14,7 @@ export async function POST(request: NextRequest) {
     if (sessionToken) {
       // Delete session from DB
       try {
-        await db
-          .delete(sessions)
-          .where(eq(sessions.token, sessionToken));
+        await db.delete(sessions).where(eq(sessions.token, sessionToken));
       } catch {
         // Ignore DB errors on logout
       }
@@ -36,7 +34,7 @@ export async function POST(request: NextRequest) {
     console.error("[Auth] Logout error:", error);
     return NextResponse.json(
       { success: false, error: "Logout failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

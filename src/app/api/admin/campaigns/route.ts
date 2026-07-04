@@ -1,14 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { campaigns, fileAssets } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
 import { createClient } from "@libsql/client/web";
+import { desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Get raw client for direct SQL when needed
 function getRawClient() {
-  const url = (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "").trim();
-  const token = (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || "").trim();
+  const url = (
+    process.env.DATABASE_URL ||
+    process.env.TURSO_DATABASE_URL ||
+    process.env.LIBSQL_URL ||
+    ""
+  ).trim();
+  const token = (
+    process.env.DATABASE_AUTH_TOKEN ||
+    process.env.TURSO_AUTH_TOKEN ||
+    process.env.LIBSQL_AUTH_TOKEN ||
+    ""
+  ).trim();
 
   if (!url || !token) return null;
 
@@ -16,7 +26,11 @@ function getRawClient() {
 }
 
 // Track file asset for a URL if it's from Dropbox
-async function trackDropboxFile(url: string | null, campaignId: string, fieldName: string) {
+async function trackDropboxFile(
+  url: string | null,
+  campaignId: string,
+  fieldName: string,
+) {
   if (!url || !url.includes("dropbox")) return;
 
   try {
@@ -83,7 +97,7 @@ export async function GET() {
     }
 
     const result = await client.execute(
-      "SELECT * FROM campaigns ORDER BY created_at DESC"
+      "SELECT * FROM campaigns ORDER BY created_at DESC",
     );
 
     // Map snake_case to camelCase for frontend compatibility
@@ -133,7 +147,7 @@ export async function GET() {
     console.error("[API] Error fetching campaigns:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch campaigns" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -144,7 +158,7 @@ export async function POST(request: NextRequest) {
       console.error("[API] Database not configured for campaign creation");
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -154,7 +168,7 @@ export async function POST(request: NextRequest) {
     if (!body.title) {
       return NextResponse.json(
         { success: false, error: "Title is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -163,7 +177,7 @@ export async function POST(request: NextRequest) {
     if (!client) {
       return NextResponse.json(
         { success: false, error: "Database client not available" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -183,14 +197,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse dates
-    const startDate = body.startDate ? Math.floor(new Date(body.startDate).getTime() / 1000) : null;
-    const endDate = body.endDate ? Math.floor(new Date(body.endDate).getTime() / 1000) : null;
-    const releaseDate = body.releaseDate ? Math.floor(new Date(body.releaseDate).getTime() / 1000) : null;
+    const startDate = body.startDate
+      ? Math.floor(new Date(body.startDate).getTime() / 1000)
+      : null;
+    const endDate = body.endDate
+      ? Math.floor(new Date(body.endDate).getTime() / 1000)
+      : null;
+    const releaseDate = body.releaseDate
+      ? Math.floor(new Date(body.releaseDate).getTime() / 1000)
+      : null;
 
     // Prepare style settings as JSON string
-    const styleSettingsJson = body.styleSettings && Object.keys(body.styleSettings).length > 0
-      ? JSON.stringify(body.styleSettings)
-      : null;
+    const styleSettingsJson =
+      body.styleSettings && Object.keys(body.styleSettings).length > 0
+        ? JSON.stringify(body.styleSettings)
+        : null;
 
     // Build INSERT with all campaign columns
     const sql = `
@@ -258,7 +279,7 @@ export async function POST(request: NextRequest) {
       trackDropboxFile(body.bannerImageUrl, id, "bannerImageUrl"),
       trackDropboxFile(body.downloadFileUrl, id, "downloadFileUrl"),
       trackDropboxFile(body.previewAudioUrl, id, "previewAudioUrl"),
-    ]).catch(err => console.warn("[API] Failed to track some files:", err));
+    ]).catch((err) => console.warn("[API] Failed to track some files:", err));
 
     return NextResponse.json({
       success: true,
@@ -270,7 +291,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { success: false, error: `Failed to create campaign: ${errorMessage}` },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -281,7 +302,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -290,7 +311,7 @@ export async function PUT(request: NextRequest) {
     if (!body.id) {
       return NextResponse.json(
         { success: false, error: "Campaign ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -298,17 +319,24 @@ export async function PUT(request: NextRequest) {
     if (!client) {
       return NextResponse.json(
         { success: false, error: "Database client not available" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const startDate = body.startDate ? Math.floor(new Date(body.startDate).getTime() / 1000) : null;
-    const endDate = body.endDate ? Math.floor(new Date(body.endDate).getTime() / 1000) : null;
-    const releaseDate = body.releaseDate ? Math.floor(new Date(body.releaseDate).getTime() / 1000) : null;
-    const styleSettingsJson = body.styleSettings && Object.keys(body.styleSettings).length > 0
-      ? JSON.stringify(body.styleSettings)
+    const startDate = body.startDate
+      ? Math.floor(new Date(body.startDate).getTime() / 1000)
       : null;
+    const endDate = body.endDate
+      ? Math.floor(new Date(body.endDate).getTime() / 1000)
+      : null;
+    const releaseDate = body.releaseDate
+      ? Math.floor(new Date(body.releaseDate).getTime() / 1000)
+      : null;
+    const styleSettingsJson =
+      body.styleSettings && Object.keys(body.styleSettings).length > 0
+        ? JSON.stringify(body.styleSettings)
+        : null;
 
     const sql = `
       UPDATE campaigns SET
@@ -369,7 +397,7 @@ export async function PUT(request: NextRequest) {
     if (!campaign) {
       return NextResponse.json(
         { success: false, error: "Campaign not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -391,7 +419,7 @@ export async function PUT(request: NextRequest) {
     console.error("[API] Error updating campaign:", error);
     return NextResponse.json(
       { success: false, error: `Failed to update campaign: ${error?.message}` },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -402,7 +430,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -412,7 +440,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Campaign ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -428,7 +456,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[API] Error deleting campaign:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete campaign" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

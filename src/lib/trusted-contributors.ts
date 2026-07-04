@@ -1,12 +1,17 @@
 import { db, isDatabaseConfigured } from "@/db/client";
 import { trustedContributors } from "@/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 
 // Helper function to check if a user is trusted
 export async function checkTrustedContributor(
   email?: string | null,
-  instagram?: string | null
-): Promise<{ trusted: boolean; autoApproveMessages: boolean; autoApprovePhotos: boolean; autoFeature: boolean } | null> {
+  instagram?: string | null,
+): Promise<{
+  trusted: boolean;
+  autoApproveMessages: boolean;
+  autoApprovePhotos: boolean;
+  autoFeature: boolean;
+} | null> {
   if (!isDatabaseConfigured()) {
     return null;
   }
@@ -21,8 +26,8 @@ export async function checkTrustedContributor(
     conditions.push(
       and(
         eq(trustedContributors.identifierType, "email"),
-        eq(trustedContributors.identifierValue, email.toLowerCase().trim())
-      )
+        eq(trustedContributors.identifierValue, email.toLowerCase().trim()),
+      ),
     );
   }
 
@@ -31,8 +36,8 @@ export async function checkTrustedContributor(
     conditions.push(
       and(
         eq(trustedContributors.identifierType, "instagram"),
-        eq(trustedContributors.identifierValue, cleanInstagram)
-      )
+        eq(trustedContributors.identifierValue, cleanInstagram),
+      ),
     );
   }
 
@@ -43,8 +48,8 @@ export async function checkTrustedContributor(
       .where(
         and(
           eq(trustedContributors.isActive, true),
-          conditions.length > 1 ? or(...conditions) : conditions[0]
-        )
+          conditions.length > 1 ? or(...conditions) : conditions[0],
+        ),
       )
       .limit(1);
 

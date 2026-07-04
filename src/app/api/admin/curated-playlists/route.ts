@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedPlaylists, playlistTracks } from "@/db/schema";
-import { eq, desc, asc } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
+import { asc, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function GET() {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -26,7 +26,7 @@ export async function GET() {
 
     const playlistsWithCounts = playlists.map((playlist) => {
       const trackCount = allTracks.filter(
-        (t) => t.playlistId === playlist.id && t.isActive
+        (t) => t.playlistId === playlist.id && t.isActive,
       ).length;
       return {
         ...playlist,
@@ -42,7 +42,7 @@ export async function GET() {
     console.error("[Curated Playlists API] Error listing playlists:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching playlists" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (!name || !name.trim()) {
       return NextResponse.json(
         { success: false, error: "Playlist name is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     if (existing.length > 0) {
       return NextResponse.json(
         { success: false, error: "A playlist with this slug already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     console.error("[Curated Playlists API] Error creating playlist:", error);
     return NextResponse.json(
       { success: false, error: "Error creating playlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

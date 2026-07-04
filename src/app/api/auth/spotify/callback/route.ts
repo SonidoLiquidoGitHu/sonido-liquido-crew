@@ -1,24 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles, playlistTracks, curatedTracks, curatedSpotifyChannels } from "@/db/schema";
-import { eq, asc, inArray } from "drizzle-orm";
+import {
+  artistExternalProfiles,
+  artists,
+  curatedSpotifyChannels,
+  curatedTracks,
+  playlistTracks,
+} from "@/db/schema";
+import { asc, eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Spotify OAuth configuration — NO hardcoded fallbacks, must be set via env
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 const PRODUCTION_BASE_URL = "https://sonidoliquido.com";
-const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI
-  || (process.env.NEXT_PUBLIC_BASE_URL
+const REDIRECT_URI =
+  process.env.SPOTIFY_REDIRECT_URI ||
+  (process.env.NEXT_PUBLIC_BASE_URL
     ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/spotify/callback`
     : `${PRODUCTION_BASE_URL}/api/auth/spotify/callback`);
 
 // Playlist default descriptions
 const PLAYLIST_DESCRIPTIONS: Record<string, string> = {
-  "gran-reserva": "Los mejores tracks del roster de Sonido Líquido Crew. Curada por sonidoliquido.com",
-  "weekly-picks": "Selección semanal de Sonido Líquido Crew. Curada por sonidoliquido.com",
-  "new-releases": "Lo más reciente de Sonido Líquido Crew. Curada por sonidoliquido.com",
-  "classics": "Tracks clásicos del crew. Curada por sonidoliquido.com",
-  "collaborations": "Featurings y colaboraciones de Sonido Líquido Crew. Curada por sonidoliquido.com",
+  "gran-reserva":
+    "Los mejores tracks del roster de Sonido Líquido Crew. Curada por sonidoliquido.com",
+  "weekly-picks":
+    "Selección semanal de Sonido Líquido Crew. Curada por sonidoliquido.com",
+  "new-releases":
+    "Lo más reciente de Sonido Líquido Crew. Curada por sonidoliquido.com",
+  classics: "Tracks clásicos del crew. Curada por sonidoliquido.com",
+  collaborations:
+    "Featurings y colaboraciones de Sonido Líquido Crew. Curada por sonidoliquido.com",
 };
 
 interface SpotifyTokenResponse {
@@ -70,7 +81,7 @@ export async function GET(request: NextRequest) {
   if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
     console.error("Spotify OAuth credentials not configured");
     return NextResponse.redirect(
-      new URL(`${returnUrl}?error=spotify_not_configured`, request.url)
+      new URL(`${returnUrl}?error=spotify_not_configured`, request.url),
     );
   }
 
@@ -78,36 +89,39 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error("Spotify OAuth error:", error);
     return NextResponse.redirect(
-      new URL(`${returnUrl}?error=spotify_denied`, request.url)
+      new URL(`${returnUrl}?error=spotify_denied`, request.url),
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      new URL(`${returnUrl}?error=no_code`, request.url)
+      new URL(`${returnUrl}?error=no_code`, request.url),
     );
   }
 
   try {
     // Exchange code for access token
-    const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString("base64")}`,
+    const tokenResponse = await fetch(
+      "https://accounts.spotify.com/api/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString("base64")}`,
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: REDIRECT_URI,
+        }),
       },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: REDIRECT_URI,
-      }),
-    });
+    );
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error("Token exchange failed:", errorText);
       return NextResponse.redirect(
-        new URL(`${returnUrl}?error=token_failed`, request.url)
+        new URL(`${returnUrl}?error=token_failed`, request.url),
       );
     }
 
@@ -120,7 +134,7 @@ export async function GET(request: NextRequest) {
 
     if (!userResponse.ok) {
       return NextResponse.redirect(
-        new URL(`${returnUrl}?error=user_fetch_failed`, request.url)
+        new URL(`${returnUrl}?error=user_fetch_failed`, request.url),
       );
     }
 
@@ -131,7 +145,8 @@ export async function GET(request: NextRequest) {
 
     // If we have a playlist to save
     if (playlistId && isDatabaseConfigured()) {
-      const playlistDescription = PLAYLIST_DESCRIPTIONS[playlistId] || "Curada por sonidoliquido.com";
+      const playlistDescription =
+        PLAYLIST_DESCRIPTIONS[playlistId] || "Curada por sonidoliquido.com";
 
       // Get tracks from our database
       const tracks = await db
@@ -142,7 +157,7 @@ export async function GET(request: NextRequest) {
 
       if (tracks.length === 0) {
         return NextResponse.redirect(
-          new URL(`${returnUrl}?error=empty_playlist`, request.url)
+          new URL(`${returnUrl}?error=empty_playlist`, request.url),
         );
       }
 
@@ -150,7 +165,9 @@ export async function GET(request: NextRequest) {
       const artistSpotifyIds: string[] = [];
       if (followArtists) {
         // Method 1: Get artist IDs from curated tracks in the playlist
-        const trackIds = tracks.map(t => t.curatedTrackId).filter(Boolean) as string[];
+        const trackIds = tracks
+          .map((t) => t.curatedTrackId)
+          .filter(Boolean) as string[];
 
         if (trackIds.length > 0) {
           // Get curated tracks to find their channels
@@ -161,7 +178,11 @@ export async function GET(request: NextRequest) {
             .from(curatedTracks)
             .where(inArray(curatedTracks.id, trackIds));
 
-          const channelIds = [...new Set(curatedTrackResults.map(t => t.channelId).filter(Boolean))] as string[];
+          const channelIds = [
+            ...new Set(
+              curatedTrackResults.map((t) => t.channelId).filter(Boolean),
+            ),
+          ] as string[];
 
           if (channelIds.length > 0) {
             // Get Spotify artist IDs from channels
@@ -173,24 +194,39 @@ export async function GET(request: NextRequest) {
               .where(inArray(curatedSpotifyChannels.id, channelIds));
 
             // Filter out null/undefined spotifyArtistIds to avoid 400 errors from Spotify API
-            artistSpotifyIds.push(...channels.map(c => c.spotifyArtistId).filter((id): id is string => Boolean(id)));
+            artistSpotifyIds.push(
+              ...channels
+                .map((c) => c.spotifyArtistId)
+                .filter((id): id is string => Boolean(id)),
+            );
           }
         }
 
         // Method 2: Get ALL roster artist Spotify IDs from the database
         // This ensures all roster artists are followed even if tracks aren't synced yet
         try {
-          const dbArtists = await db.select().from(artists).where(eq(artists.isActive, true));
-          const dbProfiles = await db.select().from(artistExternalProfiles).where(eq(artistExternalProfiles.platform, "spotify"));
+          const dbArtists = await db
+            .select()
+            .from(artists)
+            .where(eq(artists.isActive, true));
+          const dbProfiles = await db
+            .select()
+            .from(artistExternalProfiles)
+            .where(eq(artistExternalProfiles.platform, "spotify"));
           const rosterIds = dbArtists
-            .map(a => dbProfiles.find(p => p.artistId === a.id)?.externalId)
+            .map((a) => dbProfiles.find((p) => p.artistId === a.id)?.externalId)
             .filter((id): id is string => Boolean(id));
           artistSpotifyIds.push(...rosterIds);
         } catch (dbErr) {
-          console.warn("[Spotify Callback] Could not fetch artist IDs from DB:", dbErr);
+          console.warn(
+            "[Spotify Callback] Could not fetch artist IDs from DB:",
+            dbErr,
+          );
         }
 
-        console.log(`[Spotify Callback] Following ${new Set(artistSpotifyIds).size} unique artists`);
+        console.log(
+          `[Spotify Callback] Following ${new Set(artistSpotifyIds).size} unique artists`,
+        );
       }
 
       // Create playlist on Spotify
@@ -209,14 +245,14 @@ export async function GET(request: NextRequest) {
             description: playlistDescription,
             public: true,
           }),
-        }
+        },
       );
 
       if (!createPlaylistResponse.ok) {
         const errorText = await createPlaylistResponse.text();
         console.error("Create playlist failed:", errorText);
         return NextResponse.redirect(
-          new URL(`${returnUrl}?error=playlist_create_failed`, request.url)
+          new URL(`${returnUrl}?error=playlist_create_failed`, request.url),
         );
       }
 
@@ -236,7 +272,7 @@ export async function GET(request: NextRequest) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ uris: chunk }),
-          }
+          },
         );
 
         if (!addTracksResponse.ok) {
@@ -247,14 +283,16 @@ export async function GET(request: NextRequest) {
       // Follow artists if requested
       if (followArtists && artistSpotifyIds.length > 0) {
         // Remove duplicates and filter any remaining nulls/empties
-        const uniqueArtistIds = [...new Set(artistSpotifyIds)].filter(id => id && typeof id === "string" && id.trim().length > 0);
+        const uniqueArtistIds = [...new Set(artistSpotifyIds)].filter(
+          (id) => id && typeof id === "string" && id.trim().length > 0,
+        );
 
         // Spotify API accepts max 50 artists at a time for follow
         for (let i = 0; i < uniqueArtistIds.length; i += 50) {
           const chunk = uniqueArtistIds.slice(i, i + 50);
 
           const followResponse = await fetch(
-            `https://api.spotify.com/v1/me/following?type=artist`,
+            "https://api.spotify.com/v1/me/following?type=artist",
             {
               method: "PUT",
               headers: {
@@ -262,13 +300,16 @@ export async function GET(request: NextRequest) {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({ ids: chunk }),
-            }
+            },
           );
 
           if (followResponse.ok) {
             artistsFollowed += chunk.length;
           } else {
-            console.error("Follow artists failed:", await followResponse.text());
+            console.error(
+              "Follow artists failed:",
+              await followResponse.text(),
+            );
           }
         }
       }
@@ -276,10 +317,16 @@ export async function GET(request: NextRequest) {
       // Redirect to success page with Spotify URL
       const successUrl = new URL(returnUrl, request.url);
       successUrl.searchParams.set("success", "true");
-      successUrl.searchParams.set("spotify_url", newPlaylist.external_urls.spotify);
+      successUrl.searchParams.set(
+        "spotify_url",
+        newPlaylist.external_urls.spotify,
+      );
       successUrl.searchParams.set("track_count", tracks.length.toString());
       if (artistsFollowed > 0) {
-        successUrl.searchParams.set("artists_followed", artistsFollowed.toString());
+        successUrl.searchParams.set(
+          "artists_followed",
+          artistsFollowed.toString(),
+        );
       }
 
       return NextResponse.redirect(successUrl);
@@ -290,7 +337,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Spotify callback error:", error);
     return NextResponse.redirect(
-      new URL(`${returnUrl}?error=unknown`, request.url)
+      new URL(`${returnUrl}?error=unknown`, request.url),
     );
   }
 }

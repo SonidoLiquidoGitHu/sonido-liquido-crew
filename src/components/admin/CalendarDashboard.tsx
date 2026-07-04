@@ -1,35 +1,35 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Calendar as CalendarIcon,
-  Music,
-  Mic2,
-  StickyNote,
-  Plus,
-  X,
-  Loader2,
-  Clock,
-  MapPin,
-  ExternalLink,
-  Trash2,
-  Edit,
-  Save,
-  AlertTriangle,
-  Bell,
-  Lightbulb,
-  CheckSquare,
-  CalendarDays,
-  CalendarRange,
-  Download,
-  Mail,
-  Send,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Img } from "@/components/ui/img";
+import {
+  AlertTriangle,
+  Bell,
+  CalendarDays,
+  Calendar as CalendarIcon,
+  CalendarRange,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Download,
+  Edit,
+  ExternalLink,
+  Lightbulb,
+  Loader2,
+  Mail,
+  MapPin,
+  Mic2,
+  Music,
+  Plus,
+  Save,
+  Send,
+  StickyNote,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 interface Release {
   id: string;
@@ -78,18 +78,57 @@ const NOTE_CATEGORIES = [
   { value: "idea", label: "Idea", icon: Lightbulb, color: "yellow" },
 ] as const;
 
-const NOTE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  orange: { bg: "bg-orange-500/20", border: "border-orange-500/50", text: "text-orange-400" },
-  red: { bg: "bg-red-500/20", border: "border-red-500/50", text: "text-red-400" },
-  blue: { bg: "bg-blue-500/20", border: "border-blue-500/50", text: "text-blue-400" },
-  green: { bg: "bg-green-500/20", border: "border-green-500/50", text: "text-green-400" },
-  yellow: { bg: "bg-yellow-500/20", border: "border-yellow-500/50", text: "text-yellow-400" },
-  purple: { bg: "bg-purple-500/20", border: "border-purple-500/50", text: "text-purple-400" },
-  pink: { bg: "bg-pink-500/20", border: "border-pink-500/50", text: "text-pink-400" },
+const NOTE_COLORS: Record<
+  string,
+  { bg: string; border: string; text: string }
+> = {
+  orange: {
+    bg: "bg-orange-500/20",
+    border: "border-orange-500/50",
+    text: "text-orange-400",
+  },
+  red: {
+    bg: "bg-red-500/20",
+    border: "border-red-500/50",
+    text: "text-red-400",
+  },
+  blue: {
+    bg: "bg-blue-500/20",
+    border: "border-blue-500/50",
+    text: "text-blue-400",
+  },
+  green: {
+    bg: "bg-green-500/20",
+    border: "border-green-500/50",
+    text: "text-green-400",
+  },
+  yellow: {
+    bg: "bg-yellow-500/20",
+    border: "border-yellow-500/50",
+    text: "text-yellow-400",
+  },
+  purple: {
+    bg: "bg-purple-500/20",
+    border: "border-purple-500/50",
+    text: "text-purple-400",
+  },
+  pink: {
+    bg: "bg-pink-500/20",
+    border: "border-pink-500/50",
+    text: "text-pink-400",
+  },
 };
 
 const WEEKDAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const WEEKDAYS_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const WEEKDAYS_FULL = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
 
 type ViewMode = "month" | "week";
 
@@ -102,7 +141,8 @@ export function CalendarDashboard() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState("");
-  const [newNoteCategory, setNewNoteCategory] = useState<CalendarNote["category"]>("note");
+  const [newNoteCategory, setNewNoteCategory] =
+    useState<CalendarNote["category"]>("note");
   const [newNoteReminderEmail, setNewNoteReminderEmail] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [editingNote, setEditingNote] = useState<CalendarNote | null>(null);
@@ -225,7 +265,11 @@ export function CalendarDashboard() {
     return days;
   };
 
-  const createDayData = (date: Date, isCurrentMonth: boolean, today: Date): DayData => {
+  const createDayData = (
+    date: Date,
+    isCurrentMonth: boolean,
+    today: Date,
+  ): DayData => {
     const dateStr = formatDateString(date);
 
     const dayReleases = releases.filter((r) => {
@@ -256,7 +300,9 @@ export function CalendarDashboard() {
 
   const goToPreviousMonth = () => {
     if (viewMode === "month") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+      setCurrentDate(
+        new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+      );
     } else {
       const newDate = new Date(currentDate);
       newDate.setDate(currentDate.getDate() - 7);
@@ -266,7 +312,9 @@ export function CalendarDashboard() {
 
   const goToNextMonth = () => {
     if (viewMode === "month") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+      setCurrentDate(
+        new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
+      );
     } else {
       const newDate = new Date(currentDate);
       newDate.setDate(currentDate.getDate() + 7);
@@ -280,7 +328,9 @@ export function CalendarDashboard() {
 
   // Get category info
   const getCategoryInfo = (category: CalendarNote["category"]) => {
-    return NOTE_CATEGORIES.find((c) => c.value === category) || NOTE_CATEGORIES[0];
+    return (
+      NOTE_CATEGORIES.find((c) => c.value === category) || NOTE_CATEGORIES[0]
+    );
   };
 
   // Add/Update note
@@ -322,7 +372,9 @@ export function CalendarDashboard() {
     }
 
     if (editingNote) {
-      const updatedNotes = notes.map((n) => (n.id === editingNote.id ? newNote : n));
+      const updatedNotes = notes.map((n) =>
+        n.id === editingNote.id ? newNote : n,
+      );
       saveNotesToStorage(updatedNotes);
     } else {
       saveNotesToStorage([...notes, newNote]);
@@ -343,7 +395,7 @@ export function CalendarDashboard() {
   // Toggle task completion
   const toggleTaskCompletion = (noteId: string) => {
     const updatedNotes = notes.map((n) =>
-      n.id === noteId ? { ...n, completed: !n.completed } : n
+      n.id === noteId ? { ...n, completed: !n.completed } : n,
     );
     saveNotesToStorage(updatedNotes);
   };
@@ -378,12 +430,18 @@ export function CalendarDashboard() {
   };
 
   // Generate Google Calendar URL
-  const generateGoogleCalendarUrl = (item: { title: string; date: string; description?: string; location?: string }) => {
+  const generateGoogleCalendarUrl = (item: {
+    title: string;
+    date: string;
+    description?: string;
+    location?: string;
+  }) => {
     const startDate = new Date(item.date);
     const endDate = new Date(startDate);
     endDate.setHours(endDate.getHours() + 2);
 
-    const formatGoogleDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const formatGoogleDate = (d: Date) =>
+      `${d.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
 
     const params = new URLSearchParams({
       action: "TEMPLATE",
@@ -403,39 +461,45 @@ export function CalendarDashboard() {
     // Add releases as all-day events
     releases.forEach((release) => {
       const date = new Date(release.releaseDate);
-      icsEvents.push(createICSEvent({
-        uid: `release-${release.id}`,
-        title: `🎵 Lanzamiento: ${release.title}`,
-        date,
-        isAllDay: true,
-        description: `Lanzamiento de ${release.artistName || "Sonido Líquido"}`,
-      }));
+      icsEvents.push(
+        createICSEvent({
+          uid: `release-${release.id}`,
+          title: `🎵 Lanzamiento: ${release.title}`,
+          date,
+          isAllDay: true,
+          description: `Lanzamiento de ${release.artistName || "Sonido Líquido"}`,
+        }),
+      );
     });
 
     // Add events (all-day by default since no time info)
     events.forEach((event) => {
       const date = new Date(event.eventDate);
-      icsEvents.push(createICSEvent({
-        uid: `event-${event.id}`,
-        title: `🎤 ${event.title}`,
-        date,
-        isAllDay: true,
-        description: `Evento en ${event.venue || ""}, ${event.city || ""}`,
-        location: `${event.venue || ""}, ${event.city || ""}`,
-      }));
+      icsEvents.push(
+        createICSEvent({
+          uid: `event-${event.id}`,
+          title: `🎤 ${event.title}`,
+          date,
+          isAllDay: true,
+          description: `Evento en ${event.venue || ""}, ${event.city || ""}`,
+          location: `${event.venue || ""}, ${event.city || ""}`,
+        }),
+      );
     });
 
     // Add notes as all-day events
     notes.forEach((note) => {
       const date = new Date(note.date);
       const categoryInfo = getCategoryInfo(note.category);
-      icsEvents.push(createICSEvent({
-        uid: note.id,
-        title: `📝 ${categoryInfo.label}: ${note.content.slice(0, 50)}`,
-        date,
-        isAllDay: true,
-        description: note.content,
-      }));
+      icsEvents.push(
+        createICSEvent({
+          uid: note.id,
+          title: `📝 ${categoryInfo.label}: ${note.content.slice(0, 50)}`,
+          date,
+          isAllDay: true,
+          description: note.content,
+        }),
+      );
     });
 
     const icsContent = [
@@ -462,7 +526,14 @@ export function CalendarDashboard() {
     setShowExportModal(false);
   };
 
-  const createICSEvent = ({ uid, title, date, description, location, isAllDay }: {
+  const createICSEvent = ({
+    uid,
+    title,
+    date,
+    description,
+    location,
+    isAllDay,
+  }: {
     uid: string;
     title: string;
     date: Date;
@@ -470,7 +541,8 @@ export function CalendarDashboard() {
     location?: string;
     isAllDay?: boolean;
   }) => {
-    const formatICSDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const formatICSDate = (d: Date) =>
+      `${d.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
     const formatICSDateOnly = (d: Date) => {
       const year = d.getUTCFullYear();
       const month = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -480,11 +552,19 @@ export function CalendarDashboard() {
     // Stable DTSTAMP derived from the event date (not current time)
     // This prevents calendar clients from creating duplicate events
     const stableDTSTAMP = (d: Date) => {
-      const stamp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
+      const stamp = new Date(
+        Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0),
+      );
       return formatICSDate(stamp);
     };
 
-    const escapeICS = (text: string) => text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n").slice(0, 200);
+    const escapeICS = (text: string) =>
+      text
+        .replace(/\\/g, "\\\\")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,")
+        .replace(/\n/g, "\\n")
+        .slice(0, 200);
 
     const lines: string[] = [
       "BEGIN:VEVENT",
@@ -515,7 +595,8 @@ export function CalendarDashboard() {
     return lines.join("\r\n");
   };
 
-  const calendarDays = viewMode === "month" ? generateMonthDays() : generateWeekDays();
+  const calendarDays =
+    viewMode === "month" ? generateMonthDays() : generateWeekDays();
 
   // Get upcoming items for the sidebar (next 30 days)
   const today = new Date();
@@ -528,14 +609,20 @@ export function CalendarDashboard() {
       const date = new Date(r.releaseDate);
       return date >= today && date <= thirtyDaysLater;
     })
-    .sort((a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime());
+    .sort(
+      (a, b) =>
+        new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime(),
+    );
 
   const upcomingEvents = events
     .filter((e) => {
       const date = new Date(e.eventDate);
       return date >= today && date <= thirtyDaysLater;
     })
-    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+    .sort(
+      (a, b) =>
+        new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime(),
+    );
 
   const upcomingNotes = notes
     .filter((n) => {
@@ -561,7 +648,9 @@ export function CalendarDashboard() {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-    const startMonth = startOfWeek.toLocaleDateString("es-MX", { month: "short" });
+    const startMonth = startOfWeek.toLocaleDateString("es-MX", {
+      month: "short",
+    });
     const endMonth = endOfWeek.toLocaleDateString("es-MX", { month: "short" });
     const year = startOfWeek.getFullYear();
 
@@ -584,7 +673,10 @@ export function CalendarDashboard() {
             </h2>
             <span className="text-lg font-medium">
               {viewMode === "month"
-                ? currentDate.toLocaleDateString("es-MX", { month: "long", year: "numeric" })
+                ? currentDate.toLocaleDateString("es-MX", {
+                    month: "long",
+                    year: "numeric",
+                  })
                 : getWeekRangeText()}
             </span>
           </div>
@@ -594,7 +686,9 @@ export function CalendarDashboard() {
               <button
                 onClick={() => setViewMode("month")}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-colors ${
-                  viewMode === "month" ? "bg-primary text-white" : "text-slc-muted hover:text-white"
+                  viewMode === "month"
+                    ? "bg-primary text-white"
+                    : "text-slc-muted hover:text-white"
                 }`}
               >
                 <CalendarDays className="w-4 h-4" />
@@ -603,7 +697,9 @@ export function CalendarDashboard() {
               <button
                 onClick={() => setViewMode("week")}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-colors ${
-                  viewMode === "week" ? "bg-primary text-white" : "text-slc-muted hover:text-white"
+                  viewMode === "week"
+                    ? "bg-primary text-white"
+                    : "text-slc-muted hover:text-white"
                 }`}
               >
                 <CalendarRange className="w-4 h-4" />
@@ -611,7 +707,11 @@ export function CalendarDashboard() {
               </button>
             </div>
 
-            <Button variant="outline" size="sm" onClick={() => setShowExportModal(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowExportModal(true)}
+            >
               <Download className="w-4 h-4 mr-1" />
               Exportar
             </Button>
@@ -628,7 +728,9 @@ export function CalendarDashboard() {
         </div>
 
         {/* Weekday headers */}
-        <div className={`grid border-b border-slc-border ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"}`}>
+        <div
+          className={`grid border-b border-slc-border ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"}`}
+        >
           {(viewMode === "week" ? WEEKDAYS_FULL : WEEKDAYS).map((day, idx) => (
             <div
               key={day}
@@ -639,7 +741,9 @@ export function CalendarDashboard() {
               {viewMode === "week" && calendarDays[idx] ? (
                 <div>
                   <div>{day}</div>
-                  <div className={`text-lg font-bold mt-1 ${calendarDays[idx].isToday ? "text-primary" : "text-white"}`}>
+                  <div
+                    className={`text-lg font-bold mt-1 ${calendarDays[idx].isToday ? "text-primary" : "text-white"}`}
+                  >
                     {calendarDays[idx].date.getDate()}
                   </div>
                 </div>
@@ -656,16 +760,21 @@ export function CalendarDashboard() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className={`grid ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"}`}>
+          <div
+            className={`grid ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"}`}
+          >
             {calendarDays.map((day, index) => {
-              const minHeight = viewMode === "week" ? "min-h-[300px]" : "min-h-[100px]";
+              const minHeight =
+                viewMode === "week" ? "min-h-[300px]" : "min-h-[100px]";
               const maxItemsToShow = viewMode === "week" ? 10 : 3;
 
               return (
                 <div
                   key={index}
                   className={`${minHeight} p-1 border-b border-r border-slc-border/50 group ${
-                    !day.isCurrentMonth && viewMode === "month" ? "bg-slc-dark/30" : ""
+                    !day.isCurrentMonth && viewMode === "month"
+                      ? "bg-slc-dark/30"
+                      : ""
                   } ${day.isToday ? "bg-primary/5" : ""}`}
                 >
                   {/* Day number (month view only) */}
@@ -676,8 +785,8 @@ export function CalendarDashboard() {
                           day.isToday
                             ? "bg-primary text-white font-bold"
                             : day.isCurrentMonth
-                            ? "text-white"
-                            : "text-slc-muted/50"
+                              ? "text-white"
+                              : "text-slc-muted/50"
                         }`}
                       >
                         {day.date.getDate()}
@@ -704,25 +813,38 @@ export function CalendarDashboard() {
                   )}
 
                   {/* Items */}
-                  <div className={`space-y-1 overflow-y-auto ${viewMode === "week" ? "max-h-[260px]" : "max-h-[70px]"}`}>
+                  <div
+                    className={`space-y-1 overflow-y-auto ${viewMode === "week" ? "max-h-[260px]" : "max-h-[70px]"}`}
+                  >
                     {/* Releases */}
                     {day.releases.slice(0, maxItemsToShow).map((release) => (
                       <div
                         key={release.id}
                         className="flex items-center gap-1 px-1.5 py-0.5 bg-green-500/20 border border-green-500/30 rounded text-xs cursor-pointer hover:bg-green-500/30 transition-colors"
                         title={release.title}
-                        onClick={() => window.open(generateGoogleCalendarUrl({
-                          title: `🎵 ${release.title}`,
-                          date: release.releaseDate,
-                          description: `Lanzamiento: ${release.title}`,
-                        }), "_blank")}
+                        onClick={() =>
+                          window.open(
+                            generateGoogleCalendarUrl({
+                              title: `🎵 ${release.title}`,
+                              date: release.releaseDate,
+                              description: `Lanzamiento: ${release.title}`,
+                            }),
+                            "_blank",
+                          )
+                        }
                       >
                         {release.coverImageUrl ? (
-                          <Img src={release.coverImageUrl} alt="" className="w-3 h-3 rounded flex-shrink-0 object-cover" />
+                          <Img
+                            src={release.coverImageUrl}
+                            alt=""
+                            className="w-3 h-3 rounded flex-shrink-0 object-cover"
+                          />
                         ) : (
                           <Music className="w-3 h-3 text-green-500 flex-shrink-0" />
                         )}
-                        <span className="text-green-400 truncate">{release.title}</span>
+                        <span className="text-green-400 truncate">
+                          {release.title}
+                        </span>
                       </div>
                     ))}
 
@@ -732,15 +854,22 @@ export function CalendarDashboard() {
                         key={event.id}
                         className="flex items-center gap-1 px-1.5 py-0.5 bg-red-500/20 border border-red-500/30 rounded text-xs cursor-pointer hover:bg-red-500/30 transition-colors"
                         title={event.title}
-                        onClick={() => window.open(generateGoogleCalendarUrl({
-                          title: `🎤 ${event.title}`,
-                          date: event.eventDate,
-                          description: `Evento: ${event.title}`,
-                          location: `${event.venue || ""}, ${event.city || ""}`,
-                        }), "_blank")}
+                        onClick={() =>
+                          window.open(
+                            generateGoogleCalendarUrl({
+                              title: `🎤 ${event.title}`,
+                              date: event.eventDate,
+                              description: `Evento: ${event.title}`,
+                              location: `${event.venue || ""}, ${event.city || ""}`,
+                            }),
+                            "_blank",
+                          )
+                        }
                       >
                         <Mic2 className="w-3 h-3 text-red-500 flex-shrink-0" />
-                        <span className="text-red-400 truncate">{event.title}</span>
+                        <span className="text-red-400 truncate">
+                          {event.title}
+                        </span>
                       </div>
                     ))}
 
@@ -757,10 +886,18 @@ export function CalendarDashboard() {
                             note.completed ? "opacity-50 line-through" : ""
                           }`}
                           title={note.content}
-                          onClick={() => note.category === "task" ? toggleTaskCompletion(note.id) : handleEditNote(note)}
+                          onClick={() =>
+                            note.category === "task"
+                              ? toggleTaskCompletion(note.id)
+                              : handleEditNote(note)
+                          }
                         >
-                          <CategoryIcon className={`w-3 h-3 ${colors.text} flex-shrink-0`} />
-                          <span className={`${colors.text} truncate`}>{note.content}</span>
+                          <CategoryIcon
+                            className={`w-3 h-3 ${colors.text} flex-shrink-0`}
+                          />
+                          <span className={`${colors.text} truncate`}>
+                            {note.content}
+                          </span>
                           {note.reminderEmail && (
                             <Mail className="w-2.5 h-2.5 text-slc-muted flex-shrink-0" />
                           )}
@@ -769,9 +906,17 @@ export function CalendarDashboard() {
                     })}
 
                     {/* More indicator */}
-                    {day.releases.length + day.events.length + day.notes.length > maxItemsToShow && (
+                    {day.releases.length +
+                      day.events.length +
+                      day.notes.length >
+                      maxItemsToShow && (
                       <div className="text-xs text-slc-muted text-center">
-                        +{day.releases.length + day.events.length + day.notes.length - maxItemsToShow} más
+                        +
+                        {day.releases.length +
+                          day.events.length +
+                          day.notes.length -
+                          maxItemsToShow}{" "}
+                        más
                       </div>
                     )}
                   </div>
@@ -834,34 +979,50 @@ export function CalendarDashboard() {
             Próximos Lanzamientos
           </h3>
           {upcomingReleases.length === 0 ? (
-            <p className="text-sm text-slc-muted">No hay lanzamientos próximos</p>
+            <p className="text-sm text-slc-muted">
+              No hay lanzamientos próximos
+            </p>
           ) : (
             <div className="space-y-2 max-h-40 overflow-y-auto">
               {upcomingReleases.slice(0, 5).map((release) => (
                 <div
                   key={release.id}
                   className="flex items-center gap-3 p-2 bg-slc-dark rounded-lg border border-slc-border/50 group cursor-pointer hover:border-green-500/30"
-                  onClick={() => window.open(generateGoogleCalendarUrl({
-                    title: release.title,
-                    date: release.releaseDate,
-                  }), "_blank")}
+                  onClick={() =>
+                    window.open(
+                      generateGoogleCalendarUrl({
+                        title: release.title,
+                        date: release.releaseDate,
+                      }),
+                      "_blank",
+                    )
+                  }
                 >
                   <div className="w-8 h-8 rounded overflow-hidden bg-slc-border flex-shrink-0 flex items-center justify-center relative">
                     {release.coverImageUrl ? (
-                      <Img src={release.coverImageUrl} alt={release.title} className="w-full h-full object-cover" />
+                      <Img
+                        src={release.coverImageUrl}
+                        alt={release.title}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <Music className="w-4 h-4 text-slc-muted" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{release.title}</p>
+                    <p className="text-sm font-medium truncate">
+                      {release.title}
+                    </p>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-green-500 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {new Date(release.releaseDate).toLocaleDateString("es-MX", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {new Date(release.releaseDate).toLocaleDateString(
+                          "es-MX",
+                          {
+                            day: "numeric",
+                            month: "short",
+                          },
+                        )}
                       </p>
                       <ExternalLink className="w-3 h-3 text-slc-muted opacity-0 group-hover:opacity-100" />
                     </div>
@@ -886,11 +1047,16 @@ export function CalendarDashboard() {
                 <div
                   key={event.id}
                   className="p-2 bg-slc-dark rounded-lg border border-slc-border/50 group cursor-pointer hover:border-red-500/30"
-                  onClick={() => window.open(generateGoogleCalendarUrl({
-                    title: event.title,
-                    date: event.eventDate,
-                    location: `${event.venue}, ${event.city}`,
-                  }), "_blank")}
+                  onClick={() =>
+                    window.open(
+                      generateGoogleCalendarUrl({
+                        title: event.title,
+                        date: event.eventDate,
+                        location: `${event.venue}, ${event.city}`,
+                      }),
+                      "_blank",
+                    )
+                  }
                 >
                   <p className="text-sm font-medium truncate">{event.title}</p>
                   <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
@@ -920,70 +1086,84 @@ export function CalendarDashboard() {
               Notas Próximas
             </h3>
             <div className="space-y-3 max-h-60 overflow-y-auto">
-              {Object.entries(notesByCategory).map(([category, categoryNotes]) => {
-                const categoryInfo = getCategoryInfo(category as CalendarNote["category"]);
-                const colors = NOTE_COLORS[categoryInfo.color];
-                const CategoryIcon = categoryInfo.icon;
+              {Object.entries(notesByCategory).map(
+                ([category, categoryNotes]) => {
+                  const categoryInfo = getCategoryInfo(
+                    category as CalendarNote["category"],
+                  );
+                  const colors = NOTE_COLORS[categoryInfo.color];
+                  const CategoryIcon = categoryInfo.icon;
 
-                return (
-                  <div key={category}>
-                    <div className={`flex items-center gap-1 text-xs ${colors.text} mb-1`}>
-                      <CategoryIcon className="w-3 h-3" />
-                      {categoryInfo.label} ({categoryNotes.length})
-                    </div>
-                    <div className="space-y-1">
-                      {categoryNotes.slice(0, 3).map((note) => (
-                        <div
-                          key={note.id}
-                          className={`p-2 rounded-lg border ${colors.bg} ${colors.border} group relative ${
-                            note.completed ? "opacity-50" : ""
-                          }`}
-                        >
-                          <p className={`text-sm ${colors.text} ${note.completed ? "line-through" : ""}`}>
-                            {note.content}
-                          </p>
-                          <p className="text-xs text-slc-muted flex items-center gap-1 mt-1">
-                            <Clock className="w-3 h-3" />
-                            {new Date(note.date).toLocaleDateString("es-MX", {
-                              day: "numeric",
-                              month: "short",
-                            })}
-                            {note.reminderEmail && (
-                              <span className="flex items-center gap-0.5 ml-2">
-                                <Mail className="w-3 h-3" />
-                                {note.reminderSent ? "Enviado" : "Pendiente"}
-                              </span>
-                            )}
-                          </p>
-                          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {note.category === "task" && (
+                  return (
+                    <div key={category}>
+                      <div
+                        className={`flex items-center gap-1 text-xs ${colors.text} mb-1`}
+                      >
+                        <CategoryIcon className="w-3 h-3" />
+                        {categoryInfo.label} ({categoryNotes.length})
+                      </div>
+                      <div className="space-y-1">
+                        {categoryNotes.slice(0, 3).map((note) => (
+                          <div
+                            key={note.id}
+                            className={`p-2 rounded-lg border ${colors.bg} ${colors.border} group relative ${
+                              note.completed ? "opacity-50" : ""
+                            }`}
+                          >
+                            <p
+                              className={`text-sm ${colors.text} ${note.completed ? "line-through" : ""}`}
+                            >
+                              {note.content}
+                            </p>
+                            <p className="text-xs text-slc-muted flex items-center gap-1 mt-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(note.date).toLocaleDateString("es-MX", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                              {note.reminderEmail && (
+                                <span className="flex items-center gap-0.5 ml-2">
+                                  <Mail className="w-3 h-3" />
+                                  {note.reminderSent ? "Enviado" : "Pendiente"}
+                                </span>
+                              )}
+                            </p>
+                            <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {note.category === "task" && (
+                                <button
+                                  onClick={() => toggleTaskCompletion(note.id)}
+                                  className="p-1 rounded hover:bg-slc-dark/50"
+                                  title={
+                                    note.completed
+                                      ? "Marcar pendiente"
+                                      : "Marcar completada"
+                                  }
+                                >
+                                  <CheckSquare
+                                    className={`w-3 h-3 ${note.completed ? "text-green-500" : "text-slc-muted"}`}
+                                  />
+                                </button>
+                              )}
                               <button
-                                onClick={() => toggleTaskCompletion(note.id)}
+                                onClick={() => handleEditNote(note)}
                                 className="p-1 rounded hover:bg-slc-dark/50"
-                                title={note.completed ? "Marcar pendiente" : "Marcar completada"}
                               >
-                                <CheckSquare className={`w-3 h-3 ${note.completed ? "text-green-500" : "text-slc-muted"}`} />
+                                <Edit className="w-3 h-3 text-slc-muted" />
                               </button>
-                            )}
-                            <button
-                              onClick={() => handleEditNote(note)}
-                              className="p-1 rounded hover:bg-slc-dark/50"
-                            >
-                              <Edit className="w-3 h-3 text-slc-muted" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteNote(note.id)}
-                              className="p-1 rounded hover:bg-red-500/20"
-                            >
-                              <Trash2 className="w-3 h-3 text-red-500" />
-                            </button>
+                              <button
+                                onClick={() => handleDeleteNote(note.id)}
+                                className="p-1 rounded hover:bg-red-500/20"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                },
+              )}
             </div>
           </div>
         )}
@@ -1005,7 +1185,9 @@ export function CalendarDashboard() {
             <div className="space-y-4">
               {/* Date */}
               <div>
-                <label className="text-xs text-slc-muted uppercase mb-1 block">Fecha</label>
+                <label className="text-xs text-slc-muted uppercase mb-1 block">
+                  Fecha
+                </label>
                 <input
                   type="date"
                   value={selectedDay ? formatDateString(selectedDay) : ""}
@@ -1016,7 +1198,9 @@ export function CalendarDashboard() {
 
               {/* Category */}
               <div>
-                <label className="text-xs text-slc-muted uppercase mb-2 block">Categoría</label>
+                <label className="text-xs text-slc-muted uppercase mb-2 block">
+                  Categoría
+                </label>
                 <div className="grid grid-cols-5 gap-2">
                   {NOTE_CATEGORIES.map((cat) => {
                     const colors = NOTE_COLORS[cat.color];
@@ -1040,7 +1224,9 @@ export function CalendarDashboard() {
 
               {/* Content */}
               <div>
-                <label className="text-xs text-slc-muted uppercase mb-1 block">Contenido</label>
+                <label className="text-xs text-slc-muted uppercase mb-1 block">
+                  Contenido
+                </label>
                 <textarea
                   value={newNoteContent}
                   onChange={(e) => setNewNoteContent(e.target.value)}
@@ -1106,8 +1292,14 @@ export function CalendarDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="bg-slc-card border border-slc-border rounded-xl p-6 w-full max-w-sm mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-oswald text-lg uppercase">Exportar Calendario</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowExportModal(false)}>
+              <h3 className="font-oswald text-lg uppercase">
+                Exportar Calendario
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowExportModal(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -1120,7 +1312,9 @@ export function CalendarDashboard() {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Descargar archivo ICS
-                <span className="text-xs text-slc-muted ml-auto">Apple, Outlook</span>
+                <span className="text-xs text-slc-muted ml-auto">
+                  Apple, Outlook
+                </span>
               </Button>
 
               <a

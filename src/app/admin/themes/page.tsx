@@ -1,31 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import THEMES, {
+  type ThemeConfig,
+  type ThemeColors,
+  generateThemeCSS,
+  generateTailwindConfig,
+} from "@/lib/themes";
+import { cn } from "@/lib/utils";
 import {
-  Palette,
   ArrowLeft,
   Check,
-  Copy,
-  Download,
-  Code,
   ChevronDown,
   ChevronRight,
-  Sparkles,
-  Music,
+  Code,
+  Copy,
   Disc3,
-  Eye,
+  Download,
   ExternalLink,
+  Eye,
   Loader2,
-  Save,
-  RotateCcw,
+  Music,
   Paintbrush,
+  Palette,
   Plus,
+  RotateCcw,
+  Save,
+  Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import THEMES, { type ThemeConfig, type ThemeColors, generateThemeCSS, generateTailwindConfig } from "@/lib/themes";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function ThemesPage() {
   const [selectedTheme, setSelectedTheme] = useState<ThemeConfig>(THEMES[0]);
@@ -103,7 +108,9 @@ export default function ThemesPage() {
       tailwind: generateTailwindConfig(themeToExport),
       generatedAt: new Date().toISOString(),
     };
-    const blob = new Blob([JSON.stringify(themeData, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(themeData, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -127,7 +134,9 @@ export default function ThemesPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setSavedMessage("Tema aplicado correctamente. Recarga la página para ver los cambios.");
+        setSavedMessage(
+          "Tema aplicado correctamente. Recarga la página para ver los cambios.",
+        );
       } else {
         setSavedMessage("Error al guardar el tema");
       }
@@ -184,11 +193,7 @@ export default function ThemesPage() {
           </div>
 
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handlePreview}
-              className="gap-2"
-            >
+            <Button variant="outline" onClick={handlePreview} className="gap-2">
               <Eye className="w-4 h-4" />
               Vista Previa
             </Button>
@@ -214,10 +219,12 @@ export default function ThemesPage() {
               "mb-6 p-4 rounded-xl flex items-center gap-3",
               savedMessage.includes("Error")
                 ? "bg-red-500/10 border border-red-500/30 text-red-400"
-                : "bg-green-500/10 border border-green-500/30 text-green-400"
+                : "bg-green-500/10 border border-green-500/30 text-green-400",
             )}
           >
-            {savedMessage.includes("Error") ? null : <Check className="w-5 h-5" />}
+            {savedMessage.includes("Error") ? null : (
+              <Check className="w-5 h-5" />
+            )}
             {savedMessage}
           </div>
         )}
@@ -226,7 +233,9 @@ export default function ThemesPage() {
           {/* Theme Grid */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-oswald text-xl uppercase">Temas Disponibles</h2>
+              <h2 className="font-oswald text-xl uppercase">
+                Temas Disponibles
+              </h2>
               <Button
                 variant={isCustomMode ? "default" : "outline"}
                 size="sm"
@@ -257,7 +266,7 @@ export default function ThemesPage() {
                     "text-left rounded-2xl overflow-hidden border-2 transition-all hover:scale-[1.02]",
                     selectedTheme.id === theme.id
                       ? "border-primary shadow-lg shadow-primary/20"
-                      : "border-slc-border hover:border-primary/50"
+                      : "border-slc-border hover:border-primary/50",
                   )}
                 >
                   {/* Theme Preview Header */}
@@ -396,7 +405,9 @@ export default function ThemesPage() {
                     <div className="flex items-center gap-3 mb-2">
                       <div
                         className="w-12 h-12 rounded-lg"
-                        style={{ backgroundColor: `${displayColors.primary}30` }}
+                        style={{
+                          backgroundColor: `${displayColors.primary}30`,
+                        }}
                       />
                       <div className="flex-1">
                         <div
@@ -427,11 +438,15 @@ export default function ThemesPage() {
                         backgroundColor: displayColors.primary,
                         color: displayColors.background,
                         borderRadius:
-                          selectedTheme.style.borderRadius === "none" ? "0" :
-                          selectedTheme.style.borderRadius === "sm" ? "0.25rem" :
-                          selectedTheme.style.borderRadius === "md" ? "0.5rem" :
-                          selectedTheme.style.borderRadius === "lg" ? "0.75rem" :
-                          "9999px",
+                          selectedTheme.style.borderRadius === "none"
+                            ? "0"
+                            : selectedTheme.style.borderRadius === "sm"
+                              ? "0.25rem"
+                              : selectedTheme.style.borderRadius === "md"
+                                ? "0.5rem"
+                                : selectedTheme.style.borderRadius === "lg"
+                                  ? "0.75rem"
+                                  : "9999px",
                       }}
                     >
                       Primario
@@ -443,11 +458,15 @@ export default function ThemesPage() {
                         color: displayColors.text,
                         borderColor: displayColors.border,
                         borderRadius:
-                          selectedTheme.style.borderRadius === "none" ? "0" :
-                          selectedTheme.style.borderRadius === "sm" ? "0.25rem" :
-                          selectedTheme.style.borderRadius === "md" ? "0.5rem" :
-                          selectedTheme.style.borderRadius === "lg" ? "0.75rem" :
-                          "9999px",
+                          selectedTheme.style.borderRadius === "none"
+                            ? "0"
+                            : selectedTheme.style.borderRadius === "sm"
+                              ? "0.25rem"
+                              : selectedTheme.style.borderRadius === "md"
+                                ? "0.5rem"
+                                : selectedTheme.style.borderRadius === "lg"
+                                  ? "0.75rem"
+                                  : "9999px",
                       }}
                     >
                       Secundario
@@ -460,7 +479,9 @@ export default function ThemesPage() {
               {isCustomMode && (
                 <div className="bg-slc-card border border-slc-border rounded-2xl p-4 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-oswald uppercase">Personalizar Colores</h3>
+                    <h3 className="font-oswald uppercase">
+                      Personalizar Colores
+                    </h3>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -473,7 +494,9 @@ export default function ThemesPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    {(Object.keys(customColors) as Array<keyof ThemeColors>).map((colorKey) => (
+                    {(
+                      Object.keys(customColors) as Array<keyof ThemeColors>
+                    ).map((colorKey) => (
                       <div key={colorKey} className="space-y-1">
                         <label className="text-xs text-slc-muted capitalize">
                           {colorKey}
@@ -482,12 +505,16 @@ export default function ThemesPage() {
                           <input
                             type="color"
                             value={customColors[colorKey]}
-                            onChange={(e) => handleColorChange(colorKey, e.target.value)}
+                            onChange={(e) =>
+                              handleColorChange(colorKey, e.target.value)
+                            }
                             className="w-10 h-8 rounded cursor-pointer border-0"
                           />
                           <Input
                             value={customColors[colorKey]}
-                            onChange={(e) => handleColorChange(colorKey, e.target.value)}
+                            onChange={(e) =>
+                              handleColorChange(colorKey, e.target.value)
+                            }
                             className="flex-1 h-8 text-xs font-mono"
                           />
                         </div>
@@ -502,7 +529,11 @@ export default function ThemesPage() {
                 <div>
                   <h3 className="font-oswald text-lg uppercase mb-1">
                     {selectedTheme.name}
-                    {isCustomMode && <span className="text-primary text-sm ml-2">(Personalizado)</span>}
+                    {isCustomMode && (
+                      <span className="text-primary text-sm ml-2">
+                        (Personalizado)
+                      </span>
+                    )}
                   </h3>
                   <p className="text-sm text-slc-muted">
                     {selectedTheme.description}
@@ -513,7 +544,9 @@ export default function ThemesPage() {
                 <div>
                   <p className="text-xs text-slc-muted mb-1">Tipografías</p>
                   <p className="text-sm">
-                    <span className="font-medium">{selectedTheme.fonts.heading}</span>
+                    <span className="font-medium">
+                      {selectedTheme.fonts.heading}
+                    </span>
                     <span className="text-slc-muted"> / </span>
                     <span>{selectedTheme.fonts.body}</span>
                   </p>
@@ -545,15 +578,19 @@ export default function ThemesPage() {
                   <div>
                     <p className="text-xs text-slc-muted mb-2">Colores</p>
                     <div className="grid grid-cols-4 gap-2">
-                      {Object.entries(selectedTheme.colors).map(([name, color]) => (
-                        <div key={name} className="text-center">
-                          <div
-                            className="w-full aspect-square rounded-lg border border-white/10 mb-1"
-                            style={{ backgroundColor: color }}
-                          />
-                          <p className="text-[10px] text-slc-muted capitalize">{name}</p>
-                        </div>
-                      ))}
+                      {Object.entries(selectedTheme.colors).map(
+                        ([name, color]) => (
+                          <div key={name} className="text-center">
+                            <div
+                              className="w-full aspect-square rounded-lg border border-white/10 mb-1"
+                              style={{ backgroundColor: color }}
+                            />
+                            <p className="text-[10px] text-slc-muted capitalize">
+                              {name}
+                            </p>
+                          </div>
+                        ),
+                      )}
                     </div>
                   </div>
                 )}
@@ -613,7 +650,11 @@ export default function ThemesPage() {
                     </div>
                     <pre className="text-xs bg-black/50 rounded-lg p-3 overflow-x-auto max-h-40">
                       <code className="text-slc-muted">
-                        {generateThemeCSS(isCustomMode ? { ...selectedTheme, colors: customColors } : selectedTheme)}
+                        {generateThemeCSS(
+                          isCustomMode
+                            ? { ...selectedTheme, colors: customColors }
+                            : selectedTheme,
+                        )}
                       </code>
                     </pre>
                   </div>
@@ -643,7 +684,11 @@ export default function ThemesPage() {
                     </div>
                     <pre className="text-xs bg-black/50 rounded-lg p-3 overflow-x-auto max-h-40">
                       <code className="text-slc-muted">
-                        {generateTailwindConfig(isCustomMode ? { ...selectedTheme, colors: customColors } : selectedTheme)}
+                        {generateTailwindConfig(
+                          isCustomMode
+                            ? { ...selectedTheme, colors: customColors }
+                            : selectedTheme,
+                        )}
                       </code>
                     </pre>
                   </div>
@@ -655,8 +700,8 @@ export default function ThemesPage() {
                 <p className="flex items-start gap-2">
                   <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                   <span>
-                    Haz clic en "Aplicar Tema" para guardar los cambios.
-                    Usa "Vista Previa" para ver cómo se verá el sitio público.
+                    Haz clic en "Aplicar Tema" para guardar los cambios. Usa
+                    "Vista Previa" para ver cómo se verá el sitio público.
                   </span>
                 </p>
               </div>

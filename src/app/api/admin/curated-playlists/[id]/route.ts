@@ -1,20 +1,20 @@
-import { type NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedPlaylists, playlistTracks } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 // GET - Get a single curated playlist with details and track count
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -29,7 +29,7 @@ export async function GET(
     if (!playlist) {
       return NextResponse.json(
         { success: false, error: "Playlist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -53,7 +53,7 @@ export async function GET(
     console.error("[Curated Playlists API] Error getting playlist:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching playlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -61,13 +61,13 @@ export async function GET(
 // PUT - Update playlist metadata
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -84,7 +84,7 @@ export async function PUT(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Playlist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -93,11 +93,16 @@ export async function PUT(
 
     if (body.name !== undefined) updates.name = body.name.trim();
     if (body.slug !== undefined) updates.slug = body.slug;
-    if (body.description !== undefined) updates.description = body.description || null;
-    if (body.coverImageUrl !== undefined) updates.coverImageUrl = body.coverImageUrl || null;
-    if (body.coverColor !== undefined) updates.coverColor = body.coverColor || null;
-    if (body.spotifyPlaylistId !== undefined) updates.spotifyPlaylistId = body.spotifyPlaylistId || null;
-    if (body.spotifyPlaylistUrl !== undefined) updates.spotifyPlaylistUrl = body.spotifyPlaylistUrl || null;
+    if (body.description !== undefined)
+      updates.description = body.description || null;
+    if (body.coverImageUrl !== undefined)
+      updates.coverImageUrl = body.coverImageUrl || null;
+    if (body.coverColor !== undefined)
+      updates.coverColor = body.coverColor || null;
+    if (body.spotifyPlaylistId !== undefined)
+      updates.spotifyPlaylistId = body.spotifyPlaylistId || null;
+    if (body.spotifyPlaylistUrl !== undefined)
+      updates.spotifyPlaylistUrl = body.spotifyPlaylistUrl || null;
     if (body.isPublic !== undefined) updates.isPublic = body.isPublic;
     if (body.isActive !== undefined) updates.isActive = body.isActive;
     if (body.priority !== undefined) updates.priority = body.priority;
@@ -108,7 +113,7 @@ export async function PUT(
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { success: false, error: "No fields to update" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -123,7 +128,7 @@ export async function PUT(
       if (slugConflict) {
         return NextResponse.json(
           { success: false, error: "A playlist with this slug already exists" },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -149,7 +154,7 @@ export async function PUT(
     console.error("[Curated Playlists API] Error updating playlist:", error);
     return NextResponse.json(
       { success: false, error: "Error updating playlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -157,13 +162,13 @@ export async function PUT(
 // DELETE - Delete a curated playlist
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -179,19 +184,15 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Playlist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Delete playlist tracks first
-    await db
-      .delete(playlistTracks)
-      .where(eq(playlistTracks.playlistId, id));
+    await db.delete(playlistTracks).where(eq(playlistTracks.playlistId, id));
 
     // Delete the playlist
-    await db
-      .delete(curatedPlaylists)
-      .where(eq(curatedPlaylists.id, id));
+    await db.delete(curatedPlaylists).where(eq(curatedPlaylists.id, id));
 
     return NextResponse.json({
       success: true,
@@ -201,7 +202,7 @@ export async function DELETE(
     console.error("[Curated Playlists API] Error deleting playlist:", error);
     return NextResponse.json(
       { success: false, error: "Error deleting playlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

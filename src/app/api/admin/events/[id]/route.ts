@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { eventsRepository } from "@/lib/repositories";
 import {
   AppError,
   DatabaseError,
-  errorLogger,
   createErrorResponse,
+  errorLogger,
 } from "@/lib/errors";
+import { eventsRepository } from "@/lib/repositories";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const requestId = Math.random().toString(36).substring(7);
@@ -19,8 +19,11 @@ export async function GET(
 
     if (!event) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: `Event not found: ${id}` } },
-        { status: 404 }
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: `Event not found: ${id}` },
+        },
+        { status: 404 },
       );
     }
 
@@ -31,19 +34,19 @@ export async function GET(
     });
   } catch (error) {
     errorLogger.log(
-      DatabaseError.queryFailed("fetch", "event", `ID: ${id}`, error as Error)
+      DatabaseError.queryFailed("fetch", "event", `ID: ${id}`, error as Error),
     );
 
     return NextResponse.json(
       createErrorResponse(error, "Failed to fetch event"),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const requestId = Math.random().toString(36).substring(7);
@@ -54,12 +57,15 @@ export async function PUT(
     const existingEvent = await eventsRepository.findById(id);
     if (!existingEvent) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: `Event not found: ${id}` } },
-        { status: 404 }
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: `Event not found: ${id}` },
+        },
+        { status: 404 },
       );
     }
 
-    errorLogger.info(`Updating event`, { requestId, eventId: id });
+    errorLogger.info("Updating event", { requestId, eventId: id });
 
     const event = await eventsRepository.update(id, {
       title: body.title,
@@ -75,7 +81,7 @@ export async function PUT(
       isCancelled: body.isCancelled || false,
     });
 
-    errorLogger.info(`Event updated successfully`, { requestId, eventId: id });
+    errorLogger.info("Event updated successfully", { requestId, eventId: id });
 
     return NextResponse.json({
       success: true,
@@ -86,19 +92,24 @@ export async function PUT(
     errorLogger.log(
       error instanceof AppError
         ? error
-        : DatabaseError.queryFailed("update", "event", `ID: ${id}`, error as Error)
+        : DatabaseError.queryFailed(
+            "update",
+            "event",
+            `ID: ${id}`,
+            error as Error,
+          ),
     );
 
     return NextResponse.json(
       createErrorResponse(error, "Failed to update event"),
-      { status: error instanceof AppError ? error.statusCode : 500 }
+      { status: error instanceof AppError ? error.statusCode : 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const requestId = Math.random().toString(36).substring(7);
@@ -107,23 +118,33 @@ export async function DELETE(
     const existingEvent = await eventsRepository.findById(id);
     if (!existingEvent) {
       return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: `Event not found: ${id}` } },
-        { status: 404 }
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: `Event not found: ${id}` },
+        },
+        { status: 404 },
       );
     }
 
-    errorLogger.info(`Deleting event`, { requestId, eventId: id, title: existingEvent.title });
+    errorLogger.info("Deleting event", {
+      requestId,
+      eventId: id,
+      title: existingEvent.title,
+    });
 
     const deleted = await eventsRepository.delete(id);
 
     if (!deleted) {
       return NextResponse.json(
-        { success: false, error: { code: "DELETE_FAILED", message: "Failed to delete event" } },
-        { status: 500 }
+        {
+          success: false,
+          error: { code: "DELETE_FAILED", message: "Failed to delete event" },
+        },
+        { status: 500 },
       );
     }
 
-    errorLogger.info(`Event deleted successfully`, { requestId, eventId: id });
+    errorLogger.info("Event deleted successfully", { requestId, eventId: id });
 
     return NextResponse.json({
       success: true,
@@ -134,12 +155,17 @@ export async function DELETE(
     errorLogger.log(
       error instanceof AppError
         ? error
-        : DatabaseError.queryFailed("delete", "event", `ID: ${id}`, error as Error)
+        : DatabaseError.queryFailed(
+            "delete",
+            "event",
+            `ID: ${id}`,
+            error as Error,
+          ),
     );
 
     return NextResponse.json(
       createErrorResponse(error, "Failed to delete event"),
-      { status: error instanceof AppError ? error.statusCode : 500 }
+      { status: error instanceof AppError ? error.statusCode : 500 },
     );
   }
 }

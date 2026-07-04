@@ -233,20 +233,23 @@ function PlaylistFormDialog({
 
       // Upload to Dropbox
       const arrayBuffer = await file.arrayBuffer();
-      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/octet-stream",
-          "Dropbox-API-Arg": JSON.stringify({
-            path: dropboxPath,
-            mode: "overwrite",
-            autorename: false,
-            mute: false,
-          }),
+      const uploadResponse = await fetch(
+        "https://content.dropboxapi.com/2/files/upload",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream",
+            "Dropbox-API-Arg": JSON.stringify({
+              path: dropboxPath,
+              mode: "overwrite",
+              autorename: false,
+              mute: false,
+            }),
+          },
+          body: arrayBuffer,
         },
-        body: arrayBuffer,
-      });
+      );
 
       if (!uploadResponse.ok) {
         throw new Error(`Upload failed: ${uploadResponse.status}`);
@@ -255,34 +258,45 @@ function PlaylistFormDialog({
       // Create shared link
       let sharedUrl: string;
       try {
-        const linkResponse = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
+        const linkResponse = await fetch(
+          "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              path: dropboxPath,
+              settings: {
+                access: "viewer",
+                audience: "public",
+                requested_visibility: "public",
+              },
+            }),
           },
-          body: JSON.stringify({
-            path: dropboxPath,
-            settings: { access: "viewer", audience: "public", requested_visibility: "public" },
-          }),
-        });
+        );
 
         if (linkResponse.ok) {
           const data = await linkResponse.json();
           sharedUrl = data.url
             .replace("?dl=0", "?raw=1")
             .replace("&dl=0", "&raw=1");
-          if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+          if (!sharedUrl.includes("raw=1"))
+            sharedUrl = `${sharedUrl + (sharedUrl.includes("?") ? "&" : "?")}raw=1`;
         } else {
           // Try to get existing link
-          const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
+          const listResponse = await fetch(
+            "https://api.dropboxapi.com/2/sharing/list_shared_links",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ path: dropboxPath, direct_only: true }),
             },
-            body: JSON.stringify({ path: dropboxPath, direct_only: true }),
-          });
+          );
 
           if (listResponse.ok) {
             const listData = await listResponse.json();
@@ -290,7 +304,8 @@ function PlaylistFormDialog({
               sharedUrl = listData.links[0].url
                 .replace("?dl=0", "?raw=1")
                 .replace("&dl=0", "&raw=1");
-              if (!sharedUrl.includes("raw=1")) sharedUrl = sharedUrl + (sharedUrl.includes("?") ? "&" : "?") + "raw=1";
+              if (!sharedUrl.includes("raw=1"))
+                sharedUrl = `${sharedUrl + (sharedUrl.includes("?") ? "&" : "?")}raw=1`;
             } else {
               throw new Error("Could not get shared link");
             }
@@ -318,7 +333,9 @@ function PlaylistFormDialog({
   const extractSpotifyPlaylistIdLocal = (url: string): string | null => {
     const uriMatch = url.match(/spotify:playlist:([a-zA-Z0-9]+)/);
     if (uriMatch) return uriMatch[1];
-    const urlMatch = url.match(/spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?playlist\/([a-zA-Z0-9]+)/);
+    const urlMatch = url.match(
+      /spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?playlist\/([a-zA-Z0-9]+)/,
+    );
     if (urlMatch) return urlMatch[1];
     return null;
   };
@@ -466,14 +483,20 @@ function PlaylistFormDialog({
                 ) : (
                   <div className="flex flex-col items-center gap-2">
                     <ImagePlus className="w-8 h-8 text-slc-muted" />
-                    <span className="text-sm text-slc-muted">Haz clic para subir imagen</span>
-                    <span className="text-xs text-slc-muted">JPG, PNG, WebP</span>
+                    <span className="text-sm text-slc-muted">
+                      Haz clic para subir imagen
+                    </span>
+                    <span className="text-xs text-slc-muted">
+                      JPG, PNG, WebP
+                    </span>
                   </div>
                 )}
               </div>
             )}
             <div className="mt-2">
-              <p className="text-xs text-slc-muted mb-1">O pega una URL directamente:</p>
+              <p className="text-xs text-slc-muted mb-1">
+                O pega una URL directamente:
+              </p>
               <Input
                 value={formData.coverImageUrl}
                 onChange={(e) => {
@@ -512,8 +535,8 @@ function PlaylistFormDialog({
               className="bg-slc-card border-slc-border"
             />
             <p className="text-xs text-slc-muted mt-1">
-              Pega la URL de Spotify y se extraerá el ID automáticamente.
-              Luego usa "Sync Spotify" para importar los tracks.
+              Pega la URL de Spotify y se extraerá el ID automáticamente. Luego
+              usa "Sync Spotify" para importar los tracks.
             </p>
             {formData.spotifyPlaylistId && (
               <p className="text-xs text-green-500 mt-1">
@@ -578,7 +601,12 @@ function PlaylistFormDialog({
         </div>
 
         <DialogFooter className="flex-shrink-0 border-t border-slc-border/30 pt-4 mt-2">
-          <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
           <Button
@@ -634,7 +662,12 @@ function DeleteConfirmDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
           <Button
@@ -685,7 +718,9 @@ export default function PlaylistsPage() {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [spotifyChecking, setSpotifyChecking] = useState(true);
   const [spotifyRedirecting, setSpotifyRedirecting] = useState(false);
-  const [spotifyAccessToken, setSpotifyAccessToken] = useState<string | null>(null);
+  const [spotifyAccessToken, setSpotifyAccessToken] = useState<string | null>(
+    null,
+  );
 
   // Spotify Import dialog states
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -726,14 +761,20 @@ export default function PlaylistsPage() {
 
       if (accessTokenFromUrl) {
         setSpotifyAccessToken(accessTokenFromUrl);
-        console.log("[Spotify] Access token received from callback URL — no DB read needed");
+        console.log(
+          "[Spotify] Access token received from callback URL — no DB read needed",
+        );
       } else {
-        console.warn("[Spotify] No access token in callback URL — will need to fetch from DB");
+        console.warn(
+          "[Spotify] No access token in callback URL — will need to fetch from DB",
+        );
       }
 
       const scopeWarning = params.get("spotify_scope_warning");
       if (scopeWarning) {
-        alert(`Spotify conectado, pero algunos permisos podrían no estar disponibles: ${scopeWarning}. Si la importación falla, intenta reconectar.`);
+        alert(
+          `Spotify conectado, pero algunos permisos podrían no estar disponibles: ${scopeWarning}. Si la importación falla, intenta reconectar.`,
+        );
       } else {
         alert("Spotify conectado exitosamente. Ya puedes importar tracks.");
       }
@@ -749,21 +790,27 @@ export default function PlaylistsPage() {
           const data = await res.json();
           if (data.connected && data.accessToken) {
             // Only update if we don't already have a token from the URL
-            setSpotifyAccessToken(prev => prev || data.accessToken);
-            console.log("[Spotify] DB token check confirmed — tokens are persisted");
+            setSpotifyAccessToken((prev) => prev || data.accessToken);
+            console.log(
+              "[Spotify] DB token check confirmed — tokens are persisted",
+            );
           } else if (attempt < 4) {
             // DB may not have replicated yet — retry with exponential backoff
-            const delay = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s, 16s
-            console.log(`[Spotify] Token not available yet (attempt ${attempt + 1}), retrying in ${delay}ms...`);
+            const delay = 2000 * 2 ** attempt; // 2s, 4s, 8s, 16s
+            console.log(
+              `[Spotify] Token not available yet (attempt ${attempt + 1}), retrying in ${delay}ms...`,
+            );
             setTimeout(() => tryGetAccessToken(attempt + 1), delay);
           } else {
             // Even after retries, we don't override spotifyConnected — the server confirmed it.
             // The sync endpoint will get its own token from the DB when needed.
-            console.warn("[Spotify] Could not fetch access token from DB after OAuth, but connection is confirmed via URL token. Sync will use the URL-provided token.");
+            console.warn(
+              "[Spotify] Could not fetch access token from DB after OAuth, but connection is confirmed via URL token. Sync will use the URL-provided token.",
+            );
           }
         } catch {
           if (attempt < 4) {
-            const delay = 2000 * Math.pow(2, attempt);
+            const delay = 2000 * 2 ** attempt;
             setTimeout(() => tryGetAccessToken(attempt + 1), delay);
           }
         }
@@ -784,9 +831,13 @@ export default function PlaylistsPage() {
         token_exchange_failed: "Error al intercambiar el código de Spotify.",
         no_refresh_token: "No se recibió el refresh token de Spotify.",
         callback_error: "Error en el callback de Spotify.",
-        db_write_failed: "Error al guardar los tokens de Spotify en la base de datos. Intenta de nuevo.",
-        token_verify_failed: "No se pudieron verificar los tokens guardados. Intenta de nuevo.",
-        scope_missing: params.get("spotify_detail") || "Faltan permisos de Spotify. Necesitas autorizar con permisos de lectura de playlists. Intenta reconectar.",
+        db_write_failed:
+          "Error al guardar los tokens de Spotify en la base de datos. Intenta de nuevo.",
+        token_verify_failed:
+          "No se pudieron verificar los tokens guardados. Intenta de nuevo.",
+        scope_missing:
+          params.get("spotify_detail") ||
+          "Faltan permisos de Spotify. Necesitas autorizar con permisos de lectura de playlists. Intenta reconectar.",
       };
       alert(errorMessages[error || ""] || "Error al conectar Spotify.");
       window.history.replaceState({}, "", "/admin/curated-channels/playlists");
@@ -1003,7 +1054,9 @@ export default function PlaylistsPage() {
 
   const handleSyncFromSpotify = async (playlistId: string) => {
     if (!spotifyConnected) {
-      alert("Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso.");
+      alert(
+        "Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso.",
+      );
       return;
     }
     setIsSyncingSpotify(true);
@@ -1024,16 +1077,22 @@ export default function PlaylistsPage() {
         } else if (tokenData.refreshFailed) {
           // Refresh token exists but refresh is temporarily failing
           // Don't reset spotifyConnected — the sync endpoint might still work
-          console.warn("[Spotify] Token refresh temporarily failed, trying sync with existing token if available");
+          console.warn(
+            "[Spotify] Token refresh temporarily failed, trying sync with existing token if available",
+          );
         } else {
           // Token endpoint says not connected — but DON'T immediately reset spotifyConnected.
           // This could be a Turso replication lag issue. The sync endpoint will try
           // its own token retrieval from DB. Only reset if the sync itself confirms auth is needed.
-          console.warn("[Spotify] Token endpoint returned not connected — sync endpoint will try independently");
+          console.warn(
+            "[Spotify] Token endpoint returned not connected — sync endpoint will try independently",
+          );
         }
       } catch {
         // Token check failed — sync endpoint will try its own token retrieval
-        console.warn("[Spotify] Token fetch failed, sync endpoint will try independently");
+        console.warn(
+          "[Spotify] Token fetch failed, sync endpoint will try independently",
+        );
       }
 
       const res = await fetch(
@@ -1055,7 +1114,10 @@ export default function PlaylistsPage() {
         // Turso replication lag, cold starts, etc.)
         setSpotifyConnected(false);
         setSpotifyAccessToken(null);
-        alert(data.error || "Tu cuenta de Spotify necesita reconectarse. Haz clic en 'Conectar Spotify' para reconectar.");
+        alert(
+          data.error ||
+            "Tu cuenta de Spotify necesita reconectarse. Haz clic en 'Conectar Spotify' para reconectar.",
+        );
       } else {
         alert(data.error || "Error syncing from Spotify");
       }
@@ -1076,7 +1138,9 @@ export default function PlaylistsPage() {
     }
     for (const type of types) {
       const urlMatch = url.match(
-        new RegExp(`spotify\\.com/(?:embed/)?(?:intl-[a-z]{2}/)?${type}/([a-zA-Z0-9]+)`)
+        new RegExp(
+          `spotify\\.com/(?:embed/)?(?:intl-[a-z]{2}/)?${type}/([a-zA-Z0-9]+)`,
+        ),
       );
       if (urlMatch) return urlMatch[1];
     }
@@ -1092,7 +1156,9 @@ export default function PlaylistsPage() {
     // Validate it looks like a Spotify URL
     const extractedId = extractSpotifyPlaylistId(spotifyUrl.trim());
     if (!extractedId) {
-      alert("URL de Spotify no válida. Usa el formato: https://open.spotify.com/playlist/...");
+      alert(
+        "URL de Spotify no válida. Usa el formato: https://open.spotify.com/playlist/...",
+      );
       return;
     }
 
@@ -1112,7 +1178,9 @@ export default function PlaylistsPage() {
         }
       } catch {
         // Token check failed — import endpoint will try its own token retrieval
-        console.warn("[Spotify Import] Token fetch failed, import endpoint will try independently");
+        console.warn(
+          "[Spotify Import] Token fetch failed, import endpoint will try independently",
+        );
       }
 
       const res = await fetch("/api/admin/curated-playlists/import-spotify", {
@@ -1136,7 +1204,11 @@ export default function PlaylistsPage() {
           setSelectedPlaylist(data.data.playlist.id);
         }
       } else {
-        setImportResult({ success: false, message: data.error || "Error al importar playlist", errorType: data.errorType });
+        setImportResult({
+          success: false,
+          message: data.error || "Error al importar playlist",
+          errorType: data.errorType,
+        });
       }
     } catch (error) {
       console.error("Error importing from Spotify:", error);
@@ -1184,8 +1256,12 @@ export default function PlaylistsPage() {
                 className="border-green-500/50 text-green-500 hover:bg-green-500/10"
                 title="Conecta tu cuenta de Spotify para importar playlists"
               >
-                <svg className="w-4 h-4 mr-1.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                <svg
+                  className="w-4 h-4 mr-1.5"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
                 </svg>
                 Conectar Spotify
               </Button>
@@ -1193,8 +1269,12 @@ export default function PlaylistsPage() {
             {spotifyConnected && (
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1.5 text-xs text-green-500">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
                   </svg>
                   Spotify conectado
                 </span>
@@ -1384,7 +1464,8 @@ export default function PlaylistsPage() {
                             <div
                               className="w-16 h-16 rounded-xl flex-shrink-0 flex items-center justify-center"
                               style={{
-                                backgroundColor: currentPlaylist.coverColor || "#f97316",
+                                backgroundColor:
+                                  currentPlaylist.coverColor || "#f97316",
                               }}
                             >
                               <ListMusic className="w-8 h-8 text-white" />
@@ -1429,8 +1510,12 @@ export default function PlaylistsPage() {
                             className="border-green-500/50 text-green-500 hover:bg-green-500/10"
                             title="Conectar tu cuenta de Spotify para importar tracks"
                           >
-                            <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                            <svg
+                              className="w-4 h-4 mr-1"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
                             </svg>
                             Conectar Spotify
                           </Button>
@@ -1438,8 +1523,13 @@ export default function PlaylistsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleSyncFromSpotify(currentPlaylist.id)}
-                            disabled={isSyncingSpotify || !currentPlaylist.spotifyPlaylistUrl}
+                            onClick={() =>
+                              handleSyncFromSpotify(currentPlaylist.id)
+                            }
+                            disabled={
+                              isSyncingSpotify ||
+                              !currentPlaylist.spotifyPlaylistUrl
+                            }
                             title={
                               currentPlaylist.spotifyPlaylistUrl
                                 ? "Importar tracks desde Spotify"
@@ -1590,16 +1680,22 @@ export default function PlaylistsPage() {
         <DialogContent className="bg-slc-dark border-slc-border text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-oswald uppercase flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              <svg
+                className="w-5 h-5 text-green-500"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
               </svg>
               Importar de Spotify
             </DialogTitle>
             <DialogDescription className="text-slc-muted">
-              Pega la URL de una playlist de Spotify para importarla automáticamente.
+              Pega la URL de una playlist de Spotify para importarla
+              automáticamente.
               {!spotifyConnected && (
                 <span className="block mt-2 text-yellow-400 text-xs">
-                  Necesitas conectar tu cuenta de Spotify primero para importar playlists.
+                  Necesitas conectar tu cuenta de Spotify primero para importar
+                  playlists.
                 </span>
               )}
               {spotifyConnected && (
@@ -1661,33 +1757,36 @@ export default function PlaylistsPage() {
                   "p-4 rounded-lg border",
                   importResult.success
                     ? "bg-green-500/10 border-green-500/30 text-green-400"
-                    : "bg-red-500/10 border-red-500/30 text-red-400"
+                    : "bg-red-500/10 border-red-500/30 text-red-400",
                 )}
               >
                 <p className="text-sm font-medium">
                   {importResult.success ? "Importación exitosa" : "Error"}
                 </p>
                 <p className="text-xs mt-1">{importResult.message}</p>
-                {!importResult.success && importResult.errorType === "NO_SPOTIFY_TOKEN" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 border-green-600 text-green-500 hover:bg-green-600/20"
-                    onClick={handleConnectSpotify}
-                  >
-                    Conectar Spotify primero
-                  </Button>
-                )}
-                {!importResult.success && (importResult.errorType === "AUTH_FAILED" || importResult.errorType === "PRIVATE_PLAYLIST") && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 border-green-600 text-green-500 hover:bg-green-600/20"
-                    onClick={handleConnectSpotify}
-                  >
-                    Reconectar Spotify
-                  </Button>
-                )}
+                {!importResult.success &&
+                  importResult.errorType === "NO_SPOTIFY_TOKEN" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 border-green-600 text-green-500 hover:bg-green-600/20"
+                      onClick={handleConnectSpotify}
+                    >
+                      Conectar Spotify primero
+                    </Button>
+                  )}
+                {!importResult.success &&
+                  (importResult.errorType === "AUTH_FAILED" ||
+                    importResult.errorType === "PRIVATE_PLAYLIST") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 border-green-600 text-green-500 hover:bg-green-600/20"
+                      onClick={handleConnectSpotify}
+                    >
+                      Reconectar Spotify
+                    </Button>
+                  )}
               </div>
             )}
           </div>

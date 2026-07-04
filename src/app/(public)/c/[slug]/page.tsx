@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Music,
-  Check,
-  Mail,
-  ExternalLink,
-  Calendar,
-  ArrowRight,
-  Download,
-  Loader2,
-} from "lucide-react";
 import { UnlockLanding } from "@/components/public/UnlockLanding";
+import { Button } from "@/components/ui/button";
 import { ShareButtons } from "@/components/ui/share-button";
 import {
   type StyleSettings,
-  defaultStyleSettings,
-  getStyleVariables,
-  getFontClass,
   availableFonts,
+  defaultStyleSettings,
+  getFontClass,
+  getStyleVariables,
 } from "@/lib/style-config";
+import {
+  ArrowRight,
+  Calendar,
+  Check,
+  Download,
+  ExternalLink,
+  Loader2,
+  Mail,
+  Music,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { use, useEffect, useState } from "react";
 
 interface Campaign {
   id: string;
@@ -53,7 +53,9 @@ interface Campaign {
   styleSettings?: Partial<StyleSettings> | null;
 }
 
-export default function CampaignPage({ params }: { params: Promise<{ slug: string }> }) {
+export default function CampaignPage({
+  params,
+}: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,24 +69,23 @@ export default function CampaignPage({ params }: { params: Promise<{ slug: strin
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
+    const fetchCampaign = async () => {
+      try {
+        const res = await fetch(`/api/campaigns/${slug}`);
+        const data = await res.json();
+        if (data.success) {
+          setCampaign(data.data);
+        } else {
+          setError(data.error || "Campaign not found");
+        }
+      } catch (err) {
+        setError("Failed to load campaign");
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchCampaign();
   }, [slug]);
-
-  const fetchCampaign = async () => {
-    try {
-      const res = await fetch(`/api/campaigns/${slug}`);
-      const data = await res.json();
-      if (data.success) {
-        setCampaign(data.data);
-      } else {
-        setError(data.error || "Campaign not found");
-      }
-    } catch (err) {
-      setError("Failed to load campaign");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!campaign) return;
@@ -154,8 +155,12 @@ export default function CampaignPage({ params }: { params: Promise<{ slug: strin
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Music className="w-16 h-16 text-slc-muted mb-4" />
-        <h1 className="text-2xl font-oswald uppercase mb-2">Campaña No Encontrada</h1>
-        <p className="text-slc-muted mb-6">{error || "Esta campaña no existe o ha expirado"}</p>
+        <h1 className="text-2xl font-oswald uppercase mb-2">
+          Campaña No Encontrada
+        </h1>
+        <p className="text-slc-muted mb-6">
+          {error || "Esta campaña no existe o ha expirado"}
+        </p>
         <Button asChild>
           <Link href="/">
             <ArrowRight className="w-4 h-4 mr-2" />
@@ -170,7 +175,9 @@ export default function CampaignPage({ params }: { params: Promise<{ slug: strin
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Calendar className="w-16 h-16 text-slc-muted mb-4" />
-        <h1 className="text-2xl font-oswald uppercase mb-2">Campaña Finalizada</h1>
+        <h1 className="text-2xl font-oswald uppercase mb-2">
+          Campaña Finalizada
+        </h1>
         <p className="text-slc-muted mb-6">Esta campaña ya no está activa</p>
         <Button asChild>
           <Link href="/">
@@ -198,7 +205,11 @@ export default function CampaignPage({ params }: { params: Promise<{ slug: strin
     return (
       <UnlockLanding
         title={campaign.title}
-        subtitle={campaign.campaignType === "presave" ? "Pre-save completado" : undefined}
+        subtitle={
+          campaign.campaignType === "presave"
+            ? "Pre-save completado"
+            : undefined
+        }
         coverImageUrl={campaign.coverImageUrl}
         audioUrl={campaign.previewAudioUrl}
         videoUrl={campaign.previewVideoUrl}
@@ -289,7 +300,9 @@ export default function CampaignPage({ params }: { params: Promise<{ slug: strin
 
         {/* Description */}
         {campaign.description && (
-          <p className={`${bodyFontClass} text-slc-muted text-center mb-4`}>{campaign.description}</p>
+          <p className={`${bodyFontClass} text-slc-muted text-center mb-4`}>
+            {campaign.description}
+          </p>
         )}
 
         {/* Share Buttons */}
@@ -301,128 +314,151 @@ export default function CampaignPage({ params }: { params: Promise<{ slug: strin
 
         {/* Gate Actions */}
         <>
-            <div className="space-y-4 mb-6">
-              {/* Email */}
-              {campaign.requireEmail && (
-                <div className="bg-slc-card border border-slc-border rounded-lg p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${email ? "bg-green-500" : "bg-slc-border"}`}>
-                      {email ? (
-                        <Check className="w-4 h-4 text-white" />
-                      ) : (
-                        <Mail className="w-4 h-4 text-slc-muted" />
-                      )}
-                    </div>
-                    <span className="font-medium">Ingresa tu email</span>
+          <div className="space-y-4 mb-6">
+            {/* Email */}
+            {campaign.requireEmail && (
+              <div className="bg-slc-card border border-slc-border rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${email ? "bg-green-500" : "bg-slc-border"}`}
+                  >
+                    {email ? (
+                      <Check className="w-4 h-4 text-white" />
+                    ) : (
+                      <Mail className="w-4 h-4 text-slc-muted" />
+                    )}
                   </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
-                  />
+                  <span className="font-medium">Ingresa tu email</span>
                 </div>
-              )}
-
-              {/* Spotify Follow */}
-              {campaign.requireSpotifyFollow && campaign.spotifyArtistUrl && (
-                <div className="bg-slc-card border border-slc-border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${followCompleted ? "bg-green-500" : "bg-spotify"}`}>
-                        {followCompleted ? (
-                          <Check className="w-4 h-4 text-white" />
-                        ) : (
-                          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-                          </svg>
-                        )}
-                      </div>
-                      <span className="font-medium">Seguir en Spotify</span>
-                    </div>
-                    <Button
-                      onClick={handleSpotifyFollow}
-                      variant={followCompleted ? "outline" : "default"}
-                      size="sm"
-                      disabled={followCompleted}
-                    >
-                      {followCompleted ? "Hecho" : "Seguir"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Pre-save */}
-              {campaign.requireSpotifyPresave && (
-                <div className="bg-slc-card border border-slc-border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${presaveCompleted ? "bg-green-500" : "bg-primary"}`}>
-                        {presaveCompleted ? (
-                          <Check className="w-4 h-4 text-white" />
-                        ) : (
-                          <Music className="w-4 h-4 text-white" />
-                        )}
-                      </div>
-                      <span className="font-medium">Pre-save</span>
-                    </div>
-                    <Button
-                      onClick={handlePresave}
-                      variant={presaveCompleted ? "outline" : "default"}
-                      size="sm"
-                      disabled={presaveCompleted}
-                    >
-                      {presaveCompleted ? "Guardado" : "Pre-save"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <button
-              onClick={handleSubmit}
-              disabled={!allActionsCompleted || submitting}
-              className={`w-full h-12 px-6 font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                styles.buttonRounded === "full" ? "rounded-full"
-                : styles.buttonRounded === "lg" ? "rounded-lg"
-                : styles.buttonRounded === "md" ? "rounded-md"
-                : styles.buttonRounded === "sm" ? "rounded-sm"
-                : "rounded-none"
-              }`}
-              style={{
-                background: styles.buttonStyle === "gradient"
-                  ? `linear-gradient(to right, ${styles.primaryColor}, ${styles.secondaryColor})`
-                  : styles.buttonStyle === "solid"
-                  ? styles.primaryColor
-                  : "transparent",
-                border: styles.buttonStyle === "outline"
-                  ? `2px solid ${styles.primaryColor}`
-                  : "none",
-                color: styles.buttonStyle === "outline" ? styles.primaryColor : "white",
-              }}
-            >
-              {submitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <ArrowRight className="w-4 h-4" />
-              )}
-              {submitting ? "Procesando..." : "Completar"}
-            </button>
-
-            {/* Direct Smart Link */}
-            {campaign.smartLinkUrl && !campaign.downloadGateEnabled && (
-              <div className="mt-4">
-                <Button asChild variant="outline" className="w-full">
-                  <a href={campaign.smartLinkUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Escuchar Ahora
-                  </a>
-                </Button>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
+                />
               </div>
             )}
-          </>
+
+            {/* Spotify Follow */}
+            {campaign.requireSpotifyFollow && campaign.spotifyArtistUrl && (
+              <div className="bg-slc-card border border-slc-border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${followCompleted ? "bg-green-500" : "bg-spotify"}`}
+                    >
+                      {followCompleted ? (
+                        <Check className="w-4 h-4 text-white" />
+                      ) : (
+                        <svg
+                          className="w-4 h-4 text-white"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="font-medium">Seguir en Spotify</span>
+                  </div>
+                  <Button
+                    onClick={handleSpotifyFollow}
+                    variant={followCompleted ? "outline" : "default"}
+                    size="sm"
+                    disabled={followCompleted}
+                  >
+                    {followCompleted ? "Hecho" : "Seguir"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Pre-save */}
+            {campaign.requireSpotifyPresave && (
+              <div className="bg-slc-card border border-slc-border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${presaveCompleted ? "bg-green-500" : "bg-primary"}`}
+                    >
+                      {presaveCompleted ? (
+                        <Check className="w-4 h-4 text-white" />
+                      ) : (
+                        <Music className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <span className="font-medium">Pre-save</span>
+                  </div>
+                  <Button
+                    onClick={handlePresave}
+                    variant={presaveCompleted ? "outline" : "default"}
+                    size="sm"
+                    disabled={presaveCompleted}
+                  >
+                    {presaveCompleted ? "Guardado" : "Pre-save"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <button
+            onClick={handleSubmit}
+            disabled={!allActionsCompleted || submitting}
+            className={`w-full h-12 px-6 font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+              styles.buttonRounded === "full"
+                ? "rounded-full"
+                : styles.buttonRounded === "lg"
+                  ? "rounded-lg"
+                  : styles.buttonRounded === "md"
+                    ? "rounded-md"
+                    : styles.buttonRounded === "sm"
+                      ? "rounded-sm"
+                      : "rounded-none"
+            }`}
+            style={{
+              background:
+                styles.buttonStyle === "gradient"
+                  ? `linear-gradient(to right, ${styles.primaryColor}, ${styles.secondaryColor})`
+                  : styles.buttonStyle === "solid"
+                    ? styles.primaryColor
+                    : "transparent",
+              border:
+                styles.buttonStyle === "outline"
+                  ? `2px solid ${styles.primaryColor}`
+                  : "none",
+              color:
+                styles.buttonStyle === "outline"
+                  ? styles.primaryColor
+                  : "white",
+            }}
+          >
+            {submitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <ArrowRight className="w-4 h-4" />
+            )}
+            {submitting ? "Procesando..." : "Completar"}
+          </button>
+
+          {/* Direct Smart Link */}
+          {campaign.smartLinkUrl && !campaign.downloadGateEnabled && (
+            <div className="mt-4">
+              <Button asChild variant="outline" className="w-full">
+                <a
+                  href={campaign.smartLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Escuchar Ahora
+                </a>
+              </Button>
+            </div>
+          )}
+        </>
       </div>
     </div>
   );

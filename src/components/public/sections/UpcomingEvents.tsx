@@ -1,8 +1,8 @@
-import Link from "next/link";
-import { ArrowRight, Calendar } from "lucide-react";
-import { EventCard } from "../cards/EventCard";
-import type { Event } from "@/types";
 import { Button } from "@/components/ui/button";
+import type { Event } from "@/types";
+import { ArrowRight, Calendar } from "lucide-react";
+import Link from "next/link";
+import { EventCard } from "../cards/EventCard";
 
 interface UpcomingEventsProps {
   events: Event[];
@@ -41,8 +41,8 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
               Próximamente
             </h3>
             <p className="text-slc-muted max-w-md mx-auto">
-              No hay eventos programados en este momento.
-              Síguenos en redes sociales para enterarte de los próximos shows.
+              No hay eventos programados en este momento. Síguenos en redes
+              sociales para enterarte de los próximos shows.
             </p>
           </div>
         ) : (

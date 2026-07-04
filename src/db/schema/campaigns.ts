@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { artists } from "./artists";
 import { releases } from "./releases";
 
@@ -15,12 +15,18 @@ export const campaigns = sqliteTable("campaigns", {
 
   // Campaign type
   campaignType: text("campaign_type", {
-    enum: ["presave", "hyperfollow", "smartlink", "contest", "download"]
-  }).notNull().default("presave"),
+    enum: ["presave", "hyperfollow", "smartlink", "contest", "download"],
+  })
+    .notNull()
+    .default("presave"),
 
   // Related content
-  artistId: text("artist_id").references(() => artists.id, { onDelete: "set null" }),
-  releaseId: text("release_id").references(() => releases.id, { onDelete: "set null" }),
+  artistId: text("artist_id").references(() => artists.id, {
+    onDelete: "set null",
+  }),
+  releaseId: text("release_id").references(() => releases.id, {
+    onDelete: "set null",
+  }),
 
   // Visual assets
   coverImageUrl: text("cover_image_url"),
@@ -33,23 +39,35 @@ export const campaigns = sqliteTable("campaigns", {
   appleMusicPresaveUrl: text("apple_music_presave_url"),
 
   // Download gate settings
-  downloadGateEnabled: integer("download_gate_enabled", { mode: "boolean" }).notNull().default(false),
+  downloadGateEnabled: integer("download_gate_enabled", { mode: "boolean" })
+    .notNull()
+    .default(false),
   downloadFileUrl: text("download_file_url"), // File to download after completing actions
   downloadFileName: text("download_file_name"),
   previewAudioUrl: text("preview_audio_url"), // Audio preview for unlock landing page
   previewVideoUrl: text("preview_video_url"), // Video preview for unlock landing page
   youtubeVideoId: text("youtube_video_id"), // YouTube video ID for embed
-  videoIsVertical: integer("video_is_vertical", { mode: "boolean" }).default(false), // For TikTok/Reels style videos
+  videoIsVertical: integer("video_is_vertical", { mode: "boolean" }).default(
+    false,
+  ), // For TikTok/Reels style videos
 
   // Required actions
-  requireSpotifyFollow: integer("require_spotify_follow", { mode: "boolean" }).notNull().default(false),
+  requireSpotifyFollow: integer("require_spotify_follow", { mode: "boolean" })
+    .notNull()
+    .default(false),
   spotifyArtistUrl: text("spotify_artist_url"),
-  requireSpotifyPresave: integer("require_spotify_presave", { mode: "boolean" }).notNull().default(false),
-  requireEmail: integer("require_email", { mode: "boolean" }).notNull().default(true),
+  requireSpotifyPresave: integer("require_spotify_presave", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  requireEmail: integer("require_email", { mode: "boolean" })
+    .notNull()
+    .default(true),
 
   // Campaign status
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
 
   // Scheduling
   startDate: integer("start_date", { mode: "timestamp" }),
@@ -84,8 +102,12 @@ export const campaigns = sqliteTable("campaigns", {
     buttonRounded?: "none" | "sm" | "md" | "lg" | "full";
   }>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -94,16 +116,24 @@ export const campaigns = sqliteTable("campaigns", {
 
 export const campaignActions = sqliteTable("campaign_actions", {
   id: text("id").primaryKey(),
-  campaignId: text("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  campaignId: text("campaign_id")
+    .notNull()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
 
   // User info
   email: text("email"),
   spotifyUserId: text("spotify_user_id"),
 
   // Actions completed
-  completedPresave: integer("completed_presave", { mode: "boolean" }).notNull().default(false),
-  completedFollow: integer("completed_follow", { mode: "boolean" }).notNull().default(false),
-  completedDownload: integer("completed_download", { mode: "boolean" }).notNull().default(false),
+  completedPresave: integer("completed_presave", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  completedFollow: integer("completed_follow", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  completedDownload: integer("completed_download", { mode: "boolean" })
+    .notNull()
+    .default(false),
 
   // Tracking
   ipAddress: text("ip_address"),
@@ -114,7 +144,9 @@ export const campaignActions = sqliteTable("campaign_actions", {
   presavedAt: integer("presaved_at", { mode: "timestamp" }),
   followedAt: integer("followed_at", { mode: "timestamp" }),
   downloadedAt: integer("downloaded_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

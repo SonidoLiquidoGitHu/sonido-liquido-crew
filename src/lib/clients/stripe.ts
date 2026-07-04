@@ -67,7 +67,10 @@ class StripeClient {
    */
   private async request<T>(
     endpoint: string,
-    options: { method?: string; body?: Record<string, unknown> | URLSearchParams } = {}
+    options: {
+      method?: string;
+      body?: Record<string, unknown> | URLSearchParams;
+    } = {},
   ): Promise<T> {
     if (!this.isConfigured()) {
       throw new Error("Stripe credentials not configured");
@@ -101,7 +104,7 @@ class StripeClient {
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(
-        `Stripe API error: ${response.status} - ${error.error?.message || response.statusText}`
+        `Stripe API error: ${response.status} - ${error.error?.message || response.statusText}`,
       );
     }
 
@@ -114,7 +117,7 @@ class StripeClient {
   private flattenObject(
     obj: Record<string, unknown>,
     params: URLSearchParams,
-    prefix = ""
+    prefix = "",
   ): void {
     for (const [key, value] of Object.entries(obj)) {
       const fullKey = prefix ? `${prefix}[${key}]` : key;
@@ -128,7 +131,11 @@ class StripeClient {
       } else if (Array.isArray(value)) {
         value.forEach((item, index) => {
           if (typeof item === "object") {
-            this.flattenObject(item as Record<string, unknown>, params, `${fullKey}[${index}]`);
+            this.flattenObject(
+              item as Record<string, unknown>,
+              params,
+              `${fullKey}[${index}]`,
+            );
           } else {
             params.append(`${fullKey}[${index}]`, String(item));
           }
@@ -198,13 +205,17 @@ class StripeClient {
    * Retrieve checkout session
    */
   async getCheckoutSession(sessionId: string): Promise<StripeCheckoutSession> {
-    return this.request<StripeCheckoutSession>(`/checkout/sessions/${sessionId}`);
+    return this.request<StripeCheckoutSession>(
+      `/checkout/sessions/${sessionId}`,
+    );
   }
 
   /**
    * List products
    */
-  async listProducts(options: { limit?: number; active?: boolean } = {}): Promise<{
+  async listProducts(
+    options: { limit?: number; active?: boolean } = {},
+  ): Promise<{
     data: StripeProduct[];
     has_more: boolean;
   }> {
@@ -222,8 +233,11 @@ class StripeClient {
    */
   verifyWebhookSignature(
     payload: string,
-    signature: string
-  ): { verified: boolean; event?: { type: string; data: { object: unknown } } } {
+    signature: string,
+  ): {
+    verified: boolean;
+    event?: { type: string; data: { object: unknown } };
+  } {
     if (!this.webhookSecret) {
       return { verified: false };
     }

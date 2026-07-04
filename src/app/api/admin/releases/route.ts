@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { releases, releaseArtists, artists } from "@/db/schema";
+import { artists, releaseArtists, releases } from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Revalidate every public page that renders releases.
@@ -14,7 +14,10 @@ import { eq } from "drizzle-orm";
  * Without this, newly created releases won't appear on the public site
  * until the homepage ISR (5 min) or the discography cache expires.
  */
-function revalidateReleasePaths(slug?: string | null, artistSlugs: string[] = []) {
+function revalidateReleasePaths(
+  slug?: string | null,
+  artistSlugs: string[] = [],
+) {
   try {
     revalidatePath("/", "layout");
     revalidatePath("/discografia");
@@ -40,18 +43,28 @@ function revalidateReleasePaths(slug?: string | null, artistSlugs: string[] = []
  * Auto-fetch cover image from Spotify when a spotifyUrl or spotifyId is provided
  * but no coverImageUrl. Uses Spotify oEmbed API (no auth required).
  */
-async function fetchCoverFromSpotify(spotifyUrl: string | null, spotifyId: string | null): Promise<string | null> {
+async function fetchCoverFromSpotify(
+  spotifyUrl: string | null,
+  spotifyId: string | null,
+): Promise<string | null> {
   // Prefer using the Spotify URL directly for oEmbed
-  const embedUrl = spotifyUrl || (spotifyId ? `https://open.spotify.com/album/${spotifyId}` : null);
+  const embedUrl =
+    spotifyUrl ||
+    (spotifyId ? `https://open.spotify.com/album/${spotifyId}` : null);
   if (!embedUrl) return null;
 
   try {
     const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(embedUrl)}`;
-    const response = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    const response = await fetch(oembedUrl, {
+      signal: AbortSignal.timeout(5000),
+    });
     if (response.ok) {
       const data = await response.json();
       if (data.thumbnail_url) {
-        console.log("[Admin] Auto-fetched cover from Spotify oEmbed:", embedUrl);
+        console.log(
+          "[Admin] Auto-fetched cover from Spotify oEmbed:",
+          embedUrl,
+        );
         return data.thumbnail_url;
       }
     }
@@ -80,7 +93,7 @@ export async function GET() {
     console.error("Failed to fetch releases:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch releases" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -106,7 +119,7 @@ export async function POST(request: NextRequest) {
     if (!title || !artistId || !releaseDate) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -123,7 +136,10 @@ export async function POST(request: NextRequest) {
     // Auto-fetch cover from Spotify if not provided
     let finalCoverImageUrl = coverImageUrl || null;
     if (!finalCoverImageUrl && (spotifyUrl || spotifyId)) {
-      finalCoverImageUrl = await fetchCoverFromSpotify(spotifyUrl || null, spotifyId || null);
+      finalCoverImageUrl = await fetchCoverFromSpotify(
+        spotifyUrl || null,
+        spotifyId || null,
+      );
     }
 
     // Create release
@@ -176,7 +192,7 @@ export async function POST(request: NextRequest) {
     console.error("Failed to create release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -189,7 +205,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing release ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -222,7 +238,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Failed to delete release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

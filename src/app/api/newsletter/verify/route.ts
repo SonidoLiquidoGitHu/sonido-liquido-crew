@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { subscribers } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
 import { siteSettings } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // POST - Verify if email is an active subscriber
@@ -15,16 +15,14 @@ export async function POST(request: NextRequest) {
     if (!email) {
       return NextResponse.json(
         { success: false, error: "Email is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Check if subscriber exists and is active
     const subscriber = await db.query.subscribers.findFirst({
-      where: (s, { eq, and }) => and(
-        eq(s.email, email.toLowerCase().trim()),
-        eq(s.isActive, true)
-      ),
+      where: (s, { eq, and }) =>
+        and(eq(s.email, email.toLowerCase().trim()), eq(s.isActive, true)),
     });
 
     const verified = !!subscriber;
@@ -37,7 +35,7 @@ export async function POST(request: NextRequest) {
           where: (s, { eq }) => eq(s.key, "exclusive_downloads"),
         });
 
-        if (setting && setting.value) {
+        if (setting?.value) {
           const allDownloads = JSON.parse(setting.value);
           // Only return active downloads
           downloads = allDownloads.filter((d: any) => d.isActive !== false);
@@ -56,7 +54,7 @@ export async function POST(request: NextRequest) {
     console.error("Error verifying subscriber:", error);
     return NextResponse.json(
       { success: false, error: "Failed to verify" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 import {
-  Play,
+  ExternalLink,
+  ListMusic,
+  Music,
   Pause,
+  Play,
   SkipBack,
   SkipForward,
-  Music,
-  ListMusic,
-  ExternalLink,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Track {
   id: string;
@@ -94,7 +94,8 @@ export default function PlaylistEmbedPage() {
   }
 
   function openInSpotify(track?: Track) {
-    const uri = track?.spotifyUri || playlist?.tracks[currentTrackIndex]?.spotifyUri;
+    const uri =
+      track?.spotifyUri || playlist?.tracks[currentTrackIndex]?.spotifyUri;
     if (uri) {
       const trackId = uri.replace("spotify:track:", "");
       window.open(`https://open.spotify.com/track/${trackId}`, "_blank");
@@ -121,7 +122,10 @@ export default function PlaylistEmbedPage() {
         className="w-full h-full flex items-center justify-center"
         style={{ backgroundColor: bgColor }}
       >
-        <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: accentColor }} />
+        <div
+          className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full"
+          style={{ borderColor: accentColor }}
+        />
       </div>
     );
   }
@@ -133,8 +137,13 @@ export default function PlaylistEmbedPage() {
         style={{ backgroundColor: bgColor, color: textColor }}
       >
         <div className="text-center">
-          <ListMusic className="w-12 h-12 mx-auto mb-2" style={{ color: mutedColor }} />
-          <p style={{ color: mutedColor }}>{error || "Playlist no disponible"}</p>
+          <ListMusic
+            className="w-12 h-12 mx-auto mb-2"
+            style={{ color: mutedColor }}
+          />
+          <p style={{ color: mutedColor }}>
+            {error || "Playlist no disponible"}
+          </p>
         </div>
       </div>
     );
@@ -145,7 +154,10 @@ export default function PlaylistEmbedPage() {
     return (
       <div
         className="w-full h-full p-3 flex items-center gap-3"
-        style={{ backgroundColor: bgColor, fontFamily: "system-ui, sans-serif" }}
+        style={{
+          backgroundColor: bgColor,
+          fontFamily: "system-ui, sans-serif",
+        }}
       >
         {/* Artwork */}
         {showArtwork && (
@@ -169,7 +181,10 @@ export default function PlaylistEmbedPage() {
 
         {/* Track info */}
         <div className="flex-1 min-w-0">
-          <p className="font-medium truncate text-sm" style={{ color: textColor }}>
+          <p
+            className="font-medium truncate text-sm"
+            style={{ color: textColor }}
+          >
             {currentTrack?.title}
           </p>
           <p className="text-xs truncate" style={{ color: mutedColor }}>
@@ -180,7 +195,9 @@ export default function PlaylistEmbedPage() {
         {/* Controls */}
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setCurrentTrackIndex(Math.max(0, currentTrackIndex - 1))}
+            onClick={() =>
+              setCurrentTrackIndex(Math.max(0, currentTrackIndex - 1))
+            }
             className="p-1.5 rounded-full transition-colors hover:opacity-80"
             disabled={currentTrackIndex === 0}
             style={{ color: currentTrackIndex === 0 ? mutedColor : textColor }}
@@ -195,10 +212,19 @@ export default function PlaylistEmbedPage() {
             <Play className="w-4 h-4 text-white ml-0.5" fill="white" />
           </button>
           <button
-            onClick={() => setCurrentTrackIndex(Math.min(playlist.tracks.length - 1, currentTrackIndex + 1))}
+            onClick={() =>
+              setCurrentTrackIndex(
+                Math.min(playlist.tracks.length - 1, currentTrackIndex + 1),
+              )
+            }
             className="p-1.5 rounded-full transition-colors hover:opacity-80"
             disabled={currentTrackIndex === playlist.tracks.length - 1}
-            style={{ color: currentTrackIndex === playlist.tracks.length - 1 ? mutedColor : textColor }}
+            style={{
+              color:
+                currentTrackIndex === playlist.tracks.length - 1
+                  ? mutedColor
+                  : textColor,
+            }}
           >
             <SkipForward className="w-4 h-4" />
           </button>
@@ -224,7 +250,10 @@ export default function PlaylistEmbedPage() {
       style={{ backgroundColor: bgColor, fontFamily: "system-ui, sans-serif" }}
     >
       {/* Header */}
-      <div className="p-4 flex items-center gap-4" style={{ borderBottom: `1px solid ${borderColor}` }}>
+      <div
+        className="p-4 flex items-center gap-4"
+        style={{ borderBottom: `1px solid ${borderColor}` }}
+      >
         {/* Cover */}
         {showArtwork && (
           <div
@@ -247,14 +276,21 @@ export default function PlaylistEmbedPage() {
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: accentColor }}>
+          <p
+            className="text-xs uppercase tracking-wider mb-1"
+            style={{ color: accentColor }}
+          >
             Playlist
           </p>
-          <h1 className="font-bold text-lg truncate" style={{ color: textColor }}>
+          <h1
+            className="font-bold text-lg truncate"
+            style={{ color: textColor }}
+          >
             {playlist.name}
           </h1>
           <p className="text-xs" style={{ color: mutedColor }}>
-            {playlist.tracks.length} tracks • {playlist.ownerName || "Sonido Líquido"}
+            {playlist.tracks.length} tracks •{" "}
+            {playlist.ownerName || "Sonido Líquido"}
           </p>
         </div>
 
@@ -280,16 +316,20 @@ export default function PlaylistEmbedPage() {
             }}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2 text-left transition-colors hover:opacity-90",
-              index === currentTrackIndex && "opacity-100"
+              index === currentTrackIndex && "opacity-100",
             )}
             style={{
-              backgroundColor: index === currentTrackIndex ? cardBg : "transparent",
+              backgroundColor:
+                index === currentTrackIndex ? cardBg : "transparent",
             }}
           >
             {/* Track number or playing indicator */}
             <div className="w-6 text-center flex-shrink-0">
               {index === currentTrackIndex ? (
-                <div className="w-3 h-3 mx-auto rounded-full" style={{ backgroundColor: accentColor }} />
+                <div
+                  className="w-3 h-3 mx-auto rounded-full"
+                  style={{ backgroundColor: accentColor }}
+                />
               ) : (
                 <span className="text-sm" style={{ color: mutedColor }}>
                   {index + 1}
@@ -298,9 +338,16 @@ export default function PlaylistEmbedPage() {
             </div>
 
             {/* Cover */}
-            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0" style={{ backgroundColor: borderColor }}>
+            <div
+              className="w-10 h-10 rounded overflow-hidden flex-shrink-0"
+              style={{ backgroundColor: borderColor }}
+            >
               {track.coverUrl ? (
-                <img src={track.coverUrl} alt={track.title || "Portada del track"} className="w-full h-full object-cover" />
+                <img
+                  src={track.coverUrl}
+                  alt={track.title || "Portada del track"}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Music className="w-4 h-4" style={{ color: mutedColor }} />
@@ -312,7 +359,9 @@ export default function PlaylistEmbedPage() {
             <div className="flex-1 min-w-0">
               <p
                 className="font-medium text-sm truncate"
-                style={{ color: index === currentTrackIndex ? accentColor : textColor }}
+                style={{
+                  color: index === currentTrackIndex ? accentColor : textColor,
+                }}
               >
                 {track.title}
               </p>
@@ -323,8 +372,12 @@ export default function PlaylistEmbedPage() {
 
             {/* Duration */}
             {track.duration && (
-              <span className="text-xs flex-shrink-0" style={{ color: mutedColor }}>
-                {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, "0")}
+              <span
+                className="text-xs flex-shrink-0"
+                style={{ color: mutedColor }}
+              >
+                {Math.floor(track.duration / 60)}:
+                {(track.duration % 60).toString().padStart(2, "0")}
               </span>
             )}
           </button>
@@ -334,7 +387,10 @@ export default function PlaylistEmbedPage() {
       {/* Footer branding */}
       <div
         className="px-4 py-2 flex items-center justify-between"
-        style={{ borderTop: `1px solid ${borderColor}`, backgroundColor: cardBg }}
+        style={{
+          borderTop: `1px solid ${borderColor}`,
+          backgroundColor: cardBg,
+        }}
       >
         <a
           href="https://sonidoliquido.com"
@@ -348,7 +404,14 @@ export default function PlaylistEmbedPage() {
             style={{ backgroundColor: accentColor }}
           >
             <svg viewBox="0 0 24 24" className="w-3 h-3 text-white">
-              <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" fill="none" />
+              <circle
+                cx="12"
+                cy="12"
+                r="8"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+              />
               <circle cx="12" cy="12" r="2" fill="currentColor" />
             </svg>
           </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, CheckCircle, AlertTriangle, Music } from "lucide-react";
+import { AlertTriangle, CheckCircle, Music, RefreshCw } from "lucide-react";
+import { useState } from "react";
 
 export function SpotifySyncButton() {
   const [syncing, setSyncing] = useState(false);

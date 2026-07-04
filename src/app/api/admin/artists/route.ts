@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles } from "@/db/schema";
+import { artistExternalProfiles, artists } from "@/db/schema";
+import { extractSpotifyId, generateUUID, slugify } from "@/lib/utils";
 import { asc, eq } from "drizzle-orm";
-import { generateUUID, slugify, extractSpotifyId } from "@/lib/utils";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/admin/artists - Get all artists for admin selectors
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (!body.name) {
       return NextResponse.json(
         { success: false, error: "Name is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -107,9 +107,19 @@ export async function POST(request: NextRequest) {
         managementEmail: body.managementEmail || null,
         pressEmail: body.pressEmail || null,
         websiteUrl: body.websiteUrl || null,
-        yearStarted: body.yearStarted ? parseInt(body.yearStarted) : null,
-        genres: body.genres ? (typeof body.genres === 'string' ? body.genres : JSON.stringify(body.genres)) : null,
-        labels: body.labels ? (typeof body.labels === 'string' ? body.labels : JSON.stringify(body.labels)) : null,
+        yearStarted: body.yearStarted
+          ? Number.parseInt(body.yearStarted)
+          : null,
+        genres: body.genres
+          ? typeof body.genres === "string"
+            ? body.genres
+            : JSON.stringify(body.genres)
+          : null,
+        labels: body.labels
+          ? typeof body.labels === "string"
+            ? body.labels
+            : JSON.stringify(body.labels)
+          : null,
         isActive: body.isActive ?? true,
         isFeatured: body.isFeatured ?? false,
         sortOrder: body.sortOrder ?? 0,
@@ -145,7 +155,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Admin Artists API] Created artist: ${newArtist.name} (${newArtist.id})`);
+    console.log(
+      `[Admin Artists API] Created artist: ${newArtist.name} (${newArtist.id})`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -158,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Music2, ExternalLink, Disc3, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Disc3, ExternalLink, Loader2, Music2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Type for artist data from /api/artists/roster
 interface RosterArtist {
@@ -41,20 +41,23 @@ export function DiscographyExplorer() {
   const spotifyEmbedRef = useRef<HTMLDivElement>(null);
 
   // Fetch artist image from Spotify oembed
-  const fetchArtistImage = useCallback(async (spotifyId: string): Promise<string | null> => {
-    try {
-      const response = await fetch(
-        `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${spotifyId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        return data.thumbnail_url || null;
+  const fetchArtistImage = useCallback(
+    async (spotifyId: string): Promise<string | null> => {
+      try {
+        const response = await fetch(
+          `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${spotifyId}`,
+        );
+        if (response.ok) {
+          const data = await response.json();
+          return data.thumbnail_url || null;
+        }
+      } catch (error) {
+        console.error(`Failed to fetch image for artist ${spotifyId}:`, error);
       }
-    } catch (error) {
-      console.error(`Failed to fetch image for artist ${spotifyId}:`, error);
-    }
-    return null;
-  }, []);
+      return null;
+    },
+    [],
+  );
 
   // Fetch artists from roster API
   useEffect(() => {
@@ -92,7 +95,7 @@ export function DiscographyExplorer() {
               images[artist.slug] = imageUrl;
             }
           }
-        })
+        }),
       );
 
       setArtistImages(images);
@@ -109,10 +112,12 @@ export function DiscographyExplorer() {
   const selectedColor = selectedArtist?.tintColor || DEFAULT_COLOR;
   const selectedSpotifyId = selectedArtist?.spotifyId || null;
   const selectedSpotifyUrl = selectedArtist?.spotifyUrl || "#";
-  const selectedImage = selectedArtist ? artistImages[selectedArtist.slug] : undefined;
+  const selectedImage = selectedArtist
+    ? artistImages[selectedArtist.slug]
+    : undefined;
 
   const handleImageError = (slug: string) => {
-    setImageErrors(prev => ({ ...prev, [slug]: true }));
+    setImageErrors((prev) => ({ ...prev, [slug]: true }));
   };
 
   // Handle artist selection with mobile scroll
@@ -123,7 +128,7 @@ export function DiscographyExplorer() {
       setTimeout(() => {
         spotifyEmbedRef.current?.scrollIntoView({
           behavior: "smooth",
-          block: "start"
+          block: "start",
         });
       }, 100);
     }
@@ -156,7 +161,8 @@ export function DiscographyExplorer() {
           </h2>
         </div>
         <p className="text-gray-400 mb-10 max-w-2xl">
-          Explora la discografía completa de cada artista. Álbumes, EPs, singles y colaboraciones.
+          Explora la discografía completa de cada artista. Álbumes, EPs, singles
+          y colaboraciones.
         </p>
 
         {/* Spotify Embed - NOW AT TOP */}
@@ -171,7 +177,9 @@ export function DiscographyExplorer() {
             {/* Artist Header */}
             <div
               className="p-4 border-b border-white/10"
-              style={{ background: `linear-gradient(90deg, ${selectedColor}30, transparent)` }}
+              style={{
+                background: `linear-gradient(90deg, ${selectedColor}30, transparent)`,
+              }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -193,7 +201,9 @@ export function DiscographyExplorer() {
                     )}
                   </div>
                   <div>
-                    <h3 className="font-oswald text-2xl text-white uppercase">{selectedArtist.name}</h3>
+                    <h3 className="font-oswald text-2xl text-white uppercase">
+                      {selectedArtist.name}
+                    </h3>
                     <p className="text-gray-400">{selectedArtist.role}</p>
                   </div>
                 </div>
@@ -202,7 +212,11 @@ export function DiscographyExplorer() {
                     asChild
                     className="bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold"
                   >
-                    <a href={selectedSpotifyUrl} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={selectedSpotifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Music2 className="w-4 h-4 mr-2" />
                       Abrir en Spotify
                       <ExternalLink className="w-3 h-3 ml-2" />
@@ -249,9 +263,10 @@ export function DiscographyExplorer() {
                 onClick={() => handleSelectArtist(index)}
                 className={`
                   flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-300 touch-manipulation
-                  ${isSelected
-                    ? "bg-white/10 border-2"
-                    : "bg-white/5 hover:bg-white/10 border-2 border-transparent active:bg-white/15"
+                  ${
+                    isSelected
+                      ? "bg-white/10 border-2"
+                      : "bg-white/5 hover:bg-white/10 border-2 border-transparent active:bg-white/15"
                   }
                 `}
                 style={{
@@ -263,7 +278,9 @@ export function DiscographyExplorer() {
                   className="w-14 h-14 rounded-full flex items-center justify-center font-oswald font-bold text-xl shrink-0 overflow-hidden transition-transform hover:scale-105"
                   style={{
                     backgroundColor: hasImage ? undefined : color,
-                    boxShadow: isSelected ? `0 0 0 3px #0a0a0a, 0 0 0 5px ${color}` : `0 0 15px ${color}40`,
+                    boxShadow: isSelected
+                      ? `0 0 0 3px #0a0a0a, 0 0 0 5px ${color}`
+                      : `0 0 15px ${color}40`,
                   }}
                 >
                   {hasImage ? (
@@ -280,7 +297,9 @@ export function DiscographyExplorer() {
                 </div>
 
                 {/* Artist Name */}
-                <span className={`text-sm font-medium truncate max-w-full ${isSelected ? "text-white" : "text-gray-400"}`}>
+                <span
+                  className={`text-sm font-medium truncate max-w-full ${isSelected ? "text-white" : "text-gray-400"}`}
+                >
                   {artist.name}
                 </span>
 

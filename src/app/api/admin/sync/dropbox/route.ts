@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { beats, campaigns, mediaReleases, fileAssets } from "@/db/schema";
+import { beats, campaigns, fileAssets, mediaReleases } from "@/db/schema";
 import { dropboxClient } from "@/lib/clients/dropbox";
-import { eq, isNotNull, desc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { desc, eq, isNotNull } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface SyncResult {
   success: boolean;
@@ -35,7 +35,7 @@ async function trackFileAsset(
   url: string,
   entityType: string,
   entityId: string,
-  fieldName: string
+  fieldName: string,
 ): Promise<void> {
   // Extract path from Dropbox URL
   let storagePath = url;
@@ -109,7 +109,12 @@ async function syncBeatsMedia(stats: SyncResult["stats"]): Promise<void> {
       if (isValid) {
         stats.filesVerified++;
         if (beat.coverImageUrl.includes("dropbox")) {
-          await trackFileAsset(beat.coverImageUrl, "beat", beat.id, "coverImageUrl");
+          await trackFileAsset(
+            beat.coverImageUrl,
+            "beat",
+            beat.id,
+            "coverImageUrl",
+          );
           stats.filesTracked++;
         }
       } else {
@@ -124,7 +129,12 @@ async function syncBeatsMedia(stats: SyncResult["stats"]): Promise<void> {
       if (isValid) {
         stats.filesVerified++;
         if (beat.previewAudioUrl.includes("dropbox")) {
-          await trackFileAsset(beat.previewAudioUrl, "beat", beat.id, "previewAudioUrl");
+          await trackFileAsset(
+            beat.previewAudioUrl,
+            "beat",
+            beat.id,
+            "previewAudioUrl",
+          );
           stats.filesTracked++;
         }
       } else {
@@ -139,7 +149,12 @@ async function syncBeatsMedia(stats: SyncResult["stats"]): Promise<void> {
       if (isValid) {
         stats.filesVerified++;
         if (beat.fullAudioUrl.includes("dropbox")) {
-          await trackFileAsset(beat.fullAudioUrl, "beat", beat.id, "fullAudioUrl");
+          await trackFileAsset(
+            beat.fullAudioUrl,
+            "beat",
+            beat.id,
+            "fullAudioUrl",
+          );
           stats.filesTracked++;
         }
       } else {
@@ -154,7 +169,12 @@ async function syncBeatsMedia(stats: SyncResult["stats"]): Promise<void> {
       if (isValid) {
         stats.filesVerified++;
         if (beat.stemPackUrl.includes("dropbox")) {
-          await trackFileAsset(beat.stemPackUrl, "beat", beat.id, "stemPackUrl");
+          await trackFileAsset(
+            beat.stemPackUrl,
+            "beat",
+            beat.id,
+            "stemPackUrl",
+          );
           stats.filesTracked++;
         }
       } else {
@@ -167,7 +187,10 @@ async function syncBeatsMedia(stats: SyncResult["stats"]): Promise<void> {
 
 // Sync campaigns media files
 async function syncCampaignsMedia(stats: SyncResult["stats"]): Promise<void> {
-  const allCampaigns = await db.select().from(campaigns).orderBy(desc(campaigns.createdAt));
+  const allCampaigns = await db
+    .select()
+    .from(campaigns)
+    .orderBy(desc(campaigns.createdAt));
 
   for (const campaign of allCampaigns) {
     stats.campaignsProcessed++;
@@ -178,12 +201,19 @@ async function syncCampaignsMedia(stats: SyncResult["stats"]): Promise<void> {
       if (isValid) {
         stats.filesVerified++;
         if (campaign.coverImageUrl.includes("dropbox")) {
-          await trackFileAsset(campaign.coverImageUrl, "campaign", campaign.id, "coverImageUrl");
+          await trackFileAsset(
+            campaign.coverImageUrl,
+            "campaign",
+            campaign.id,
+            "coverImageUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Campaign "${campaign.title}": cover image URL invalid`);
+        stats.errors.push(
+          `Campaign "${campaign.title}": cover image URL invalid`,
+        );
       }
     }
 
@@ -193,12 +223,19 @@ async function syncCampaignsMedia(stats: SyncResult["stats"]): Promise<void> {
       if (isValid) {
         stats.filesVerified++;
         if (campaign.bannerImageUrl.includes("dropbox")) {
-          await trackFileAsset(campaign.bannerImageUrl, "campaign", campaign.id, "bannerImageUrl");
+          await trackFileAsset(
+            campaign.bannerImageUrl,
+            "campaign",
+            campaign.id,
+            "bannerImageUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Campaign "${campaign.title}": banner image URL invalid`);
+        stats.errors.push(
+          `Campaign "${campaign.title}": banner image URL invalid`,
+        );
       }
     }
 
@@ -208,20 +245,32 @@ async function syncCampaignsMedia(stats: SyncResult["stats"]): Promise<void> {
       if (isValid) {
         stats.filesVerified++;
         if (campaign.downloadFileUrl.includes("dropbox")) {
-          await trackFileAsset(campaign.downloadFileUrl, "campaign", campaign.id, "downloadFileUrl");
+          await trackFileAsset(
+            campaign.downloadFileUrl,
+            "campaign",
+            campaign.id,
+            "downloadFileUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Campaign "${campaign.title}": download file URL invalid`);
+        stats.errors.push(
+          `Campaign "${campaign.title}": download file URL invalid`,
+        );
       }
     }
   }
 }
 
 // Sync media releases files
-async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void> {
-  const allMediaReleases = await db.select().from(mediaReleases).orderBy(desc(mediaReleases.createdAt));
+async function syncMediaReleasesMedia(
+  stats: SyncResult["stats"],
+): Promise<void> {
+  const allMediaReleases = await db
+    .select()
+    .from(mediaReleases)
+    .orderBy(desc(mediaReleases.createdAt));
 
   for (const release of allMediaReleases) {
     stats.mediaReleasesProcessed++;
@@ -232,12 +281,19 @@ async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void>
       if (isValid) {
         stats.filesVerified++;
         if (release.coverImageUrl.includes("dropbox")) {
-          await trackFileAsset(release.coverImageUrl, "media_release", release.id, "coverImageUrl");
+          await trackFileAsset(
+            release.coverImageUrl,
+            "media_release",
+            release.id,
+            "coverImageUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Media Release "${release.title}": cover image URL invalid`);
+        stats.errors.push(
+          `Media Release "${release.title}": cover image URL invalid`,
+        );
       }
     }
 
@@ -247,12 +303,19 @@ async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void>
       if (isValid) {
         stats.filesVerified++;
         if (release.bannerImageUrl.includes("dropbox")) {
-          await trackFileAsset(release.bannerImageUrl, "media_release", release.id, "bannerImageUrl");
+          await trackFileAsset(
+            release.bannerImageUrl,
+            "media_release",
+            release.id,
+            "bannerImageUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Media Release "${release.title}": banner image URL invalid`);
+        stats.errors.push(
+          `Media Release "${release.title}": banner image URL invalid`,
+        );
       }
     }
 
@@ -262,12 +325,19 @@ async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void>
       if (isValid) {
         stats.filesVerified++;
         if (release.audioPreviewUrl.includes("dropbox")) {
-          await trackFileAsset(release.audioPreviewUrl, "media_release", release.id, "audioPreviewUrl");
+          await trackFileAsset(
+            release.audioPreviewUrl,
+            "media_release",
+            release.id,
+            "audioPreviewUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Media Release "${release.title}": audio preview URL invalid`);
+        stats.errors.push(
+          `Media Release "${release.title}": audio preview URL invalid`,
+        );
       }
     }
 
@@ -277,12 +347,19 @@ async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void>
       if (isValid) {
         stats.filesVerified++;
         if (release.pressKitUrl.includes("dropbox")) {
-          await trackFileAsset(release.pressKitUrl, "media_release", release.id, "pressKitUrl");
+          await trackFileAsset(
+            release.pressKitUrl,
+            "media_release",
+            release.id,
+            "pressKitUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Media Release "${release.title}": press kit URL invalid`);
+        stats.errors.push(
+          `Media Release "${release.title}": press kit URL invalid`,
+        );
       }
     }
 
@@ -292,12 +369,19 @@ async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void>
       if (isValid) {
         stats.filesVerified++;
         if (release.highResImagesUrl.includes("dropbox")) {
-          await trackFileAsset(release.highResImagesUrl, "media_release", release.id, "highResImagesUrl");
+          await trackFileAsset(
+            release.highResImagesUrl,
+            "media_release",
+            release.id,
+            "highResImagesUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Media Release "${release.title}": high-res images URL invalid`);
+        stats.errors.push(
+          `Media Release "${release.title}": high-res images URL invalid`,
+        );
       }
     }
 
@@ -307,21 +391,29 @@ async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void>
       if (isValid) {
         stats.filesVerified++;
         if (release.linerNotesUrl.includes("dropbox")) {
-          await trackFileAsset(release.linerNotesUrl, "media_release", release.id, "linerNotesUrl");
+          await trackFileAsset(
+            release.linerNotesUrl,
+            "media_release",
+            release.id,
+            "linerNotesUrl",
+          );
           stats.filesTracked++;
         }
       } else {
         stats.filesMissing++;
-        stats.errors.push(`Media Release "${release.title}": liner notes URL invalid`);
+        stats.errors.push(
+          `Media Release "${release.title}": liner notes URL invalid`,
+        );
       }
     }
 
     // Check and track gallery images
     if (release.galleryImages) {
       try {
-        const gallery = typeof release.galleryImages === "string"
-          ? JSON.parse(release.galleryImages)
-          : release.galleryImages;
+        const gallery =
+          typeof release.galleryImages === "string"
+            ? JSON.parse(release.galleryImages)
+            : release.galleryImages;
 
         if (Array.isArray(gallery)) {
           for (let i = 0; i < gallery.length; i++) {
@@ -331,7 +423,12 @@ async function syncMediaReleasesMedia(stats: SyncResult["stats"]): Promise<void>
               if (isValid) {
                 stats.filesVerified++;
                 if (imageUrl.includes("dropbox")) {
-                  await trackFileAsset(imageUrl, "media_release", release.id, `galleryImages[${i}]`);
+                  await trackFileAsset(
+                    imageUrl,
+                    "media_release",
+                    release.id,
+                    `galleryImages[${i}]`,
+                  );
                   stats.filesTracked++;
                 }
               } else {
@@ -367,10 +464,13 @@ export async function POST(request: NextRequest) {
 
   try {
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({
-        success: false,
-        error: "Database not configured",
-      }, { status: 503 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Database not configured",
+        },
+        { status: 503 },
+      );
     }
 
     // Check if Dropbox is configured
@@ -390,36 +490,44 @@ export async function POST(request: NextRequest) {
     // Sync media releases
     console.log("\n📰 Syncing media releases...");
     await syncMediaReleasesMedia(result.stats);
-    console.log(`   Processed: ${result.stats.mediaReleasesProcessed} media releases`);
+    console.log(
+      `   Processed: ${result.stats.mediaReleasesProcessed} media releases`,
+    );
 
-    console.log("\n" + "=".repeat(50));
+    console.log(`\n${"=".repeat(50)}`);
     console.log("📊 SYNC COMPLETE");
     console.log(`   Files verified: ${result.stats.filesVerified}`);
     console.log(`   Files missing: ${result.stats.filesMissing}`);
     console.log(`   Files tracked: ${result.stats.filesTracked}`);
     console.log(`   Errors: ${result.stats.errors.length}`);
-    console.log("=".repeat(50) + "\n");
+    console.log(`${"=".repeat(50)}\n`);
 
     result.message = `Synced ${result.stats.beatsProcessed} beats, ${result.stats.campaignsProcessed} campaigns, ${result.stats.mediaReleasesProcessed} media releases. ${result.stats.filesVerified} files verified, ${result.stats.filesTracked} tracked in database.`;
 
     return NextResponse.json(result);
   } catch (error) {
     console.error("❌ Dropbox sync failed:", error);
-    return NextResponse.json({
-      success: false,
-      error: (error as Error).message,
-      stats: result.stats,
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: (error as Error).message,
+        stats: result.stats,
+      },
+      { status: 500 },
+    );
   }
 }
 
 export async function GET() {
   try {
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({
-        success: false,
-        error: "Database not configured",
-      }, { status: 503 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Database not configured",
+        },
+        { status: 503 },
+      );
     }
 
     // Get counts
@@ -445,9 +553,12 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[Dropbox Sync] Error:", error);
-    return NextResponse.json({
-      success: false,
-      error: (error as Error).message,
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: (error as Error).message,
+      },
+      { status: 500 },
+    );
   }
 }

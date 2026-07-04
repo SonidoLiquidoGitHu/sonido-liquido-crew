@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { artists, artistExternalProfiles } from "@/db/schema/artists";
+import { artistExternalProfiles, artists } from "@/db/schema/artists";
 import { pressKit } from "@/db/schema/press-kit";
-import { releases, releaseArtists } from "@/db/schema/releases";
+import { releaseArtists, releases } from "@/db/schema/releases";
 import { videos } from "@/db/schema/videos";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { count, desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface PressQuote {
   quote: string;
@@ -109,8 +109,10 @@ export async function GET(request: NextRequest) {
     const allProfiles = await db.select().from(artistExternalProfiles);
 
     // Build artist press kit data
-    const buildArtistPressKit = async (artist: typeof allArtists[0]): Promise<ArtistPressKitData> => {
-      const profiles = allProfiles.filter(p => p.artistId === artist.id);
+    const buildArtistPressKit = async (
+      artist: (typeof allArtists)[0],
+    ): Promise<ArtistPressKitData> => {
+      const profiles = allProfiles.filter((p) => p.artistId === artist.id);
 
       // Get release count using the releaseArtists junction table
       const [releaseCount] = await db
@@ -140,7 +142,7 @@ export async function GET(request: NextRequest) {
         genres: parseJson(artist.genres, []),
         pressQuotes: parseJson(artist.pressQuotes, []),
         featuredVideos: parseJson(artist.featuredVideos, []),
-        socialProfiles: profiles.map(p => ({
+        socialProfiles: profiles.map((p) => ({
           platform: p.platform,
           url: p.externalUrl,
           handle: p.handle,
@@ -155,11 +157,11 @@ export async function GET(request: NextRequest) {
 
     // If specific artist requested
     if (artistSlug) {
-      const artist = allArtists.find(a => a.slug === artistSlug);
+      const artist = allArtists.find((a) => a.slug === artistSlug);
       if (!artist) {
         return NextResponse.json(
           { success: false, error: "Artist not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -231,15 +233,19 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching press kit:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch press kit" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-function buildGeneralData(kit: typeof pressKit.$inferSelect | undefined): GeneralPressKitData {
+function buildGeneralData(
+  kit: typeof pressKit.$inferSelect | undefined,
+): GeneralPressKitData {
   return {
     title: kit?.heroTitle || "Sonido Líquido Crew",
-    subtitle: kit?.heroSubtitle || "El colectivo de Hip Hop más representativo de México",
+    subtitle:
+      kit?.heroSubtitle ||
+      "El colectivo de Hip Hop más representativo de México",
     tagline: kit?.heroTagline || "Fundado en 1999 en la Ciudad de México.",
     coverImageUrl: kit?.heroCoverImageUrl || null,
     bannerImageUrl: kit?.heroBannerImageUrl || null,
@@ -269,10 +275,13 @@ function buildGeneralData(kit: typeof pressKit.$inferSelect | undefined): Genera
   };
 }
 
-function generateArtistMarkdown(artist: ArtistPressKitData, kit: typeof pressKit.$inferSelect | undefined): string {
+function generateArtistMarkdown(
+  artist: ArtistPressKitData,
+  kit: typeof pressKit.$inferSelect | undefined,
+): string {
   let md = `# ${artist.name} - Press Kit\n\n`;
-  md += `**Sonido Líquido Crew**\n\n`;
-  md += `---\n\n`;
+  md += "**Sonido Líquido Crew**\n\n";
+  md += "---\n\n";
 
   // Role
   const roleLabels: Record<string, string> = {
@@ -289,17 +298,17 @@ function generateArtistMarkdown(artist: ArtistPressKitData, kit: typeof pressKit
   }
 
   // Stats
-  md += `## Estadísticas\n\n`;
+  md += "## Estadísticas\n\n";
   md += `- **Lanzamientos:** ${artist.stats.totalReleases}\n`;
   md += `- **Videos:** ${artist.stats.totalVideos}\n`;
   if (artist.stats.monthlyListeners) {
     md += `- **Oyentes Mensuales (Spotify):** ${artist.stats.monthlyListeners.toLocaleString()}\n`;
   }
-  md += `\n`;
+  md += "\n";
 
   // Social Profiles
   if (artist.socialProfiles.length > 0) {
-    md += `## Redes Sociales\n\n`;
+    md += "## Redes Sociales\n\n";
     for (const profile of artist.socialProfiles) {
       const platformLabels: Record<string, string> = {
         spotify: "Spotify",
@@ -311,49 +320,52 @@ function generateArtistMarkdown(artist: ArtistPressKitData, kit: typeof pressKit
       };
       md += `- **${platformLabels[profile.platform] || profile.platform}:** ${profile.url}`;
       if (profile.handle) md += ` (${profile.handle})`;
-      md += `\n`;
+      md += "\n";
     }
-    md += `\n`;
+    md += "\n";
   }
 
   // Press Quotes
   if (artist.pressQuotes.length > 0) {
-    md += `## Citas de Prensa\n\n`;
+    md += "## Citas de Prensa\n\n";
     for (const quote of artist.pressQuotes) {
       md += `> "${quote.quote}"\n>\n> — ${quote.source}`;
       if (quote.sourceUrl) md += ` ([Ver fuente](${quote.sourceUrl}))`;
-      md += `\n\n`;
+      md += "\n\n";
     }
   }
 
   // Featured Videos
   if (artist.featuredVideos.length > 0) {
-    md += `## Videos Destacados\n\n`;
+    md += "## Videos Destacados\n\n";
     for (const video of artist.featuredVideos) {
       md += `- **${video.title}**`;
       if (video.views) md += ` - ${video.views.toLocaleString()} vistas`;
       md += `\n  ${video.videoUrl}\n`;
     }
-    md += `\n`;
+    md += "\n";
   }
 
   // Contact
-  md += `## Contacto\n\n`;
+  md += "## Contacto\n\n";
   if (artist.bookingEmail) md += `- **Booking:** ${artist.bookingEmail}\n`;
   if (artist.pressEmail) md += `- **Prensa:** ${artist.pressEmail}\n`;
   md += `- **Prensa General:** ${kit?.contactEmail || "prensasonidoliquido@gmail.com"}\n`;
-  md += `\n`;
+  md += "\n";
 
-  md += `---\n\n`;
+  md += "---\n\n";
   md += `*Generado el ${new Date().toLocaleDateString("es-MX", { dateStyle: "full" })}*\n`;
 
   return md;
 }
 
-function generateArtistText(artist: ArtistPressKitData, kit: typeof pressKit.$inferSelect | undefined): string {
+function generateArtistText(
+  artist: ArtistPressKitData,
+  kit: typeof pressKit.$inferSelect | undefined,
+): string {
   // Plain text version
   let txt = `${artist.name.toUpperCase()} - PRESS KIT\n`;
-  txt += `Sonido Líquido Crew\n`;
+  txt += "Sonido Líquido Crew\n";
   txt += `${"=".repeat(50)}\n\n`;
 
   const roleLabels: Record<string, string> = {
@@ -374,14 +386,14 @@ function generateArtistText(artist: ArtistPressKitData, kit: typeof pressKit.$in
   if (artist.stats.monthlyListeners) {
     txt += `Oyentes Mensuales (Spotify): ${artist.stats.monthlyListeners.toLocaleString()}\n`;
   }
-  txt += `\n`;
+  txt += "\n";
 
   if (artist.socialProfiles.length > 0) {
     txt += `REDES SOCIALES\n${"-".repeat(20)}\n`;
     for (const profile of artist.socialProfiles) {
       txt += `${profile.platform.toUpperCase()}: ${profile.url}\n`;
     }
-    txt += `\n`;
+    txt += "\n";
   }
 
   if (artist.pressQuotes.length > 0) {
@@ -401,16 +413,19 @@ function generateArtistText(artist: ArtistPressKitData, kit: typeof pressKit.$in
   return txt;
 }
 
-function generateFullMarkdown(general: GeneralPressKitData, artistsData: ArtistPressKitData[]): string {
+function generateFullMarkdown(
+  general: GeneralPressKitData,
+  artistsData: ArtistPressKitData[],
+): string {
   let md = `# ${general.title} - Press Kit\n\n`;
   md += `**${general.subtitle}**\n\n`;
   md += `*${general.tagline}*\n\n`;
-  md += `---\n\n`;
+  md += "---\n\n";
 
   // Stats
-  md += `## En Números\n\n`;
-  md += `| Artistas | Lanzamientos | Años de Historia |\n`;
-  md += `|----------|--------------|------------------|\n`;
+  md += "## En Números\n\n";
+  md += "| Artistas | Lanzamientos | Años de Historia |\n";
+  md += "|----------|--------------|------------------|\n";
   md += `| ${general.stats.artists} | ${general.stats.releases} | ${general.stats.years} |\n\n`;
 
   // About
@@ -420,11 +435,11 @@ function generateFullMarkdown(general: GeneralPressKitData, artistsData: ArtistP
 
   // Press Quotes
   if (general.pressQuotes.length > 0) {
-    md += `## Lo Que Dicen de Nosotros\n\n`;
+    md += "## Lo Que Dicen de Nosotros\n\n";
     for (const quote of general.pressQuotes) {
       md += `> "${quote.quote}"\n>\n> — ${quote.source}`;
       if (quote.sourceUrl) md += ` ([Ver fuente](${quote.sourceUrl}))`;
-      md += `\n\n`;
+      md += "\n\n";
     }
   }
 
@@ -449,9 +464,9 @@ function generateFullMarkdown(general: GeneralPressKitData, artistsData: ArtistP
     // Profiles
     const profiles = artist.socialProfiles;
     if (profiles.length > 0) {
-      md += `**Enlaces:** `;
-      md += profiles.map(p => `[${p.platform}](${p.url})`).join(" | ");
-      md += `\n\n`;
+      md += "**Enlaces:** ";
+      md += profiles.map((p) => `[${p.platform}](${p.url})`).join(" | ");
+      md += "\n\n";
     }
 
     // Quotes
@@ -461,36 +476,42 @@ function generateFullMarkdown(general: GeneralPressKitData, artistsData: ArtistP
       }
     }
 
-    md += `---\n\n`;
+    md += "---\n\n";
   }
 
   // Contact
-  md += `## Contacto de Prensa\n\n`;
+  md += "## Contacto de Prensa\n\n";
   md += `- **Email:** ${general.contact.email}\n`;
   md += `- **Teléfono:** ${general.contact.phone}\n`;
   md += `- **Ubicación:** ${general.contact.location}\n\n`;
 
   // Social Links
-  md += `## Redes Sociales Oficiales\n\n`;
-  if (general.socialLinks.spotify) md += `- [Spotify](${general.socialLinks.spotify})\n`;
-  if (general.socialLinks.youtube) md += `- [YouTube](${general.socialLinks.youtube})\n`;
-  if (general.socialLinks.instagram) md += `- [Instagram](${general.socialLinks.instagram})\n`;
-  md += `\n`;
+  md += "## Redes Sociales Oficiales\n\n";
+  if (general.socialLinks.spotify)
+    md += `- [Spotify](${general.socialLinks.spotify})\n`;
+  if (general.socialLinks.youtube)
+    md += `- [YouTube](${general.socialLinks.youtube})\n`;
+  if (general.socialLinks.instagram)
+    md += `- [Instagram](${general.socialLinks.instagram})\n`;
+  md += "\n";
 
-  md += `---\n\n`;
+  md += "---\n\n";
   md += `*Generado el ${new Date().toLocaleDateString("es-MX", { dateStyle: "full" })}*\n`;
 
   return md;
 }
 
-function generateFullText(general: GeneralPressKitData, artistsData: ArtistPressKitData[]): string {
+function generateFullText(
+  general: GeneralPressKitData,
+  artistsData: ArtistPressKitData[],
+): string {
   let txt = `${general.title.toUpperCase()}\n`;
   txt += `${"=".repeat(60)}\n\n`;
   txt += `${general.subtitle}\n`;
   txt += `${general.tagline}\n\n`;
   txt += `${"=".repeat(60)}\n\n`;
 
-  txt += `ESTADÍSTICAS\n`;
+  txt += "ESTADÍSTICAS\n";
   txt += `Artistas: ${general.stats.artists}\n`;
   txt += `Lanzamientos: ${general.stats.releases}\n`;
   txt += `Años: ${general.stats.years}\n\n`;
@@ -519,11 +540,11 @@ function generateFullText(general: GeneralPressKitData, artistsData: ArtistPress
       txt += `${profile.platform}: ${profile.url}\n`;
     }
 
-    txt += `\n`;
+    txt += "\n";
   }
 
   txt += `${"=".repeat(60)}\n`;
-  txt += `CONTACTO DE PRENSA\n`;
+  txt += "CONTACTO DE PRENSA\n";
   txt += `${"=".repeat(60)}\n`;
   txt += `Email: ${general.contact.email}\n`;
   txt += `Teléfono: ${general.contact.phone}\n`;

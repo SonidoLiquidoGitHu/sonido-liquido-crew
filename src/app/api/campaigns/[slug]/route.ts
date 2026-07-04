@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { campaigns, artists } from "@/db/schema";
+import { artists, campaigns } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -13,7 +13,7 @@ export async function GET(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function GET(
     if (!result.length || !result[0].campaign) {
       return NextResponse.json(
         { success: false, error: "Campaign not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -58,7 +58,7 @@ export async function GET(
     console.error("[API] Error fetching campaign:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch campaign" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

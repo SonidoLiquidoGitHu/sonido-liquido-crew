@@ -1,14 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Cloud,
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AlertTriangle, CheckCircle, Cloud, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Compact Dropbox upload button.
@@ -54,9 +49,7 @@ function generateUniqueId(): string {
 // Convert a Dropbox shared-link URL into a direct-download URL (?raw=1 works
 // with both legacy /s/... and new /scl/fi/...?rlkey=... link formats).
 function convertToDirectLink(url: string): string {
-  const result = url
-    .replace("?dl=0", "?raw=1")
-    .replace("&dl=0", "&raw=1");
+  const result = url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
   if (!result.includes("raw=1")) {
     return `${result}${result.includes("?") ? "&" : "?"}raw=1`;
   }
@@ -76,9 +69,13 @@ export function DropboxUploadButton({
   disabled = false,
 }: DropboxUploadButtonProps) {
   const folderPath = folder || uploadPath || "/uploads";
-  const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "uploading" | "success" | "error"
+  >("idle");
   const [message, setMessage] = useState("");
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check Dropbox connection status on mount using the SAME endpoint the Sync
@@ -147,7 +144,10 @@ export function DropboxUploadButton({
       if (data?.success && data?.data?.token) {
         return data.data.token as string;
       }
-      console.warn("[DropboxUploadButton] Token endpoint returned no token:", data);
+      console.warn(
+        "[DropboxUploadButton] Token endpoint returned no token:",
+        data,
+      );
       return null;
     } catch (error) {
       console.error("[DropboxUploadButton] Token fetch error:", error);
@@ -177,7 +177,7 @@ export function DropboxUploadButton({
               requested_visibility: "public",
             },
           }),
-        }
+        },
       );
 
       if (createRes.ok) {
@@ -200,7 +200,7 @@ export function DropboxUploadButton({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ path, direct_only: true }),
-          }
+          },
         );
         if (listRes.ok) {
           const listData = await listRes.json();
@@ -211,10 +211,11 @@ export function DropboxUploadButton({
       }
 
       throw new Error(
-        errorData?.error_summary || `Failed to create shared link (HTTP ${createRes.status})`
+        errorData?.error_summary ||
+          `Failed to create shared link (HTTP ${createRes.status})`,
       );
     },
-    []
+    [],
   );
 
   const uploadFile = useCallback(
@@ -240,7 +241,7 @@ export function DropboxUploadButton({
       if (!token) {
         setStatus("error");
         setMessage(
-          "No se pudo obtener el token de Dropbox. Ve a Sincronización → Dropbox y verifica la conexión."
+          "No se pudo obtener el token de Dropbox. Ve a Sincronización → Dropbox y verifica la conexión.",
         );
         setTimeout(() => {
           setStatus("idle");
@@ -284,7 +285,7 @@ export function DropboxUploadButton({
               }),
             },
             body: arrayBuffer,
-          }
+          },
         );
 
         // If the token expired mid-upload, fetch a fresh one and retry once.
@@ -293,12 +294,15 @@ export function DropboxUploadButton({
           (await uploadResponse
             .json()
             .catch(() => ({}))
-            .then((d) =>
-              (d?.error_summary || "").includes("invalid_access_token") ||
-              (d?.error_summary || "").includes("expired")
+            .then(
+              (d) =>
+                (d?.error_summary || "").includes("invalid_access_token") ||
+                (d?.error_summary || "").includes("expired"),
             ))
         ) {
-          console.log("[DropboxUploadButton] Token expired mid-upload, refreshing and retrying...");
+          console.log(
+            "[DropboxUploadButton] Token expired mid-upload, refreshing and retrying...",
+          );
           const refreshedToken = await fetchAccessToken();
           if (refreshedToken) {
             token = refreshedToken;
@@ -317,14 +321,15 @@ export function DropboxUploadButton({
                   }),
                 },
                 body: arrayBuffer,
-              }
+              },
             );
           }
         }
 
         if (!uploadResponse.ok) {
           const errData = await uploadResponse.json().catch(() => ({}));
-          const summary = errData?.error_summary || `HTTP ${uploadResponse.status}`;
+          const summary =
+            errData?.error_summary || `HTTP ${uploadResponse.status}`;
           throw new Error(summary);
         }
 
@@ -350,7 +355,7 @@ export function DropboxUploadButton({
         setMessage(
           errMessage.includes("401") || errMessage.includes("expired")
             ? "Token expirado. Reconecta Dropbox en Sincronización."
-            : errMessage.slice(0, 120)
+            : errMessage.slice(0, 120),
         );
         setTimeout(() => {
           setStatus("idle");
@@ -358,11 +363,12 @@ export function DropboxUploadButton({
         }, 5000);
       }
     },
-    [createSharedLink, fetchAccessToken, folderPath, maxSize, onUploadComplete]
+    [createSharedLink, fetchAccessToken, folderPath, maxSize, onUploadComplete],
   );
 
   const handleClick = () => {
-    if (status === "uploading" || dropboxConfigured === false || disabled) return;
+    if (status === "uploading" || dropboxConfigured === false || disabled)
+      return;
     fileInputRef.current?.click();
   };
 
@@ -410,11 +416,13 @@ export function DropboxUploadButton({
         variant={variant}
         size={size}
         onClick={handleClick}
-        disabled={status === "uploading" || dropboxConfigured === null || disabled}
+        disabled={
+          status === "uploading" || dropboxConfigured === null || disabled
+        }
         className={cn(
           status === "success" && "border-green-500 text-green-500",
           status === "error" && "border-red-500 text-red-500",
-          className
+          className,
         )}
       >
         {status === "idle" && (

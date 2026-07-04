@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
-  Music,
   ArrowLeft,
-  Loader2,
-  Search,
-  Disc3,
-  Clock,
-  Play,
-  Pause,
-  Plus,
   Check,
-  Star,
+  Clock,
+  Disc3,
+  ExternalLink,
   Filter,
   ListMusic,
-  ExternalLink,
+  Loader2,
+  Music,
+  Pause,
+  Play,
+  Plus,
+  Search,
+  Star,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface CuratedTrack {
   id: string;
@@ -201,18 +201,25 @@ export default function CuratedTracksPage() {
     const matchesSearch =
       track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       track.artistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (track.albumName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    const matchesChannel = !filterChannel || track.channel?.id === filterChannel;
+      (track.albumName?.toLowerCase().includes(searchQuery.toLowerCase()) ??
+        false);
+    const matchesChannel =
+      !filterChannel || track.channel?.id === filterChannel;
     const matchesFeatured = !filterFeatured || track.isFeatured;
     const matchesAvailable = !filterAvailable || track.isAvailableForPlaylist;
-    return matchesSearch && matchesChannel && matchesFeatured && matchesAvailable;
+    return (
+      matchesSearch && matchesChannel && matchesFeatured && matchesAvailable
+    );
   });
 
   return (
     <div className="min-h-screen bg-slc-black p-6">
       <div className="max-w-7xl mx-auto">
         {/* Back Link */}
-        <Link href="/admin/curated-channels" className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-6">
+        <Link
+          href="/admin/curated-channels"
+          className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-6"
+        >
           <ArrowLeft className="w-4 h-4" />
           Volver a Canales Curados
         </Link>
@@ -256,7 +263,9 @@ export default function CuratedTracksPage() {
             >
               <option value="">Todos los canales</option>
               {channels.map((ch) => (
-                <option key={ch.id} value={ch.id}>{ch.name}</option>
+                <option key={ch.id} value={ch.id}>
+                  {ch.name}
+                </option>
               ))}
             </select>
 
@@ -264,7 +273,10 @@ export default function CuratedTracksPage() {
               variant={filterFeatured ? "default" : "outline"}
               onClick={() => setFilterFeatured(!filterFeatured)}
             >
-              <Star className="w-4 h-4 mr-2" fill={filterFeatured ? "currentColor" : "none"} />
+              <Star
+                className="w-4 h-4 mr-2"
+                fill={filterFeatured ? "currentColor" : "none"}
+              />
               Destacados
             </Button>
 
@@ -285,11 +297,15 @@ export default function CuratedTracksPage() {
             <p className="text-xs text-slc-muted">Total Tracks</p>
           </div>
           <div className="bg-slc-card border border-slc-border rounded-xl p-4">
-            <p className="text-2xl font-oswald">{tracks.filter(t => t.isFeatured).length}</p>
+            <p className="text-2xl font-oswald">
+              {tracks.filter((t) => t.isFeatured).length}
+            </p>
             <p className="text-xs text-slc-muted">Destacados</p>
           </div>
           <div className="bg-slc-card border border-slc-border rounded-xl p-4">
-            <p className="text-2xl font-oswald">{tracks.filter(t => t.isAvailableForPlaylist).length}</p>
+            <p className="text-2xl font-oswald">
+              {tracks.filter((t) => t.isAvailableForPlaylist).length}
+            </p>
             <p className="text-xs text-slc-muted">Disponibles</p>
           </div>
           <div className="bg-slc-card border border-slc-border rounded-xl p-4">
@@ -306,7 +322,9 @@ export default function CuratedTracksPage() {
         ) : filteredTracks.length === 0 ? (
           <div className="text-center py-20">
             <Disc3 className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-            <h3 className="text-xl font-oswald uppercase mb-2">No hay tracks</h3>
+            <h3 className="text-xl font-oswald uppercase mb-2">
+              No hay tracks
+            </h3>
             <p className="text-slc-muted">
               {tracks.length === 0
                 ? "Sincroniza canales para obtener tracks"
@@ -320,7 +338,7 @@ export default function CuratedTracksPage() {
                 key={track.id}
                 className={cn(
                   "bg-slc-card border border-slc-border rounded-xl overflow-hidden hover:border-primary/50 transition-all group",
-                  !track.isAvailableForPlaylist && "opacity-60"
+                  !track.isAvailableForPlaylist && "opacity-60",
                 )}
               >
                 <div className="flex gap-4 p-4">
@@ -353,7 +371,10 @@ export default function CuratedTracksPage() {
                     )}
                     {track.isFeatured && (
                       <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center">
-                        <Star className="w-3 h-3 text-black" fill="currentColor" />
+                        <Star
+                          className="w-3 h-3 text-black"
+                          fill="currentColor"
+                        />
                       </div>
                     )}
                   </div>
@@ -442,7 +463,9 @@ export default function CuratedTracksPage() {
           <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-md mx-auto bg-slc-dark border border-slc-border rounded-2xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slc-border">
-              <h3 className="font-oswald text-lg uppercase">Agregar a Playlist</h3>
+              <h3 className="font-oswald text-lg uppercase">
+                Agregar a Playlist
+              </h3>
               <button onClick={() => setShowAddModal(false)}>
                 <X className="w-5 h-5 text-slc-muted hover:text-white" />
               </button>
@@ -465,13 +488,17 @@ export default function CuratedTracksPage() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{selectedTrack.name}</p>
-                <p className="text-sm text-slc-muted truncate">{selectedTrack.artistName}</p>
+                <p className="text-sm text-slc-muted truncate">
+                  {selectedTrack.artistName}
+                </p>
               </div>
             </div>
 
             {/* Playlists */}
             <div className="p-4">
-              <p className="text-sm text-slc-muted mb-3">Selecciona una playlist:</p>
+              <p className="text-sm text-slc-muted mb-3">
+                Selecciona una playlist:
+              </p>
               <div className="space-y-2">
                 {playlists.map((playlist) => (
                   <button
@@ -484,7 +511,9 @@ export default function CuratedTracksPage() {
                       <ListMusic className="w-5 h-5 text-primary" />
                       <div className="text-left">
                         <p className="font-medium">{playlist.name}</p>
-                        <p className="text-xs text-slc-muted">{playlist.trackCount} tracks</p>
+                        <p className="text-xs text-slc-muted">
+                          {playlist.trackCount} tracks
+                        </p>
                       </div>
                     </div>
                     {addingToPlaylist === playlist.id ? (

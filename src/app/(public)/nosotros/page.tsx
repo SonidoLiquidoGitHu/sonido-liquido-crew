@@ -1,20 +1,35 @@
+import { NewsletterForm } from "@/components/public/NewsletterForm";
+import { SocialLinks } from "@/components/public/SocialLinks";
+import { Button } from "@/components/ui/button";
+import {
+  Award,
+  Calendar,
+  Disc3,
+  Mail,
+  MapPin,
+  Phone,
+  Users,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { SocialLinks } from "@/components/public/SocialLinks";
-import { NewsletterForm } from "@/components/public/NewsletterForm";
-import { Button } from "@/components/ui/button";
-import { Mail, MapPin, Phone, Calendar, Users, Disc3, Award } from "lucide-react";
 
 export const metadata = {
   title: "Nosotros | Sonido Líquido Crew",
-  description: "Conoce la historia del colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México.",
+  description:
+    "Conoce la historia del colectivo de Hip Hop más representativo de México. Fundado en 1999 en la Ciudad de México.",
 };
 
 const timeline = [
   { year: "1999", event: "Fundación de Sonido Líquido Crew en CDMX" },
-  { year: "2002", event: "Primeros lanzamientos independientes y presentaciones en vivo" },
+  {
+    year: "2002",
+    event: "Primeros lanzamientos independientes y presentaciones en vivo",
+  },
   { year: "2005", event: "Consolidación del roster con artistas clave" },
-  { year: "2010", event: "Expansión digital y presencia en plataformas de streaming" },
+  {
+    year: "2010",
+    event: "Expansión digital y presencia en plataformas de streaming",
+  },
   { year: "2015", event: "100 lanzamientos acumulados" },
   { year: "2020", event: "Celebración de 21 años con compilados especiales" },
   { year: "2024", event: "+160 lanzamientos, +25 años de historia" },
@@ -24,17 +39,20 @@ const values = [
   {
     icon: <Users className="w-8 h-8" />,
     title: "Comunidad",
-    description: "Somos una familia de artistas que comparten la misma pasión por el Hip Hop y la cultura urbana.",
+    description:
+      "Somos una familia de artistas que comparten la misma pasión por el Hip Hop y la cultura urbana.",
   },
   {
     icon: <Disc3 className="w-8 h-8" />,
     title: "Autenticidad",
-    description: "Nuestro sonido es genuino, sin filtros ni pretensiones. Música real para gente real.",
+    description:
+      "Nuestro sonido es genuino, sin filtros ni pretensiones. Música real para gente real.",
   },
   {
     icon: <Award className="w-8 h-8" />,
     title: "Excelencia",
-    description: "Buscamos la perfección en cada beat, cada rima y cada producción que lanzamos.",
+    description:
+      "Buscamos la perfección en cada beat, cada rima y cada producción que lanzamos.",
   },
 ];
 
@@ -54,9 +72,10 @@ export default function NosotrosPage() {
               <span className="block text-primary">Hip Hop mexicano</span>
             </h1>
             <p className="text-slc-muted text-lg mt-6 leading-relaxed">
-              Sonido Líquido Crew es el colectivo de Hip Hop más representativo de México.
-              Fundado en 1999 en la Ciudad de México, hemos construido una comunidad
-              de artistas que han definido el sonido del rap mexicano por más de dos décadas.
+              Sonido Líquido Crew es el colectivo de Hip Hop más representativo
+              de México. Fundado en 1999 en la Ciudad de México, hemos
+              construido una comunidad de artistas que han definido el sonido
+              del rap mexicano por más de dos décadas.
             </p>
           </div>
         </div>
@@ -74,7 +93,9 @@ export default function NosotrosPage() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                   {value.icon}
                 </div>
-                <h3 className="font-oswald text-xl uppercase mb-3">{value.title}</h3>
+                <h3 className="font-oswald text-xl uppercase mb-3">
+                  {value.title}
+                </h3>
                 <p className="text-slc-muted">{value.description}</p>
               </div>
             ))}
@@ -107,7 +128,9 @@ export default function NosotrosPage() {
 
                   {/* Content */}
                   <div className="flex-1 pb-8 border-b border-slc-border last:border-0">
-                    <span className="text-primary font-oswald text-2xl">{item.year}</span>
+                    <span className="text-primary font-oswald text-2xl">
+                      {item.year}
+                    </span>
                     <p className="text-slc-text mt-1">{item.event}</p>
                   </div>
                 </div>
@@ -122,20 +145,36 @@ export default function NosotrosPage() {
         <div className="section-container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">15+</div>
-              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">Artistas</div>
+              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">
+                15+
+              </div>
+              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">
+                Artistas
+              </div>
             </div>
             <div>
-              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">160+</div>
-              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">Lanzamientos</div>
+              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">
+                160+
+              </div>
+              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">
+                Lanzamientos
+              </div>
             </div>
             <div>
-              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">500+</div>
-              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">Videos</div>
+              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">
+                500+
+              </div>
+              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">
+                Videos
+              </div>
             </div>
             <div>
-              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">25+</div>
-              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">Años</div>
+              <div className="font-oswald text-4xl md:text-5xl text-primary font-bold">
+                25+
+              </div>
+              <div className="text-slc-muted text-sm uppercase tracking-wider mt-2">
+                Años
+              </div>
             </div>
           </div>
         </div>
@@ -149,8 +188,8 @@ export default function NosotrosPage() {
             <div>
               <h2 className="font-oswald text-3xl uppercase mb-6">Contacto</h2>
               <p className="text-slc-muted mb-8">
-                Para booking, colaboraciones, prensa o cualquier consulta,
-                no dudes en contactarnos.
+                Para booking, colaboraciones, prensa o cualquier consulta, no
+                dudes en contactarnos.
               </p>
 
               <div className="space-y-4">
@@ -159,8 +198,13 @@ export default function NosotrosPage() {
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Email</div>
-                    <a href="mailto:prensasonidoliquido@gmail.com" className="text-white hover:text-primary transition-colors">
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Email
+                    </div>
+                    <a
+                      href="mailto:prensasonidoliquido@gmail.com"
+                      className="text-white hover:text-primary transition-colors"
+                    >
                       prensasonidoliquido@gmail.com
                     </a>
                   </div>
@@ -171,8 +215,13 @@ export default function NosotrosPage() {
                     <Phone className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Teléfono</div>
-                    <a href="tel:+525528011881" className="text-white hover:text-primary transition-colors">
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Teléfono
+                    </div>
+                    <a
+                      href="tel:+525528011881"
+                      className="text-white hover:text-primary transition-colors"
+                    >
                       +52 55 2801 1881
                     </a>
                   </div>
@@ -183,21 +232,27 @@ export default function NosotrosPage() {
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Ubicación</div>
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Ubicación
+                    </div>
                     <span className="text-white">Ciudad de México, CDMX</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-8">
-                <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">Síguenos</h3>
+                <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">
+                  Síguenos
+                </h3>
                 <SocialLinks size="lg" />
               </div>
             </div>
 
             {/* Newsletter */}
             <div className="bg-slc-card border border-slc-border rounded-xl p-8">
-              <h3 className="font-oswald text-2xl uppercase mb-4">Únete a la Familia</h3>
+              <h3 className="font-oswald text-2xl uppercase mb-4">
+                Únete a la Familia
+              </h3>
               <p className="text-slc-muted mb-6">
                 Suscríbete para recibir noticias exclusivas, nuevos lanzamientos
                 y ofertas especiales directamente en tu correo.
@@ -215,7 +270,8 @@ export default function NosotrosPage() {
             Explora nuestra música
           </h2>
           <p className="text-slc-muted mb-8 max-w-xl mx-auto">
-            Descubre más de 160 lanzamientos de los mejores artistas del Hip Hop mexicano.
+            Descubre más de 160 lanzamientos de los mejores artistas del Hip Hop
+            mexicano.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg">

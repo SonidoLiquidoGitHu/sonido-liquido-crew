@@ -1,7 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { pushSubscriptions, upcomingReleases, releaseNotifications } from "@/db/schema";
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import {
+  pushSubscriptions,
+  releaseNotifications,
+  upcomingReleases,
+} from "@/db/schema";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 
 // Configure web-push with VAPID keys
@@ -9,7 +13,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
     "mailto:hello@sonidoliquido.com",
     process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
+    process.env.VAPID_PRIVATE_KEY,
   );
 }
 
@@ -25,10 +29,13 @@ interface NotificationPayload {
 
 async function sendPushNotification(
   subscription: { endpoint: string; keysP256dh: string; keysAuth: string },
-  payload: NotificationPayload
+  payload: NotificationPayload,
 ): Promise<boolean> {
   if (!subscription.keysP256dh || !subscription.keysAuth) {
-    console.warn("[Push] Missing keys for subscription:", subscription.endpoint);
+    console.warn(
+      "[Push] Missing keys for subscription:",
+      subscription.endpoint,
+    );
     return false;
   }
 
@@ -41,7 +48,7 @@ async function sendPushNotification(
           auth: subscription.keysAuth,
         },
       },
-      JSON.stringify(payload)
+      JSON.stringify(payload),
     );
     return true;
   } catch (error: unknown) {
@@ -68,21 +75,21 @@ export async function POST(request: NextRequest) {
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
       return NextResponse.json(
         { success: false, error: "VAPID keys not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -97,14 +104,12 @@ export async function POST(request: NextRequest) {
         and(
           eq(upcomingReleases.isActive, true),
           gte(upcomingReleases.releaseDate, now),
-          lte(upcomingReleases.releaseDate, in7Days)
-        )
+          lte(upcomingReleases.releaseDate, in7Days),
+        ),
       );
 
     // Get all subscriptions
-    const subscriptions = await db
-      .select()
-      .from(pushSubscriptions);
+    const subscriptions = await db.select().from(pushSubscriptions);
 
     if (subscriptions.length === 0) {
       return NextResponse.json({
@@ -162,12 +167,12 @@ export async function POST(request: NextRequest) {
       .where(
         inArray(
           releaseNotifications.releaseId,
-          notifications.map((n) => n.releaseId)
-        )
+          notifications.map((n) => n.releaseId),
+        ),
       );
 
     const sentMap = new Map(
-      alreadySent.map((s) => [`${s.releaseId}-${s.notificationType}`, true])
+      alreadySent.map((s) => [`${s.releaseId}-${s.notificationType}`, true]),
     );
 
     // Send notifications
@@ -177,7 +182,9 @@ export async function POST(request: NextRequest) {
         continue; // Already sent this notification
       }
 
-      const release = upcomingReleasesData.find((r) => r.id === notification.releaseId);
+      const release = upcomingReleasesData.find(
+        (r) => r.id === notification.releaseId,
+      );
       if (!release) continue;
 
       const payload: NotificationPayload = {
@@ -214,7 +221,7 @@ export async function POST(request: NextRequest) {
     console.error("[Notifications Send] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to send notifications" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -225,13 +232,11 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
-    const subscriptions = await db
-      .select()
-      .from(pushSubscriptions);
+    const subscriptions = await db.select().from(pushSubscriptions);
 
     const now = new Date();
     const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -243,8 +248,8 @@ export async function GET(request: NextRequest) {
         and(
           eq(upcomingReleases.isActive, true),
           gte(upcomingReleases.releaseDate, now),
-          lte(upcomingReleases.releaseDate, in7Days)
-        )
+          lte(upcomingReleases.releaseDate, in7Days),
+        ),
       );
 
     return NextResponse.json({
@@ -252,14 +257,16 @@ export async function GET(request: NextRequest) {
       data: {
         activeSubscriptions: subscriptions.length,
         upcomingReleasesIn7Days: upcoming.length,
-        vapidConfigured: Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
+        vapidConfigured: Boolean(
+          process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY,
+        ),
       },
     });
   } catch (error) {
     console.error("[Notifications Status] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to get status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

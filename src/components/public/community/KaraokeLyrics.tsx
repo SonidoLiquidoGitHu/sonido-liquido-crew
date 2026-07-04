@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  Play,
-  Pause,
-  Music,
-  Mic2,
-  Share2,
   Maximize2,
+  Mic2,
   Minimize2,
+  Music,
+  Pause,
+  Play,
+  Settings,
+  Share2,
   SkipBack,
   SkipForward,
+  Type,
   Volume2,
   VolumeX,
-  Settings,
-  Type,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface LyricLine {
   id: string;
@@ -77,12 +77,16 @@ export function KaraokeLyrics({
   const activeLineRef = useRef<HTMLDivElement>(null);
 
   // Parse plain lyrics into lines if no synced lyrics
-  const lyricLines: LyricLine[] = syncedLyrics || lyrics.split("\n").map((line, i) => ({
-    id: `line-${i}`,
-    text: line.trim(),
-    startTime: i * 3000, // Estimate 3 seconds per line
-    isChorus: line.toLowerCase().includes("[coro]") || line.toLowerCase().includes("[chorus]"),
-  }));
+  const lyricLines: LyricLine[] =
+    syncedLyrics ||
+    lyrics.split("\n").map((line, i) => ({
+      id: `line-${i}`,
+      text: line.trim(),
+      startTime: i * 3000, // Estimate 3 seconds per line
+      isChorus:
+        line.toLowerCase().includes("[coro]") ||
+        line.toLowerCase().includes("[chorus]"),
+    }));
 
   const hasSyncedLyrics = !!syncedLyrics && syncedLyrics.length > 0;
 
@@ -143,12 +147,15 @@ export function KaraokeLyrics({
     }
   }, []);
 
-  const skipSeconds = useCallback((seconds: number) => {
-    if (audioRef.current) {
-      const newTime = (audioRef.current.currentTime + seconds) * 1000;
-      seekTo(Math.max(0, Math.min(newTime, duration)));
-    }
-  }, [duration, seekTo]);
+  const skipSeconds = useCallback(
+    (seconds: number) => {
+      if (audioRef.current) {
+        const newTime = (audioRef.current.currentTime + seconds) * 1000;
+        seekTo(Math.max(0, Math.min(newTime, duration)));
+      }
+    },
+    [duration, seekTo],
+  );
 
   const toggleMute = useCallback(() => {
     if (audioRef.current) {
@@ -208,7 +215,7 @@ export function KaraokeLyrics({
       className={cn(
         "relative overflow-hidden rounded-2xl border border-slc-border",
         isFullscreen && "fixed inset-0 z-50 rounded-none",
-        className
+        className,
       )}
       style={{ backgroundColor }}
     >
@@ -321,7 +328,7 @@ export function KaraokeLyrics({
                         "w-8 h-8 rounded text-sm font-medium transition-colors",
                         fontSize === size.value
                           ? "bg-primary text-white"
-                          : "bg-white/10 text-white/70 hover:bg-white/20"
+                          : "bg-white/10 text-white/70 hover:bg-white/20",
                       )}
                     >
                       {size.label}
@@ -372,10 +379,11 @@ export function KaraokeLyrics({
                     isActive
                       ? "text-white scale-105 text-shadow-lg"
                       : isPast
-                      ? "text-white/40"
-                      : "text-white/60 hover:text-white/80",
-                    line.isChorus && "pl-4 border-l-2 border-primary/50 text-primary/90",
-                    hasSyncedLyrics && "cursor-pointer"
+                        ? "text-white/40"
+                        : "text-white/60 hover:text-white/80",
+                    line.isChorus &&
+                      "pl-4 border-l-2 border-primary/50 text-primary/90",
+                    hasSyncedLyrics && "cursor-pointer",
                   )}
                 >
                   {/* Speaker indicator */}

@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  ExternalLink,
-  Megaphone,
   Calendar,
-  Users,
   Download,
+  Edit,
+  ExternalLink,
   Eye,
-  Star,
   LinkIcon,
   Mail,
+  Megaphone,
+  Plus,
+  Search,
+  Star,
+  Trash2,
+  Users,
 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Campaign {
   id: string;
@@ -80,7 +80,9 @@ export default function AdminCampaignsPage() {
   };
 
   const filteredCampaigns = campaigns.filter((campaign) => {
-    const matchesSearch = campaign.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = campaign.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     const matchesType = !typeFilter || campaign.campaignType === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -92,7 +94,7 @@ export default function AdminCampaignsPage() {
     if (typeof dateValue === "number") {
       // Unix timestamp in seconds - multiply by 1000 for milliseconds
       date = new Date(dateValue * 1000);
-    } else if (!isNaN(Number(dateValue))) {
+    } else if (!Number.isNaN(Number(dateValue))) {
       // Numeric string (Unix timestamp)
       date = new Date(Number(dateValue) * 1000);
     } else {
@@ -101,7 +103,7 @@ export default function AdminCampaignsPage() {
     }
 
     // Validate the date
-    if (isNaN(date.getTime())) return "-";
+    if (Number.isNaN(date.getTime())) return "-";
 
     return date.toLocaleDateString("es-MX", {
       year: "numeric",
@@ -157,7 +159,9 @@ export default function AdminCampaignsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-primary">{campaigns.length}</div>
+          <div className="font-oswald text-2xl text-primary">
+            {campaigns.length}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Total</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
@@ -168,13 +172,17 @@ export default function AdminCampaignsPage() {
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="font-oswald text-2xl text-blue-500">
-            {campaigns.reduce((sum, c) => sum + c.totalViews, 0).toLocaleString()}
+            {campaigns
+              .reduce((sum, c) => sum + c.totalViews, 0)
+              .toLocaleString()}
           </div>
           <div className="text-xs text-slc-muted uppercase">Vistas</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="font-oswald text-2xl text-purple-500">
-            {campaigns.reduce((sum, c) => sum + c.totalConversions, 0).toLocaleString()}
+            {campaigns
+              .reduce((sum, c) => sum + c.totalConversions, 0)
+              .toLocaleString()}
           </div>
           <div className="text-xs text-slc-muted uppercase">Conversiones</div>
         </div>
@@ -183,7 +191,9 @@ export default function AdminCampaignsPage() {
       {/* Campaigns Grid */}
       <div className="bg-slc-dark border border-slc-border rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slc-muted">Cargando campañas...</div>
+          <div className="p-8 text-center text-slc-muted">
+            Cargando campañas...
+          </div>
         ) : filteredCampaigns.length === 0 ? (
           <div className="p-8 text-center">
             <Megaphone className="w-12 h-12 text-slc-muted mx-auto mb-4" />
@@ -247,17 +257,21 @@ export default function AdminCampaignsPage() {
                           >
                             {campaign.title}
                           </Link>
-                          <p className="text-xs text-slc-muted">/{campaign.slug}</p>
+                          <p className="text-xs text-slc-muted">
+                            /{campaign.slug}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                          campaignTypeColors[campaign.campaignType] || "bg-slc-card text-slc-muted"
+                          campaignTypeColors[campaign.campaignType] ||
+                          "bg-slc-card text-slc-muted"
                         }`}
                       >
-                        {campaignTypeLabels[campaign.campaignType] || campaign.campaignType}
+                        {campaignTypeLabels[campaign.campaignType] ||
+                          campaign.campaignType}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -265,7 +279,9 @@ export default function AdminCampaignsPage() {
                         {campaign.releaseDate && (
                           <div className="flex items-center gap-1 text-slc-muted">
                             <Calendar className="w-3 h-3" />
-                            <span>Release: {formatDate(campaign.releaseDate)}</span>
+                            <span>
+                              Release: {formatDate(campaign.releaseDate)}
+                            </span>
                           </div>
                         )}
                         {campaign.startDate && (
@@ -311,7 +327,11 @@ export default function AdminCampaignsPage() {
                       <div className="flex items-center justify-end gap-2">
                         {campaign.smartLinkUrl && (
                           <Button asChild variant="ghost" size="icon">
-                            <a href={campaign.smartLinkUrl} target="_blank" rel="noopener noreferrer">
+                            <a
+                              href={campaign.smartLinkUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               <LinkIcon className="w-4 h-4" />
                             </a>
                           </Button>
@@ -326,12 +346,23 @@ export default function AdminCampaignsPage() {
                             <Edit className="w-4 h-4" />
                           </Link>
                         </Button>
-                        <Button asChild variant="ghost" size="icon" title="Enviar Email">
-                          <Link href={`/admin/campaigns/${campaign.id}#send-email`}>
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          title="Enviar Email"
+                        >
+                          <Link
+                            href={`/admin/campaigns/${campaign.id}#send-email`}
+                          >
                             <Mail className="w-4 h-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-400">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-400"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>

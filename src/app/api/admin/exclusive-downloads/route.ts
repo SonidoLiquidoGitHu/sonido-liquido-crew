@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // GET - List exclusive downloads
@@ -22,7 +22,7 @@ export async function GET() {
     console.error("Error fetching exclusive downloads:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch downloads" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(downloads)) {
       return NextResponse.json(
         { success: false, error: "Downloads must be an array" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     console.error("Error saving exclusive downloads:", error);
     return NextResponse.json(
       { success: false, error: "Failed to save downloads" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

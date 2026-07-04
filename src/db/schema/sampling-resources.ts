@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // SAMPLING RESOURCES TABLE
@@ -20,8 +20,12 @@ export const samplingResources = sqliteTable("sampling_resources", {
   playlistId: text("playlist_id"),
   handle: text("handle"),
   sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -30,11 +34,16 @@ export const samplingResources = sqliteTable("sampling_resources", {
 // Stores the page title, subtitle and internal note
 // (the metadata that was previously at the top of the JSON file).
 
-export const samplingResourcesSettings = sqliteTable("sampling_resources_settings", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-});
+export const samplingResourcesSettings = sqliteTable(
+  "sampling_resources_settings",
+  {
+    key: text("key").primaryKey(),
+    value: text("value").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+);
 
 // ===========================================
 // TYPE EXPORTS
@@ -42,4 +51,5 @@ export const samplingResourcesSettings = sqliteTable("sampling_resources_setting
 
 export type SamplingResource = typeof samplingResources.$inferSelect;
 export type NewSamplingResource = typeof samplingResources.$inferInsert;
-export type SamplingResourcesSetting = typeof samplingResourcesSettings.$inferSelect;
+export type SamplingResourcesSetting =
+  typeof samplingResourcesSettings.$inferSelect;

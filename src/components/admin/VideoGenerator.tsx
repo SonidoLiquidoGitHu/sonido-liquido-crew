@@ -1,35 +1,35 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Play,
-  Pause,
-  Download,
-  Loader2,
-  Sparkles,
-  Video,
-  Music,
-  Image as ImageIcon,
-  Wand2,
-  RefreshCw,
-  Check,
   AlertTriangle,
+  Check,
   Clock,
-  Smartphone,
-  Monitor,
-  Square,
-  Settings,
-  Eye,
-  Palette,
-  Type,
-  Volume2,
   Disc,
-  Waves,
-  Zap,
+  Download,
+  Eye,
+  Image as ImageIcon,
+  Loader2,
+  Monitor,
+  Music,
+  Palette,
+  Pause,
+  Play,
+  RefreshCw,
+  Settings,
+  Smartphone,
+  Sparkles,
+  Square,
   Star,
+  Type,
+  Video,
+  Volume2,
+  Wand2,
+  Waves,
   X,
+  Zap,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ============================================
 // TYPES
@@ -51,7 +51,7 @@ type VideoOrientation = "horizontal" | "vertical" | "square";
 interface VideoGeneratorProps {
   coverImageUrl: string;
   audioUrl?: string;
-  videoUrl?: string;  // Uploaded video to use instead of static images
+  videoUrl?: string; // Uploaded video to use instead of static images
   artistName: string;
   title: string;
   releaseDate?: Date;
@@ -148,10 +148,30 @@ const TEMPLATES: TemplateConfig[] = [
   },
 ];
 
-const ORIENTATIONS: { id: VideoOrientation; name: string; icon: React.ReactNode; dimensions: { width: number; height: number } }[] = [
-  { id: "vertical", name: "Vertical (9:16)", icon: <Smartphone className="w-4 h-4" />, dimensions: { width: 1080, height: 1920 } },
-  { id: "horizontal", name: "Horizontal (16:9)", icon: <Monitor className="w-4 h-4" />, dimensions: { width: 1920, height: 1080 } },
-  { id: "square", name: "Cuadrado (1:1)", icon: <Square className="w-4 h-4" />, dimensions: { width: 1080, height: 1080 } },
+const ORIENTATIONS: {
+  id: VideoOrientation;
+  name: string;
+  icon: React.ReactNode;
+  dimensions: { width: number; height: number };
+}[] = [
+  {
+    id: "vertical",
+    name: "Vertical (9:16)",
+    icon: <Smartphone className="w-4 h-4" />,
+    dimensions: { width: 1080, height: 1920 },
+  },
+  {
+    id: "horizontal",
+    name: "Horizontal (16:9)",
+    icon: <Monitor className="w-4 h-4" />,
+    dimensions: { width: 1920, height: 1080 },
+  },
+  {
+    id: "square",
+    name: "Cuadrado (1:1)",
+    icon: <Square className="w-4 h-4" />,
+    dimensions: { width: 1080, height: 1080 },
+  },
 ];
 
 // ============================================
@@ -162,11 +182,9 @@ function getDirectUrl(url: string): string {
   if (url.includes("dropbox")) {
     // Use ?raw=1 instead of dl.dropboxusercontent.com because Dropbox has
     // migrated to a new shared link format that is NOT compatible with dl.dropboxusercontent.com
-    const result = url
-      .replace("?dl=0", "?raw=1")
-      .replace("&dl=0", "&raw=1");
+    const result = url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
     if (!result.includes("raw=1")) {
-      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+      return `${result + (result.includes("?") ? "&" : "?")}raw=1`;
     }
     return result;
   }
@@ -177,14 +195,17 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16),
       }
     : { r: 0, g: 0, b: 0 };
 }
 
-function formatCountdown(targetDate: Date, now: Date): { days: string; hours: string; mins: string; secs: string } {
+function formatCountdown(
+  targetDate: Date,
+  now: Date,
+): { days: string; hours: string; mins: string; secs: string } {
   const diff = Math.max(0, targetDate.getTime() - now.getTime());
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -212,7 +233,12 @@ interface Particle {
   color: string;
 }
 
-function createParticles(count: number, width: number, height: number, color: string): Particle[] {
+function createParticles(
+  count: number,
+  width: number,
+  height: number,
+  color: string,
+): Particle[] {
   const particles: Particle[] = [];
   const rgb = hexToRgb(color);
 
@@ -230,7 +256,11 @@ function createParticles(count: number, width: number, height: number, color: st
   return particles;
 }
 
-function updateParticles(particles: Particle[], width: number, height: number): void {
+function updateParticles(
+  particles: Particle[],
+  width: number,
+  height: number,
+): void {
   for (const p of particles) {
     p.x += p.speedX;
     p.y += p.speedY;
@@ -244,7 +274,10 @@ function updateParticles(particles: Particle[], width: number, height: number): 
   }
 }
 
-function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]): void {
+function drawParticles(
+  ctx: CanvasRenderingContext2D,
+  particles: Particle[],
+): void {
   for (const p of particles) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -269,13 +302,18 @@ export function VideoGenerator({
   className = "",
 }: VideoGeneratorProps) {
   // State
-  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate>(videoUrl ? "video-clip" : "artwork-pulse");
-  const [selectedOrientation, setSelectedOrientation] = useState<VideoOrientation>("vertical");
+  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate>(
+    videoUrl ? "video-clip" : "artwork-pulse",
+  );
+  const [selectedOrientation, setSelectedOrientation] =
+    useState<VideoOrientation>("vertical");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(
+    null,
+  );
   const [showSettings, setShowSettings] = useState(false);
 
   // Customization options
@@ -295,7 +333,9 @@ export function VideoGenerator({
   const videoSourceRef = useRef<HTMLVideoElement | null>(null);
 
   const currentTemplate = TEMPLATES.find((t) => t.id === selectedTemplate)!;
-  const currentOrientation = ORIENTATIONS.find((o) => o.id === selectedOrientation)!;
+  const currentOrientation = ORIENTATIONS.find(
+    (o) => o.id === selectedOrientation,
+  )!;
 
   // Cleanup
   useEffect(() => {
@@ -311,7 +351,10 @@ export function VideoGenerator({
 
   // Load video source for video-clip and countdown templates
   useEffect(() => {
-    if (videoUrl && (selectedTemplate === "video-clip" || selectedTemplate === "countdown")) {
+    if (
+      videoUrl &&
+      (selectedTemplate === "video-clip" || selectedTemplate === "countdown")
+    ) {
       const vid = document.createElement("video");
       vid.crossOrigin = "anonymous";
       vid.muted = true;
@@ -321,11 +364,18 @@ export function VideoGenerator({
       vid.src = getDirectUrl(videoUrl);
 
       vid.onloadeddata = () => {
-        console.log("Video source loaded successfully:", vid.videoWidth, "x", vid.videoHeight);
+        console.log(
+          "Video source loaded successfully:",
+          vid.videoWidth,
+          "x",
+          vid.videoHeight,
+        );
       };
 
       vid.onerror = () => {
-        console.warn("Video source failed to load. URL might have CORS restrictions.");
+        console.warn(
+          "Video source failed to load. URL might have CORS restrictions.",
+        );
       };
 
       vid.load();
@@ -337,9 +387,8 @@ export function VideoGenerator({
         vid.load();
         videoSourceRef.current = null;
       };
-    } else {
-      videoSourceRef.current = null;
     }
+    videoSourceRef.current = null;
   }, [videoUrl, selectedTemplate]);
 
   // Load cover image
@@ -363,7 +412,7 @@ export function VideoGenerator({
       width: number,
       height: number,
       particles: Particle[],
-      audioData?: Uint8Array
+      audioData?: Uint8Array,
     ) => {
       const progress = frame / totalFrames;
       const time = progress * currentTemplate.duration;
@@ -375,7 +424,9 @@ export function VideoGenerator({
       // Calculate cover size and position (centered)
       const coverSize = Math.min(width, height) * 0.7;
       const coverX = (width - coverSize) / 2;
-      const coverY = (height - coverSize) / 2 - (selectedOrientation === "vertical" ? height * 0.1 : 0);
+      const coverY =
+        (height - coverSize) / 2 -
+        (selectedOrientation === "vertical" ? height * 0.1 : 0);
 
       // Apply template-specific effects
       ctx.save();
@@ -384,12 +435,18 @@ export function VideoGenerator({
         case "countdown":
           // Draw video background or cover with subtle zoom
           {
-            if (videoSourceRef.current && videoSourceRef.current.readyState >= 2) {
+            if (
+              videoSourceRef.current &&
+              videoSourceRef.current.readyState >= 2
+            ) {
               // Use uploaded video as background
               const vid = videoSourceRef.current;
               const videoAspect = vid.videoWidth / vid.videoHeight;
               const canvasAspect = width / height;
-              let drawWidth, drawHeight, drawX, drawY;
+              let drawWidth;
+              let drawHeight;
+              let drawX;
+              let drawY;
               if (videoAspect > canvasAspect) {
                 drawHeight = height;
                 drawWidth = height * videoAspect;
@@ -410,16 +467,27 @@ export function VideoGenerator({
               // Fallback: cover image with subtle zoom
               const zoom = 1 + Math.sin(time * 2) * 0.02;
               const zoomOffset = (coverSize * (zoom - 1)) / 2;
-              ctx.drawImage(img, coverX - zoomOffset, coverY - zoomOffset, coverSize * zoom, coverSize * zoom);
+              ctx.drawImage(
+                img,
+                coverX - zoomOffset,
+                coverY - zoomOffset,
+                coverSize * zoom,
+                coverSize * zoom,
+              );
             }
 
             // Draw countdown
             if (releaseDate && showCountdown) {
-              const isVideoBg = videoSourceRef.current && videoSourceRef.current.readyState >= 2;
+              const isVideoBg =
+                videoSourceRef.current &&
+                videoSourceRef.current.readyState >= 2;
               const countdownY = isVideoBg
-                ? height * 0.45  // Center countdown vertically when video is background
+                ? height * 0.45 // Center countdown vertically when video is background
                 : coverY + coverSize + 60;
-              const countdown = formatCountdown(releaseDate, new Date(Date.now() + (totalFrames - frame) * 33));
+              const countdown = formatCountdown(
+                releaseDate,
+                new Date(Date.now() + (totalFrames - frame) * 33),
+              );
 
               ctx.textAlign = "center";
               ctx.fillStyle = textColor;
@@ -431,7 +499,12 @@ export function VideoGenerator({
               const startX = (width - totalWidth) / 2;
 
               const labels = ["DÍAS", "HRS", "MIN", "SEG"];
-              const values = [countdown.days, countdown.hours, countdown.mins, countdown.secs];
+              const values = [
+                countdown.days,
+                countdown.hours,
+                countdown.mins,
+                countdown.secs,
+              ];
 
               values.forEach((value, i) => {
                 const x = startX + i * (boxWidth + boxSpacing) + boxWidth / 2;
@@ -475,7 +548,11 @@ export function VideoGenerator({
                   ctx.textAlign = "center";
                   ctx.fillStyle = textColor;
                   ctx.font = `bold ${width * 0.05}px "Oswald", sans-serif`;
-                  ctx.fillText(artistName.toUpperCase(), width / 2, countdownY - 30);
+                  ctx.fillText(
+                    artistName.toUpperCase(),
+                    width / 2,
+                    countdownY - 30,
+                  );
                 }
 
                 // Title above countdown, below artist name
@@ -487,15 +564,21 @@ export function VideoGenerator({
                 }
 
                 // Release date below countdown
-                const releaseDateText = new Date(releaseDate).toLocaleDateString("es-MX", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                }).toUpperCase();
+                const releaseDateText = new Date(releaseDate)
+                  .toLocaleDateString("es-MX", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })
+                  .toUpperCase();
                 ctx.textAlign = "center";
                 ctx.font = `${width * 0.03}px "Oswald", sans-serif`;
                 ctx.fillStyle = "rgba(255,255,255,0.6)";
-                ctx.fillText(releaseDateText, width / 2, countdownY + boxWidth * 0.8 + 30);
+                ctx.fillText(
+                  releaseDateText,
+                  width / 2,
+                  countdownY + boxWidth * 0.8 + 30,
+                );
               }
             }
           }
@@ -507,7 +590,10 @@ export function VideoGenerator({
             let pulseIntensity = Math.sin(time * 4) * 0.05 + 1;
 
             if (audioData) {
-              const bass = Array.from(audioData.slice(0, 10)).reduce((a, b) => a + b, 0) / 10 / 255;
+              const bass =
+                Array.from(audioData.slice(0, 10)).reduce((a, b) => a + b, 0) /
+                10 /
+                255;
               pulseIntensity = 1 + bass * 0.15;
             }
 
@@ -518,7 +604,13 @@ export function VideoGenerator({
             ctx.shadowColor = backgroundColor;
             ctx.shadowBlur = 50 * pulseIntensity;
 
-            ctx.drawImage(img, coverX - glowOffset, coverY - glowOffset, glowSize, glowSize);
+            ctx.drawImage(
+              img,
+              coverX - glowOffset,
+              coverY - glowOffset,
+              glowSize,
+              glowSize,
+            );
           }
           break;
 
@@ -526,7 +618,9 @@ export function VideoGenerator({
           // Spinning vinyl effect
           {
             const centerX = width / 2;
-            const centerY = height / 2 - (selectedOrientation === "vertical" ? height * 0.1 : 0);
+            const centerY =
+              height / 2 -
+              (selectedOrientation === "vertical" ? height * 0.1 : 0);
             const vinylSize = coverSize * 1.2;
 
             ctx.save();
@@ -542,7 +636,13 @@ export function VideoGenerator({
             // Vinyl grooves
             for (let i = 0; i < 20; i++) {
               ctx.beginPath();
-              ctx.arc(0, 0, (vinylSize / 2) * (0.3 + i * 0.035), 0, Math.PI * 2);
+              ctx.arc(
+                0,
+                0,
+                (vinylSize / 2) * (0.3 + i * 0.035),
+                0,
+                Math.PI * 2,
+              );
               ctx.strokeStyle = `rgba(40,40,40,${0.3 + Math.random() * 0.2})`;
               ctx.lineWidth = 1;
               ctx.stroke();
@@ -550,9 +650,15 @@ export function VideoGenerator({
 
             // Cover in center
             ctx.beginPath();
-            ctx.arc(0, 0, coverSize / 2 * 0.85, 0, Math.PI * 2);
+            ctx.arc(0, 0, (coverSize / 2) * 0.85, 0, Math.PI * 2);
             ctx.clip();
-            ctx.drawImage(img, -coverSize / 2 * 0.85, -coverSize / 2 * 0.85, coverSize * 0.85, coverSize * 0.85);
+            ctx.drawImage(
+              img,
+              (-coverSize / 2) * 0.85,
+              (-coverSize / 2) * 0.85,
+              coverSize * 0.85,
+              coverSize * 0.85,
+            );
 
             ctx.restore();
 
@@ -585,7 +691,7 @@ export function VideoGenerator({
             if (audioData) {
               const waveY = smallerY + smallerSize + 40;
               const waveHeight = height * 0.15;
-              const barWidth = width / audioData.length * 2;
+              const barWidth = (width / audioData.length) * 2;
 
               ctx.fillStyle = textColor;
 
@@ -595,7 +701,12 @@ export function VideoGenerator({
                 const x = i * barWidth * 2 + barWidth / 2;
 
                 // Mirror effect
-                ctx.fillRect(x, waveY + waveHeight / 2 - barHeight / 2, barWidth - 1, barHeight);
+                ctx.fillRect(
+                  x,
+                  waveY + waveHeight / 2 - barHeight / 2,
+                  barWidth - 1,
+                  barHeight,
+                );
               }
             } else {
               // Fake waveform
@@ -608,7 +719,12 @@ export function VideoGenerator({
                 const value = Math.sin(i * 0.3 + time * 5) * 0.5 + 0.5;
                 const barHeight = value * waveHeight;
                 ctx.fillStyle = `rgba(255,255,255,${0.3 + value * 0.7})`;
-                ctx.fillRect(i * barWidth + 2, waveY + waveHeight / 2 - barHeight / 2, barWidth - 4, barHeight);
+                ctx.fillRect(
+                  i * barWidth + 2,
+                  waveY + waveHeight / 2 - barHeight / 2,
+                  barWidth - 4,
+                  barHeight,
+                );
               }
             }
           }
@@ -629,16 +745,27 @@ export function VideoGenerator({
               ctx.textAlign = "center";
               ctx.fillStyle = textColor;
               ctx.font = `bold ${width * 0.06}px "Oswald", sans-serif`;
-              ctx.fillText(artistName.toUpperCase(), width / 2 + (1 - revealProgress) * slideDistance, artistY);
+              ctx.fillText(
+                artistName.toUpperCase(),
+                width / 2 + (1 - revealProgress) * slideDistance,
+                artistY,
+              );
             }
 
             if (showTitle) {
               const titleY = coverY + coverSize + 100;
-              const titleReveal = Math.max(0, Math.min(1, (progress - 0.2) * 3));
+              const titleReveal = Math.max(
+                0,
+                Math.min(1, (progress - 0.2) * 3),
+              );
               ctx.globalAlpha = titleReveal;
               ctx.font = `${width * 0.04}px sans-serif`;
-              ctx.fillStyle = `rgba(255,255,255,0.8)`;
-              ctx.fillText(title, width / 2 - (1 - titleReveal) * slideDistance, titleY);
+              ctx.fillStyle = "rgba(255,255,255,0.8)";
+              ctx.fillText(
+                title,
+                width / 2 - (1 - titleReveal) * slideDistance,
+                titleY,
+              );
             }
             ctx.globalAlpha = 1;
           }
@@ -647,14 +774,27 @@ export function VideoGenerator({
         case "glitch":
           // Glitch effect
           {
-            const glitchIntensity = Math.random() > 0.9 ? Math.random() * 20 : 0;
+            const glitchIntensity =
+              Math.random() > 0.9 ? Math.random() * 20 : 0;
             const colorShift = Math.random() > 0.95 ? 5 : 0;
 
             // Draw with RGB shift
             if (colorShift > 0) {
               ctx.globalCompositeOperation = "screen";
-              ctx.drawImage(img, coverX - colorShift, coverY, coverSize, coverSize);
-              ctx.drawImage(img, coverX + colorShift, coverY, coverSize, coverSize);
+              ctx.drawImage(
+                img,
+                coverX - colorShift,
+                coverY,
+                coverSize,
+                coverSize,
+              );
+              ctx.drawImage(
+                img,
+                coverX + colorShift,
+                coverY,
+                coverSize,
+                coverSize,
+              );
               ctx.globalCompositeOperation = "source-over";
             }
 
@@ -664,7 +804,7 @@ export function VideoGenerator({
               coverX + (Math.random() > 0.95 ? glitchIntensity : 0),
               coverY + (Math.random() > 0.95 ? glitchIntensity : 0),
               coverSize,
-              coverSize
+              coverSize,
             );
 
             // Scan lines
@@ -684,7 +824,12 @@ export function VideoGenerator({
             const borderWidth = 4;
             ctx.strokeStyle = textColor;
             ctx.lineWidth = borderWidth;
-            ctx.strokeRect(coverX - borderWidth, coverY - borderWidth, coverSize + borderWidth * 2, coverSize + borderWidth * 2);
+            ctx.strokeRect(
+              coverX - borderWidth,
+              coverY - borderWidth,
+              coverSize + borderWidth * 2,
+              coverSize + borderWidth * 2,
+            );
             ctx.drawImage(img, coverX, coverY, coverSize, coverSize);
 
             // Subtle line animation
@@ -704,7 +849,10 @@ export function VideoGenerator({
               // Scale video to fill canvas while maintaining aspect ratio
               const videoAspect = vid.videoWidth / vid.videoHeight;
               const canvasAspect = width / height;
-              let drawWidth, drawHeight, drawX, drawY;
+              let drawWidth;
+              let drawHeight;
+              let drawX;
+              let drawY;
               if (videoAspect > canvasAspect) {
                 drawHeight = height;
                 drawWidth = height * videoAspect;
@@ -735,7 +883,10 @@ export function VideoGenerator({
             // Draw countdown overlay if enabled and release date exists
             if (releaseDate && showCountdown) {
               const countdownY = overlayY + 20;
-              const countdown = formatCountdown(releaseDate, new Date(Date.now() + (totalFrames - frame) * 33));
+              const countdown = formatCountdown(
+                releaseDate,
+                new Date(Date.now() + (totalFrames - frame) * 33),
+              );
 
               ctx.textAlign = "center";
 
@@ -745,7 +896,12 @@ export function VideoGenerator({
               const startX = (width - totalWidth) / 2;
 
               const labels = ["DÍAS", "HRS", "MIN", "SEG"];
-              const values = [countdown.days, countdown.hours, countdown.mins, countdown.secs];
+              const values = [
+                countdown.days,
+                countdown.hours,
+                countdown.mins,
+                countdown.secs,
+              ];
 
               // Fade-in effect for countdown
               const countdownOpacity = Math.min(1, progress * 3);
@@ -794,18 +950,20 @@ export function VideoGenerator({
             if (showArtistName) {
               ctx.fillStyle = textColor;
               ctx.font = `bold ${width * 0.06}px "Oswald", sans-serif`;
-              const artistTextY = releaseDate && showCountdown
-                ? height - overlayHeight + (width * 0.18 * 0.8) + 70
-                : height - overlayHeight + 50;
+              const artistTextY =
+                releaseDate && showCountdown
+                  ? height - overlayHeight + width * 0.18 * 0.8 + 70
+                  : height - overlayHeight + 50;
               ctx.fillText(artistName.toUpperCase(), width / 2, artistTextY);
             }
 
             if (showTitle) {
               ctx.fillStyle = "rgba(255,255,255,0.9)";
               ctx.font = `${width * 0.04}px sans-serif`;
-              const titleTextY = releaseDate && showCountdown
-                ? height - overlayHeight + (width * 0.18 * 0.8) + 105
-                : height - overlayHeight + 85;
+              const titleTextY =
+                releaseDate && showCountdown
+                  ? height - overlayHeight + width * 0.18 * 0.8 + 105
+                  : height - overlayHeight + 85;
               ctx.fillText(title, width / 2, titleTextY);
             }
 
@@ -825,11 +983,19 @@ export function VideoGenerator({
       ctx.restore();
 
       // Draw text overlay (for most templates — skip for video-clip and countdown-with-video which have their own text)
-      const isCountdownWithVideo = selectedTemplate === "countdown" && videoSourceRef.current && videoSourceRef.current.readyState >= 2;
-      if (selectedTemplate !== "text-reveal" && selectedTemplate !== "video-clip" && !isCountdownWithVideo) {
-        const textY = selectedOrientation === "vertical"
-          ? coverY + coverSize + (releaseDate && showCountdown ? 200 : 80)
-          : coverY + coverSize + 60;
+      const isCountdownWithVideo =
+        selectedTemplate === "countdown" &&
+        videoSourceRef.current &&
+        videoSourceRef.current.readyState >= 2;
+      if (
+        selectedTemplate !== "text-reveal" &&
+        selectedTemplate !== "video-clip" &&
+        !isCountdownWithVideo
+      ) {
+        const textY =
+          selectedOrientation === "vertical"
+            ? coverY + coverSize + (releaseDate && showCountdown ? 200 : 80)
+            : coverY + coverSize + 60;
 
         ctx.textAlign = "center";
         ctx.fillStyle = textColor;
@@ -841,7 +1007,7 @@ export function VideoGenerator({
 
         if (showTitle) {
           ctx.font = `${width * 0.035}px sans-serif`;
-          ctx.fillStyle = `rgba(255,255,255,0.8)`;
+          ctx.fillStyle = "rgba(255,255,255,0.8)";
           ctx.fillText(title, width / 2, textY + width * 0.05);
         }
       }
@@ -872,7 +1038,7 @@ export function VideoGenerator({
       showTitle,
       showCountdown,
       currentTemplate.duration,
-    ]
+    ],
   );
 
   // Preview animation
@@ -889,7 +1055,12 @@ export function VideoGenerator({
       canvas.width = currentOrientation.dimensions.width * scale;
       canvas.height = currentOrientation.dimensions.height * scale;
 
-      const particles = createParticles(50, canvas.width, canvas.height, textColor);
+      const particles = createParticles(
+        50,
+        canvas.width,
+        canvas.height,
+        textColor,
+      );
 
       const fps = 30;
       const totalFrames = currentTemplate.duration * fps;
@@ -898,7 +1069,11 @@ export function VideoGenerator({
       setIsPreviewPlaying(true);
 
       // Start video source playback for preview if needed
-      if ((selectedTemplate === "video-clip" || selectedTemplate === "countdown") && videoSourceRef.current) {
+      if (
+        (selectedTemplate === "video-clip" ||
+          selectedTemplate === "countdown") &&
+        videoSourceRef.current
+      ) {
         const vid = videoSourceRef.current;
         vid.currentTime = 0;
         if (vid.readyState < 2) {
@@ -917,7 +1092,15 @@ export function VideoGenerator({
 
         ctx.save();
         ctx.scale(scale, scale);
-        drawFrame(ctx, img, frame, totalFrames, canvas.width / scale, canvas.height / scale, particles);
+        drawFrame(
+          ctx,
+          img,
+          frame,
+          totalFrames,
+          canvas.width / scale,
+          canvas.height / scale,
+          particles,
+        );
         ctx.restore();
 
         frame++;
@@ -957,7 +1140,12 @@ export function VideoGenerator({
       canvas.width = currentOrientation.dimensions.width;
       canvas.height = currentOrientation.dimensions.height;
 
-      const particles = createParticles(100, canvas.width, canvas.height, textColor);
+      const particles = createParticles(
+        100,
+        canvas.width,
+        canvas.height,
+        textColor,
+      );
 
       const fps = 30;
       const totalFrames = currentTemplate.duration * fps;
@@ -965,7 +1153,7 @@ export function VideoGenerator({
 
       // Setup MediaRecorder if available
       let mediaRecorder: MediaRecorder | null = null;
-      let recordedChunks: Blob[] = [];
+      const recordedChunks: Blob[] = [];
 
       const stream = canvas.captureStream(fps);
 
@@ -1010,20 +1198,32 @@ export function VideoGenerator({
       mediaRecorder.start();
 
       // For video-clip or countdown template with video, play the source video during recording
-      if ((selectedTemplate === "video-clip" || selectedTemplate === "countdown") && videoSourceRef.current) {
+      if (
+        (selectedTemplate === "video-clip" ||
+          selectedTemplate === "countdown") &&
+        videoSourceRef.current
+      ) {
         const vid = videoSourceRef.current;
         vid.currentTime = 0;
 
         // Wait for video to be ready to play
         let videoReady = false;
         await new Promise<void>((resolve) => {
-          vid.oncanplay = () => { videoReady = true; resolve(); };
+          vid.oncanplay = () => {
+            videoReady = true;
+            resolve();
+          };
           vid.onerror = () => {
-            console.warn("Video source failed to load - will use cover image fallback");
+            console.warn(
+              "Video source failed to load - will use cover image fallback",
+            );
             resolve();
           };
           setTimeout(() => {
-            if (!videoReady) console.warn("Video loading timed out - will use cover image fallback");
+            if (!videoReady)
+              console.warn(
+                "Video loading timed out - will use cover image fallback",
+              );
             resolve();
           }, 5000);
         });
@@ -1040,7 +1240,15 @@ export function VideoGenerator({
 
       // Render frames
       for (let frame = 0; frame < totalFrames; frame++) {
-        drawFrame(ctx, img, frame, totalFrames, canvas.width, canvas.height, particles);
+        drawFrame(
+          ctx,
+          img,
+          frame,
+          totalFrames,
+          canvas.width,
+          canvas.height,
+          particles,
+        );
 
         // Update progress
         setProgress(Math.round((frame / totalFrames) * 100));
@@ -1126,7 +1334,9 @@ export function VideoGenerator({
       {/* Settings panel */}
       {showSettings && (
         <div className="p-4 bg-slc-dark border border-slc-border rounded-xl space-y-4">
-          <h4 className="font-oswald text-sm uppercase text-slc-muted">Personalización</h4>
+          <h4 className="font-oswald text-sm uppercase text-slc-muted">
+            Personalización
+          </h4>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -1212,31 +1422,43 @@ export function VideoGenerator({
       <div>
         <label className="block text-sm text-slc-muted mb-2">Template</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {TEMPLATES.filter((template) => template.id !== "video-clip" || videoUrl).map((template) => (
+          {TEMPLATES.filter(
+            (template) => template.id !== "video-clip" || videoUrl,
+          ).map((template) => (
             <button
               key={template.id}
               type="button"
               onClick={() => setSelectedTemplate(template.id)}
-              disabled={template.requiresAudio && !audioUrl && template.id !== "video-clip"}
+              disabled={
+                template.requiresAudio &&
+                !audioUrl &&
+                template.id !== "video-clip"
+              }
               className={`p-3 rounded-xl border text-left transition-all ${
                 selectedTemplate === template.id
                   ? "bg-primary/10 border-primary"
-                  : template.requiresAudio && !audioUrl && template.id !== "video-clip"
-                  ? "bg-slc-card/50 border-slc-border opacity-50 cursor-not-allowed"
-                  : "bg-slc-card border-slc-border hover:border-primary/50"
+                  : template.requiresAudio &&
+                      !audioUrl &&
+                      template.id !== "video-clip"
+                    ? "bg-slc-card/50 border-slc-border opacity-50 cursor-not-allowed"
+                    : "bg-slc-card border-slc-border hover:border-primary/50"
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
                 {template.icon}
                 <span className="font-medium text-sm">{template.name}</span>
               </div>
-              <p className="text-xs text-slc-muted line-clamp-2">{template.description}</p>
-              {template.requiresAudio && !audioUrl && template.id !== "video-clip" && (
-                <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
-                  <Music className="w-3 h-3" />
-                  Requiere audio
-                </p>
-              )}
+              <p className="text-xs text-slc-muted line-clamp-2">
+                {template.description}
+              </p>
+              {template.requiresAudio &&
+                !audioUrl &&
+                template.id !== "video-clip" && (
+                  <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
+                    <Music className="w-3 h-3" />
+                    Requiere audio
+                  </p>
+                )}
               {template.id === "video-clip" && videoUrl && (
                 <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
                   <Video className="w-3 h-3" />
@@ -1279,21 +1501,22 @@ export function VideoGenerator({
 
         <div
           className={`relative bg-slc-dark rounded-xl overflow-hidden flex items-center justify-center ${
-            selectedOrientation === "vertical" ? "aspect-[9/16] max-h-[500px]" :
-            selectedOrientation === "square" ? "aspect-square max-h-[400px]" :
-            "aspect-video"
+            selectedOrientation === "vertical"
+              ? "aspect-[9/16] max-h-[500px]"
+              : selectedOrientation === "square"
+                ? "aspect-square max-h-[400px]"
+                : "aspect-video"
           }`}
           style={{ backgroundColor }}
         >
-          <canvas
-            ref={previewCanvasRef}
-            className="max-w-full max-h-full"
-          />
+          <canvas ref={previewCanvasRef} className="max-w-full max-h-full" />
 
           {!isPreviewPlaying && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
               <Play className="w-12 h-12 text-white/80 mb-2" />
-              <span className="text-sm text-white/60">Click Preview para ver animación</span>
+              <span className="text-sm text-white/60">
+                Click Preview para ver animación
+              </span>
             </div>
           )}
         </div>
@@ -1359,7 +1582,9 @@ export function VideoGenerator({
         <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
           <div className="flex items-center gap-2 mb-3">
             <Check className="w-5 h-5 text-green-500" />
-            <span className="font-medium text-green-500">Video generado exitosamente</span>
+            <span className="font-medium text-green-500">
+              Video generado exitosamente
+            </span>
           </div>
           <video
             src={generatedVideoUrl}
@@ -1378,10 +1603,21 @@ export function VideoGenerator({
           Tips
         </h4>
         <ul className="text-xs text-slc-muted space-y-1">
-          <li>• <strong>Vertical:</strong> Ideal para Instagram Reels, TikTok y Stories</li>
-          <li>• <strong>Horizontal:</strong> Para YouTube y embeds en web</li>
-          <li>• <strong>Cuadrado:</strong> Funciona bien en Instagram Feed y Twitter</li>
-          <li>• El video se genera en WebM - puedes convertirlo a MP4 si lo necesitas</li>
+          <li>
+            • <strong>Vertical:</strong> Ideal para Instagram Reels, TikTok y
+            Stories
+          </li>
+          <li>
+            • <strong>Horizontal:</strong> Para YouTube y embeds en web
+          </li>
+          <li>
+            • <strong>Cuadrado:</strong> Funciona bien en Instagram Feed y
+            Twitter
+          </li>
+          <li>
+            • El video se genera en WebM - puedes convertirlo a MP4 si lo
+            necesitas
+          </li>
         </ul>
       </div>
     </div>

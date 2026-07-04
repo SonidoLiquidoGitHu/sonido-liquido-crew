@@ -1,32 +1,32 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  Camera,
-  Upload,
-  Heart,
-  Eye,
   Calendar,
-  MapPin,
-  Instagram,
-  User,
-  X,
-  Loader2,
+  Camera,
+  Check,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  Download,
+  Eye,
+  Facebook,
+  Heart,
   Image as ImageIcon,
+  Instagram,
+  Link2,
+  Loader2,
+  MapPin,
   Send,
   Share2,
-  Download,
-  Facebook,
-  Link2,
-  Check,
+  Sparkles,
+  Upload,
+  User,
+  X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 
 interface ConcertMemory {
   id: string;
@@ -76,7 +76,9 @@ export function ConcertMemoryGallery({
   const [memories, setMemories] = useState<ConcertMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadForm, setShowUploadForm] = useState(false);
-  const [selectedMemory, setSelectedMemory] = useState<ConcertMemory | null>(null);
+  const [selectedMemory, setSelectedMemory] = useState<ConcertMemory | null>(
+    null,
+  );
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Upload form state
@@ -122,27 +124,30 @@ export function ConcertMemoryGallery({
   }
 
   // Handle file selection
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setError("Solo se permiten imágenes");
-      return;
-    }
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setError("Solo se permiten imágenes");
+        return;
+      }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError("La imagen no puede superar 10MB");
-      return;
-    }
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError("La imagen no puede superar 10MB");
+        return;
+      }
 
-    // Create preview
-    const previewUrl = URL.createObjectURL(file);
-    setFormData((prev) => ({ ...prev, file, previewUrl }));
-    setError(null);
-  }, []);
+      // Create preview
+      const previewUrl = URL.createObjectURL(file);
+      setFormData((prev) => ({ ...prev, file, previewUrl }));
+      setError(null);
+    },
+    [],
+  );
 
   // Clear selected file
   const clearFile = () => {
@@ -166,12 +171,17 @@ export function ConcertMemoryGallery({
       const data = new FormData();
       data.append("file", formData.file);
       data.append("submitterName", formData.submitterName.trim());
-      if (formData.submitterEmail) data.append("submitterEmail", formData.submitterEmail.trim());
-      if (formData.submitterInstagram) data.append("submitterInstagram", formData.submitterInstagram.trim());
+      if (formData.submitterEmail)
+        data.append("submitterEmail", formData.submitterEmail.trim());
+      if (formData.submitterInstagram)
+        data.append("submitterInstagram", formData.submitterInstagram.trim());
       if (formData.eventId) data.append("eventId", formData.eventId);
-      if (formData.eventName) data.append("eventName", formData.eventName.trim());
-      if (formData.eventVenue) data.append("eventVenue", formData.eventVenue.trim());
-      if (formData.eventCity) data.append("eventCity", formData.eventCity.trim());
+      if (formData.eventName)
+        data.append("eventName", formData.eventName.trim());
+      if (formData.eventVenue)
+        data.append("eventVenue", formData.eventVenue.trim());
+      if (formData.eventCity)
+        data.append("eventCity", formData.eventCity.trim());
       if (formData.caption) data.append("caption", formData.caption.trim());
 
       setUploadProgress(30);
@@ -252,7 +262,9 @@ export function ConcertMemoryGallery({
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/10 border border-pink-500/20 rounded-full mb-4">
               <Camera className="w-4 h-4 text-pink-500" />
-              <span className="text-sm font-medium text-pink-500">Comunidad</span>
+              <span className="text-sm font-medium text-pink-500">
+                Comunidad
+              </span>
             </div>
             <h2 className="font-oswald text-4xl md:text-5xl uppercase text-white mb-2">
               {title}
@@ -278,7 +290,9 @@ export function ConcertMemoryGallery({
               {submitted ? (
                 <div className="p-8 text-center">
                   <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                  <h3 className="font-oswald text-2xl uppercase mb-2">¡Foto enviada!</h3>
+                  <h3 className="font-oswald text-2xl uppercase mb-2">
+                    ¡Foto enviada!
+                  </h3>
                   <p className="text-slc-muted">
                     Tu foto aparecerá después de ser aprobada.
                   </p>
@@ -287,7 +301,9 @@ export function ConcertMemoryGallery({
                 <form onSubmit={handleSubmit}>
                   {/* Header */}
                   <div className="flex items-center justify-between p-4 border-b border-slc-border">
-                    <h3 className="font-oswald text-xl uppercase">Comparte tu recuerdo</h3>
+                    <h3 className="font-oswald text-xl uppercase">
+                      Comparte tu recuerdo
+                    </h3>
                     <button
                       type="button"
                       onClick={() => setShowUploadForm(false)}
@@ -389,7 +405,10 @@ export function ConcertMemoryGallery({
                         <select
                           value={formData.eventId}
                           onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, eventId: e.target.value }))
+                            setFormData((prev) => ({
+                              ...prev,
+                              eventId: e.target.value,
+                            }))
                           }
                           className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                         >
@@ -397,11 +416,14 @@ export function ConcertMemoryGallery({
                           {events.map((event) => (
                             <option key={event.id} value={event.id}>
                               {event.title} - {event.city} (
-                              {new Date(event.eventDate).toLocaleDateString("es-MX", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
+                              {new Date(event.eventDate).toLocaleDateString(
+                                "es-MX",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                               )
                             </option>
                           ))}
@@ -417,7 +439,10 @@ export function ConcertMemoryGallery({
                             type="text"
                             value={formData.eventName}
                             onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, eventName: e.target.value }))
+                              setFormData((prev) => ({
+                                ...prev,
+                                eventName: e.target.value,
+                              }))
                             }
                             placeholder="Ej: Show en el Foro"
                             className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
@@ -431,7 +456,10 @@ export function ConcertMemoryGallery({
                             type="text"
                             value={formData.eventCity}
                             onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, eventCity: e.target.value }))
+                              setFormData((prev) => ({
+                                ...prev,
+                                eventCity: e.target.value,
+                              }))
                             }
                             placeholder="Ej: CDMX"
                             className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
@@ -448,7 +476,10 @@ export function ConcertMemoryGallery({
                       <textarea
                         value={formData.caption}
                         onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, caption: e.target.value }))
+                          setFormData((prev) => ({
+                            ...prev,
+                            caption: e.target.value,
+                          }))
                         }
                         placeholder="Cuéntanos sobre este momento..."
                         rows={2}
@@ -477,7 +508,11 @@ export function ConcertMemoryGallery({
                     )}
                     <Button
                       type="submit"
-                      disabled={isUploading || !formData.file || !formData.submitterName.trim()}
+                      disabled={
+                        isUploading ||
+                        !formData.file ||
+                        !formData.submitterName.trim()
+                      }
                       className="w-full bg-pink-500 hover:bg-pink-600"
                     >
                       {isUploading ? (
@@ -571,9 +606,10 @@ function GalleryThumbnail({
 }) {
   const [showQuickShare, setShowQuickShare] = useState(false);
 
-  const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/comunidad?foto=${memory.id}`
-    : "";
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/comunidad?foto=${memory.id}`
+      : "";
 
   const shareText = memory.caption
     ? `${memory.caption} - Sonido Líquido Crew`
@@ -601,9 +637,11 @@ function GalleryThumbnail({
       }
       // Open the platform
       window.open(
-        platform === "instagram" ? "https://instagram.com" : "https://tiktok.com",
+        platform === "instagram"
+          ? "https://instagram.com"
+          : "https://tiktok.com",
         "_blank",
-        "noopener,noreferrer"
+        "noopener,noreferrer",
       );
     }
     setShowQuickShare(false);
@@ -613,7 +651,7 @@ function GalleryThumbnail({
     <div
       className={cn(
         "group relative aspect-square rounded-xl overflow-hidden bg-slc-dark",
-        memory.isFeatured && "ring-2 ring-pink-500"
+        memory.isFeatured && "ring-2 ring-pink-500",
       )}
     >
       <button
@@ -633,7 +671,9 @@ function GalleryThumbnail({
         <div className="absolute bottom-0 left-0 right-0 p-3">
           <p className="text-xs text-white truncate">{memory.submitterName}</p>
           {memory.eventName && (
-            <p className="text-[10px] text-white/60 truncate">{memory.eventName}</p>
+            <p className="text-[10px] text-white/60 truncate">
+              {memory.eventName}
+            </p>
           )}
         </div>
       </div>
@@ -713,9 +753,10 @@ function LightboxWithShare({
   const [downloading, setDownloading] = useState(false);
 
   // Generate share URL for this memory
-  const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/comunidad?foto=${memory.id}`
-    : "";
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/comunidad?foto=${memory.id}`
+      : "";
 
   const shareText = memory.caption
     ? `${memory.caption} - Sonido Líquido Crew`
@@ -884,10 +925,12 @@ function LightboxWithShare({
               className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-slc-dark transition-colors group"
               title="Copiar enlace"
             >
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
-                copied ? "bg-green-600" : "bg-slc-border"
-              )}>
+              <div
+                className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
+                  copied ? "bg-green-600" : "bg-slc-border",
+                )}
+              >
                 {copied ? (
                   <Check className="w-5 h-5 text-white" />
                 ) : (

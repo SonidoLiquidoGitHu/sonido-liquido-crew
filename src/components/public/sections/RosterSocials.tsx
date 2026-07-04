@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Instagram, Youtube, Music2, Loader2, Radio } from "lucide-react";
+import { Instagram, Loader2, Music2, Radio, Youtube } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 // Type for artist data from /api/artists/roster
 interface RosterArtist {
@@ -58,20 +58,23 @@ export function RosterSocials() {
   }, []);
 
   // Fetch artist image from Spotify oembed
-  const fetchArtistImage = useCallback(async (spotifyId: string): Promise<string | null> => {
-    try {
-      const response = await fetch(
-        `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${spotifyId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        return data.thumbnail_url || null;
+  const fetchArtistImage = useCallback(
+    async (spotifyId: string): Promise<string | null> => {
+      try {
+        const response = await fetch(
+          `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${spotifyId}`,
+        );
+        if (response.ok) {
+          const data = await response.json();
+          return data.thumbnail_url || null;
+        }
+      } catch (error) {
+        console.error(`Failed to fetch image for artist ${spotifyId}:`, error);
       }
-    } catch (error) {
-      console.error(`Failed to fetch image for artist ${spotifyId}:`, error);
-    }
-    return null;
-  }, []);
+      return null;
+    },
+    [],
+  );
 
   // Fetch all artist images from Spotify oembed
   useEffect(() => {
@@ -89,7 +92,7 @@ export function RosterSocials() {
               images[artist.slug] = imageUrl;
             }
           }
-        })
+        }),
       );
 
       setArtistImages(images);
@@ -100,7 +103,7 @@ export function RosterSocials() {
 
   // Handle image error
   const handleImageError = (slug: string) => {
-    setImageErrors(prev => ({ ...prev, [slug]: true }));
+    setImageErrors((prev) => ({ ...prev, [slug]: true }));
   };
 
   if (loading) {
@@ -126,7 +129,8 @@ export function RosterSocials() {
             Conecta con el Roster
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
-            Sigue a todos los artistas de Sonido Líquido Crew en sus redes sociales
+            Sigue a todos los artistas de Sonido Líquido Crew en sus redes
+            sociales
           </p>
         </div>
 

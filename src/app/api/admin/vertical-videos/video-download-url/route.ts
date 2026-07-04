@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { dropboxClient } from "@/lib/clients/dropbox";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Returns a temporary direct download URL for a vertical video.
@@ -42,11 +42,16 @@ export async function GET(request: NextRequest) {
         // Convert direct link back to shared link format for metadata lookup
         let sharedLink = downloadUrl;
         if (sharedLink.includes("dl.dropboxusercontent.com")) {
-          sharedLink = sharedLink.replace("dl.dropboxusercontent.com", "www.dropbox.com");
+          sharedLink = sharedLink.replace(
+            "dl.dropboxusercontent.com",
+            "www.dropbox.com",
+          );
         }
         // Handle ?raw=1 URLs — convert back to standard shared link format
         if (sharedLink.includes("raw=1")) {
-          sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+          sharedLink = sharedLink
+            .replace("?raw=1", "?dl=0")
+            .replace("&raw=1", "&dl=0");
         }
         if (!sharedLink.includes("?")) {
           sharedLink += "?dl=0";
@@ -63,7 +68,7 @@ export async function GET(request: NextRequest) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ url: sharedLink }),
-          }
+          },
         );
 
         if (metaResponse.ok) {
@@ -81,18 +86,24 @@ export async function GET(request: NextRequest) {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ path: filePath }),
-              }
+              },
             );
 
             if (tempLinkResponse.ok) {
               const tempLinkData = await tempLinkResponse.json();
               downloadUrl = tempLinkData.link;
-              console.log("[Video Download URL] Got temporary link for:", filePath);
+              console.log(
+                "[Video Download URL] Got temporary link for:",
+                filePath,
+              );
             }
           }
         }
       } catch (err) {
-        console.warn("[Video Download URL] Could not resolve Dropbox path:", err);
+        console.warn(
+          "[Video Download URL] Could not resolve Dropbox path:",
+          err,
+        );
 
         // Fallback: try ?raw=1 or ?dl=1 for direct download
         if (downloadUrl.includes("dl.dropboxusercontent.com")) {
@@ -100,9 +111,11 @@ export async function GET(request: NextRequest) {
         } else if (downloadUrl.includes("www.dropbox.com")) {
           // New format — ensure ?raw=1 for direct access
           if (!downloadUrl.includes("raw=1") && !downloadUrl.includes("dl=1")) {
-            downloadUrl += (downloadUrl.includes("?") ? "&" : "?") + "raw=1";
+            downloadUrl += `${downloadUrl.includes("?") ? "&" : "?"}raw=1`;
           }
-          downloadUrl = downloadUrl.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
+          downloadUrl = downloadUrl
+            .replace("?dl=0", "?raw=1")
+            .replace("&dl=0", "&raw=1");
         }
       }
     }
@@ -115,7 +128,7 @@ export async function GET(request: NextRequest) {
     console.error("[Video Download URL] Error:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

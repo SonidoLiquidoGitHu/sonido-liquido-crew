@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
 /**
@@ -48,10 +48,7 @@ export async function GET(req: NextRequest) {
 
   // Basic validation — must be http(s)
   if (!/^https?:\/\//i.test(sourceUrl)) {
-    return NextResponse.json(
-      { error: "URL must be http(s)" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "URL must be http(s)" }, { status: 400 });
   }
 
   // Fetch the source image

@@ -12,8 +12,9 @@ export function slugify(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
-    .replace(/[^a-z0-9\s-]/g, "") // Remove special characters
+    // biome-ignore lint/suspicious/noMisleadingCharacterClass: standard NFD diacritic range
+    .replace(/[\u0300-\u036f]/gu, "") // Remove diacritics
+    .replace(/[^a-z0-9\s-]/gu, "") // Remove special characters
     .replace(/\s+/g, "-") // Replace spaces with hyphens
     .replace(/-+/g, "-") // Replace multiple hyphens with single
     .trim()
@@ -34,7 +35,10 @@ export function generateUUID(): string {
 /**
  * Format a date to a readable string
  */
-export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
+export function formatDate(
+  date: Date | string,
+  options?: Intl.DateTimeFormatOptions,
+): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleDateString("es-MX", {
     year: "numeric",
@@ -60,11 +64,16 @@ export function formatRelativeTime(date: Date | string): string {
   const diffYears = Math.floor(diffDays / 365);
 
   if (diffSecs < 60) return "hace unos segundos";
-  if (diffMins < 60) return `hace ${diffMins} ${diffMins === 1 ? "minuto" : "minutos"}`;
-  if (diffHours < 24) return `hace ${diffHours} ${diffHours === 1 ? "hora" : "horas"}`;
-  if (diffDays < 7) return `hace ${diffDays} ${diffDays === 1 ? "día" : "días"}`;
-  if (diffWeeks < 4) return `hace ${diffWeeks} ${diffWeeks === 1 ? "semana" : "semanas"}`;
-  if (diffMonths < 12) return `hace ${diffMonths} ${diffMonths === 1 ? "mes" : "meses"}`;
+  if (diffMins < 60)
+    return `hace ${diffMins} ${diffMins === 1 ? "minuto" : "minutos"}`;
+  if (diffHours < 24)
+    return `hace ${diffHours} ${diffHours === 1 ? "hora" : "horas"}`;
+  if (diffDays < 7)
+    return `hace ${diffDays} ${diffDays === 1 ? "día" : "días"}`;
+  if (diffWeeks < 4)
+    return `hace ${diffWeeks} ${diffWeeks === 1 ? "semana" : "semanas"}`;
+  if (diffMonths < 12)
+    return `hace ${diffMonths} ${diffMonths === 1 ? "mes" : "meses"}`;
   return `hace ${diffYears} ${diffYears === 1 ? "año" : "años"}`;
 }
 
@@ -106,9 +115,9 @@ export function parseISODuration(duration: string): number {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return 0;
 
-  const hours = parseInt(match[1] || "0", 10);
-  const minutes = parseInt(match[2] || "0", 10);
-  const seconds = parseInt(match[3] || "0", 10);
+  const hours = Number.parseInt(match[1] || "0", 10);
+  const minutes = Number.parseInt(match[2] || "0", 10);
+  const seconds = Number.parseInt(match[3] || "0", 10);
 
   return hours * 3600 + minutes * 60 + seconds;
 }
@@ -154,7 +163,9 @@ export function extractYouTubeId(url: string): string | null {
 /**
  * Extract YouTube channel ID or handle from URL
  */
-export function extractYouTubeChannel(url: string): { type: "id" | "handle"; value: string } | null {
+export function extractYouTubeChannel(
+  url: string,
+): { type: "id" | "handle"; value: string } | null {
   const idMatch = url.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
   if (idMatch) return { type: "id", value: idMatch[1] };
 
@@ -188,7 +199,7 @@ export function getArtistRoleDisplay(role?: string): string {
   };
   // Support comma-separated roles
   const roles = role.split(",").filter(Boolean);
-  const labels = roles.map(r => roleMap[r.trim()] || r.trim());
+  const labels = roles.map((r) => roleMap[r.trim()] || r.trim());
   return labels.join(" • ") || "Artista";
 }
 
@@ -211,7 +222,14 @@ export function getReleaseTypeDisplay(type: string): string {
  * Get tint color class based on index
  */
 export function getTintColorClass(index: number): string {
-  const colors = ["tint-cyan", "tint-green", "tint-pink", "tint-purple", "tint-orange", "tint-yellow"];
+  const colors = [
+    "tint-cyan",
+    "tint-green",
+    "tint-pink",
+    "tint-purple",
+    "tint-orange",
+    "tint-yellow",
+  ];
   return colors[index % colors.length];
 }
 
@@ -233,7 +251,8 @@ export function calculateCountdown(targetDate: Date | string): {
   seconds: number;
   isExpired: boolean;
 } {
-  const target = typeof targetDate === "string" ? new Date(targetDate) : targetDate;
+  const target =
+    typeof targetDate === "string" ? new Date(targetDate) : targetDate;
   const now = new Date();
   const diff = target.getTime() - now.getTime();
 
@@ -262,7 +281,7 @@ export function isValidEmail(email: string): boolean {
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
 
@@ -313,7 +332,8 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
 export function proxyImageUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== "string") return url ?? null;
 
-  const isDropbox = url.includes("dropbox.com") || url.includes("dropboxusercontent.com");
+  const isDropbox =
+    url.includes("dropbox.com") || url.includes("dropboxusercontent.com");
   if (isDropbox) {
     return `/api/image-proxy?url=${encodeURIComponent(url)}`;
   }

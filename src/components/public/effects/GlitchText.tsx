@@ -9,25 +9,25 @@ interface GlitchTextProps {
   glitchColor2?: string;
 }
 
-export function GlitchText({
-  text,
-  className = "",
-}: GlitchTextProps) {
+export function GlitchText({ text, className = "" }: GlitchTextProps) {
   const [isGlitching, setIsGlitching] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const glitchInterval = setInterval(() => {
-      setIsGlitching(true);
-      setOffset({
-        x: (Math.random() - 0.5) * 4,
-        y: (Math.random() - 0.5) * 2,
-      });
-      setTimeout(() => {
-        setIsGlitching(false);
-        setOffset({ x: 0, y: 0 });
-      }, 150);
-    }, 4000 + Math.random() * 3000);
+    const glitchInterval = setInterval(
+      () => {
+        setIsGlitching(true);
+        setOffset({
+          x: (Math.random() - 0.5) * 4,
+          y: (Math.random() - 0.5) * 2,
+        });
+        setTimeout(() => {
+          setIsGlitching(false);
+          setOffset({ x: 0, y: 0 });
+        }, 150);
+      },
+      4000 + Math.random() * 3000,
+    );
 
     return () => clearInterval(glitchInterval);
   }, []);
@@ -51,7 +51,9 @@ export function GlitchText({
       <span
         className="relative z-10 transition-transform duration-75"
         style={{
-          transform: isGlitching ? `translate(${offset.x}px, ${offset.y}px)` : "none",
+          transform: isGlitching
+            ? `translate(${offset.x}px, ${offset.y}px)`
+            : "none",
           textShadow: isGlitching
             ? "0 0 10px rgba(255,255,255,0.5), 0 0 20px rgba(255,255,255,0.3)"
             : "0 0 30px rgba(255,255,255,0.1)",
@@ -114,7 +116,8 @@ export function ShimmerText({
       <span
         className="relative z-10"
         style={{
-          textShadow: "0 0 40px rgba(255,255,255,0.15), 0 0 80px rgba(255,255,255,0.05)",
+          textShadow:
+            "0 0 40px rgba(255,255,255,0.15), 0 0 80px rgba(255,255,255,0.05)",
         }}
       >
         {text}
@@ -128,7 +131,8 @@ export function ShimmerText({
         <span
           className="absolute inset-0 animate-shimmer-sweep"
           style={{
-            background: "linear-gradient(90deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%, transparent 100%)",
+            background:
+              "linear-gradient(90deg, transparent 0%, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%, transparent 100%)",
             backgroundSize: "200% 100%",
           }}
         />
@@ -193,10 +197,14 @@ export function RevealText({
             key={index}
             className="inline-block transition-all duration-500 ease-out"
             style={{
-              transform: isVisible ? "translateY(0) rotateX(0)" : "translateY(100%) rotateX(-90deg)",
+              transform: isVisible
+                ? "translateY(0) rotateX(0)"
+                : "translateY(100%) rotateX(-90deg)",
               opacity: isVisible ? 1 : 0,
               transitionDelay: `${index * staggerMs}ms`,
-              textShadow: hasRevealed ? "0 0 30px rgba(255,255,255,0.2)" : "none",
+              textShadow: hasRevealed
+                ? "0 0 30px rgba(255,255,255,0.2)"
+                : "none",
             }}
           >
             {char === " " ? "\u00A0" : char}
@@ -213,7 +221,8 @@ export function RevealText({
           <span
             className="absolute inset-0"
             style={{
-              background: "linear-gradient(90deg, transparent 0%, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%, transparent 100%)",
+              background:
+                "linear-gradient(90deg, transparent 0%, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%, transparent 100%)",
               animation: "shimmer-sweep 4s ease-in-out infinite 1s",
             }}
           />

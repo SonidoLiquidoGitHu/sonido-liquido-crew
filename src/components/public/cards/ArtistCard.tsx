@@ -1,9 +1,9 @@
 "use client";
 
+import type { Artist } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import type { Artist } from "@/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSoundEffects } from "../effects/SoundEffects";
 
 /**
@@ -24,7 +24,7 @@ function useIsTouchDevice() {
   useEffect(() => {
     setIsTouch(
       typeof window !== "undefined" &&
-      ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+        ("ontouchstart" in window || navigator.maxTouchPoints > 0),
     );
   }, []);
   return isTouch;
@@ -34,24 +34,24 @@ function useIsTouchDevice() {
 // Each color has a background, highlight tint, and shadow for depth
 const popArtColors = [
   // Row 1
-  { bg: "#3D7A7A", highlight: "#5BA8A8", shadow: "#2A5555" },      // Teal/Cyan
-  { bg: "#D4A520", highlight: "#F0C040", shadow: "#A88010" },     // Yellow/Gold
-  { bg: "#5A7590", highlight: "#7A95B0", shadow: "#3A5570" },    // Steel Blue
+  { bg: "#3D7A7A", highlight: "#5BA8A8", shadow: "#2A5555" }, // Teal/Cyan
+  { bg: "#D4A520", highlight: "#F0C040", shadow: "#A88010" }, // Yellow/Gold
+  { bg: "#5A7590", highlight: "#7A95B0", shadow: "#3A5570" }, // Steel Blue
   // Row 2
-  { bg: "#C45A3A", highlight: "#E07A5A", shadow: "#943A20" },    // Coral/Salmon
-  { bg: "#C09020", highlight: "#E0B040", shadow: "#907000" },       // Amber/Orange
-  { bg: "#B54A30", highlight: "#D56A50", shadow: "#852A10" },        // Terracotta
+  { bg: "#C45A3A", highlight: "#E07A5A", shadow: "#943A20" }, // Coral/Salmon
+  { bg: "#C09020", highlight: "#E0B040", shadow: "#907000" }, // Amber/Orange
+  { bg: "#B54A30", highlight: "#D56A50", shadow: "#852A10" }, // Terracotta
   // Row 3
-  { bg: "#7A4A4A", highlight: "#9A6A6A", shadow: "#5A2A2A" },    // Dusty Rose/Brown
-  { bg: "#4A9070", highlight: "#6AB090", shadow: "#2A7050" },      // Mint/Green
-  { bg: "#C06A50", highlight: "#E08A70", shadow: "#904A30" },     // Peach/Salmon
+  { bg: "#7A4A4A", highlight: "#9A6A6A", shadow: "#5A2A2A" }, // Dusty Rose/Brown
+  { bg: "#4A9070", highlight: "#6AB090", shadow: "#2A7050" }, // Mint/Green
+  { bg: "#C06A50", highlight: "#E08A70", shadow: "#904A30" }, // Peach/Salmon
   // Additional colors
-  { bg: "#8A4A7A", highlight: "#AA6A9A", shadow: "#6A2A5A" },      // Purple/Magenta
-  { bg: "#3A6090", highlight: "#5A80B0", shadow: "#1A4070" },      // Blue
-  { bg: "#908050", highlight: "#B0A070", shadow: "#706030" },     // Olive/Tan
-  { bg: "#4A8A60", highlight: "#6AAA80", shadow: "#2A6A40" },      // Green
-  { bg: "#904040", highlight: "#B06060", shadow: "#702020" },        // Red/Crimson
-  { bg: "#4A4A90", highlight: "#6A6AB0", shadow: "#2A2A70" },      // Indigo
+  { bg: "#8A4A7A", highlight: "#AA6A9A", shadow: "#6A2A5A" }, // Purple/Magenta
+  { bg: "#3A6090", highlight: "#5A80B0", shadow: "#1A4070" }, // Blue
+  { bg: "#908050", highlight: "#B0A070", shadow: "#706030" }, // Olive/Tan
+  { bg: "#4A8A60", highlight: "#6AAA80", shadow: "#2A6A40" }, // Green
+  { bg: "#904040", highlight: "#B06060", shadow: "#702020" }, // Red/Crimson
+  { bg: "#4A4A90", highlight: "#6A6AB0", shadow: "#2A2A70" }, // Indigo
 ];
 
 // Glow colors for 3D effect
@@ -73,31 +73,38 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
   const colorScheme = popArtColors[index % popArtColors.length];
   const glowColor = glowColors[index % glowColors.length];
   const [imageError, setImageError] = useState(false);
-  const [transform, setTransform] = useState({ rotateX: 0, rotateY: 0, scale: 1 });
+  const [transform, setTransform] = useState({
+    rotateX: 0,
+    rotateY: 0,
+    scale: 1,
+  });
   const [glarePosition, setGlarePosition] = useState({ x: 50, y: 50 });
   const [isHovering, setIsHovering] = useState(false);
   const isTouchDevice = useIsTouchDevice();
   const cardRef = useRef<HTMLAnchorElement>(null);
   const { playSound } = useSoundEffects();
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!cardRef.current) return;
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!cardRef.current) return;
 
-    const rect = cardRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+      const rect = cardRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
 
-    // Calculate rotation based on mouse position
-    const rotateY = ((e.clientX - centerX) / (rect.width / 2)) * 12;
-    const rotateX = -((e.clientY - centerY) / (rect.height / 2)) * 12;
+      // Calculate rotation based on mouse position
+      const rotateY = ((e.clientX - centerX) / (rect.width / 2)) * 12;
+      const rotateX = -((e.clientY - centerY) / (rect.height / 2)) * 12;
 
-    // Calculate glare position
-    const glareX = ((e.clientX - rect.left) / rect.width) * 100;
-    const glareY = ((e.clientY - rect.top) / rect.height) * 100;
+      // Calculate glare position
+      const glareX = ((e.clientX - rect.left) / rect.width) * 100;
+      const glareY = ((e.clientY - rect.top) / rect.height) * 100;
 
-    setTransform({ rotateX, rotateY, scale: 1.05 });
-    setGlarePosition({ x: glareX, y: glareY });
-  }, []);
+      setTransform({ rotateX, rotateY, scale: 1.05 });
+      setGlarePosition({ x: glareX, y: glareY });
+    },
+    [],
+  );
 
   const handleMouseEnter = useCallback(() => {
     setIsHovering(true);
@@ -133,7 +140,9 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
         backgroundColor: colorScheme.bg,
         transform: `perspective(1000px) rotateX(${transform.rotateX}deg) rotateY(${transform.rotateY}deg) scale3d(${transform.scale}, ${transform.scale}, ${transform.scale})`,
         transformStyle: "preserve-3d",
-        transition: isHovering ? "transform 0.1s ease-out" : "transform 0.5s ease-out",
+        transition: isHovering
+          ? "transform 0.1s ease-out"
+          : "transform 0.5s ease-out",
         boxShadow: isHovering
           ? `0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px ${glowColor}`
           : "0 10px 30px -15px rgba(0, 0, 0, 0.3)",
@@ -162,7 +171,7 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
             unoptimized
             className="object-cover object-top"
             style={{
-              filter: `grayscale(100%) contrast(1.2) brightness(1.1)`,
+              filter: "grayscale(100%) contrast(1.2) brightness(1.1)",
               mixBlendMode: "luminosity",
               opacity: 0.95,
               transform: isHovering ? "scale(1.1)" : "scale(1)",
@@ -186,7 +195,7 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
             className="absolute inset-0 pointer-events-none opacity-10"
             style={{
               backgroundImage: `radial-gradient(circle, ${colorScheme.shadow} 1px, transparent 1px)`,
-              backgroundSize: '4px 4px',
+              backgroundSize: "4px 4px",
             }}
           />
         </div>
@@ -228,20 +237,24 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
         className="absolute inset-0 flex items-end justify-center pb-3 sm:pb-4 transition-all duration-300"
         style={{
           opacity: isTouchDevice ? 1 : isHovering ? 1 : 0,
-          transform: `translateZ(40px)`,
+          transform: "translateZ(40px)",
         }}
       >
         {/* Gradient backdrop - always visible on mobile for readability */}
         <div
-          className={isTouchDevice
-            ? "absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
-            : "absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          className={
+            isTouchDevice
+              ? "absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
+              : "absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
           }
         />
         <h3
           className="font-oswald text-sm sm:text-lg md:text-xl uppercase tracking-wider text-white text-center px-2 relative z-10 drop-shadow-lg"
           style={{
-            transform: isTouchDevice || isHovering ? "translateY(0)" : "translateY(10px)",
+            transform:
+              isTouchDevice || isHovering
+                ? "translateY(0)"
+                : "translateY(10px)",
             transition: "transform 0.3s ease-out",
           }}
         >
@@ -255,7 +268,8 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
           className="absolute inset-0 pointer-events-none transition-opacity duration-300"
           style={{
             opacity: isHovering ? 1 : 0,
-            background: `linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)`,
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)",
           }}
         />
       )}
@@ -264,6 +278,9 @@ export function ArtistCard({ artist, index = 0 }: ArtistCardProps) {
 }
 
 // Export for grid usage
-export function ArtistCardCompact({ artist, index = 0 }: { artist: Artist; index?: number }) {
+export function ArtistCardCompact({
+  artist,
+  index = 0,
+}: { artist: Artist; index?: number }) {
   return <ArtistCard artist={artist} index={index} />;
 }

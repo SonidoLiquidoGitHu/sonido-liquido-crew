@@ -1,12 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { mediaReleases, artists } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { artists, mediaReleases } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      console.warn("[API] Database not configured - returning empty media releases");
+      console.warn(
+        "[API] Database not configured - returning empty media releases",
+      );
       return NextResponse.json({
         success: true,
         data: [],
@@ -16,9 +18,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const featured = searchParams.get("featured") === "true";
     const category = searchParams.get("category");
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const limit = Number.parseInt(searchParams.get("limit") || "20", 10);
 
-    let conditions = [eq(mediaReleases.isPublished, true)];
+    const conditions = [eq(mediaReleases.isPublished, true)];
 
     if (featured) {
       conditions.push(eq(mediaReleases.isFeatured, true));
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     // Resolve mainArtistId → artist name for each release
     const artistIds = releases
-      .map(r => r.mainArtistId)
+      .map((r) => r.mainArtistId)
       .filter((id): id is string => !!id);
 
     const artistNames: Record<string, string> = {};
@@ -56,9 +58,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const releasesWithArtist = releases.map(r => ({
+    const releasesWithArtist = releases.map((r) => ({
       ...r,
-      resolvedArtistName: r.mainArtistId ? (artistNames[r.mainArtistId] || null) : null,
+      resolvedArtistName: r.mainArtistId
+        ? artistNames[r.mainArtistId] || null
+        : null,
     }));
 
     return NextResponse.json({
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
     console.error("[API] Error fetching media releases:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch media releases" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

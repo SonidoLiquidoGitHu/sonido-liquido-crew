@@ -1,12 +1,13 @@
-import { Suspense } from "react";
 import { ProductCard } from "@/components/public/cards/ProductCard";
-import { productsService } from "@/lib/services";
 import { Skeleton } from "@/components/ui/skeleton";
+import { productsService } from "@/lib/services";
 import { ShoppingBag } from "lucide-react";
+import { Suspense } from "react";
 
 export const metadata = {
   title: "Tienda | Sonido Líquido Crew",
-  description: "Mercancía oficial de Sonido Líquido Crew. Música, ropa y accesorios.",
+  description:
+    "Mercancía oficial de Sonido Líquido Crew. Música, ropa y accesorios.",
 };
 
 export const dynamic = "force-dynamic";
@@ -24,8 +25,8 @@ async function ProductsGrid() {
           Próximamente
         </h2>
         <p className="text-slc-muted max-w-md mx-auto">
-          Estamos preparando productos increíbles para ti.
-          Suscríbete al newsletter para enterarte cuando estén disponibles.
+          Estamos preparando productos increíbles para ti. Suscríbete al
+          newsletter para enterarte cuando estén disponibles.
         </p>
       </div>
     );
@@ -44,7 +45,10 @@ function ProductsGridSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="bg-slc-card border border-slc-border rounded-xl overflow-hidden">
+        <div
+          key={i}
+          className="bg-slc-card border border-slc-border rounded-xl overflow-hidden"
+        >
           <Skeleton className="aspect-square" />
           <div className="p-4 space-y-3">
             <Skeleton className="h-3 w-1/3" />

@@ -41,7 +41,8 @@ export const THEMES: ThemeConfig[] = [
   {
     id: "hip-hop-classic",
     name: "Hip Hop Clásico",
-    description: "Estilo urbano con naranja intenso y negro profundo. Perfecto para colectivos de hip hop.",
+    description:
+      "Estilo urbano con naranja intenso y negro profundo. Perfecto para colectivos de hip hop.",
     genre: "Hip Hop",
     colors: {
       primary: "#f97316",
@@ -70,7 +71,8 @@ export const THEMES: ThemeConfig[] = [
   {
     id: "trap-neon",
     name: "Trap Neón",
-    description: "Colores neón vibrantes sobre negro. Ideal para trap y música urbana moderna.",
+    description:
+      "Colores neón vibrantes sobre negro. Ideal para trap y música urbana moderna.",
     genre: "Trap / Urban",
     colors: {
       primary: "#a855f7",
@@ -93,13 +95,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #a855f7 0%, #06b6d4 50%, #0f0f0f 100%)",
+      gradient:
+        "linear-gradient(135deg, #a855f7 0%, #06b6d4 50%, #0f0f0f 100%)",
     },
   },
   {
     id: "reggaeton-gold",
     name: "Reggaetón Dorado",
-    description: "Oro y negro lujoso. Para artistas de reggaetón y música latina.",
+    description:
+      "Oro y negro lujoso. Para artistas de reggaetón y música latina.",
     genre: "Reggaetón / Latin",
     colors: {
       primary: "#eab308",
@@ -157,7 +161,8 @@ export const THEMES: ThemeConfig[] = [
   {
     id: "electronic-cyber",
     name: "Electrónica Cyber",
-    description: "Azul eléctrico futurista. Para DJs, productores y música electrónica.",
+    description:
+      "Azul eléctrico futurista. Para DJs, productores y música electrónica.",
     genre: "Electrónica / EDM",
     colors: {
       primary: "#3b82f6",
@@ -180,13 +185,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 50%, #030712 100%)",
+      gradient:
+        "linear-gradient(135deg, #3b82f6 0%, #06b6d4 50%, #030712 100%)",
     },
   },
   {
     id: "indie-minimal",
     name: "Indie Minimal",
-    description: "Diseño limpio y minimalista. Para artistas indie y alternativos.",
+    description:
+      "Diseño limpio y minimalista. Para artistas indie y alternativos.",
     genre: "Indie / Alternative",
     colors: {
       primary: "#10b981",
@@ -215,7 +222,8 @@ export const THEMES: ThemeConfig[] = [
   {
     id: "jazz-soul",
     name: "Jazz & Soul",
-    description: "Tonos cálidos y elegantes. Para jazz, soul, R&B y música clásica.",
+    description:
+      "Tonos cálidos y elegantes. Para jazz, soul, R&B y música clásica.",
     genre: "Jazz / Soul / R&B",
     colors: {
       primary: "#d97706",
@@ -244,7 +252,8 @@ export const THEMES: ThemeConfig[] = [
   {
     id: "reggae-roots",
     name: "Reggae Roots",
-    description: "Colores rastafari clásicos. Para reggae, dub y música jamaicana.",
+    description:
+      "Colores rastafari clásicos. Para reggae, dub y música jamaicana.",
     genre: "Reggae / Dub",
     colors: {
       primary: "#16a34a",
@@ -267,13 +276,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #16a34a 0%, #eab308 50%, #dc2626 100%)",
+      gradient:
+        "linear-gradient(135deg, #16a34a 0%, #eab308 50%, #dc2626 100%)",
     },
   },
   {
     id: "k-pop-pastel",
     name: "K-Pop Pastel",
-    description: "Colores pastel vibrantes. Para K-pop, J-pop y música asiática.",
+    description:
+      "Colores pastel vibrantes. Para K-pop, J-pop y música asiática.",
     genre: "K-Pop / J-Pop",
     colors: {
       primary: "#ec4899",
@@ -296,13 +307,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #06b6d4 100%)",
+      gradient:
+        "linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #06b6d4 100%)",
     },
   },
   {
     id: "latin-tropical",
     name: "Latino Tropical",
-    description: "Colores tropicales vibrantes. Para salsa, cumbia y música tropical.",
+    description:
+      "Colores tropicales vibrantes. Para salsa, cumbia y música tropical.",
     genre: "Salsa / Cumbia / Tropical",
     colors: {
       primary: "#f97316",
@@ -325,13 +338,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #f97316 0%, #ec4899 50%, #22c55e 100%)",
+      gradient:
+        "linear-gradient(135deg, #f97316 0%, #ec4899 50%, #22c55e 100%)",
     },
   },
   {
     id: "afrobeat-sunset",
     name: "Afrobeat Sunset",
-    description: "Tonos cálidos africanos. Para afrobeat, highlife y música africana.",
+    description:
+      "Tonos cálidos africanos. Para afrobeat, highlife y música africana.",
     genre: "Afrobeat / Highlife",
     colors: {
       primary: "#f59e0b",
@@ -354,13 +369,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #f59e0b 0%, #dc2626 50%, #84cc16 100%)",
+      gradient:
+        "linear-gradient(135deg, #f59e0b 0%, #dc2626 50%, #84cc16 100%)",
     },
   },
   {
     id: "synthwave-retro",
     name: "Synthwave Retro",
-    description: "Estética retro 80s. Para synthwave, vaporwave y música retro.",
+    description:
+      "Estética retro 80s. Para synthwave, vaporwave y música retro.",
     genre: "Synthwave / Vaporwave",
     colors: {
       primary: "#ff00ff",
@@ -383,13 +400,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #ff00ff 0%, #00ffff 50%, #1a0a2e 100%)",
+      gradient:
+        "linear-gradient(135deg, #ff00ff 0%, #00ffff 50%, #1a0a2e 100%)",
     },
   },
   {
     id: "country-western",
     name: "Country Western",
-    description: "Tonos tierra y madera. Para country, folk y música americana.",
+    description:
+      "Tonos tierra y madera. Para country, folk y música americana.",
     genre: "Country / Folk",
     colors: {
       primary: "#b45309",
@@ -441,7 +460,8 @@ export const THEMES: ThemeConfig[] = [
       animations: false,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #facc15 0%, #000000 50%, #ef4444 100%)",
+      gradient:
+        "linear-gradient(135deg, #facc15 0%, #000000 50%, #ef4444 100%)",
     },
   },
   {
@@ -470,13 +490,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #a78bfa 0%, #f9a8d4 50%, #1e1b4b 100%)",
+      gradient:
+        "linear-gradient(135deg, #a78bfa 0%, #f9a8d4 50%, #1e1b4b 100%)",
     },
   },
   {
     id: "flamenco-spanish",
     name: "Flamenco Español",
-    description: "Rojo pasión y negro intenso. Para flamenco y música española.",
+    description:
+      "Rojo pasión y negro intenso. Para flamenco y música española.",
     genre: "Flamenco / Spanish",
     colors: {
       primary: "#dc2626",
@@ -499,13 +521,15 @@ export const THEMES: ThemeConfig[] = [
       animations: true,
     },
     preview: {
-      gradient: "linear-gradient(135deg, #dc2626 0%, #fbbf24 50%, #1c1917 100%)",
+      gradient:
+        "linear-gradient(135deg, #dc2626 0%, #fbbf24 50%, #1c1917 100%)",
     },
   },
   {
     id: "gospel-spiritual",
     name: "Gospel Espiritual",
-    description: "Dorados y blancos divinos. Para gospel, música cristiana y espiritual.",
+    description:
+      "Dorados y blancos divinos. Para gospel, música cristiana y espiritual.",
     genre: "Gospel / Espiritual",
     colors: {
       primary: "#d4af37",
@@ -555,11 +579,15 @@ export function generateThemeCSS(theme: ThemeConfig): string {
   --font-body: '${theme.fonts.body}', sans-serif;
 
   --radius: ${
-    theme.style.borderRadius === "none" ? "0" :
-    theme.style.borderRadius === "sm" ? "0.25rem" :
-    theme.style.borderRadius === "md" ? "0.5rem" :
-    theme.style.borderRadius === "lg" ? "1rem" :
-    "9999px"
+    theme.style.borderRadius === "none"
+      ? "0"
+      : theme.style.borderRadius === "sm"
+        ? "0.25rem"
+        : theme.style.borderRadius === "md"
+          ? "0.5rem"
+          : theme.style.borderRadius === "lg"
+            ? "1rem"
+            : "9999px"
   };
 }
 `;
@@ -586,11 +614,15 @@ theme: {
     },
     borderRadius: {
       DEFAULT: '${
-        theme.style.borderRadius === "none" ? "0" :
-        theme.style.borderRadius === "sm" ? "0.25rem" :
-        theme.style.borderRadius === "md" ? "0.5rem" :
-        theme.style.borderRadius === "lg" ? "1rem" :
-        "9999px"
+        theme.style.borderRadius === "none"
+          ? "0"
+          : theme.style.borderRadius === "sm"
+            ? "0.25rem"
+            : theme.style.borderRadius === "md"
+              ? "0.5rem"
+              : theme.style.borderRadius === "lg"
+                ? "1rem"
+                : "9999px"
       }',
     },
   },

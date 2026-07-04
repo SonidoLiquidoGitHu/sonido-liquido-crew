@@ -1,47 +1,47 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  type TouchEvent as ReactTouchEvent,
-} from "react";
-import Link from "next/link";
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Share2,
-  Heart,
-  Eye,
-  Loader2,
-  X,
-  Copy,
-  CheckCircle,
-  Smartphone,
-  Music,
-  ChevronUp,
-  ChevronDown,
-  AlertTriangle,
-} from "lucide-react";
+import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
-import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import {
-  getYouTubeId,
-  getProxiedThumbnailUrl,
-  isYouTubeThumbnailUrl,
-  getYouTubeThumbnailFallback,
-  getVideoPlaceholderSvg,
-  isDirectVideo as isDirectVideoUtil,
-  getVideoSrc,
-  getProxiedVideoSrc,
   type VideoLike,
+  getProxiedThumbnailUrl,
+  getProxiedVideoSrc,
+  getVideoPlaceholderSvg,
+  getVideoSrc,
+  getYouTubeId,
+  getYouTubeThumbnailFallback,
+  isDirectVideo as isDirectVideoUtil,
+  isYouTubeThumbnailUrl,
 } from "@/lib/video-utils";
+import {
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Eye,
+  Heart,
+  Loader2,
+  Music,
+  Pause,
+  Play,
+  Share2,
+  Smartphone,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import {
+  type TouchEvent as ReactTouchEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 // ===========================================
 // TYPES
@@ -204,7 +204,7 @@ function ShareModal({
       : `/reels/${video.id}`;
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(
-    video.title || "Mira este video de Sonido Líquido Crew"
+    video.title || "Mira este video de Sonido Líquido Crew",
   );
 
   const copyLink = async () => {
@@ -266,7 +266,7 @@ function ShareModal({
       ),
       action: () => {
         window.open(
-          `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`
+          `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
         );
         onTrackShare("twitter");
       },
@@ -281,7 +281,7 @@ function ShareModal({
       ),
       action: () => {
         window.open(
-          `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+          `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
         );
         onTrackShare("facebook");
       },
@@ -325,7 +325,7 @@ function ShareModal({
               onClick={btn.action}
               className={cn(
                 "flex flex-col items-center gap-2 p-3 rounded-xl bg-slc-card border border-slc-border transition-all",
-                btn.color
+                btn.color,
               )}
             >
               {btn.icon}
@@ -353,15 +353,16 @@ function ShareModal({
         </button>
 
         {/* Native share */}
-        {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
-          <button
-            onClick={nativeShare}
-            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-colors"
-          >
-            <Share2 className="w-5 h-5" />
-            <span>Más opciones</span>
-          </button>
-        )}
+        {typeof navigator !== "undefined" &&
+          typeof navigator.share === "function" && (
+            <button
+              onClick={nativeShare}
+              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary transition-colors"
+            >
+              <Share2 className="w-5 h-5" />
+              <span>Más opciones</span>
+            </button>
+          )}
       </div>
     </>
   );
@@ -491,7 +492,11 @@ function VideoPlayer({
             break;
         }
       }
-      console.error(`[VideoPlayer] Error loading video ${video.id}:`, errorMsg, error);
+      console.error(
+        `[VideoPlayer] Error loading video ${video.id}:`,
+        errorMsg,
+        error,
+      );
       setIsLoading(false);
       setVideoError(errorMsg);
     };
@@ -525,7 +530,7 @@ function VideoPlayer({
   // Handle retry
   const handleRetry = useCallback(() => {
     if (retryCount < maxRetries) {
-      setRetryCount(prev => prev + 1);
+      setRetryCount((prev) => prev + 1);
     }
   }, [retryCount]);
 
@@ -816,11 +821,17 @@ function ReelItem({
   >([]);
   const [showShare, setShowShare] = useState(false);
   const [viewTracked, setViewTracked] = useState(false);
-  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null);
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<
+    number | null
+  >(null);
   const lastTapRef = useRef<number>(0);
   const burstIdRef = useRef(0);
-  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
   const countdownStartRef = useRef<number>(0);
 
   const ytId = getYouTubeId(video);
@@ -854,7 +865,8 @@ function ReelItem({
       const remaining = 1000 - elapsed;
       if (remaining <= 0) {
         setAutoAdvanceCountdown(null);
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        if (countdownIntervalRef.current)
+          clearInterval(countdownIntervalRef.current);
         onGoToNext();
       } else {
         setAutoAdvanceCountdown(remaining);
@@ -910,7 +922,7 @@ function ReelItem({
         });
       } catch {}
     },
-    [video.id]
+    [video.id],
   );
 
   // Double-tap to like (Feature #7: haptic feedback added)
@@ -918,7 +930,8 @@ function ReelItem({
     (e: React.MouseEvent<HTMLDivElement> | ReactTouchEvent<HTMLDivElement>) => {
       const now = Date.now();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      let clientX: number, clientY: number;
+      let clientX: number;
+      let clientY: number;
 
       if ("touches" in e) {
         const touch = e.changedTouches?.[0];
@@ -959,7 +972,7 @@ function ReelItem({
       }
       lastTapRef.current = now;
     },
-    [isDirect, cancelAutoAdvance]
+    [isDirect, cancelAutoAdvance],
   );
 
   const toggleMute = useCallback((e: React.MouseEvent) => {
@@ -1050,7 +1063,11 @@ function ReelItem({
             e.stopPropagation();
             setIsLiked((prev) => !prev);
             // Feature #7: Haptic feedback on explicit like too
-            if (!isLiked && typeof navigator !== "undefined" && "vibrate" in navigator) {
+            if (
+              !isLiked &&
+              typeof navigator !== "undefined" &&
+              "vibrate" in navigator
+            ) {
               try {
                 navigator.vibrate(10);
               } catch {}
@@ -1062,7 +1079,7 @@ function ReelItem({
           <div
             className={cn(
               "w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center transition-colors",
-              isLiked ? "text-red-500" : "text-white hover:bg-black/60"
+              isLiked ? "text-red-500" : "text-white hover:bg-black/60",
             )}
           >
             <Heart
@@ -1260,7 +1277,7 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
       // Reset transition lock after animation completes
       setTimeout(() => setIsTransitioning(false), 400);
     },
-    [videos.length, isTransitioning]
+    [videos.length, isTransitioning],
   );
 
   const goToNext = useCallback(() => {
@@ -1306,7 +1323,7 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
         entries.forEach((entry) => {
           if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
             const index = Number(entry.target.getAttribute("data-index"));
-            if (!isNaN(index)) {
+            if (!Number.isNaN(index)) {
               setActiveIndex(index);
             }
           }
@@ -1315,7 +1332,7 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
       {
         root: container,
         threshold: 0.6,
-      }
+      },
     );
 
     // Observe all children
@@ -1367,7 +1384,7 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
 
       isSwipingRef.current = false;
     },
-    [goToNext, goToPrev]
+    [goToNext, goToPrev],
   );
 
   // Track view via API
@@ -1554,7 +1571,7 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
             "w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-all",
             activeIndex === 0
               ? "opacity-30 cursor-not-allowed"
-              : "hover:bg-black/60 hover:scale-110"
+              : "hover:bg-black/60 hover:scale-110",
           )}
           aria-label="Previous video"
         >
@@ -1567,7 +1584,7 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
             "w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-all",
             activeIndex === videos.length - 1
               ? "opacity-30 cursor-not-allowed"
-              : "hover:bg-black/60 hover:scale-110"
+              : "hover:bg-black/60 hover:scale-110",
           )}
           aria-label="Next video"
         >

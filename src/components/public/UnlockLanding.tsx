@@ -1,29 +1,29 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { SafeImage } from "@/components/ui/safe-image";
 import { Button } from "@/components/ui/button";
-import {
-  Music,
-  Download,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  SkipBack,
-  Heart,
-  CheckCircle2,
-  Disc3,
-  Maximize2,
-  Minimize2,
-  Video,
-} from "lucide-react";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   type StyleSettings,
   defaultStyleSettings,
-  getStyleVariables,
   getFontClass,
+  getStyleVariables,
 } from "@/lib/style-config";
+import {
+  CheckCircle2,
+  Disc3,
+  Download,
+  Heart,
+  Maximize2,
+  Minimize2,
+  Music,
+  Pause,
+  Play,
+  SkipBack,
+  Video,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface UnlockLandingProps {
   title: string;
@@ -126,7 +126,8 @@ export function UnlockLanding({
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   // Analytics tracking for video
@@ -143,7 +144,8 @@ export function UnlockLanding({
           eventType,
           currentTime: Math.floor(currentTime),
           duration: Math.floor(duration),
-          percentWatched: duration > 0 ? Math.floor((currentTime / duration) * 100) : 0,
+          percentWatched:
+            duration > 0 ? Math.floor((currentTime / duration) * 100) : 0,
           maxPercentWatched: maxWatchedPercent,
           totalWatchTime: watchTimeRef.current,
         }),
@@ -296,16 +298,14 @@ export function UnlockLanding({
           <div
             ref={videoContainerRef}
             className={`relative mb-8 group ${
-              videoIsVertical
-                ? "w-full max-w-sm mx-auto"
-                : "w-full max-w-2xl"
+              videoIsVertical ? "w-full max-w-sm mx-auto" : "w-full max-w-2xl"
             }`}
           >
-            <div className={`relative rounded-2xl overflow-hidden shadow-2xl bg-black ${
-              videoIsVertical
-                ? "aspect-[9/16]"
-                : "aspect-video"
-            }`}>
+            <div
+              className={`relative rounded-2xl overflow-hidden shadow-2xl bg-black ${
+                videoIsVertical ? "aspect-[9/16]" : "aspect-video"
+              }`}
+            >
               <video
                 ref={videoRef}
                 src={videoUrl || undefined}
@@ -319,19 +319,27 @@ export function UnlockLanding({
               {/* Video Overlay Controls */}
               <div
                 className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 flex flex-col justify-between p-4 transition-opacity duration-300 ${
-                  isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100"
+                  isPlaying
+                    ? "opacity-0 group-hover:opacity-100"
+                    : "opacity-100"
                 }`}
               >
                 {/* Top bar */}
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
                     <Video className="w-5 h-5 text-primary" />
-                    <span className="text-sm font-medium text-white/80">Video Exclusivo</span>
+                    <span className="text-sm font-medium text-white/80">
+                      Video Exclusivo
+                    </span>
                   </div>
                   <button
                     onClick={toggleFullscreen}
                     className="p-2 bg-black/50 rounded-lg hover:bg-black/70 transition-colors"
-                    aria-label={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+                    aria-label={
+                      isFullscreen
+                        ? "Salir de pantalla completa"
+                        : "Pantalla completa"
+                    }
                   >
                     {isFullscreen ? (
                       <Minimize2 className="w-5 h-5 text-white" />
@@ -377,11 +385,25 @@ export function UnlockLanding({
                   {/* Time and controls */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <button onClick={togglePlay} className="text-white/80 hover:text-white">
-                        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                      <button
+                        onClick={togglePlay}
+                        className="text-white/80 hover:text-white"
+                      >
+                        {isPlaying ? (
+                          <Pause className="w-5 h-5" />
+                        ) : (
+                          <Play className="w-5 h-5" />
+                        )}
                       </button>
-                      <button onClick={toggleMute} className="text-white/80 hover:text-white">
-                        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                      <button
+                        onClick={toggleMute}
+                        className="text-white/80 hover:text-white"
+                      >
+                        {isMuted ? (
+                          <VolumeX className="w-5 h-5" />
+                        ) : (
+                          <Volume2 className="w-5 h-5" />
+                        )}
                       </button>
                       <span className="text-xs text-white/60 font-mono">
                         {formatTime(currentTime)} / {formatTime(duration)}
@@ -396,16 +418,16 @@ export function UnlockLanding({
 
         {/* YouTube Embed */}
         {youtubeVideoId && (
-          <div className={`mb-8 ${
-            videoIsVertical
-              ? "w-full max-w-sm mx-auto"
-              : "w-full max-w-2xl"
-          }`}>
-            <div className={`relative rounded-2xl overflow-hidden shadow-2xl ${
-              videoIsVertical
-                ? "aspect-[9/16]"
-                : "aspect-video"
-            }`}>
+          <div
+            className={`mb-8 ${
+              videoIsVertical ? "w-full max-w-sm mx-auto" : "w-full max-w-2xl"
+            }`}
+          >
+            <div
+              className={`relative rounded-2xl overflow-hidden shadow-2xl ${
+                videoIsVertical ? "aspect-[9/16]" : "aspect-video"
+              }`}
+            >
               <iframe
                 src={`https://www.youtube.com/embed/${youtubeVideoId}?rel=0&modestbranding=1`}
                 title={title}
@@ -426,7 +448,9 @@ export function UnlockLanding({
                 isPlaying ? "translate-x-12 md:translate-x-16" : "translate-x-0"
               }`}
             >
-              <div className={`w-full h-full rounded-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 shadow-2xl ${isPlaying ? "animate-spin-slow" : ""}`}>
+              <div
+                className={`w-full h-full rounded-full bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 shadow-2xl ${isPlaying ? "animate-spin-slow" : ""}`}
+              >
                 {/* Vinyl grooves */}
                 <div className="absolute inset-4 rounded-full border border-zinc-700/50" />
                 <div className="absolute inset-8 rounded-full border border-zinc-700/30" />
@@ -486,24 +510,37 @@ export function UnlockLanding({
               styles.titleStyle === "uppercase" ? "uppercase" : ""
             } tracking-tight mb-2`}
             style={{
-              background: styles.titleStyle === "gradient"
-                ? `linear-gradient(to right, ${styles.primaryColor}, ${styles.secondaryColor})`
-                : undefined,
-              WebkitBackgroundClip: styles.titleStyle === "gradient" ? "text" : undefined,
-              WebkitTextFillColor: styles.titleStyle === "gradient" ? "transparent" : undefined,
-              color: styles.titleStyle !== "gradient" ? styles.textColor : undefined,
+              background:
+                styles.titleStyle === "gradient"
+                  ? `linear-gradient(to right, ${styles.primaryColor}, ${styles.secondaryColor})`
+                  : undefined,
+              WebkitBackgroundClip:
+                styles.titleStyle === "gradient" ? "text" : undefined,
+              WebkitTextFillColor:
+                styles.titleStyle === "gradient" ? "transparent" : undefined,
+              color:
+                styles.titleStyle !== "gradient" ? styles.textColor : undefined,
             }}
           >
             {title}
           </h1>
           {subtitle && (
-            <p className="text-lg font-medium" style={{ color: styles.primaryColor }}>{subtitle}</p>
+            <p
+              className="text-lg font-medium"
+              style={{ color: styles.primaryColor }}
+            >
+              {subtitle}
+            </p>
           )}
           {artistName && (
-            <p className={`${bodyFontClass} text-slc-muted mt-1`}>{artistName}</p>
+            <p className={`${bodyFontClass} text-slc-muted mt-1`}>
+              {artistName}
+            </p>
           )}
           {releaseDate && (
-            <p className={`${bodyFontClass} text-sm text-slc-muted/60 mt-2`}>{releaseDate}</p>
+            <p className={`${bodyFontClass} text-sm text-slc-muted/60 mt-2`}>
+              {releaseDate}
+            </p>
           )}
         </div>
 
@@ -531,7 +568,11 @@ export function UnlockLanding({
         {/* Audio Player (only for audio content) */}
         {hasAudio && (
           <div className="w-full max-w-md mb-8">
-            <audio ref={audioRef} src={audioUrl || undefined} preload="metadata" />
+            <audio
+              ref={audioRef}
+              src={audioUrl || undefined}
+              preload="metadata"
+            />
 
             {/* Player Container */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
@@ -618,23 +659,34 @@ export function UnlockLanding({
               href={downloadUrl}
               download={downloadFileName || true}
               className={`flex-1 h-14 text-lg font-bold flex items-center justify-center gap-2 transition-all hover:opacity-90 ${
-                styles.buttonRounded === "full" ? "rounded-full"
-                : styles.buttonRounded === "lg" ? "rounded-lg"
-                : styles.buttonRounded === "md" ? "rounded-md"
-                : styles.buttonRounded === "sm" ? "rounded-sm"
-                : "rounded-none"
+                styles.buttonRounded === "full"
+                  ? "rounded-full"
+                  : styles.buttonRounded === "lg"
+                    ? "rounded-lg"
+                    : styles.buttonRounded === "md"
+                      ? "rounded-md"
+                      : styles.buttonRounded === "sm"
+                        ? "rounded-sm"
+                        : "rounded-none"
               }`}
               style={{
-                background: styles.buttonStyle === "gradient"
-                  ? `linear-gradient(to right, ${styles.primaryColor}, ${styles.accentColor})`
-                  : styles.buttonStyle === "solid"
-                  ? styles.primaryColor
-                  : "transparent",
-                border: styles.buttonStyle === "outline"
-                  ? `2px solid ${styles.primaryColor}`
-                  : "none",
-                color: styles.buttonStyle === "outline" ? styles.primaryColor : "white",
-                boxShadow: styles.enableGlow ? `0 10px 30px -10px ${styles.primaryColor}50` : undefined,
+                background:
+                  styles.buttonStyle === "gradient"
+                    ? `linear-gradient(to right, ${styles.primaryColor}, ${styles.accentColor})`
+                    : styles.buttonStyle === "solid"
+                      ? styles.primaryColor
+                      : "transparent",
+                border:
+                  styles.buttonStyle === "outline"
+                    ? `2px solid ${styles.primaryColor}`
+                    : "none",
+                color:
+                  styles.buttonStyle === "outline"
+                    ? styles.primaryColor
+                    : "white",
+                boxShadow: styles.enableGlow
+                  ? `0 10px 30px -10px ${styles.primaryColor}50`
+                  : undefined,
               }}
             >
               <Download className="w-5 h-5" />
@@ -666,9 +718,7 @@ export function UnlockLanding({
               Úsalo y danos crédito, SonidoLiquido te repostea.
             </p>
           )}
-          <p className="text-xs text-white/30">
-            Gracias por tu apoyo.
-          </p>
+          <p className="text-xs text-white/30">Gracias por tu apoyo.</p>
         </div>
       </div>
 

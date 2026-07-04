@@ -1,38 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import THEMES from "@/lib/themes";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
-  Download,
-  Copy,
+  Calendar,
   Check,
-  Package,
-  FileText,
-  Code,
-  Palette,
-  Database,
-  Settings,
-  Sparkles,
-  ExternalLink,
   ChevronDown,
   ChevronRight,
+  Code,
+  Copy,
+  Database,
+  Download,
+  ExternalLink,
+  FileJson,
+  FileText,
+  Folder,
+  Gift,
+  Loader2,
   Music,
+  Package,
+  Palette,
+  Rocket,
+  Settings,
+  ShoppingBag,
+  Sparkles,
+  Terminal,
   Users,
   Video,
-  Calendar,
-  ShoppingBag,
-  Loader2,
-  FileJson,
-  Folder,
-  Terminal,
-  Rocket,
-  Gift,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import THEMES from "@/lib/themes";
+import Link from "next/link";
+import { useState } from "react";
 
 // Template customization options
 interface TemplateConfig {
@@ -57,14 +57,47 @@ const DEFAULT_CONFIG: TemplateConfig = {
 
 // Features included in template
 const TEMPLATE_FEATURES = [
-  { icon: Users, name: "Perfiles de Artistas", description: "Sistema completo de gestión de artistas con bios, fotos y redes sociales" },
-  { icon: Music, name: "Discografía", description: "Gestión de lanzamientos con integración de Spotify" },
-  { icon: Video, name: "Videos", description: "Integración con YouTube y gestión de canales" },
-  { icon: Calendar, name: "Eventos", description: "Calendario de eventos con pasados y próximos" },
-  { icon: ShoppingBag, name: "Tienda", description: "E-commerce con integración de Stripe" },
-  { icon: Palette, name: "Beats", description: "Venta de beats con previews y download gates" },
-  { icon: Database, name: "Playlists", description: "Playlists curadas con Save to Spotify" },
-  { icon: Settings, name: "Admin Dashboard", description: "Panel de administración completo" },
+  {
+    icon: Users,
+    name: "Perfiles de Artistas",
+    description:
+      "Sistema completo de gestión de artistas con bios, fotos y redes sociales",
+  },
+  {
+    icon: Music,
+    name: "Discografía",
+    description: "Gestión de lanzamientos con integración de Spotify",
+  },
+  {
+    icon: Video,
+    name: "Videos",
+    description: "Integración con YouTube y gestión de canales",
+  },
+  {
+    icon: Calendar,
+    name: "Eventos",
+    description: "Calendario de eventos con pasados y próximos",
+  },
+  {
+    icon: ShoppingBag,
+    name: "Tienda",
+    description: "E-commerce con integración de Stripe",
+  },
+  {
+    icon: Palette,
+    name: "Beats",
+    description: "Venta de beats con previews y download gates",
+  },
+  {
+    icon: Database,
+    name: "Playlists",
+    description: "Playlists curadas con Save to Spotify",
+  },
+  {
+    icon: Settings,
+    name: "Admin Dashboard",
+    description: "Panel de administración completo",
+  },
 ];
 
 export default function TemplateExportPage() {
@@ -72,17 +105,21 @@ export default function TemplateExportPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedSetup, setCopiedSetup] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<string[]>(["customize", "prompt"]);
+  const [expandedSections, setExpandedSections] = useState<string[]>([
+    "customize",
+    "prompt",
+  ]);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) =>
       prev.includes(section)
         ? prev.filter((s) => s !== section)
-        : [...prev, section]
+        : [...prev, section],
     );
   };
 
-  const selectedTheme = THEMES.find((t) => t.id === config.themeId) || THEMES[0];
+  const selectedTheme =
+    THEMES.find((t) => t.id === config.themeId) || THEMES[0];
 
   // Generate customized AI prompt
   const generateTemplatePrompt = () => {
@@ -331,7 +368,9 @@ Genre: ${config.genre}
       generatedAt: new Date().toISOString(),
     };
 
-    const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(templateData, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -370,7 +409,9 @@ Genre: ${config.genre}
               <Settings className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h2 className="font-oswald text-xl uppercase mb-1">Personalizar Plantilla</h2>
+              <h2 className="font-oswald text-xl uppercase mb-1">
+                Personalizar Plantilla
+              </h2>
               <p className="text-slc-muted text-sm">
                 Configura los detalles de la nueva plantilla
               </p>
@@ -390,7 +431,9 @@ Genre: ${config.genre}
                 </label>
                 <Input
                   value={config.collectiveName}
-                  onChange={(e) => setConfig({ ...config, collectiveName: e.target.value })}
+                  onChange={(e) =>
+                    setConfig({ ...config, collectiveName: e.target.value })
+                  }
                   placeholder="Mi Colectivo Musical"
                 />
               </div>
@@ -401,7 +444,9 @@ Genre: ${config.genre}
                 </label>
                 <Input
                   value={config.tagline}
-                  onChange={(e) => setConfig({ ...config, tagline: e.target.value })}
+                  onChange={(e) =>
+                    setConfig({ ...config, tagline: e.target.value })
+                  }
                   placeholder="El mejor hip hop de la ciudad"
                 />
               </div>
@@ -412,7 +457,9 @@ Genre: ${config.genre}
                 </label>
                 <select
                   value={config.genre}
-                  onChange={(e) => setConfig({ ...config, genre: e.target.value })}
+                  onChange={(e) =>
+                    setConfig({ ...config, genre: e.target.value })
+                  }
                   className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg"
                 >
                   <option value="Hip Hop">Hip Hop</option>
@@ -440,7 +487,8 @@ Genre: ${config.genre}
                     setConfig({
                       ...config,
                       themeId: e.target.value,
-                      primaryColor: theme?.colors.primary || config.primaryColor,
+                      primaryColor:
+                        theme?.colors.primary || config.primaryColor,
                     });
                   }}
                   className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg"
@@ -461,12 +509,16 @@ Genre: ${config.genre}
                   <input
                     type="color"
                     value={config.primaryColor}
-                    onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
+                    onChange={(e) =>
+                      setConfig({ ...config, primaryColor: e.target.value })
+                    }
                     className="w-12 h-10 rounded cursor-pointer"
                   />
                   <Input
                     value={config.primaryColor}
-                    onChange={(e) => setConfig({ ...config, primaryColor: e.target.value })}
+                    onChange={(e) =>
+                      setConfig({ ...config, primaryColor: e.target.value })
+                    }
                     className="flex-1 font-mono"
                   />
                 </div>
@@ -477,10 +529,14 @@ Genre: ${config.genre}
                   <input
                     type="checkbox"
                     checked={config.includeDocs}
-                    onChange={(e) => setConfig({ ...config, includeDocs: e.target.checked })}
+                    onChange={(e) =>
+                      setConfig({ ...config, includeDocs: e.target.checked })
+                    }
                     className="w-5 h-5 rounded"
                   />
-                  <span className="text-sm">Incluir documentación detallada</span>
+                  <span className="text-sm">
+                    Incluir documentación detallada
+                  </span>
                 </label>
               </div>
             </div>
@@ -506,7 +562,10 @@ Genre: ${config.genre}
                   className="w-10 h-10 rounded-full flex items-center justify-center"
                   style={{ backgroundColor: `${config.primaryColor}20` }}
                 >
-                  <Music className="w-5 h-5" style={{ color: config.primaryColor }} />
+                  <Music
+                    className="w-5 h-5"
+                    style={{ color: config.primaryColor }}
+                  />
                 </div>
                 <div>
                   <h3
@@ -521,7 +580,10 @@ Genre: ${config.genre}
                 </div>
               </div>
             </div>
-            <div className="p-4" style={{ backgroundColor: selectedTheme.colors.card }}>
+            <div
+              className="p-4"
+              style={{ backgroundColor: selectedTheme.colors.card }}
+            >
               <div className="flex gap-2">
                 <span
                   className="px-3 py-1 rounded-full text-xs"
@@ -561,7 +623,9 @@ Genre: ${config.genre}
                 <feature.icon className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-sm">{feature.name}</p>
-                  <p className="text-xs text-slc-muted">{feature.description}</p>
+                  <p className="text-xs text-slc-muted">
+                    {feature.description}
+                  </p>
                 </div>
               </div>
             ))}
@@ -608,7 +672,11 @@ Genre: ${config.genre}
                     </>
                   )}
                 </Button>
-                <Button variant="outline" onClick={handleCopySetup} className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleCopySetup}
+                  className="gap-2"
+                >
                   {copiedSetup ? (
                     <>
                       <Check className="w-4 h-4" />
@@ -621,7 +689,11 @@ Genre: ${config.genre}
                     </>
                   )}
                 </Button>
-                <Button variant="outline" onClick={handleDownloadTemplate} className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadTemplate}
+                  className="gap-2"
+                >
                   <Download className="w-4 h-4" />
                   Descargar Todo
                 </Button>
@@ -665,7 +737,9 @@ Genre: ${config.genre}
             </div>
             <div>
               <p className="font-medium">GitHub Template</p>
-              <p className="text-xs text-slc-muted">Usa como repositorio base</p>
+              <p className="text-xs text-slc-muted">
+                Usa como repositorio base
+              </p>
             </div>
             <ExternalLink className="w-4 h-4 text-slc-muted ml-auto" />
           </a>

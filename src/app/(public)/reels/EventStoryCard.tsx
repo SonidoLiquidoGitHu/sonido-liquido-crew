@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import {
-  X,
-  Instagram,
-  Download,
-  Share2,
-  Loader2,
-  CheckCircle,
-  Copy,
-  Check,
-  Mail,
-  Send,
-  AlertCircle,
-  ExternalLink,
-  ClipboardCopy,
-  ImagePlus,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { proxyImageUrl } from "@/hooks/use-proxied-image";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  ClipboardCopy,
+  Copy,
+  Download,
+  ExternalLink,
+  ImagePlus,
+  Instagram,
+  Loader2,
+  Mail,
+  Send,
+  Share2,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ===========================================
 // TYPES
@@ -87,7 +87,7 @@ function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
-  maxLines: number
+  maxLines: number,
 ): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
@@ -110,15 +110,15 @@ function wrapText(
 
   if (lines.length === maxLines && line) {
     const lastLine = lines[maxLines - 1];
-    if (ctx.measureText(lastLine + "...").width > maxWidth) {
+    if (ctx.measureText(`${lastLine}...`).width > maxWidth) {
       let truncated = lastLine;
       while (
-        ctx.measureText(truncated + "...").width > maxWidth &&
+        ctx.measureText(`${truncated}...`).width > maxWidth &&
         truncated.length > 0
       ) {
         truncated = truncated.slice(0, -1);
       }
-      lines[maxLines - 1] = truncated + "...";
+      lines[maxLines - 1] = `${truncated}...`;
     }
   }
 
@@ -135,7 +135,9 @@ async function loadOswaldFont(): Promise<void> {
   }
 }
 
-async function loadCoverImage(coverImageUrl: string | null): Promise<HTMLImageElement | null> {
+async function loadCoverImage(
+  coverImageUrl: string | null,
+): Promise<HTMLImageElement | null> {
   if (!coverImageUrl) return null;
   try {
     const { src: proxiedUrl } = proxyImageUrl(coverImageUrl);
@@ -164,7 +166,7 @@ function drawRoundedRect(
   y: number,
   w: number,
   h: number,
-  r: number
+  r: number,
 ) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -182,7 +184,7 @@ function drawRoundedRect(
 // --- STORY: 1080x1920 (9:16) ---
 async function generateStoryCard(
   canvas: HTMLCanvasElement,
-  event: VideoEvent
+  event: VideoEvent,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -231,7 +233,7 @@ async function generateStoryCard(
   ctx.fillStyle = "#a855f7";
   ctx.font = "bold 28px 'Oswald', sans-serif";
   const brandText = "SONIDO LÍQUIDO";
-  let brandX = W / 2 - (ctx.measureText(brandText).width / 2) + 12;
+  let brandX = W / 2 - ctx.measureText(brandText).width / 2 + 12;
   ctx.textAlign = "left";
   for (const char of brandText) {
     ctx.fillText(char, brandX, 120);
@@ -261,9 +263,20 @@ async function generateStoryCard(
     } else {
       drawH = coverSize / imgAspect;
     }
-    ctx.drawImage(coverImg, coverX + (coverSize - drawW) / 2, coverY + (coverSize - drawH) / 2, drawW, drawH);
+    ctx.drawImage(
+      coverImg,
+      coverX + (coverSize - drawW) / 2,
+      coverY + (coverSize - drawH) / 2,
+      drawW,
+      drawH,
+    );
   } else {
-    const placeholderGrad = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+    const placeholderGrad = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize,
+    );
     placeholderGrad.addColorStop(0, "#1a1a2e");
     placeholderGrad.addColorStop(1, "#16213e");
     ctx.fillStyle = placeholderGrad;
@@ -314,7 +327,9 @@ async function generateStoryCard(
 
   if (event.eventDate) {
     const dateStr = new Date(event.eventDate).toLocaleDateString("es-MX", {
-      year: "numeric", month: "long", day: "numeric",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
     ctx.fillText(dateStr, W / 2, metaY);
     metaY += 40;
@@ -366,7 +381,7 @@ async function generateStoryCard(
 // --- POST: 1080x1080 (1:1 square) ---
 async function generatePostCard(
   canvas: HTMLCanvasElement,
-  event: VideoEvent
+  event: VideoEvent,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -425,9 +440,20 @@ async function generatePostCard(
     } else {
       drawH = coverSize / imgAspect;
     }
-    ctx.drawImage(coverImg, coverX + (coverSize - drawW) / 2, coverY + (coverSize - drawH) / 2, drawW, drawH);
+    ctx.drawImage(
+      coverImg,
+      coverX + (coverSize - drawW) / 2,
+      coverY + (coverSize - drawH) / 2,
+      drawW,
+      drawH,
+    );
   } else {
-    const placeholderGrad = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+    const placeholderGrad = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize,
+    );
     placeholderGrad.addColorStop(0, "#1a1a2e");
     placeholderGrad.addColorStop(1, "#16213e");
     ctx.fillStyle = placeholderGrad;
@@ -474,7 +500,9 @@ async function generatePostCard(
 
   if (event.eventDate) {
     const dateStr = new Date(event.eventDate).toLocaleDateString("es-MX", {
-      year: "numeric", month: "long", day: "numeric",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
     ctx.fillText(dateStr, W / 2, metaY);
     metaY += 32;
@@ -497,7 +525,7 @@ async function generatePostCard(
 // --- REEL: 1080x1920 (9:16 with "Ver en Reels" CTA) ---
 async function generateReelCard(
   canvas: HTMLCanvasElement,
-  event: VideoEvent
+  event: VideoEvent,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -588,9 +616,20 @@ async function generateReelCard(
     } else {
       drawH = coverSize / imgAspect;
     }
-    ctx.drawImage(coverImg, coverX + (coverSize - drawW) / 2, coverY + (coverSize - drawH) / 2, drawW, drawH);
+    ctx.drawImage(
+      coverImg,
+      coverX + (coverSize - drawW) / 2,
+      coverY + (coverSize - drawH) / 2,
+      drawW,
+      drawH,
+    );
   } else {
-    const placeholderGrad = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+    const placeholderGrad = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize,
+    );
     placeholderGrad.addColorStop(0, "#1a1a2e");
     placeholderGrad.addColorStop(1, "#16213e");
     ctx.fillStyle = placeholderGrad;
@@ -657,7 +696,9 @@ async function generateReelCard(
 
   if (event.eventDate) {
     const dateStr = new Date(event.eventDate).toLocaleDateString("es-MX", {
-      year: "numeric", month: "long", day: "numeric",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
     ctx.fillText(dateStr, W / 2, metaY);
     metaY += 35;
@@ -673,7 +714,7 @@ async function generateReelCard(
 
   // "Ver en Reels" CTA - bottom area
   const ctaY = H - 220;
-  
+
   // CTA pill button
   const ctaWidth = 500;
   const ctaHeight = 70;
@@ -706,7 +747,10 @@ async function generateReelCard(
 // GENERATOR MAP
 // ===========================================
 
-const GENERATORS: Record<FormatTab, (canvas: HTMLCanvasElement, event: VideoEvent) => Promise<void>> = {
+const GENERATORS: Record<
+  FormatTab,
+  (canvas: HTMLCanvasElement, event: VideoEvent) => Promise<void>
+> = {
   story: generateStoryCard,
   post: generatePostCard,
   reel: generateReelCard,
@@ -731,7 +775,9 @@ const FILE_SUFFIX: Record<FormatTab, string> = {
 // Detect if user is on a mobile device
 function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+    navigator.userAgent,
+  );
 }
 
 export function EventStoryCard({
@@ -748,7 +794,10 @@ export function EventStoryCard({
   const [copiedImage, setCopiedImage] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [sendingToSubscribers, setSendingToSubscribers] = useState(false);
-  const [subscriberResult, setSubscriberResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [subscriberResult, setSubscriberResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const isMobile = isMobileDevice();
 
@@ -776,17 +825,20 @@ export function EventStoryCard({
   }, [event, selectedFormat, canvasRef, setGenerating]);
 
   // Helper: safely get canvas blob (handles tainted canvas)
-  const getCanvasBlob = useCallback(async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
-    try {
-      return await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/png", 1.0)
-      );
-    } catch (err) {
-      console.error("Canvas tainted, cannot extract blob:", err);
-      setShareError("No se pudo generar la imagen. Intenta descargarla.");
-      return null;
-    }
-  }, []);
+  const getCanvasBlob = useCallback(
+    async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+      try {
+        return await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/png", 1.0),
+        );
+      } catch (err) {
+        console.error("Canvas tainted, cannot extract blob:", err);
+        setShareError("No se pudo generar la imagen. Intenta descargarla.");
+        return null;
+      }
+    },
+    [],
+  );
 
   // Download the card
   const downloadCard = useCallback(async () => {
@@ -795,7 +847,9 @@ export function EventStoryCard({
 
     const blob = await getCanvasBlob(canvas);
     if (!blob) {
-      setShareError("No se pudo descargar. La imagen de portada tiene restricciones de seguridad.");
+      setShareError(
+        "No se pudo descargar. La imagen de portada tiene restricciones de seguridad.",
+      );
       return;
     }
 
@@ -840,7 +894,9 @@ export function EventStoryCard({
       }
 
       // Fallback: copy the link instead
-      setShareError("Tu navegador no soporta copiar imágenes. Descarga la imagen y súbelo manualmente.");
+      setShareError(
+        "Tu navegador no soporta copiar imágenes. Descarga la imagen y súbelo manualmente.",
+      );
     } catch (err) {
       console.error("Copy image failed:", err);
       setShareError("No se pudo copiar la imagen. Intenta descargarla.");
@@ -861,7 +917,7 @@ export function EventStoryCard({
       const file = new File(
         [blob],
         `${event.slug || event.id}-${FILE_SUFFIX[selectedFormat]}.png`,
-        { type: "image/png" }
+        { type: "image/png" },
       );
 
       // Try Web Share API with file (shows Instagram Stories, Facebook, etc. on mobile)
@@ -876,8 +932,8 @@ export function EventStoryCard({
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return;
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === "AbortError") return;
         }
       }
 
@@ -892,8 +948,8 @@ export function EventStoryCard({
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return;
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === "AbortError") return;
         }
       }
 
@@ -916,11 +972,9 @@ export function EventStoryCard({
       const blob = await getCanvasBlob(canvas);
       if (!blob) return;
 
-      const file = new File(
-        [blob],
-        `${event.slug || event.id}-story.png`,
-        { type: "image/png" }
-      );
+      const file = new File([blob], `${event.slug || event.id}-story.png`, {
+        type: "image/png",
+      });
 
       // On mobile: use Web Share API with file (works on iOS & Android)
       if (isMobile) {
@@ -934,8 +988,8 @@ export function EventStoryCard({
             setShareSuccess(true);
             setTimeout(() => setShareSuccess(false), 2000);
             return;
-          } catch (err: any) {
-            if (err?.name === "AbortError") return; // user cancelled
+          } catch (err: unknown) {
+            if (err instanceof Error && err.name === "AbortError") return; // user cancelled
             // Web Share API failed, fall through to URL scheme
           }
         }
@@ -956,7 +1010,9 @@ export function EventStoryCard({
 
             setTimeout(() => {
               if (document.visibilityState === "visible") {
-                setShareError("No se pudo abrir Instagram. Descarga la imagen y compártela manualmente.");
+                setShareError(
+                  "No se pudo abrir Instagram. Descarga la imagen y compártela manualmente.",
+                );
               }
             }, 2000);
             return;
@@ -967,7 +1023,9 @@ export function EventStoryCard({
 
         // Final fallback on mobile: download the image with instructions
         await downloadCard();
-        setShareError("Descarga la imagen y ábrela en Instagram para subirla a tu Story.");
+        setShareError(
+          "Descarga la imagen y ábrela en Instagram para subirla a tu Story.",
+        );
       } else {
         // On desktop: download and open instagram.com
         await downloadCard();
@@ -975,9 +1033,18 @@ export function EventStoryCard({
       }
     } catch (err) {
       console.error("Instagram Story share failed:", err);
-      setShareError("No se pudo compartir en Instagram. Intenta descargar la imagen.");
+      setShareError(
+        "No se pudo compartir en Instagram. Intenta descargar la imagen.",
+      );
     }
-  }, [getCanvasBlob, isMobile, downloadCard, event.slug, event.id, event.title]);
+  }, [
+    getCanvasBlob,
+    isMobile,
+    downloadCard,
+    event.slug,
+    event.id,
+    event.title,
+  ]);
 
   // Send event to newsletter subscribers via Mailchimp
   const sendToSubscribers = useCallback(async () => {
@@ -986,26 +1053,29 @@ export function EventStoryCard({
     setShareError(null);
 
     try {
-      const res = await fetch("/api/admin/vertical-video-events/share-with-subscribers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId: event.id,
-          eventTitle: event.title,
-          eventSlug: event.slug,
-          eventDate: event.eventDate,
-          eventLocation: event.location,
-          eventDescription: event.description,
-          coverImageUrl: event.coverImageUrl,
-        }),
-      });
+      const res = await fetch(
+        "/api/admin/vertical-video-events/share-with-subscribers",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId: event.id,
+            eventTitle: event.title,
+            eventSlug: event.slug,
+            eventDate: event.eventDate,
+            eventLocation: event.location,
+            eventDescription: event.description,
+            coverImageUrl: event.coverImageUrl,
+          }),
+        },
+      );
 
       const data = await res.json();
 
       if (data.success) {
         setSubscriberResult({
           success: true,
-          message: `Campaña enviada a todos los suscriptores`,
+          message: "Campaña enviada a todos los suscriptores",
         });
       } else {
         setSubscriberResult({
@@ -1024,9 +1094,11 @@ export function EventStoryCard({
   }, [event]);
 
   // Social share helpers
-  const eventShareUrl = `https://sonidoliquido.com/reels`;
+  const eventShareUrl = "https://sonidoliquido.com/reels";
   const encodedUrl = encodeURIComponent(eventShareUrl);
-  const encodedTitle = encodeURIComponent(`Mira "${event.title}" en Sonido Líquido Crew`);
+  const encodedTitle = encodeURIComponent(
+    `Mira "${event.title}" en Sonido Líquido Crew`,
+  );
 
   const copyLink = async () => {
     try {
@@ -1039,12 +1111,18 @@ export function EventStoryCard({
   };
 
   // Get aspect ratio for preview
-  const aspectStyle = selectedFormat === "post"
-    ? { aspectRatio: "1/1", maxHeight: "50vh" }
-    : { aspectRatio: "9/16", maxHeight: "60vh" };
+  const aspectStyle =
+    selectedFormat === "post"
+      ? { aspectRatio: "1/1", maxHeight: "50vh" }
+      : { aspectRatio: "9/16", maxHeight: "60vh" };
 
   // Format-specific labels for instructions
-  const formatLabel = selectedFormat === "post" ? "publicación" : selectedFormat === "reel" ? "reel" : "historia";
+  const formatLabel =
+    selectedFormat === "post"
+      ? "publicación"
+      : selectedFormat === "reel"
+        ? "reel"
+        : "historia";
 
   return (
     <div
@@ -1186,21 +1264,38 @@ export function EventStoryCard({
 
             {/* Desktop step-by-step instructions */}
             <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs text-white/60 font-oswald uppercase tracking-wide">Como compartir en {formatLabel}:</p>
+              <p className="text-xs text-white/60 font-oswald uppercase tracking-wide">
+                Como compartir en {formatLabel}:
+              </p>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">1</span>
-                <span>Da clic en <strong className="text-white/70">Descargar y Abrir Instagram</strong></span>
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  1
+                </span>
+                <span>
+                  Da clic en{" "}
+                  <strong className="text-white/70">
+                    Descargar y Abrir Instagram
+                  </strong>
+                </span>
               </div>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">2</span>
-                <span>En Instagram, crea una nueva {formatLabel} (icone +)</span>
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  2
+                </span>
+                <span>
+                  En Instagram, crea una nueva {formatLabel} (icone +)
+                </span>
               </div>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">3</span>
+                <span className="bg-purple-600/30 text-purple-300 rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  3
+                </span>
                 <span>Selecciona la imagen descargada y publicala</span>
               </div>
               <p className="text-[10px] text-white/30 pt-1 border-t border-white/5">
-                Tip: Tambien puedes usar <strong className="text-white/50">Copiar Imagen</strong> y pegar directamente con Ctrl+V
+                Tip: Tambien puedes usar{" "}
+                <strong className="text-white/50">Copiar Imagen</strong> y pegar
+                directamente con Ctrl+V
               </p>
             </div>
           </div>
@@ -1282,10 +1377,14 @@ export function EventStoryCard({
             )}
           </Button>
           {subscriberResult && !subscriberResult.success && (
-            <p className="text-xs text-red-400 mt-1 text-center">{subscriberResult.message}</p>
+            <p className="text-xs text-red-400 mt-1 text-center">
+              {subscriberResult.message}
+            </p>
           )}
           {subscriberResult?.success && (
-            <p className="text-xs text-green-400/70 mt-1 text-center">{subscriberResult.message}</p>
+            <p className="text-xs text-green-400/70 mt-1 text-center">
+              {subscriberResult.message}
+            </p>
           )}
         </div>
       </div>

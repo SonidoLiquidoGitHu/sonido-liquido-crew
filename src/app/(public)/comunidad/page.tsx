@@ -1,13 +1,18 @@
-import { Suspense } from "react";
-import { FanWall, ConcertMemoryGallery, UserPlaylistBuilder } from "@/components/public";
+import {
+  ConcertMemoryGallery,
+  FanWall,
+  UserPlaylistBuilder,
+} from "@/components/public";
 import { eventsService } from "@/lib/services";
-import { Loader2, MessageCircle, Camera, ListMusic, Users } from "lucide-react";
+import { Camera, ListMusic, Loader2, MessageCircle, Users } from "lucide-react";
+import { Suspense } from "react";
 
 export const revalidate = 300; // 5 minutes
 
 export const metadata = {
   title: "Comunidad | Sonido Líquido Crew",
-  description: "Conecta con la comunidad de Sonido Líquido Crew. Fan Wall, fotos de conciertos y playlists de fans.",
+  description:
+    "Conecta con la comunidad de Sonido Líquido Crew. Fan Wall, fotos de conciertos y playlists de fans.",
 };
 
 async function getPastEvents() {
@@ -32,13 +37,16 @@ export default async function CommunityPage() {
         <div className="relative section-container text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 border border-primary/30 rounded-full mb-6">
             <Users className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Familia SLC</span>
+            <span className="text-sm font-medium text-primary">
+              Familia SLC
+            </span>
           </div>
           <h1 className="font-oswald text-5xl md:text-7xl uppercase text-white mb-4">
             Comunidad
           </h1>
           <p className="text-xl text-slc-muted max-w-2xl mx-auto">
-            Conecta con otros fans, comparte tus recuerdos y forma parte de la familia Sonido Líquido.
+            Conecta con otros fans, comparte tus recuerdos y forma parte de la
+            familia Sonido Líquido.
           </p>
         </div>
       </section>
@@ -51,10 +59,7 @@ export default async function CommunityPage() {
           </div>
         }
       >
-        <FanWall
-          title="La Pared"
-          subtitle="Deja tu mensaje para la crew"
-        />
+        <FanWall title="La Pared" subtitle="Deja tu mensaje para la crew" />
       </Suspense>
 
       {/* Concert Memories */}
@@ -87,13 +92,16 @@ export default async function CommunityPage() {
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-full mb-4">
               <ListMusic className="w-4 h-4 text-purple-500" />
-              <span className="text-sm font-medium text-purple-500">Playlists</span>
+              <span className="text-sm font-medium text-purple-500">
+                Playlists
+              </span>
             </div>
             <h2 className="font-oswald text-4xl md:text-5xl uppercase text-white mb-2">
               Crea tu Playlist
             </h2>
             <p className="text-slc-muted max-w-md mx-auto">
-              Arma tu selección favorita de tracks de Sonido Líquido y compártela
+              Arma tu selección favorita de tracks de Sonido Líquido y
+              compártela
             </p>
           </div>
 

@@ -4,46 +4,59 @@
 // POST — Actions: process-next, populate, reset-cycle, skip-item, validate-token, retry-failed
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import {
+  events,
+  artists,
+  curatedSpotifyChannels,
+  curatedTracks,
+  galleryPhotos,
+  releaseArtists,
+  releases,
   socialPostQueue,
   socialPostsLog,
-  artists,
-  releases,
-  releaseArtists,
-  galleryPhotos,
-  curatedTracks,
-  curatedSpotifyChannels,
   verticalVideos,
   videos,
-  events,
 } from "@/db/schema";
-import { eq, desc, sql as drizzleSql, and, count, isNotNull, gt, gte, like, not, ne } from "drizzle-orm";
+// TikTok integration removed per user request
+import { socialCredentials } from "@/db/schema";
 import {
-  isMetaConfiguredAsync,
-  validateToken,
-  processQueueItem,
-  getNextPendingItem,
+  type FacebookReelResult,
+  type PostQueueItemResult,
   ensurePublicImageUrl,
-  generateCaption,
+  extractStoryLinkUrl,
   generateAICaption,
+  generateCaption,
+  getNextPendingItem,
+  isMetaConfiguredAsync,
+  postFacebookReel,
+  postInstagramReel,
   postToFacebook,
   postToInstagram,
   postToInstagramStory,
-  postInstagramReel,
-  postFacebookReel,
-  extractStoryLinkUrl,
-  type PostQueueItemResult,
-  type FacebookReelResult,
+  processQueueItem,
+  validateToken,
 } from "@/lib/clients/meta";
-// TikTok integration removed per user request
-import { socialCredentials } from "@/db/schema";
+import {
+  and,
+  count,
+  desc,
+  sql as drizzleSql,
+  eq,
+  gt,
+  gte,
+  isNotNull,
+  like,
+  ne,
+  not,
+} from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com";
 
 /**
  * Extract YouTube video ID from various URL formats.
@@ -52,7 +65,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sonidoliquido.com"
 function extractYouTubeId(
   videoUrl?: string | null,
   platformUrl?: string | null,
-  embedUrl?: string | null
+  embedUrl?: string | null,
 ): string | null {
   const urls = [embedUrl, platformUrl, videoUrl].filter(Boolean);
   for (const url of urls) {
@@ -104,11 +117,20 @@ export async function GET(request: NextRequest) {
       // 06:00 UTC of the same calendar day IF current UTC >= 06:00.
       // If current UTC < 06:00, "today CST" started at 06:00 UTC YESTERDAY.
       const startOfTodayCST = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), CST_OFFSET_HOURS, 0, 0)
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          CST_OFFSET_HOURS,
+          0,
+          0,
+        ),
       );
       if (now.getUTCHours() < CST_OFFSET_HOURS) {
         // Before 06:00 UTC → CST is still on yesterday's calendar date.
-        startOfTodayCST.setTime(startOfTodayCST.getTime() - 24 * 60 * 60 * 1000);
+        startOfTodayCST.setTime(
+          startOfTodayCST.getTime() - 24 * 60 * 60 * 1000,
+        );
       }
 
       // Count successful FEED posts since startOfTodayCST.
@@ -129,8 +151,8 @@ export async function GET(request: NextRequest) {
             eq(socialPostsLog.status, "success"),
             gte(socialPostsLog.postedAt, startOfTodayCST),
             not(like(socialPostsLog.queueId, "throwback-%")),
-            not(like(socialPostsLog.queueId, "autopost-event-%"))
-          )
+            not(like(socialPostsLog.queueId, "autopost-event-%")),
+          ),
         );
 
       // Count successful IG STORIES since startOfTodayCST.
@@ -151,8 +173,8 @@ export async function GET(request: NextRequest) {
           and(
             eq(socialPostsLog.status, "success"),
             like(socialPostsLog.queueId, "throwback-%"),
-            gte(socialPostsLog.postedAt, startOfTodayCST)
-          )
+            gte(socialPostsLog.postedAt, startOfTodayCST),
+          ),
         );
 
       const feedPostsToday = Number(feedCountRow[0]?.count) || 0;
@@ -247,8 +269,8 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(socialPostsLog.platform, "instagram_story"),
-            gte(socialPostsLog.postedAt, fourteenDaysAgo)
-          )
+            gte(socialPostsLog.postedAt, fourteenDaysAgo),
+          ),
         )
         .orderBy(desc(socialPostsLog.postedAt))
         .limit(500);
@@ -334,13 +356,21 @@ export async function GET(request: NextRequest) {
 
     const metaStatus = {
       configured: !!(
-        (process.env.META_SYSTEM_USER_TOKEN || metaCredMap.get("META_SYSTEM_USER_TOKEN")) &&
+        (process.env.META_SYSTEM_USER_TOKEN ||
+          metaCredMap.get("META_SYSTEM_USER_TOKEN")) &&
         (process.env.FACEBOOK_PAGE_ID || metaCredMap.get("FACEBOOK_PAGE_ID"))
       ),
       appId: !!(process.env.META_APP_ID || metaCredMap.get("META_APP_ID")),
-      appSecret: !!(process.env.META_APP_SECRET || metaCredMap.get("META_APP_SECRET")),
-      systemUserToken: !!(process.env.META_SYSTEM_USER_TOKEN || metaCredMap.get("META_SYSTEM_USER_TOKEN")),
-      facebookPageId: !!(process.env.FACEBOOK_PAGE_ID || metaCredMap.get("FACEBOOK_PAGE_ID")),
+      appSecret: !!(
+        process.env.META_APP_SECRET || metaCredMap.get("META_APP_SECRET")
+      ),
+      systemUserToken: !!(
+        process.env.META_SYSTEM_USER_TOKEN ||
+        metaCredMap.get("META_SYSTEM_USER_TOKEN")
+      ),
+      facebookPageId: !!(
+        process.env.FACEBOOK_PAGE_ID || metaCredMap.get("FACEBOOK_PAGE_ID")
+      ),
     };
 
     // Get available content counts for population
@@ -351,11 +381,11 @@ export async function GET(request: NextRequest) {
       data: {
         queue: {
           total: Object.values(summaryMap).reduce((a, b) => a + b, 0),
-          pending: summaryMap["pending"] || 0,
-          processing: summaryMap["processing"] || 0,
-          posted: summaryMap["posted"] || 0,
-          failed: summaryMap["failed"] || 0,
-          skipped: summaryMap["skipped"] || 0,
+          pending: summaryMap.pending || 0,
+          processing: summaryMap.processing || 0,
+          posted: summaryMap.posted || 0,
+          failed: summaryMap.failed || 0,
+          skipped: summaryMap.skipped || 0,
           byContentType: contentMap,
           currentCycle,
         },
@@ -370,7 +400,7 @@ export async function GET(request: NextRequest) {
     console.error("[Social API] GET error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch queue status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -388,7 +418,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { success: false, error: "Invalid JSON in request body" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -397,7 +427,7 @@ export async function POST(request: NextRequest) {
     if (!action) {
       return NextResponse.json(
         { success: false, error: "Missing 'action' field in request body" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -407,13 +437,21 @@ export async function POST(request: NextRequest) {
       case "process-next-story-only":
         return await handleProcessNextStoryOnly();
       case "populate":
-        return await handlePopulate(body.options as Record<string, unknown> || {});
+        return await handlePopulate(
+          (body.options as Record<string, unknown>) || {},
+        );
       case "post-upcoming-release":
-        return await handlePostUpcomingRelease(body as Parameters<typeof handlePostUpcomingRelease>[0]);
+        return await handlePostUpcomingRelease(
+          body as Parameters<typeof handlePostUpcomingRelease>[0],
+        );
       case "post-reel":
-        return await handlePostReel(body as Parameters<typeof handlePostReel>[0]);
+        return await handlePostReel(
+          body as Parameters<typeof handlePostReel>[0],
+        );
       case "post-upcoming-event":
-        return await handlePostUpcomingEvent(body as Parameters<typeof handlePostUpcomingEvent>[0]);
+        return await handlePostUpcomingEvent(
+          body as Parameters<typeof handlePostUpcomingEvent>[0],
+        );
       case "autopost-upcoming-event":
         return await handleAutopostUpcomingEvent();
       case "reset-cycle":
@@ -437,16 +475,21 @@ export async function POST(request: NextRequest) {
       default:
         return NextResponse.json(
           { success: false, error: `Unknown action: ${action}` },
-          { status: 400 }
+          { status: 400 },
         );
     }
   } catch (error) {
     console.error("[Social API] POST error:", error);
     // ALWAYS return JSON — never let Next.js return an HTML error page
-    const errorMessage = error instanceof Error ? error.message : "Request failed";
+    const errorMessage =
+      error instanceof Error ? error.message : "Request failed";
     return NextResponse.json(
-      { success: false, error: errorMessage, message: `Error interno: ${errorMessage}` },
-      { status: 500 }
+      {
+        success: false,
+        error: errorMessage,
+        message: `Error interno: ${errorMessage}`,
+      },
+      { status: 500 },
     );
   }
 }
@@ -459,7 +502,8 @@ async function handleProcessNext(options?: { alsoPostStory?: boolean }) {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API not configured. Set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID in the credentials section below, or as Netlify env vars.",
+      message:
+        "Meta API not configured. Set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID in the credentials section below, or as Netlify env vars.",
     });
   }
 
@@ -467,7 +511,8 @@ async function handleProcessNext(options?: { alsoPostStory?: boolean }) {
   if (!nextItem) {
     return NextResponse.json({
       success: false,
-      message: "No pending items in queue. All items have been posted or queue is empty. Populate the queue first.",
+      message:
+        "No pending items in queue. All items have been posted or queue is empty. Populate the queue first.",
     });
   }
 
@@ -476,16 +521,21 @@ async function handleProcessNext(options?: { alsoPostStory?: boolean }) {
 
   const alsoPostStory = !!options?.alsoPostStory;
   console.log(
-    `[Social API] Processing queue item: ${nextItem.contentType} (${nextItem.sourceId})` +
-    (alsoPostStory ? " [also-post-story]" : "")
+    `[Social API] Processing queue item: ${nextItem.contentType} (${nextItem.sourceId})${alsoPostStory ? " [also-post-story]" : ""}`,
   );
 
   const result = await processQueueItem(nextItem, { alsoPostStory });
 
-  const fbStatus = result.facebook.success ? "success" : `failed: ${result.facebook.error || "unknown error"}`;
-  const igStatus = result.instagram.success ? "success" : `failed: ${result.instagram.error || "unknown error"}`;
+  const fbStatus = result.facebook.success
+    ? "success"
+    : `failed: ${result.facebook.error || "unknown error"}`;
+  const igStatus = result.instagram.success
+    ? "success"
+    : `failed: ${result.instagram.error || "unknown error"}`;
   const storyStatus = result.instagramStory
-    ? (result.instagramStory.success ? "success" : `failed: ${result.instagramStory.error || "unknown error"}`)
+    ? result.instagramStory.success
+      ? "success"
+      : `failed: ${result.instagramStory.error || "unknown error"}`
     : "skipped";
 
   return NextResponse.json({
@@ -518,7 +568,8 @@ async function handleProcessNextStoryOnly() {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API not configured. Set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID in the credentials section below, or as Netlify env vars.",
+      message:
+        "Meta API not configured. Set META_SYSTEM_USER_TOKEN and FACEBOOK_PAGE_ID in the credentials section below, or as Netlify env vars.",
     });
   }
 
@@ -557,21 +608,22 @@ async function handleProcessNextStoryOnly() {
         and(
           eq(socialPostQueue.status, "posted"),
           isNotNull(socialPostQueue.postedAt),
-          gt(socialPostQueue.postedAt, thirtyDaysAgo)
-        )
+          gt(socialPostQueue.postedAt, thirtyDaysAgo),
+        ),
       )
       .orderBy(desc(socialPostQueue.postedAt))
       .limit(50);
 
     // Filter out vertical videos
     const eligibleItems = recentPostedItems.filter(
-      (item) => item.contentType !== "vertical_video"
+      (item) => item.contentType !== "vertical_video",
     );
 
     if (eligibleItems.length === 0) {
       return NextResponse.json({
         success: false,
-        message: "No throwback items available for Story posting. Post items to the feed first.",
+        message:
+          "No throwback items available for Story posting. Post items to the feed first.",
       });
     }
 
@@ -591,8 +643,8 @@ async function handleProcessNextStoryOnly() {
         and(
           like(socialPostsLog.queueId, "throwback-%"),
           eq(socialPostsLog.status, "success"),
-          gt(socialPostsLog.postedAt, sevenDaysAgo)
-        )
+          gt(socialPostsLog.postedAt, sevenDaysAgo),
+        ),
       );
 
     // Build a dedup set keyed by sourceId only. CRITICAL FIX (2026-06-20):
@@ -602,7 +654,7 @@ async function handleProcessNextStoryOnly() {
     // stores the original URL (e.g. https://i.scdn.co/...). These never
     // matched, so dedup never fired.
     const recentStorySourceIds = new Set(
-      recentStoryLogs.map((log) => log.sourceId).filter(Boolean)
+      recentStoryLogs.map((log) => log.sourceId).filter(Boolean),
     );
 
     // Pick the first eligible item whose sourceId has NOT been used as a
@@ -611,13 +663,14 @@ async function handleProcessNextStoryOnly() {
     // entirely, because once all 50 eligible items had been used as
     // stories, it just reposted the most recent one forever.
     const throwbackItem = eligibleItems.find(
-      (item) => !recentStorySourceIds.has(item.sourceId)
+      (item) => !recentStorySourceIds.has(item.sourceId),
     );
 
     if (!throwbackItem) {
       return NextResponse.json({
         success: false,
-        message: "All recently-posted items have already been used as Stories in the last 7 days. Skipping to prevent duplicates.",
+        message:
+          "All recently-posted items have already been used as Stories in the last 7 days. Skipping to prevent duplicates.",
         skipped: true,
         reason: "dedup_exhausted",
       });
@@ -635,18 +688,21 @@ async function handleProcessNextStoryOnly() {
 
     console.log(
       `[Social API] Story-only throwback: ${throwbackItem.contentType} (${throwbackItem.sourceId}) ` +
-      `originally posted ${throwbackItem.postedAt?.toISOString()}`
+        `originally posted ${throwbackItem.postedAt?.toISOString()}`,
     );
 
     // Post ONLY as Instagram Story (no FB wall, no IG feed)
     // Extract the best link from the caption (Spotify > YouTube > any URL > fallback)
     // so the Story link sticker points to the same external link visible in the post.
-    const storyLink = extractStoryLinkUrl(throwbackItem.caption, throwbackItem.linkUrl);
+    const storyLink = extractStoryLinkUrl(
+      throwbackItem.caption,
+      throwbackItem.linkUrl,
+    );
     const storyResult = await postToInstagramStory(
       publicImageUrl,
       throwbackItem.caption || "",
       storyLink,
-      { composeForStory: true }
+      { composeForStory: true },
     );
 
     // Log to social_posts_log with queueId prefixed 'throwback-' so the
@@ -671,7 +727,10 @@ async function handleProcessNextStoryOnly() {
       } as any);
     } catch (logErr) {
       logError = logErr instanceof Error ? logErr.message : String(logErr);
-      console.error("[Social API] Failed to log throwback story result:", logError);
+      console.error(
+        "[Social API] Failed to log throwback story result:",
+        logError,
+      );
     }
 
     return NextResponse.json({
@@ -690,10 +749,15 @@ async function handleProcessNextStoryOnly() {
     });
   } catch (error) {
     console.error("[Social API] process-next-story-only error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Request failed";
+    const errorMessage =
+      error instanceof Error ? error.message : "Request failed";
     return NextResponse.json(
-      { success: false, error: errorMessage, message: `Error en story-only: ${errorMessage}` },
-      { status: 500 }
+      {
+        success: false,
+        error: errorMessage,
+        message: `Error en story-only: ${errorMessage}`,
+      },
+      { status: 500 },
     );
   }
 }
@@ -709,7 +773,13 @@ async function handlePostUpcomingRelease(body: {
   releaseId?: string;
   platforms?: string[];
 }) {
-  const { imageUrl, caption, linkUrl, releaseId, platforms = ["facebook", "instagram"] } = body;
+  const {
+    imageUrl,
+    caption,
+    linkUrl,
+    releaseId,
+    platforms = ["facebook", "instagram"],
+  } = body;
 
   if (!imageUrl) {
     return NextResponse.json({
@@ -728,7 +798,8 @@ async function handlePostUpcomingRelease(body: {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
+      message:
+        "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
     });
   }
 
@@ -738,24 +809,45 @@ async function handlePostUpcomingRelease(body: {
     const errorDetail = tokenInfo.raw?.message || "Token inválido";
     const errorCode = tokenInfo.raw?.code || "";
     let guidance = "";
-    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
-      guidance = " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    if (
+      errorCode === 190 ||
+      errorDetail.includes("Invalid OAuth") ||
+      errorDetail.includes("Cannot parse")
+    ) {
+      guidance =
+        " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
     }
     return NextResponse.json({
       success: false,
       message: `Token de Meta API inválido: ${errorDetail}.${guidance}`,
-      tokenError: { code: errorCode, message: errorDetail, type: tokenInfo.raw?.type },
+      tokenError: {
+        code: errorCode,
+        message: errorDetail,
+        type: tokenInfo.raw?.type,
+      },
     });
   }
 
   // Ensure image URL is publicly accessible for Meta API
   const publicImageUrl = ensurePublicImageUrl(imageUrl);
 
-  console.log(`[Social API] Direct post for upcoming release: ${releaseId || "unknown"}`);
+  console.log(
+    `[Social API] Direct post for upcoming release: ${releaseId || "unknown"}`,
+  );
 
   const results: {
-    facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
-    instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+    facebook?: {
+      success: boolean;
+      postId?: string;
+      postUrl?: string;
+      error?: string;
+    };
+    instagram?: {
+      success: boolean;
+      mediaId?: string;
+      permalink?: string;
+      error?: string;
+    };
   } = {};
 
   // Post to Facebook
@@ -826,8 +918,10 @@ async function handlePostUpcomingRelease(body: {
 
   const anySuccess = results.facebook?.success || results.instagram?.success;
   const errorMessages: string[] = [];
-  if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
-  if (results.instagram && !results.instagram.success) errorMessages.push(`IG: ${results.instagram.error}`);
+  if (results.facebook && !results.facebook.success)
+    errorMessages.push(`FB: ${results.facebook.error}`);
+  if (results.instagram && !results.instagram.success)
+    errorMessages.push(`IG: ${results.instagram.error}`);
 
   return NextResponse.json({
     success: anySuccess,
@@ -849,7 +943,13 @@ async function handlePostReel(body: {
   releaseId?: string;
   releaseTitle?: string;
 }) {
-  const { videoUrl, caption, platforms = ["instagram", "facebook"], releaseId, releaseTitle } = body;
+  const {
+    videoUrl,
+    caption,
+    platforms = ["instagram", "facebook"],
+    releaseId,
+    releaseTitle,
+  } = body;
 
   if (!videoUrl) {
     return NextResponse.json({
@@ -868,7 +968,8 @@ async function handlePostReel(body: {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
+      message:
+        "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
     });
   }
 
@@ -878,21 +979,42 @@ async function handlePostReel(body: {
     const errorDetail = tokenInfo.raw?.message || "Token inválido";
     const errorCode = tokenInfo.raw?.code || "";
     let guidance = "";
-    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
-      guidance = " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    if (
+      errorCode === 190 ||
+      errorDetail.includes("Invalid OAuth") ||
+      errorDetail.includes("Cannot parse")
+    ) {
+      guidance =
+        " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
     }
     return NextResponse.json({
       success: false,
       message: `Token de Meta API inválido: ${errorDetail}.${guidance}`,
-      tokenError: { code: errorCode, message: errorDetail, type: tokenInfo.raw?.type },
+      tokenError: {
+        code: errorCode,
+        message: errorDetail,
+        type: tokenInfo.raw?.type,
+      },
     });
   }
 
-  console.log(`[Social API] Posting Reel for upcoming release: ${releaseTitle || releaseId || "unknown"}`);
+  console.log(
+    `[Social API] Posting Reel for upcoming release: ${releaseTitle || releaseId || "unknown"}`,
+  );
 
   const results: {
-    instagram?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
-    facebook?: { success: boolean; reelId?: string; postUrl?: string; error?: string };
+    instagram?: {
+      success: boolean;
+      mediaId?: string;
+      permalink?: string;
+      error?: string;
+    };
+    facebook?: {
+      success: boolean;
+      reelId?: string;
+      postUrl?: string;
+      error?: string;
+    };
   } = {};
 
   // Post to Instagram as Reel
@@ -963,8 +1085,10 @@ async function handlePostReel(body: {
 
   const anySuccess = results.instagram?.success || results.facebook?.success;
   const errorMessages: string[] = [];
-  if (results.instagram && !results.instagram.success) errorMessages.push(`IG Reel: ${results.instagram.error}`);
-  if (results.facebook && !results.facebook.success) errorMessages.push(`FB Reel: ${results.facebook.error}`);
+  if (results.instagram && !results.instagram.success)
+    errorMessages.push(`IG Reel: ${results.instagram.error}`);
+  if (results.facebook && !results.facebook.success)
+    errorMessages.push(`FB Reel: ${results.facebook.error}`);
 
   const successPlatforms: string[] = [];
   if (results.instagram?.success) successPlatforms.push("Instagram Reels");
@@ -1017,11 +1141,14 @@ async function handlePopulate(options: {
     const existingSourceIds = force
       ? new Set<string>() // Force mode: allow duplicates
       : new Set(existing.map((item) => `${item.contentType}:${item.sourceId}`));
-    console.log(`[Social API Populate] Found ${existing.length} existing queue items${force ? " (force mode: duplicates allowed)" : ""}`);
+    console.log(
+      `[Social API Populate] Found ${existing.length} existing queue items${force ? " (force mode: duplicates allowed)" : ""}`,
+    );
 
-    let queueOrder = existing.length > 0
-      ? Math.max(...existing.map((item) => item.queueOrder)) + 1
-      : 0;
+    let queueOrder =
+      existing.length > 0
+        ? Math.max(...existing.map((item) => item.queueOrder)) + 1
+        : 0;
 
     let galleryCount = 0;
     let releasesCount = 0;
@@ -1051,12 +1178,15 @@ async function handlePopulate(options: {
         .orderBy(galleryPhotos.sortOrder);
 
       // Get artist names
-      const allArtists = await db.select({
-        id: artists.id,
-        name: artists.name,
-        slug: artists.slug,
-        role: artists.role,
-      }).from(artists).where(eq(artists.isActive, true));
+      const allArtists = await db
+        .select({
+          id: artists.id,
+          name: artists.name,
+          slug: artists.slug,
+          role: artists.role,
+        })
+        .from(artists)
+        .where(eq(artists.isActive, true));
 
       const artistMap = new Map(allArtists.map((a) => [a.id, a]));
 
@@ -1071,7 +1201,9 @@ async function handlePopulate(options: {
           photoTitle: photo.title || undefined,
           photoLocation: photo.location || undefined,
           photographer: photo.photographer || undefined,
-          linkUrl: artist ? `${SITE_URL}/artistas/${artist.slug}` : `${SITE_URL}/galeria`,
+          linkUrl: artist
+            ? `${SITE_URL}/artistas/${artist.slug}`
+            : `${SITE_URL}/galeria`,
         });
 
         await db.insert(socialPostQueue).values({
@@ -1082,7 +1214,9 @@ async function handlePopulate(options: {
           releaseId: null,
           imageUrl: photo.imageUrl,
           caption,
-          linkUrl: artist ? `${SITE_URL}/artistas/${artist.slug}` : `${SITE_URL}/galeria`,
+          linkUrl: artist
+            ? `${SITE_URL}/artistas/${artist.slug}`
+            : `${SITE_URL}/galeria`,
           queueOrder: queueOrder++,
           cycleNumber: 1,
           status: "pending",
@@ -1115,12 +1249,15 @@ async function handlePopulate(options: {
         .where(eq(releases.isUpcoming, false))
         .orderBy(releases.releaseDate);
 
-      const allArtists = await db.select({
-        id: artists.id,
-        name: artists.name,
-        slug: artists.slug,
-        role: artists.role,
-      }).from(artists).where(eq(artists.isActive, true));
+      const allArtists = await db
+        .select({
+          id: artists.id,
+          name: artists.name,
+          slug: artists.slug,
+          role: artists.role,
+        })
+        .from(artists)
+        .where(eq(artists.isActive, true));
 
       const artistMap = new Map(allArtists.map((a) => [a.id, a]));
 
@@ -1140,7 +1277,9 @@ async function handlePopulate(options: {
 
         const artistIds = releaseArtistMap.get(release.id) || [];
         const primaryArtistId = artistIds[0];
-        const primaryArtist = primaryArtistId ? artistMap.get(primaryArtistId) : null;
+        const primaryArtist = primaryArtistId
+          ? artistMap.get(primaryArtistId)
+          : null;
 
         const caption = generateCaption({
           contentType: "spotify_track",
@@ -1180,14 +1319,17 @@ async function handlePopulate(options: {
     if (includeArtists) {
       console.log("[Social API Populate] Processing artist profiles...");
 
-      const allArtists = await db.select({
-        id: artists.id,
-        name: artists.name,
-        slug: artists.slug,
-        role: artists.role,
-        profileImageUrl: artists.profileImageUrl,
-        featuredImageUrl: artists.featuredImageUrl,
-      }).from(artists).where(eq(artists.isActive, true));
+      const allArtists = await db
+        .select({
+          id: artists.id,
+          name: artists.name,
+          slug: artists.slug,
+          role: artists.role,
+          profileImageUrl: artists.profileImageUrl,
+          featuredImageUrl: artists.featuredImageUrl,
+        })
+        .from(artists)
+        .where(eq(artists.isActive, true));
 
       for (const artist of allArtists) {
         const imageUrl = artist.featuredImageUrl || artist.profileImageUrl;
@@ -1247,7 +1389,9 @@ async function handlePopulate(options: {
           .where(eq(curatedTracks.isAvailableForPlaylist, true))
           .orderBy(desc(curatedTracks.popularity));
 
-        console.log(`[Social API Populate] Found ${tracks.length} curated tracks available for playlist`);
+        console.log(
+          `[Social API Populate] Found ${tracks.length} curated tracks available for playlist`,
+        );
 
         let skippedNoImage = 0;
         let skippedDuplicate = 0;
@@ -1266,7 +1410,8 @@ async function handlePopulate(options: {
 
           // Use the specific Spotify track URL as the link
           // This gives users a direct link to listen to the track
-          const trackLinkUrl = track.spotifyTrackUrl || `${SITE_URL}/discografia`;
+          const trackLinkUrl =
+            track.spotifyTrackUrl || `${SITE_URL}/discografia`;
 
           const caption = generateCaption({
             contentType: "curated_track",
@@ -1298,25 +1443,34 @@ async function handlePopulate(options: {
         }
 
         console.log(
-          `[Social API Populate] Curated tracks: ${curatedCount} added, ${skippedNoImage} skipped (no image), ${skippedDuplicate} skipped (duplicate)`
+          `[Social API Populate] Curated tracks: ${curatedCount} added, ${skippedNoImage} skipped (no image), ${skippedDuplicate} skipped (duplicate)`,
         );
       } catch (err) {
         console.error("[Social API Populate] Curated tracks error:", err);
         // Return the error details in the response so the admin can see what went wrong
-        return NextResponse.json({
-          success: false,
-          message: `Error al procesar tracks curados: ${err instanceof Error ? err.message : String(err)}`,
-          error: "curated_tracks_error",
-          details: {
-            galleryPhotos: galleryCount,
-            releases: releasesCount,
-            artistProfiles: artistsCount,
-            curatedTracks: curatedCount,
-            verticalVideos: reelsCount,
-            youtubeVideos: youtubeVideosCount,
-            totalAdded: galleryCount + releasesCount + artistsCount + curatedCount + reelsCount + youtubeVideosCount,
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Error al procesar tracks curados: ${err instanceof Error ? err.message : String(err)}`,
+            error: "curated_tracks_error",
+            details: {
+              galleryPhotos: galleryCount,
+              releases: releasesCount,
+              artistProfiles: artistsCount,
+              curatedTracks: curatedCount,
+              verticalVideos: reelsCount,
+              youtubeVideos: youtubeVideosCount,
+              totalAdded:
+                galleryCount +
+                releasesCount +
+                artistsCount +
+                curatedCount +
+                reelsCount +
+                youtubeVideosCount,
+            },
           },
-        }, { status: 500 });
+          { status: 500 },
+        );
       }
     }
 
@@ -1324,7 +1478,9 @@ async function handlePopulate(options: {
     // 5. Vertical Videos (Reels / Shorts)
     // ========================================
     if (includeVerticalVideos) {
-      console.log("[Social API Populate] Processing vertical videos (reels)...");
+      console.log(
+        "[Social API Populate] Processing vertical videos (reels)...",
+      );
 
       try {
         const videos = await db
@@ -1343,12 +1499,15 @@ async function handlePopulate(options: {
           .orderBy(verticalVideos.displayOrder);
 
         // Get artist names (reuse the allArtists map if available, otherwise fetch)
-        const allArtistsVV = await db.select({
-          id: artists.id,
-          name: artists.name,
-          slug: artists.slug,
-          role: artists.role,
-        }).from(artists).where(eq(artists.isActive, true));
+        const allArtistsVV = await db
+          .select({
+            id: artists.id,
+            name: artists.name,
+            slug: artists.slug,
+            role: artists.role,
+          })
+          .from(artists)
+          .where(eq(artists.isActive, true));
         const artistMapVV = new Map(allArtistsVV.map((a) => [a.id, a]));
 
         for (const video of videos) {
@@ -1358,7 +1517,11 @@ async function handlePopulate(options: {
 
           if (!imageUrl) {
             // Try to auto-generate YouTube thumbnail from video URL
-            const ytId = extractYouTubeId(video.videoUrl, video.platformUrl, video.embedUrl);
+            const ytId = extractYouTubeId(
+              video.videoUrl,
+              video.platformUrl,
+              video.embedUrl,
+            );
             if (ytId) {
               imageUrl = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
             }
@@ -1374,12 +1537,16 @@ async function handlePopulate(options: {
           // For vertical videos, store the video URL in linkUrl so processQueueItem
           // can use it for Reel posting. Also store the website link separately.
           // Format: "VIDEO_URL|||WEBSITE_URL" — processQueueItem will parse this.
-          const artist = video.artistId ? artistMapVV.get(video.artistId) : null;
+          const artist = video.artistId
+            ? artistMapVV.get(video.artistId)
+            : null;
           const videoUrl = video.videoUrl || video.platformUrl || "";
           const websiteUrl = artist
             ? `${SITE_URL}/artistas/${artist.slug}`
             : video.platformUrl || `${SITE_URL}/reels`;
-          const linkUrlValue = videoUrl ? `${videoUrl}|||${websiteUrl}` : websiteUrl;
+          const linkUrlValue = videoUrl
+            ? `${videoUrl}|||${websiteUrl}`
+            : websiteUrl;
 
           const key = `vertical_video:${video.id}`;
           if (existingSourceIds.has(key)) continue;
@@ -1414,7 +1581,10 @@ async function handlePopulate(options: {
           reelsCount++;
         }
       } catch (err) {
-        console.warn("[Social API Populate] Vertical videos table may not exist yet:", err);
+        console.warn(
+          "[Social API Populate] Vertical videos table may not exist yet:",
+          err,
+        );
       }
     }
 
@@ -1439,12 +1609,15 @@ async function handlePopulate(options: {
           .orderBy(videos.displayOrder);
 
         // Get artist names
-        const allArtistsYT = await db.select({
-          id: artists.id,
-          name: artists.name,
-          slug: artists.slug,
-          role: artists.role,
-        }).from(artists).where(eq(artists.isActive, true));
+        const allArtistsYT = await db
+          .select({
+            id: artists.id,
+            name: artists.name,
+            slug: artists.slug,
+            role: artists.role,
+          })
+          .from(artists)
+          .where(eq(artists.isActive, true));
         const artistMapYT = new Map(allArtistsYT.map((a) => [a.id, a]));
 
         for (const video of ytVideos) {
@@ -1458,13 +1631,19 @@ async function handlePopulate(options: {
           const key = `youtube_video:${video.id}`;
           if (existingSourceIds.has(key)) continue;
 
-          const artist = video.artistId ? artistMapYT.get(video.artistId) : null;
+          const artist = video.artistId
+            ? artistMapYT.get(video.artistId)
+            : null;
           const caption = generateCaption({
             contentType: "youtube_video",
             artistName: artist?.name,
             videoTitle: video.title || undefined,
             videoPlatform: "youtube",
-            linkUrl: video.youtubeUrl || (artist ? `${SITE_URL}/artistas/${artist.slug}` : `${SITE_URL}/videos`),
+            linkUrl:
+              video.youtubeUrl ||
+              (artist
+                ? `${SITE_URL}/artistas/${artist.slug}`
+                : `${SITE_URL}/videos`),
           });
 
           await db.insert(socialPostQueue).values({
@@ -1475,7 +1654,11 @@ async function handlePopulate(options: {
             releaseId: video.releaseId || null,
             imageUrl,
             caption,
-            linkUrl: video.youtubeUrl || (artist ? `${SITE_URL}/artistas/${artist.slug}` : `${SITE_URL}/videos`),
+            linkUrl:
+              video.youtubeUrl ||
+              (artist
+                ? `${SITE_URL}/artistas/${artist.slug}`
+                : `${SITE_URL}/videos`),
             queueOrder: queueOrder++,
             cycleNumber: 1,
             status: "pending",
@@ -1487,9 +1670,14 @@ async function handlePopulate(options: {
           youtubeVideosCount++;
         }
 
-        console.log(`[Social API Populate] YouTube videos: ${youtubeVideosCount} added`);
+        console.log(
+          `[Social API Populate] YouTube videos: ${youtubeVideosCount} added`,
+        );
       } catch (err) {
-        console.warn("[Social API Populate] YouTube videos table may not exist yet:", err);
+        console.warn(
+          "[Social API Populate] YouTube videos table may not exist yet:",
+          err,
+        );
       }
     }
 
@@ -1516,15 +1704,12 @@ async function handlePopulate(options: {
             isFeatured: events.isFeatured,
           })
           .from(events)
-          .where(
-            and(
-              gt(events.eventDate, now),
-              eq(events.isCancelled, false)
-            )
-          )
+          .where(and(gt(events.eventDate, now), eq(events.isCancelled, false)))
           .orderBy(events.eventDate);
 
-        console.log(`[Social API Populate] Found ${upcomingEvents.length} upcoming events`);
+        console.log(
+          `[Social API Populate] Found ${upcomingEvents.length} upcoming events`,
+        );
 
         let skippedNoImage = 0;
 
@@ -1578,18 +1763,30 @@ async function handlePopulate(options: {
         }
 
         console.log(
-          `[Social API Populate] Events: ${eventsCount} added, ${skippedNoImage} skipped (no image)`
+          `[Social API Populate] Events: ${eventsCount} added, ${skippedNoImage} skipped (no image)`,
         );
       } catch (err) {
-        console.warn("[Social API Populate] Events table may not exist yet:", err);
+        console.warn(
+          "[Social API Populate] Events table may not exist yet:",
+          err,
+        );
       }
     }
 
     // ========================================
     // Summary
     // ========================================
-    const totalAdded = galleryCount + releasesCount + artistsCount + curatedCount + reelsCount + youtubeVideosCount + eventsCount;
-    console.log(`[Social API Populate] Complete! Added ${totalAdded} new items`);
+    const totalAdded =
+      galleryCount +
+      releasesCount +
+      artistsCount +
+      curatedCount +
+      reelsCount +
+      youtubeVideosCount +
+      eventsCount;
+    console.log(
+      `[Social API Populate] Complete! Added ${totalAdded} new items`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -1608,11 +1805,14 @@ async function handlePopulate(options: {
     });
   } catch (error) {
     console.error("[Social API] Populate error:", error);
-    return NextResponse.json({
-      success: false,
-      message: "Error al poblar la cola",
-      error: error instanceof Error ? error.message : String(error),
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error al poblar la cola",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
   }
 }
 
@@ -1627,7 +1827,13 @@ async function handlePostUpcomingEvent(body: {
   linkUrl?: string;
   platforms?: string[];
 }) {
-  const { eventId, imageUrl, caption, linkUrl, platforms = ["facebook", "instagram"] } = body;
+  const {
+    eventId,
+    imageUrl,
+    caption,
+    linkUrl,
+    platforms = ["facebook", "instagram"],
+  } = body;
 
   // If eventId is provided, fetch event details from DB
   let finalImageUrl = imageUrl;
@@ -1678,7 +1884,8 @@ async function handlePostUpcomingEvent(body: {
   if (!(await isMetaConfiguredAsync())) {
     return NextResponse.json({
       success: false,
-      message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
+      message:
+        "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en la sección de credenciales de /admin/social.",
     });
   }
 
@@ -1688,29 +1895,54 @@ async function handlePostUpcomingEvent(body: {
     const errorDetail = tokenInfo.raw?.message || "Token inválido";
     const errorCode = tokenInfo.raw?.code || "";
     let guidance = "";
-    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
-      guidance = " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    if (
+      errorCode === 190 ||
+      errorDetail.includes("Invalid OAuth") ||
+      errorDetail.includes("Cannot parse")
+    ) {
+      guidance =
+        " El token parece ser inválido o ha expirado. Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
     }
     return NextResponse.json({
       success: false,
       message: `Token de Meta API inválido: ${errorDetail}.${guidance}`,
-      tokenError: { code: errorCode, message: errorDetail, type: tokenInfo.raw?.type },
+      tokenError: {
+        code: errorCode,
+        message: errorDetail,
+        type: tokenInfo.raw?.type,
+      },
     });
   }
 
   // Ensure image URL is publicly accessible for Meta API
   const publicImageUrl = ensurePublicImageUrl(finalImageUrl);
 
-  console.log(`[Social API] Direct post for upcoming event: ${eventId || "unknown"}`);
+  console.log(
+    `[Social API] Direct post for upcoming event: ${eventId || "unknown"}`,
+  );
 
   const results: {
-    facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
-    instagram_story?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+    facebook?: {
+      success: boolean;
+      postId?: string;
+      postUrl?: string;
+      error?: string;
+    };
+    instagram_story?: {
+      success: boolean;
+      mediaId?: string;
+      permalink?: string;
+      error?: string;
+    };
   } = {};
 
   // Post to Facebook (feed post)
   if (platforms.includes("facebook")) {
-    const fbResult = await postToFacebook(publicImageUrl, finalCaption, finalLinkUrl);
+    const fbResult = await postToFacebook(
+      publicImageUrl,
+      finalCaption,
+      finalLinkUrl,
+    );
     results.facebook = {
       success: fbResult.success,
       postId: fbResult.postId || undefined,
@@ -1745,7 +1977,11 @@ async function handlePostUpcomingEvent(body: {
   if (platforms.includes("instagram")) {
     // Extract the best link from the caption for the Story link sticker
     const storyLink = extractStoryLinkUrl(finalCaption, finalLinkUrl);
-    const igResult = await postToInstagramStory(publicImageUrl, finalCaption, storyLink);
+    const igResult = await postToInstagramStory(
+      publicImageUrl,
+      finalCaption,
+      storyLink,
+    );
     results.instagram_story = {
       success: igResult.success,
       mediaId: igResult.mediaId || undefined,
@@ -1772,14 +2008,20 @@ async function handlePostUpcomingEvent(body: {
         postedAt: new Date(),
       } as any);
     } catch (logError) {
-      console.error("[Social API] Failed to log IG Story event result:", logError);
+      console.error(
+        "[Social API] Failed to log IG Story event result:",
+        logError,
+      );
     }
   }
 
-  const anySuccess = results.facebook?.success || results.instagram_story?.success;
+  const anySuccess =
+    results.facebook?.success || results.instagram_story?.success;
   const errorMessages: string[] = [];
-  if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
-  if (results.instagram_story && !results.instagram_story.success) errorMessages.push(`IG Story: ${results.instagram_story.error}`);
+  if (results.facebook && !results.facebook.success)
+    errorMessages.push(`FB: ${results.facebook.error}`);
+  if (results.instagram_story && !results.instagram_story.success)
+    errorMessages.push(`IG Story: ${results.instagram_story.error}`);
 
   return NextResponse.json({
     success: anySuccess,
@@ -1809,10 +2051,13 @@ async function handleDebugAutopost() {
     try {
       const tokenInfo = await validateToken();
       diagnostics.tokenValid = tokenInfo.isValid;
-      diagnostics.tokenError = tokenInfo.isValid ? null : (tokenInfo.raw?.message || "Invalid token");
+      diagnostics.tokenError = tokenInfo.isValid
+        ? null
+        : tokenInfo.raw?.message || "Invalid token";
     } catch (err) {
       diagnostics.tokenValid = false;
-      diagnostics.tokenError = err instanceof Error ? err.message : "Token validation failed";
+      diagnostics.tokenError =
+        err instanceof Error ? err.message : "Token validation failed";
     }
   }
 
@@ -1823,7 +2068,9 @@ async function handleDebugAutopost() {
 
     // Calculate UTC schedule hours
     const CST_OFFSET = 6;
-    const utcScheduleHours = config.scheduleHours.map(h => (h + CST_OFFSET) % 24);
+    const utcScheduleHours = config.scheduleHours.map(
+      (h) => (h + CST_OFFSET) % 24,
+    );
     const currentHourUTC = now.getUTCHours();
     const currentHourCST = (currentHourUTC - CST_OFFSET + 24) % 24;
 
@@ -1831,12 +2078,15 @@ async function handleDebugAutopost() {
     diagnostics.currentTimeCST = currentHourCST;
     diagnostics.utcScheduleHours = utcScheduleHours;
     diagnostics.shouldPostNow = utcScheduleHours.includes(currentHourUTC);
-    diagnostics.nextScheduledCST = config.scheduleHours
-      .map(h => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
-      .sort((a, b) => a.utc - b.utc)
-      .find(entry => entry.utc > currentHourUTC)?.cst || config.scheduleHours[0];
+    diagnostics.nextScheduledCST =
+      config.scheduleHours
+        .map((h) => ({ cst: h, utc: (h + CST_OFFSET) % 24 }))
+        .sort((a, b) => a.utc - b.utc)
+        .find((entry) => entry.utc > currentHourUTC)?.cst ||
+      config.scheduleHours[0];
   } catch (err) {
-    diagnostics.scheduleConfigError = err instanceof Error ? err.message : "Failed to read schedule config";
+    diagnostics.scheduleConfigError =
+      err instanceof Error ? err.message : "Failed to read schedule config";
   }
 
   // 3. Check queue status
@@ -1857,17 +2107,22 @@ async function handleDebugAutopost() {
     // Stuck processing items (processing for > 10 minutes)
     const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
     const stuckItems = await db
-      .select({ id: socialPostQueue.id, contentType: socialPostQueue.contentType, updatedAt: socialPostQueue.updatedAt })
+      .select({
+        id: socialPostQueue.id,
+        contentType: socialPostQueue.contentType,
+        updatedAt: socialPostQueue.updatedAt,
+      })
       .from(socialPostQueue)
       .where(eq(socialPostQueue.status, "processing"))
       .limit(10);
 
-    diagnostics.stuckProcessingItems = stuckItems.filter(item => {
+    diagnostics.stuckProcessingItems = stuckItems.filter((item) => {
       const updated = item.updatedAt ? new Date(item.updatedAt) : null;
       return updated && updated < tenMinutesAgo;
     }).length;
   } catch (err) {
-    diagnostics.queueError = err instanceof Error ? err.message : "Failed to read queue";
+    diagnostics.queueError =
+      err instanceof Error ? err.message : "Failed to read queue";
   }
 
   // 4. Check upcoming events
@@ -1885,7 +2140,7 @@ async function handleDebugAutopost() {
       .orderBy(events.eventDate)
       .limit(5);
 
-    diagnostics.upcomingEvents = upcomingEvents.map(e => ({
+    diagnostics.upcomingEvents = upcomingEvents.map((e) => ({
       id: e.id,
       title: e.title,
       eventDate: e.eventDate,
@@ -1893,7 +2148,8 @@ async function handleDebugAutopost() {
       isPast: new Date(e.eventDate) < now,
     }));
   } catch (err) {
-    diagnostics.eventsError = err instanceof Error ? err.message : "Failed to read events";
+    diagnostics.eventsError =
+      err instanceof Error ? err.message : "Failed to read events";
   }
 
   // 5. Check recent post log
@@ -1912,7 +2168,7 @@ async function handleDebugAutopost() {
       .orderBy(desc(socialPostsLog.postedAt))
       .limit(10);
 
-    diagnostics.recentLogs = recentLogs.map(l => ({
+    diagnostics.recentLogs = recentLogs.map((l) => ({
       platform: l.platform,
       contentType: l.contentType,
       status: l.status,
@@ -1926,7 +2182,14 @@ async function handleDebugAutopost() {
     // panel shows accurate numbers.
     const CST_OFFSET_HOURS = 6;
     const startOfDayCST = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), CST_OFFSET_HOURS, 0, 0)
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        CST_OFFSET_HOURS,
+        0,
+        0,
+      ),
     );
     if (now.getUTCHours() < CST_OFFSET_HOURS) {
       startOfDayCST.setTime(startOfDayCST.getTime() - 24 * 60 * 60 * 1000);
@@ -1940,8 +2203,8 @@ async function handleDebugAutopost() {
           eq(socialPostsLog.status, "success"),
           gte(socialPostsLog.postedAt, startOfDayCST),
           not(like(socialPostsLog.queueId, "throwback-%")),
-          not(like(socialPostsLog.queueId, "autopost-event-%"))
-        )
+          not(like(socialPostsLog.queueId, "autopost-event-%")),
+        ),
       );
     const todayStoryCountRow = await db
       .select({ count: count() })
@@ -1950,8 +2213,8 @@ async function handleDebugAutopost() {
         and(
           eq(socialPostsLog.status, "success"),
           eq(socialPostsLog.platform, "instagram_story"),
-          gte(socialPostsLog.postedAt, startOfDayCST)
-        )
+          gte(socialPostsLog.postedAt, startOfDayCST),
+        ),
       );
     const todayFeedCount = Number(todayFeedCountRow[0]?.count) || 0;
     const todayStoryCount = Number(todayStoryCountRow[0]?.count) || 0;
@@ -1962,19 +2225,21 @@ async function handleDebugAutopost() {
 
     // Keep the recent-logs based view for backwards compat (shows actual
     // log entries, not just a count)
-    const todayPosts = recentLogs.filter(l =>
-      l.status === "success" &&
-      l.postedAt &&
-      new Date(l.postedAt) >= startOfDayCST
+    const todayPosts = recentLogs.filter(
+      (l) =>
+        l.status === "success" &&
+        l.postedAt &&
+        new Date(l.postedAt) >= startOfDayCST,
     );
-    diagnostics.todayPosts = todayPosts.map(l => ({
+    diagnostics.todayPosts = todayPosts.map((l) => ({
       platform: l.platform,
       contentType: l.contentType,
       queueId: l.queueId,
       postedAt: l.postedAt ? new Date(l.postedAt).toISOString() : null,
     }));
   } catch (err) {
-    diagnostics.logsError = err instanceof Error ? err.message : "Failed to read logs";
+    diagnostics.logsError =
+      err instanceof Error ? err.message : "Failed to read logs";
   }
 
   // 6. Check DB credentials (schedule config stored in DB)
@@ -1984,33 +2249,67 @@ async function handleDebugAutopost() {
       .from(socialCredentials)
       .where(eq(socialCredentials.platform, "meta"));
 
-    const credKeys = creds.map(c => c.key);
+    const credKeys = creds.map((c) => c.key);
     diagnostics.dbCredentialKeys = credKeys;
-    diagnostics.hasAutopostScheduleHours = credKeys.includes("AUTOPOST_SCHEDULE_HOURS");
-    diagnostics.hasAutopostStoryScheduleHours = credKeys.includes("AUTOPOST_STORY_SCHEDULE_HOURS");
-    diagnostics.hasAutopostPostsPerRun = credKeys.includes("AUTOPOST_POSTS_PER_RUN");
-    diagnostics.hasAutopostMaxPostsPerDay = credKeys.includes("AUTOPOST_MAX_POSTS_PER_DAY");
+    diagnostics.hasAutopostScheduleHours = credKeys.includes(
+      "AUTOPOST_SCHEDULE_HOURS",
+    );
+    diagnostics.hasAutopostStoryScheduleHours = credKeys.includes(
+      "AUTOPOST_STORY_SCHEDULE_HOURS",
+    );
+    diagnostics.hasAutopostPostsPerRun = credKeys.includes(
+      "AUTOPOST_POSTS_PER_RUN",
+    );
+    diagnostics.hasAutopostMaxPostsPerDay = credKeys.includes(
+      "AUTOPOST_MAX_POSTS_PER_DAY",
+    );
 
     // Show the actual schedule hours value (don't expose secrets)
-    const scheduleHoursCred = creds.find(c => c.key === "AUTOPOST_SCHEDULE_HOURS");
+    const scheduleHoursCred = creds.find(
+      (c) => c.key === "AUTOPOST_SCHEDULE_HOURS",
+    );
     diagnostics.autopostScheduleHoursValue = scheduleHoursCred?.value || null;
-    const storyScheduleHoursCred = creds.find(c => c.key === "AUTOPOST_STORY_SCHEDULE_HOURS");
-    diagnostics.autopostStoryScheduleHoursValue = storyScheduleHoursCred?.value || null;
+    const storyScheduleHoursCred = creds.find(
+      (c) => c.key === "AUTOPOST_STORY_SCHEDULE_HOURS",
+    );
+    diagnostics.autopostStoryScheduleHoursValue =
+      storyScheduleHoursCred?.value || null;
   } catch (err) {
-    diagnostics.credentialsError = err instanceof Error ? err.message : "Failed to read credentials";
+    diagnostics.credentialsError =
+      err instanceof Error ? err.message : "Failed to read credentials";
   }
 
   // 7. Identify likely issues
   const issues: string[] = [];
-  if (!metaConfigured) issues.push("Meta API is not configured — META_SYSTEM_USER_TOKEN and/or FACEBOOK_PAGE_ID are missing");
-  if (diagnostics.tokenValid === false) issues.push(`Meta API token is invalid: ${diagnostics.tokenError}`);
-  if ((diagnostics.queuePending as number) === 0) issues.push("Queue has no pending items — populate the queue first");
-  if ((diagnostics.stuckProcessingItems as number) > 0) issues.push(`${diagnostics.stuckProcessingItems} items stuck in 'processing' status — they may need to be reset`);
-  if (!diagnostics.hasAutopostScheduleHours) issues.push("AUTOPOST_SCHEDULE_HOURS not found in DB — schedule config may not have been saved (cron will use defaults: 4am, 10am, 3pm CST)");
-  if ((diagnostics.upcomingEvents as unknown[])?.length === 0) issues.push("No upcoming events found in the database");
-  if ((diagnostics.todayPostsCount as number) === 0) issues.push("No successful posts today — the cron may not be running or may be skipping this hour");
+  if (!metaConfigured)
+    issues.push(
+      "Meta API is not configured — META_SYSTEM_USER_TOKEN and/or FACEBOOK_PAGE_ID are missing",
+    );
+  if (diagnostics.tokenValid === false)
+    issues.push(`Meta API token is invalid: ${diagnostics.tokenError}`);
+  if ((diagnostics.queuePending as number) === 0)
+    issues.push("Queue has no pending items — populate the queue first");
+  if ((diagnostics.stuckProcessingItems as number) > 0)
+    issues.push(
+      `${diagnostics.stuckProcessingItems} items stuck in 'processing' status — they may need to be reset`,
+    );
+  if (!diagnostics.hasAutopostScheduleHours)
+    issues.push(
+      "AUTOPOST_SCHEDULE_HOURS not found in DB — schedule config may not have been saved (cron will use defaults: 4am, 10am, 3pm CST)",
+    );
+  if ((diagnostics.upcomingEvents as unknown[])?.length === 0)
+    issues.push("No upcoming events found in the database");
+  if ((diagnostics.todayPostsCount as number) === 0)
+    issues.push(
+      "No successful posts today — the cron may not be running or may be skipping this hour",
+    );
 
-  diagnostics.likelyIssues = issues.length > 0 ? issues : ["No obvious issues found — check Netlify function logs for the social-auto-post cron"];
+  diagnostics.likelyIssues =
+    issues.length > 0
+      ? issues
+      : [
+          "No obvious issues found — check Netlify function logs for the social-auto-post cron",
+        ];
 
   return NextResponse.json({
     success: true,
@@ -2060,8 +2359,8 @@ async function handleAutopostUpcomingEvent() {
         and(
           gt(events.eventDate, now),
           eq(events.isCancelled, false),
-          isNotNull(events.imageUrl)
-        )
+          isNotNull(events.imageUrl),
+        ),
       )
       .orderBy(events.eventDate)
       .limit(5); // Check top 5 in case the nearest was recently posted
@@ -2083,12 +2382,12 @@ async function handleAutopostUpcomingEvent() {
     // Stories per day. When something is within 1 week, you see up to 3.
     // The cap applies to TOTAL event posts across all events, not per-event.
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-    const DEDUP_FAR_HOURS = 12;   // events >1 week away → 12h between posts
-    const DEDUP_NEAR_HOURS = 8;   // events within 1 week → 8h between posts
+    const DEDUP_FAR_HOURS = 12; // events >1 week away → 12h between posts
+    const DEDUP_NEAR_HOURS = 8; // events within 1 week → 8h between posts
 
     // If ANY upcoming event is within 1 week, allow 3/day. Otherwise cap at 2/day.
     const anyEventWithinWeek = upcomingEvents.some(
-      (e) => new Date(e.eventDate).getTime() - now.getTime() <= ONE_WEEK_MS
+      (e) => new Date(e.eventDate).getTime() - now.getTime() <= ONE_WEEK_MS,
     );
     const HARD_24H_CAP = anyEventWithinWeek ? 3 : 2;
 
@@ -2106,14 +2405,14 @@ async function handleAutopostUpcomingEvent() {
           eq(socialPostsLog.contentType, "event"),
           eq(socialPostsLog.platform, "instagram_story"),
           eq(socialPostsLog.status, "success"),
-          gt(socialPostsLog.postedAt, cutoff24h)
-        )
+          gt(socialPostsLog.postedAt, cutoff24h),
+        ),
       );
     const postsInLast24h = recent24hPosts.length;
 
     if (postsInLast24h >= HARD_24H_CAP) {
       console.log(
-        `[Social API] Hard 24h cap reached: ${postsInLast24h}/${HARD_24H_CAP} event IG Story posts in the last 24h (cap is ${HARD_24H_CAP} because ${anyEventWithinWeek ? "an event is within 1 week" : "no events within 1 week"}). Refusing to post.`
+        `[Social API] Hard 24h cap reached: ${postsInLast24h}/${HARD_24H_CAP} event IG Story posts in the last 24h (cap is ${HARD_24H_CAP} because ${anyEventWithinWeek ? "an event is within 1 week" : "no events within 1 week"}). Refusing to post.`,
       );
       return NextResponse.json({
         success: false,
@@ -2124,13 +2423,15 @@ async function handleAutopostUpcomingEvent() {
       });
     }
 
-    let selectedEvent: typeof upcomingEvents[0] | null = null;
+    let selectedEvent: (typeof upcomingEvents)[0] | null = null;
     let selectedDedupHours = DEDUP_FAR_HOURS;
 
     for (const event of upcomingEvents) {
       // Determine dedup window based on how close the event is
-      const timeUntilEvent = new Date(event.eventDate).getTime() - now.getTime();
-      const dedupHours = timeUntilEvent <= ONE_WEEK_MS ? DEDUP_NEAR_HOURS : DEDUP_FAR_HOURS;
+      const timeUntilEvent =
+        new Date(event.eventDate).getTime() - now.getTime();
+      const dedupHours =
+        timeUntilEvent <= ONE_WEEK_MS ? DEDUP_NEAR_HOURS : DEDUP_FAR_HOURS;
       const cutoff = new Date(now.getTime() - dedupHours * 60 * 60 * 1000);
 
       // Use Drizzle's gt() with a JS Date so the timestamp comparison works
@@ -2146,8 +2447,8 @@ async function handleAutopostUpcomingEvent() {
             eq(socialPostsLog.contentType, "event"),
             eq(socialPostsLog.sourceId, event.id),
             eq(socialPostsLog.status, "success"),
-            gt(socialPostsLog.postedAt, cutoff)
-          )
+            gt(socialPostsLog.postedAt, cutoff),
+          ),
         )
         .limit(1);
 
@@ -2157,7 +2458,9 @@ async function handleAutopostUpcomingEvent() {
         break;
       }
 
-      console.log(`[Social API] Event "${event.title}" was posted in last ${dedupHours}h, skipping.`);
+      console.log(
+        `[Social API] Event "${event.title}" was posted in last ${dedupHours}h, skipping.`,
+      );
     }
 
     if (!selectedEvent) {
@@ -2183,18 +2486,34 @@ async function handleAutopostUpcomingEvent() {
 
     const publicImageUrl = ensurePublicImageUrl(selectedEvent.imageUrl!);
 
-    console.log(`[Social API] Autoposting upcoming event: ${selectedEvent.title} (${selectedEvent.id}) [dedup window: ${selectedDedupHours}h, posts in last 24h: ${postsInLast24h}/${HARD_24H_CAP}]`);
+    console.log(
+      `[Social API] Autoposting upcoming event: ${selectedEvent.title} (${selectedEvent.id}) [dedup window: ${selectedDedupHours}h, posts in last 24h: ${postsInLast24h}/${HARD_24H_CAP}]`,
+    );
 
     const results: {
-      facebook?: { success: boolean; postId?: string; postUrl?: string; error?: string };
-      instagram_story?: { success: boolean; mediaId?: string; permalink?: string; error?: string };
+      facebook?: {
+        success: boolean;
+        postId?: string;
+        postUrl?: string;
+        error?: string;
+      };
+      instagram_story?: {
+        success: boolean;
+        mediaId?: string;
+        permalink?: string;
+        error?: string;
+      };
     } = {};
 
     const platforms = ["facebook", "instagram_story"];
 
     // Post to Facebook (regular feed post)
     if (platforms.includes("facebook")) {
-      const fbResult = await postToFacebook(publicImageUrl, caption, eventLinkUrl);
+      const fbResult = await postToFacebook(
+        publicImageUrl,
+        caption,
+        eventLinkUrl,
+      );
       results.facebook = {
         success: fbResult.success,
         postId: fbResult.postId || undefined,
@@ -2221,7 +2540,10 @@ async function handleAutopostUpcomingEvent() {
           postedAt: new Date(),
         } as any);
       } catch (logError) {
-        console.error("[Social API] Failed to log autopost FB event result:", logError);
+        console.error(
+          "[Social API] Failed to log autopost FB event result:",
+          logError,
+        );
       }
     }
 
@@ -2231,7 +2553,11 @@ async function handleAutopostUpcomingEvent() {
     if (platforms.includes("instagram_story")) {
       // Extract the best link from the caption for the Story link sticker
       const storyLink = extractStoryLinkUrl(caption, eventLinkUrl);
-      const igResult = await postToInstagramStory(publicImageUrl, caption, storyLink);
+      const igResult = await postToInstagramStory(
+        publicImageUrl,
+        caption,
+        storyLink,
+      );
       results.instagram_story = {
         success: igResult.success,
         mediaId: igResult.mediaId || undefined,
@@ -2257,14 +2583,20 @@ async function handleAutopostUpcomingEvent() {
           postedAt: new Date(),
         } as any);
       } catch (logError) {
-        console.error("[Social API] Failed to log autopost IG Story event result:", logError);
+        console.error(
+          "[Social API] Failed to log autopost IG Story event result:",
+          logError,
+        );
       }
     }
 
-    const anySuccess = results.facebook?.success || results.instagram_story?.success;
+    const anySuccess =
+      results.facebook?.success || results.instagram_story?.success;
     const errorMessages: string[] = [];
-    if (results.facebook && !results.facebook.success) errorMessages.push(`FB: ${results.facebook.error}`);
-    if (results.instagram_story && !results.instagram_story.success) errorMessages.push(`IG Story: ${results.instagram_story.error}`);
+    if (results.facebook && !results.facebook.success)
+      errorMessages.push(`FB: ${results.facebook.error}`);
+    if (results.instagram_story && !results.instagram_story.success)
+      errorMessages.push(`IG Story: ${results.instagram_story.error}`);
 
     return NextResponse.json({
       success: anySuccess,
@@ -2282,11 +2614,14 @@ async function handleAutopostUpcomingEvent() {
     });
   } catch (error) {
     console.error("[Social API] Autopost upcoming event error:", error);
-    return NextResponse.json({
-      success: false,
-      message: "Error al autopostear evento próximo",
-      error: error instanceof Error ? error.message : String(error),
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error al autopostear evento próximo",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
   }
 }
 
@@ -2308,7 +2643,10 @@ async function handleResetCycle() {
       .from(socialPostQueue)
       .where(eq(socialPostQueue.status, "processing"));
 
-    const resetCount = (postedItems[0]?.count || 0) + (skippedItems[0]?.count || 0) + (processingItems[0]?.count || 0);
+    const resetCount =
+      (postedItems[0]?.count || 0) +
+      (skippedItems[0]?.count || 0) +
+      (processingItems[0]?.count || 0);
 
     // Reset all posted, skipped, and processing items to pending for a new cycle
     await db
@@ -2321,7 +2659,7 @@ async function handleResetCycle() {
         updatedAt: new Date(),
       } as any)
       .where(
-        drizzleSql`${socialPostQueue.status} IN ('posted', 'skipped', 'processing')`
+        drizzleSql`${socialPostQueue.status} IN ('posted', 'skipped', 'processing')`,
       );
 
     return NextResponse.json({
@@ -2341,7 +2679,7 @@ async function handleSkipItem(queueId: string) {
   if (!queueId) {
     return NextResponse.json(
       { success: false, error: "queueId is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -2372,7 +2710,8 @@ async function handleValidateReelToken() {
       success: false,
       data: {
         configured: false,
-        message: "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en /admin/social.",
+        message:
+          "Meta API no configurada. Configura META_SYSTEM_USER_TOKEN y FACEBOOK_PAGE_ID en /admin/social.",
         canPostReel: false,
       },
     });
@@ -2383,8 +2722,13 @@ async function handleValidateReelToken() {
     const errorDetail = tokenInfo.raw?.message || "Token inválido";
     const errorCode = tokenInfo.raw?.code || "";
     let guidance = "";
-    if (errorCode === 190 || errorDetail.includes("Invalid OAuth") || errorDetail.includes("Cannot parse")) {
-      guidance = "Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
+    if (
+      errorCode === 190 ||
+      errorDetail.includes("Invalid OAuth") ||
+      errorDetail.includes("Cannot parse")
+    ) {
+      guidance =
+        "Genera un nuevo System User Token en business.facebook.com → Business Settings → Users → System Users.";
     }
     return NextResponse.json({
       success: false,
@@ -2455,9 +2799,10 @@ async function handleRetryFailed() {
       .where(eq(socialPostQueue.status, "processing"));
 
     const totalReset = failedCount + processingCount;
-    const message = processingCount > 0
-      ? `Se reiniciaron ${failedCount} items fallidos y ${processingCount} items atorados a pendientes para reintento.`
-      : `Se reiniciaron ${failedCount} items fallidos a pendientes para reintento.`;
+    const message =
+      processingCount > 0
+        ? `Se reiniciaron ${failedCount} items fallidos y ${processingCount} items atorados a pendientes para reintento.`
+        : `Se reiniciaron ${failedCount} items fallidos a pendientes para reintento.`;
 
     return NextResponse.json({
       success: true,
@@ -2544,9 +2889,7 @@ async function getContentCounts() {
 
     let youtubeVideosCount = 0;
     try {
-      const ytvCount = await db
-        .select({ count: count() })
-        .from(videos);
+      const ytvCount = await db.select({ count: count() }).from(videos);
       youtubeVideosCount = ytvCount[0]?.count || 0;
     } catch {
       // Table may not exist yet
@@ -2558,12 +2901,7 @@ async function getContentCounts() {
       const evtCount = await db
         .select({ count: count() })
         .from(events)
-        .where(
-          and(
-            gt(events.eventDate, now),
-            eq(events.isCancelled, false)
-          )
-        );
+        .where(and(gt(events.eventDate, now), eq(events.isCancelled, false)));
       eventsCount = evtCount[0]?.count || 0;
     } catch {
       // Table may not exist yet
@@ -2622,7 +2960,7 @@ async function getScheduleConfig(): Promise<{
       .from(socialCredentials)
       .where(eq(socialCredentials.platform, "meta"));
 
-    const credMap = new Map(creds.map(c => [c.key, c.value]));
+    const credMap = new Map(creds.map((c) => [c.key, c.value]));
 
     const scheduleHoursStr = credMap.get("AUTOPOST_SCHEDULE_HOURS");
     const storyScheduleHoursStr = credMap.get("AUTOPOST_STORY_SCHEDULE_HOURS");
@@ -2632,7 +2970,10 @@ async function getScheduleConfig(): Promise<{
 
     let scheduleHours = DEFAULT_SCHEDULE_HOURS;
     if (scheduleHoursStr) {
-      const parsed = scheduleHoursStr.split(",").map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 23);
+      const parsed = scheduleHoursStr
+        .split(",")
+        .map(Number)
+        .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 23);
       if (parsed.length > 0) scheduleHours = parsed.sort((a, b) => a - b);
     }
 
@@ -2641,29 +2982,38 @@ async function getScheduleConfig(): Promise<{
       const parsed = storyScheduleHoursStr
         .split(",")
         .map(Number)
-        .filter(n => !isNaN(n) && n >= 0 && n <= 23);
+        .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 23);
       if (parsed.length > 0) storyScheduleHours = parsed.sort((a, b) => a - b);
     }
 
     let postsPerRun = DEFAULT_POSTS_PER_RUN;
     if (postsPerRunStr) {
-      const parsed = parseInt(postsPerRunStr);
-      if (!isNaN(parsed) && parsed >= 1 && parsed <= 10) postsPerRun = parsed;
+      const parsed = Number.parseInt(postsPerRunStr);
+      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 10)
+        postsPerRun = parsed;
     }
 
     let maxPostsPerDay = DEFAULT_MAX_POSTS_PER_DAY;
     if (maxPostsPerDayStr) {
-      const parsed = parseInt(maxPostsPerDayStr);
-      if (!isNaN(parsed) && parsed >= 1 && parsed <= 24) maxPostsPerDay = parsed;
+      const parsed = Number.parseInt(maxPostsPerDayStr);
+      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 24)
+        maxPostsPerDay = parsed;
     }
 
     let maxStoriesPerDay = DEFAULT_MAX_STORIES_PER_DAY;
     if (maxStoriesPerDayStr) {
-      const parsed = parseInt(maxStoriesPerDayStr);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 24) maxStoriesPerDay = parsed;
+      const parsed = Number.parseInt(maxStoriesPerDayStr);
+      if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 24)
+        maxStoriesPerDay = parsed;
     }
 
-    return { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay, maxStoriesPerDay };
+    return {
+      scheduleHours,
+      storyScheduleHours,
+      postsPerRun,
+      maxPostsPerDay,
+      maxStoriesPerDay,
+    };
   } catch (error) {
     console.warn("[Social API] Error reading schedule config:", error);
     return {
@@ -2678,48 +3028,69 @@ async function getScheduleConfig(): Promise<{
 
 async function handleSaveScheduleConfig(body: Record<string, unknown>) {
   try {
-    const { scheduleHours, storyScheduleHours, postsPerRun, maxPostsPerDay, maxStoriesPerDay } = body;
+    const {
+      scheduleHours,
+      storyScheduleHours,
+      postsPerRun,
+      maxPostsPerDay,
+      maxStoriesPerDay,
+    } = body;
 
     const configToSave: Array<{ key: string; value: string }> = [];
 
     if (Array.isArray(scheduleHours)) {
       const validHours = scheduleHours
         .map(Number)
-        .filter((n: number) => !isNaN(n) && n >= 0 && n <= 23)
+        .filter((n: number) => !Number.isNaN(n) && n >= 0 && n <= 23)
         .sort((a: number, b: number) => a - b);
       if (validHours.length > 0) {
-        configToSave.push({ key: "AUTOPOST_SCHEDULE_HOURS", value: validHours.join(",") });
+        configToSave.push({
+          key: "AUTOPOST_SCHEDULE_HOURS",
+          value: validHours.join(","),
+        });
       }
     }
 
     if (Array.isArray(storyScheduleHours)) {
       const validHours = storyScheduleHours
         .map(Number)
-        .filter((n: number) => !isNaN(n) && n >= 0 && n <= 23)
+        .filter((n: number) => !Number.isNaN(n) && n >= 0 && n <= 23)
         .sort((a: number, b: number) => a - b);
       if (validHours.length > 0) {
-        configToSave.push({ key: "AUTOPOST_STORY_SCHEDULE_HOURS", value: validHours.join(",") });
+        configToSave.push({
+          key: "AUTOPOST_STORY_SCHEDULE_HOURS",
+          value: validHours.join(","),
+        });
       }
     }
 
     if (postsPerRun !== undefined) {
-      const val = parseInt(String(postsPerRun));
-      if (!isNaN(val) && val >= 1 && val <= 10) {
-        configToSave.push({ key: "AUTOPOST_POSTS_PER_RUN", value: String(val) });
+      const val = Number.parseInt(String(postsPerRun));
+      if (!Number.isNaN(val) && val >= 1 && val <= 10) {
+        configToSave.push({
+          key: "AUTOPOST_POSTS_PER_RUN",
+          value: String(val),
+        });
       }
     }
 
     if (maxPostsPerDay !== undefined) {
-      const val = parseInt(String(maxPostsPerDay));
-      if (!isNaN(val) && val >= 1 && val <= 24) {
-        configToSave.push({ key: "AUTOPOST_MAX_POSTS_PER_DAY", value: String(val) });
+      const val = Number.parseInt(String(maxPostsPerDay));
+      if (!Number.isNaN(val) && val >= 1 && val <= 24) {
+        configToSave.push({
+          key: "AUTOPOST_MAX_POSTS_PER_DAY",
+          value: String(val),
+        });
       }
     }
 
     if (maxStoriesPerDay !== undefined) {
-      const val = parseInt(String(maxStoriesPerDay));
-      if (!isNaN(val) && val >= 0 && val <= 24) {
-        configToSave.push({ key: "AUTOPOST_MAX_STORIES_PER_DAY", value: String(val) });
+      const val = Number.parseInt(String(maxStoriesPerDay));
+      if (!Number.isNaN(val) && val >= 0 && val <= 24) {
+        configToSave.push({
+          key: "AUTOPOST_MAX_STORIES_PER_DAY",
+          value: String(val),
+        });
       }
     }
 
@@ -2730,8 +3101,8 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
         .where(
           and(
             eq(socialCredentials.platform, "meta"),
-            eq(socialCredentials.key, config.key)
-          )
+            eq(socialCredentials.key, config.key),
+          ),
         )
         .limit(1);
 
@@ -2742,8 +3113,8 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
           .where(
             and(
               eq(socialCredentials.platform, "meta"),
-              eq(socialCredentials.key, config.key)
-            )
+              eq(socialCredentials.key, config.key),
+            ),
           );
       } else {
         await db.insert(socialCredentials).values({
@@ -2767,7 +3138,7 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
     console.error("[Social API] Save schedule config error:", error);
     return NextResponse.json(
       { success: false, error: "Error al guardar la configuración de horario" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -2782,17 +3153,26 @@ async function handleGenerateAICaption(body: Record<string, unknown>) {
     if (!contentType) {
       return NextResponse.json(
         { success: false, error: "contentType is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const ctx = {
-      contentType: contentType as "gallery_photo" | "spotify_track" | "artist_profile" | "curated_track" | "vertical_video" | "youtube_video" | "event",
+      contentType: contentType as
+        | "gallery_photo"
+        | "spotify_track"
+        | "artist_profile"
+        | "curated_track"
+        | "vertical_video"
+        | "youtube_video"
+        | "event",
       artistName: body.artistName as string | undefined,
       artistRole: body.artistRole as string | undefined,
       releaseTitle: body.releaseTitle as string | undefined,
       releaseType: body.releaseType as string | undefined,
-      releaseDate: body.releaseDate ? new Date(body.releaseDate as string) : undefined,
+      releaseDate: body.releaseDate
+        ? new Date(body.releaseDate as string)
+        : undefined,
       trackName: body.trackName as string | undefined,
       albumName: body.albumName as string | undefined,
       photoLocation: body.photoLocation as string | undefined,
@@ -2804,15 +3184,21 @@ async function handleGenerateAICaption(body: Record<string, unknown>) {
       eventTitle: body.eventTitle as string | undefined,
       eventVenue: body.eventVenue as string | undefined,
       eventCity: body.eventCity as string | undefined,
-      eventDate: body.eventDate ? new Date(body.eventDate as string) : undefined,
+      eventDate: body.eventDate
+        ? new Date(body.eventDate as string)
+        : undefined,
       eventTime: body.eventTime as string | undefined,
       ticketUrl: body.ticketUrl as string | undefined,
     };
 
     // Generate both AI and template captions for comparison
     const [aiCaption, templateCaption] = await Promise.all([
-      generateAICaption(ctx, body.variationIndex as number | undefined).catch(() => null),
-      Promise.resolve(generateCaption(ctx, body.variationIndex as number | undefined)),
+      generateAICaption(ctx, body.variationIndex as number | undefined).catch(
+        () => null,
+      ),
+      Promise.resolve(
+        generateCaption(ctx, body.variationIndex as number | undefined),
+      ),
     ]);
 
     return NextResponse.json({
@@ -2826,8 +3212,11 @@ async function handleGenerateAICaption(body: Record<string, unknown>) {
   } catch (error) {
     console.error("[Social API] Generate AI caption error:", error);
     return NextResponse.json(
-      { success: false, error: `Error al generar caption: ${(error as Error).message}` },
-      { status: 500 }
+      {
+        success: false,
+        error: `Error al generar caption: ${(error as Error).message}`,
+      },
+      { status: 500 },
     );
   }
 }

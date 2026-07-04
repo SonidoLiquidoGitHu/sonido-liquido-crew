@@ -1,11 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { mediaReleases, artists, artistEpk, artistExternalProfiles } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import {
-  generateMediaReleaseEpkPDF,
+  artistEpk,
+  artistExternalProfiles,
+  artists,
+  mediaReleases,
+} from "@/db/schema";
+import {
   generateMediaReleaseEpkFilename,
+  generateMediaReleaseEpkPDF,
 } from "@/lib/pdf/media-release-epk-generator";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 function parseJson<T>(value: string | null | undefined, defaultValue: T): T {
   if (!value) return defaultValue;
@@ -18,7 +23,7 @@ function parseJson<T>(value: string | null | undefined, defaultValue: T): T {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -26,7 +31,7 @@ export async function GET(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -44,7 +49,7 @@ export async function GET(
     if (!release) {
       return NextResponse.json(
         { success: false, error: "Media release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -52,14 +57,14 @@ export async function GET(
     if (release.accessCode && release.accessCode !== accessCode && !isPreview) {
       return NextResponse.json(
         { success: false, error: "Access code required" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     if (!release.isPublished && !accessCode && !isPreview) {
       return NextResponse.json(
         { success: false, error: "Media release not published" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -81,7 +86,12 @@ export async function GET(
     }
 
     // Parse audio tracks
-    let audioTracks: { title: string; url?: string; duration: string; trackNumber: number }[] = [];
+    let audioTracks: {
+      title: string;
+      url?: string;
+      duration: string;
+      trackNumber: number;
+    }[] = [];
     try {
       if (release.audioTracks) {
         audioTracks = JSON.parse(release.audioTracks);
@@ -134,7 +144,9 @@ export async function GET(
     const pdfBuffer = await generateMediaReleaseEpkPDF(mediaReleaseData);
     const filename = generateMediaReleaseEpkFilename(release.title, artistName);
 
-    console.log(`[API] EPK PDF generated: ${filename} (${pdfBuffer.length} bytes)`);
+    console.log(
+      `[API] EPK PDF generated: ${filename} (${pdfBuffer.length} bytes)`,
+    );
 
     // Increment download count
     try {
@@ -163,7 +175,7 @@ export async function GET(
     console.error("[API] Error generating EPK PDF:", error);
     return NextResponse.json(
       { success: false, error: "Failed to generate EPK PDF" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -209,17 +221,29 @@ async function buildArtistEpkData(artistId: string) {
       subgenres: parseJson<string[]>(epk?.subgenres, []),
       artistType: epk?.artistType,
 
-      spotifyMonthlyListeners: epk?.spotifyMonthlyListeners || artist.monthlyListeners,
+      spotifyMonthlyListeners:
+        epk?.spotifyMonthlyListeners || artist.monthlyListeners,
       spotifyFollowers: epk?.spotifyFollowers,
       youtubeSubscribers: epk?.youtubeSubscribers,
       instagramFollowers: epk?.instagramFollowers,
       totalStreams: epk?.totalStreams,
 
-      pressQuotes: parseJson<{ quote: string; source: string; sourceUrl?: string }[]>(epk?.pressQuotes, []),
-      pressFeatures: parseJson<{ outlet: string; title: string; url?: string; date?: string }[]>(epk?.pressFeatures, []),
-      topTracks: parseJson<{ title: string; url?: string; platform: string }[]>(epk?.topTracks, []),
-      collaborations: parseJson<{ artistName: string; trackName: string; year: number; type: string }[]>(epk?.collaborations, []),
-      pastShows: parseJson<{ venue: string; city: string; date: string; type: string }[]>(epk?.pastShows, []),
+      pressQuotes: parseJson<
+        { quote: string; source: string; sourceUrl?: string }[]
+      >(epk?.pressQuotes, []),
+      pressFeatures: parseJson<
+        { outlet: string; title: string; url?: string; date?: string }[]
+      >(epk?.pressFeatures, []),
+      topTracks: parseJson<{ title: string; url?: string; platform: string }[]>(
+        epk?.topTracks,
+        [],
+      ),
+      collaborations: parseJson<
+        { artistName: string; trackName: string; year: number; type: string }[]
+      >(epk?.collaborations, []),
+      pastShows: parseJson<
+        { venue: string; city: string; date: string; type: string }[]
+      >(epk?.pastShows, []),
       festivalAppearances: parseJson<string[]>(epk?.festivalAppearances, []),
       notableVenues: parseJson<string[]>(epk?.notableVenues, []),
 
@@ -229,7 +253,7 @@ async function buildArtistEpkData(artistId: string) {
       publicistEmail: epk?.publicistEmail,
       publicistName: epk?.publicistName,
 
-      socialProfiles: profiles.map((p: typeof profiles[0]) => ({
+      socialProfiles: profiles.map((p: (typeof profiles)[0]) => ({
         platform: p.platform,
         url: p.externalUrl,
         handle: p.handle,

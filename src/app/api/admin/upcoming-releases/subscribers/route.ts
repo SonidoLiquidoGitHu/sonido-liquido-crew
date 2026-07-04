@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { presaveSubscribers, upcomingReleases } from "@/db/schema";
-import { eq, desc, and, sql, count } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - List subscribers for an upcoming release or all
 export async function GET(request: NextRequest) {
@@ -49,7 +49,10 @@ export async function GET(request: NextRequest) {
           releaseId: upcomingReleases.id,
         })
         .from(presaveSubscribers)
-        .leftJoin(upcomingReleases, eq(presaveSubscribers.upcomingReleaseId, upcomingReleases.id))
+        .leftJoin(
+          upcomingReleases,
+          eq(presaveSubscribers.upcomingReleaseId, upcomingReleases.id),
+        )
         .orderBy(desc(presaveSubscribers.subscribedAt))
         .limit(20);
 
@@ -60,7 +63,10 @@ export async function GET(request: NextRequest) {
 
       const totalSubscribers = totalResult?.count || 0;
       const totalViews = viewsResult?.totalViews || 0;
-      const conversionRate = totalViews > 0 ? ((totalSubscribers / totalViews) * 100).toFixed(2) : "0";
+      const conversionRate =
+        totalViews > 0
+          ? ((totalSubscribers / totalViews) * 100).toFixed(2)
+          : "0";
 
       return NextResponse.json({
         success: true,
@@ -101,7 +107,10 @@ export async function GET(request: NextRequest) {
         artistName: upcomingReleases.artistName,
       })
       .from(presaveSubscribers)
-      .leftJoin(upcomingReleases, eq(presaveSubscribers.upcomingReleaseId, upcomingReleases.id))
+      .leftJoin(
+        upcomingReleases,
+        eq(presaveSubscribers.upcomingReleaseId, upcomingReleases.id),
+      )
       .orderBy(desc(presaveSubscribers.subscribedAt))
       .limit(100);
 
@@ -113,7 +122,7 @@ export async function GET(request: NextRequest) {
     console.error("[Presave Subscribers] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar suscriptores" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -124,7 +133,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -138,7 +147,9 @@ export async function POST(request: NextRequest) {
         .set({ notified: true })
         .where(eq(presaveSubscribers.upcomingReleaseId, releaseId));
 
-      console.log(`[Presave Subscribers] Marked all as notified for release: ${releaseId}`);
+      console.log(
+        `[Presave Subscribers] Marked all as notified for release: ${releaseId}`,
+      );
 
       return NextResponse.json({
         success: true,
@@ -146,7 +157,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (action === "mark_notified" && subscriberIds && Array.isArray(subscriberIds)) {
+    if (
+      action === "mark_notified" &&
+      subscriberIds &&
+      Array.isArray(subscriberIds)
+    ) {
       // Mark specific subscribers as notified
       for (const id of subscriberIds) {
         await db
@@ -155,7 +170,9 @@ export async function POST(request: NextRequest) {
           .where(eq(presaveSubscribers.id, id));
       }
 
-      console.log(`[Presave Subscribers] Marked ${subscriberIds.length} as notified`);
+      console.log(
+        `[Presave Subscribers] Marked ${subscriberIds.length} as notified`,
+      );
 
       return NextResponse.json({
         success: true,
@@ -184,13 +201,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { success: false, error: "Acción no válida" },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     console.error("[Presave Subscribers] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error al procesar solicitud" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -201,7 +218,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -211,7 +228,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "ID de suscriptor requerido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -224,7 +241,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Presave Subscribers] Error deleting:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar suscriptor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

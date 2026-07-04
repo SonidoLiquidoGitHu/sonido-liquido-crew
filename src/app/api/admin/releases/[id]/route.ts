@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { releases, releaseArtists, deletedReleasesBlocklist } from "@/db/schema";
+import {
+  deletedReleasesBlocklist,
+  releaseArtists,
+  releases,
+} from "@/db/schema";
+import { generateUUID, slugify } from "@/lib/utils";
 import { eq } from "drizzle-orm";
-import { slugify, generateUUID } from "@/lib/utils";
+import { revalidatePath } from "next/cache";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Revalidate every public page that renders releases.
@@ -15,7 +19,10 @@ import { slugify, generateUUID } from "@/lib/utils";
  * the homepage) or until the next deploy — which is why deleted releases
  * kept showing up on the public site.
  */
-function revalidateReleasePaths(slug?: string | null, artistSlugs: string[] = []) {
+function revalidateReleasePaths(
+  slug?: string | null,
+  artistSlugs: string[] = [],
+) {
   try {
     // Homepage — uses ISR with revalidate=300, needs explicit purge
     revalidatePath("/", "layout");
@@ -52,17 +59,27 @@ function revalidateReleasePaths(slug?: string | null, artistSlugs: string[] = []
  * Auto-fetch cover image from Spotify when a spotifyUrl or spotifyId is provided
  * but no coverImageUrl. Uses Spotify oEmbed API (no auth required).
  */
-async function fetchCoverFromSpotify(spotifyUrl: string | null, spotifyId: string | null): Promise<string | null> {
-  const embedUrl = spotifyUrl || (spotifyId ? `https://open.spotify.com/album/${spotifyId}` : null);
+async function fetchCoverFromSpotify(
+  spotifyUrl: string | null,
+  spotifyId: string | null,
+): Promise<string | null> {
+  const embedUrl =
+    spotifyUrl ||
+    (spotifyId ? `https://open.spotify.com/album/${spotifyId}` : null);
   if (!embedUrl) return null;
 
   try {
     const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(embedUrl)}`;
-    const response = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    const response = await fetch(oembedUrl, {
+      signal: AbortSignal.timeout(5000),
+    });
     if (response.ok) {
       const data = await response.json();
       if (data.thumbnail_url) {
-        console.log("[Admin] Auto-fetched cover from Spotify oEmbed:", embedUrl);
+        console.log(
+          "[Admin] Auto-fetched cover from Spotify oEmbed:",
+          embedUrl,
+        );
         return data.thumbnail_url;
       }
     }
@@ -96,13 +113,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!release) {
       return NextResponse.json(
         { success: false, error: "Release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Get primary artist ID
-    const primaryArtist = release.releaseArtists?.find(ra => ra.isPrimary);
-    const artistId = primaryArtist?.artistId || release.releaseArtists?.[0]?.artistId || null;
+    const primaryArtist = release.releaseArtists?.find((ra) => ra.isPrimary);
+    const artistId =
+      primaryArtist?.artistId || release.releaseArtists?.[0]?.artistId || null;
 
     return NextResponse.json({
       success: true,
@@ -115,7 +133,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.error("Failed to fetch release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -143,7 +161,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!title) {
       return NextResponse.json(
         { success: false, error: "Title is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -155,7 +173,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -175,7 +193,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Auto-fetch cover from Spotify if not provided but Spotify URL/ID is available
     let finalCoverImageUrl = coverImageUrl || null;
     if (!finalCoverImageUrl && (spotifyUrl || spotifyId)) {
-      finalCoverImageUrl = await fetchCoverFromSpotify(spotifyUrl || null, spotifyId || null);
+      finalCoverImageUrl = await fetchCoverFromSpotify(
+        spotifyUrl || null,
+        spotifyId || null,
+      );
     }
 
     // Update release
@@ -193,7 +214,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         appleMusicUrl: appleMusicUrl || null,
         youtubeMusicUrl: youtubeMusicUrl || null,
         isFeatured: isFeatured ?? existing.isFeatured,
-        isUpcoming: releaseDate ? new Date(releaseDate) > new Date() : existing.isUpcoming,
+        isUpcoming: releaseDate
+          ? new Date(releaseDate) > new Date()
+          : existing.isUpcoming,
         updatedAt: new Date(),
       })
       .where(eq(releases.id, id));
@@ -233,7 +256,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     console.error("Failed to update release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -265,10 +288,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // the same album. Without this, the sync would re-create the deleted
     // release on the next run, creating a "delete → reappear" loop.
     if (existing?.spotifyId) {
-      const artistNameForLog = (existing.releaseArtists ?? [])
-        .map((ra) => ra.artist?.name)
-        .filter(Boolean)
-        .join(", ") || null;
+      const artistNameForLog =
+        (existing.releaseArtists ?? [])
+          .map((ra) => ra.artist?.name)
+          .filter(Boolean)
+          .join(", ") || null;
 
       try {
         await db
@@ -284,12 +308,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           .onConflictDoNothing(); // if already blocked, no-op
         console.log(
           `[Admin] Added spotifyId ${existing.spotifyId} to blocklist ` +
-          `(release "${existing.title}" will not be re-imported by sync)`
+            `(release "${existing.title}" will not be re-imported by sync)`,
         );
       } catch (blocklistError) {
         // Non-fatal — we still want the delete itself to succeed.
         // The table may not exist yet on older deploys (created by ensure-tables).
-        console.warn("[Admin] Could not add to blocklist (non-fatal):", blocklistError);
+        console.warn(
+          "[Admin] Could not add to blocklist (non-fatal):",
+          blocklistError,
+        );
       }
     }
 
@@ -309,7 +336,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     console.error("Failed to delete release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

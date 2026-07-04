@@ -1,63 +1,171 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
 import { MultiFileDropboxUploader } from "@/components/admin/MultiFileDropboxUploader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ARTIST_ROLES, getArtistRolesDisplay } from "@/lib/roles";
 import {
-  ArrowLeft,
-  Save,
-  User,
-  Users,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  Trash2,
-  Plus,
-  Globe,
-  Mail,
-  MapPin,
+  ArrowLeft,
   Calendar,
-  Music,
-  Instagram,
-  Youtube,
-  Facebook,
-  Twitter,
-  Link as LinkIcon,
-  Image as ImageIcon,
-  Star,
+  Camera,
+  CheckCircle,
   Eye,
   EyeOff,
-  X,
-  Camera,
+  Facebook,
+  Globe,
   GripVertical,
+  Image as ImageIcon,
+  Instagram,
+  Link as LinkIcon,
+  Loader2,
+  Mail,
+  MapPin,
+  Music,
+  Plus,
+  Save,
+  Star,
+  Trash2,
+  Twitter,
+  User,
+  Users,
+  X,
+  Youtube,
 } from "lucide-react";
-import { ARTIST_ROLES, getArtistRolesDisplay } from "@/lib/roles";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 // Platform configuration
 const platforms = [
-  { id: "spotify", label: "Spotify", icon: "🎵", color: "#1DB954", placeholder: "https://open.spotify.com/artist/..." },
-  { id: "apple_music", label: "Apple Music", icon: "🍎", color: "#FA243C", placeholder: "https://music.apple.com/artist/..." },
-  { id: "youtube", label: "YouTube", icon: "▶️", color: "#FF0000", placeholder: "https://youtube.com/@..." },
-  { id: "youtube_music", label: "YouTube Music", icon: "🎵", color: "#FF0000", placeholder: "https://music.youtube.com/channel/..." },
-  { id: "instagram", label: "Instagram", icon: "📷", color: "#E4405F", placeholder: "https://instagram.com/..." },
-  { id: "tiktok", label: "TikTok", icon: "🎵", color: "#000000", placeholder: "https://tiktok.com/@..." },
-  { id: "twitter", label: "X (Twitter)", icon: "𝕏", color: "#1DA1F2", placeholder: "https://x.com/..." },
-  { id: "facebook", label: "Facebook", icon: "📘", color: "#1877F2", placeholder: "https://facebook.com/..." },
-  { id: "soundcloud", label: "SoundCloud", icon: "☁️", color: "#FF5500", placeholder: "https://soundcloud.com/..." },
-  { id: "bandcamp", label: "Bandcamp", icon: "🎸", color: "#629AA9", placeholder: "https://....bandcamp.com" },
-  { id: "deezer", label: "Deezer", icon: "🎧", color: "#FEAA2D", placeholder: "https://deezer.com/artist/..." },
-  { id: "tidal", label: "Tidal", icon: "🌊", color: "#000000", placeholder: "https://tidal.com/artist/..." },
-  { id: "amazon_music", label: "Amazon Music", icon: "🎵", color: "#FF9900", placeholder: "https://music.amazon.com/artists/..." },
-  { id: "mixcloud", label: "Mixcloud", icon: "🎛️", color: "#5000FF", placeholder: "https://mixcloud.com/..." },
-  { id: "beatport", label: "Beatport", icon: "🎹", color: "#94D500", placeholder: "https://beatport.com/artist/..." },
-  { id: "discogs", label: "Discogs", icon: "💿", color: "#333333", placeholder: "https://discogs.com/artist/..." },
-  { id: "genius", label: "Genius", icon: "📝", color: "#FFFF64", placeholder: "https://genius.com/artists/..." },
-  { id: "linktree", label: "Linktree", icon: "🌳", color: "#43E55E", placeholder: "https://linktr.ee/..." },
+  {
+    id: "spotify",
+    label: "Spotify",
+    icon: "🎵",
+    color: "#1DB954",
+    placeholder: "https://open.spotify.com/artist/...",
+  },
+  {
+    id: "apple_music",
+    label: "Apple Music",
+    icon: "🍎",
+    color: "#FA243C",
+    placeholder: "https://music.apple.com/artist/...",
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    icon: "▶️",
+    color: "#FF0000",
+    placeholder: "https://youtube.com/@...",
+  },
+  {
+    id: "youtube_music",
+    label: "YouTube Music",
+    icon: "🎵",
+    color: "#FF0000",
+    placeholder: "https://music.youtube.com/channel/...",
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    icon: "📷",
+    color: "#E4405F",
+    placeholder: "https://instagram.com/...",
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    icon: "🎵",
+    color: "#000000",
+    placeholder: "https://tiktok.com/@...",
+  },
+  {
+    id: "twitter",
+    label: "X (Twitter)",
+    icon: "𝕏",
+    color: "#1DA1F2",
+    placeholder: "https://x.com/...",
+  },
+  {
+    id: "facebook",
+    label: "Facebook",
+    icon: "📘",
+    color: "#1877F2",
+    placeholder: "https://facebook.com/...",
+  },
+  {
+    id: "soundcloud",
+    label: "SoundCloud",
+    icon: "☁️",
+    color: "#FF5500",
+    placeholder: "https://soundcloud.com/...",
+  },
+  {
+    id: "bandcamp",
+    label: "Bandcamp",
+    icon: "🎸",
+    color: "#629AA9",
+    placeholder: "https://....bandcamp.com",
+  },
+  {
+    id: "deezer",
+    label: "Deezer",
+    icon: "🎧",
+    color: "#FEAA2D",
+    placeholder: "https://deezer.com/artist/...",
+  },
+  {
+    id: "tidal",
+    label: "Tidal",
+    icon: "🌊",
+    color: "#000000",
+    placeholder: "https://tidal.com/artist/...",
+  },
+  {
+    id: "amazon_music",
+    label: "Amazon Music",
+    icon: "🎵",
+    color: "#FF9900",
+    placeholder: "https://music.amazon.com/artists/...",
+  },
+  {
+    id: "mixcloud",
+    label: "Mixcloud",
+    icon: "🎛️",
+    color: "#5000FF",
+    placeholder: "https://mixcloud.com/...",
+  },
+  {
+    id: "beatport",
+    label: "Beatport",
+    icon: "🎹",
+    color: "#94D500",
+    placeholder: "https://beatport.com/artist/...",
+  },
+  {
+    id: "discogs",
+    label: "Discogs",
+    icon: "💿",
+    color: "#333333",
+    placeholder: "https://discogs.com/artist/...",
+  },
+  {
+    id: "genius",
+    label: "Genius",
+    icon: "📝",
+    color: "#FFFF64",
+    placeholder: "https://genius.com/artists/...",
+  },
+  {
+    id: "linktree",
+    label: "Linktree",
+    icon: "🌳",
+    color: "#43E55E",
+    placeholder: "https://linktr.ee/...",
+  },
 ];
 
 // Roles are imported from @/lib/roles
@@ -74,7 +182,10 @@ const verificationStatuses = [
  * resulting in values like '"[\\"quote\\"]"' instead of '["quote"]'.
  * This helper keeps parsing until we get a non-string value or the string can't be parsed.
  */
-function safeJsonParse(value: string | null | undefined, fallback: any = null): any {
+function safeJsonParse(
+  value: string | null | undefined,
+  fallback: any = null,
+): any {
   if (!value) return fallback;
   try {
     let parsed: unknown = JSON.parse(value);
@@ -137,16 +248,46 @@ interface ArtistRelation {
     profileImageUrl?: string | null;
     role?: string;
   };
-  relationType: "collaborator" | "alias" | "member_of" | "featured" | "producer" | "dj_duo";
+  relationType:
+    | "collaborator"
+    | "alias"
+    | "member_of"
+    | "featured"
+    | "producer"
+    | "dj_duo";
 }
 
 const relationTypes = [
-  { value: "collaborator", label: "Colaborador Frecuente", description: "Han trabajado juntos en múltiples proyectos" },
-  { value: "member_of", label: "Miembro de Grupo", description: "Es parte de este grupo o colectivo" },
-  { value: "alias", label: "Alias / Alter Ego", description: "Es el mismo artista bajo otro nombre" },
-  { value: "featured", label: "Featured Artist", description: "Ha aparecido como artista invitado" },
-  { value: "producer", label: "Productor", description: "Produce las pistas de este artista" },
-  { value: "dj_duo", label: "Duo de DJs", description: "Trabajan juntos como duo de DJs" },
+  {
+    value: "collaborator",
+    label: "Colaborador Frecuente",
+    description: "Han trabajado juntos en múltiples proyectos",
+  },
+  {
+    value: "member_of",
+    label: "Miembro de Grupo",
+    description: "Es parte de este grupo o colectivo",
+  },
+  {
+    value: "alias",
+    label: "Alias / Alter Ego",
+    description: "Es el mismo artista bajo otro nombre",
+  },
+  {
+    value: "featured",
+    label: "Featured Artist",
+    description: "Ha aparecido como artista invitado",
+  },
+  {
+    value: "producer",
+    label: "Productor",
+    description: "Produce las pistas de este artista",
+  },
+  {
+    value: "dj_duo",
+    label: "Duo de DJs",
+    description: "Trabajan juntos como duo de DJs",
+  },
 ];
 
 interface ArtistFormProps {
@@ -155,11 +296,18 @@ interface ArtistFormProps {
   initialData?: any;
 }
 
-export default function ArtistForm({ mode, artistId, initialData }: ArtistFormProps) {
+export default function ArtistForm({
+  mode,
+  artistId,
+  initialData,
+}: ArtistFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(mode === "edit");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState("basic");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -199,16 +347,37 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
     adminNotes: "",
   });
 
-  const [externalProfiles, setExternalProfiles] = useState<ExternalProfile[]>([]);
+  const [externalProfiles, setExternalProfiles] = useState<ExternalProfile[]>(
+    [],
+  );
   const [galleryAssets, setGalleryAssets] = useState<GalleryAsset[]>([]);
-  const [artistRelationsList, setArtistRelationsList] = useState<ArtistRelation[]>([]);
-  const [allArtists, setAllArtists] = useState<{ id: string; name: string; profileImageUrl?: string | null; role?: string }[]>([]);
+  const [artistRelationsList, setArtistRelationsList] = useState<
+    ArtistRelation[]
+  >([]);
+  const [allArtists, setAllArtists] = useState<
+    {
+      id: string;
+      name: string;
+      profileImageUrl?: string | null;
+      role?: string;
+    }[]
+  >([]);
   const [newGenre, setNewGenre] = useState("");
   const [newLabel, setNewLabel] = useState("");
 
   // Press & Media state
-  const [pressQuotes, setPressQuotes] = useState<{ quote: string; source: string; sourceUrl: string }[]>([]);
-  const [featuredVideos, setFeaturedVideos] = useState<{ videoUrl: string; title: string; platform: string; views: number; thumbnailUrl: string }[]>([]);
+  const [pressQuotes, setPressQuotes] = useState<
+    { quote: string; source: string; sourceUrl: string }[]
+  >([]);
+  const [featuredVideos, setFeaturedVideos] = useState<
+    {
+      videoUrl: string;
+      title: string;
+      platform: string;
+      views: number;
+      thumbnailUrl: string;
+    }[]
+  >([]);
 
   // Fetch all artists for relation selector
   useEffect(() => {
@@ -269,36 +438,50 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
             }
 
             if (artist.galleryAssets) {
-              setGalleryAssets(artist.galleryAssets.map((asset: any) => ({
-                id: asset.id,
-                assetUrl: asset.assetUrl,
-                thumbnailUrl: asset.thumbnailUrl,
-                assetType: asset.assetType || "photo",
-                caption: asset.caption || "",
-                credit: asset.credit || "",
-                isPublic: asset.isPublic ?? true,
-              })));
+              setGalleryAssets(
+                artist.galleryAssets.map((asset: any) => ({
+                  id: asset.id,
+                  assetUrl: asset.assetUrl,
+                  thumbnailUrl: asset.thumbnailUrl,
+                  assetType: asset.assetType || "photo",
+                  caption: asset.caption || "",
+                  credit: asset.credit || "",
+                  isPublic: asset.isPublic ?? true,
+                })),
+              );
             }
 
             if (artist.artistRelations) {
-              setArtistRelationsList(artist.artistRelations.map((rel: any) => ({
-                id: rel.id,
-                relatedArtistId: rel.relatedArtistId,
-                relatedArtist: rel.relatedArtist,
-                relationType: rel.relationType || "collaborator",
-              })));
+              setArtistRelationsList(
+                artist.artistRelations.map((rel: any) => ({
+                  id: rel.id,
+                  relatedArtistId: rel.relatedArtistId,
+                  relatedArtist: rel.relatedArtist,
+                  relationType: rel.relationType || "collaborator",
+                })),
+              );
             }
 
             // Load press quotes and featured videos (handle double-escaped JSON)
             if (artist.pressQuotes) {
-              setPressQuotes(ensureArray<{ quote: string; source: string; sourceUrl: string }>(
-                safeJsonParse(artist.pressQuotes, [])
-              ));
+              setPressQuotes(
+                ensureArray<{
+                  quote: string;
+                  source: string;
+                  sourceUrl: string;
+                }>(safeJsonParse(artist.pressQuotes, [])),
+              );
             }
             if (artist.featuredVideos) {
-              setFeaturedVideos(ensureArray<{ videoUrl: string; title: string; platform: string; views: number; thumbnailUrl: string }>(
-                safeJsonParse(artist.featuredVideos, [])
-              ));
+              setFeaturedVideos(
+                ensureArray<{
+                  videoUrl: string;
+                  title: string;
+                  platform: string;
+                  views: number;
+                  thumbnailUrl: string;
+                }>(safeJsonParse(artist.featuredVideos, [])),
+              );
             }
           }
         } catch (error) {
@@ -317,13 +500,18 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleImageUpload = (field: string) => (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, [field]: url }));
-    showMessage("success", `Imagen "${filename}" subida correctamente`);
-  };
+  const handleImageUpload =
+    (field: string) => (url: string, filename: string, _fileSize: number) => {
+      setFormData((prev) => ({ ...prev, [field]: url }));
+      showMessage("success", `Imagen "${filename}" subida correctamente`);
+    };
 
   // Gallery asset functions
-  const handleGalleryUpload = (url: string, filename: string, _fileSize: number) => {
+  const handleGalleryUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
     const newAsset: GalleryAsset = {
       assetUrl: url,
       assetType: "photo",
@@ -331,107 +519,152 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
       credit: "",
       isPublic: true,
     };
-    setGalleryAssets(prev => [...prev, newAsset]);
+    setGalleryAssets((prev) => [...prev, newAsset]);
     showMessage("success", `Foto "${filename}" agregada a la galeria`);
   };
 
-  const handleMultiGalleryUpload = (files: { url: string; filename: string; fileSize: number; originalName: string }[]) => {
-    const newAssets: GalleryAsset[] = files.map(file => ({
+  const handleMultiGalleryUpload = (
+    files: {
+      url: string;
+      filename: string;
+      fileSize: number;
+      originalName: string;
+    }[],
+  ) => {
+    const newAssets: GalleryAsset[] = files.map((file) => ({
       assetUrl: file.url,
       assetType: "photo" as const,
       caption: "",
       credit: "",
       isPublic: true,
     }));
-    setGalleryAssets(prev => [...prev, ...newAssets]);
+    setGalleryAssets((prev) => [...prev, ...newAssets]);
     showMessage("success", `${files.length} foto(s) agregadas a la galería`);
   };
 
-  const updateGalleryAsset = (index: number, field: keyof GalleryAsset, value: string | boolean) => {
-    setGalleryAssets(prev => prev.map((asset, i) =>
-      i === index ? { ...asset, [field]: value } : asset
-    ));
+  const updateGalleryAsset = (
+    index: number,
+    field: keyof GalleryAsset,
+    value: string | boolean,
+  ) => {
+    setGalleryAssets((prev) =>
+      prev.map((asset, i) =>
+        i === index ? { ...asset, [field]: value } : asset,
+      ),
+    );
   };
 
   const removeGalleryAsset = (index: number) => {
-    setGalleryAssets(prev => prev.filter((_, i) => i !== index));
+    setGalleryAssets((prev) => prev.filter((_, i) => i !== index));
   };
 
   const moveGalleryAsset = (index: number, direction: "up" | "down") => {
     if (
       (direction === "up" && index === 0) ||
       (direction === "down" && index === galleryAssets.length - 1)
-    ) return;
+    )
+      return;
 
     const newAssets = [...galleryAssets];
     const newIndex = direction === "up" ? index - 1 : index + 1;
-    [newAssets[index], newAssets[newIndex]] = [newAssets[newIndex], newAssets[index]];
+    [newAssets[index], newAssets[newIndex]] = [
+      newAssets[newIndex],
+      newAssets[index],
+    ];
     setGalleryAssets(newAssets);
   };
 
   // Artist relations management
   const addRelation = (relatedArtistId: string) => {
-    const artist = allArtists.find(a => a.id === relatedArtistId);
-    if (artist && !artistRelationsList.some(r => r.relatedArtistId === relatedArtistId)) {
-      setArtistRelationsList(prev => [...prev, {
-        relatedArtistId,
-        relatedArtist: artist,
-        relationType: "collaborator",
-      }]);
+    const artist = allArtists.find((a) => a.id === relatedArtistId);
+    if (
+      artist &&
+      !artistRelationsList.some((r) => r.relatedArtistId === relatedArtistId)
+    ) {
+      setArtistRelationsList((prev) => [
+        ...prev,
+        {
+          relatedArtistId,
+          relatedArtist: artist,
+          relationType: "collaborator",
+        },
+      ]);
     }
   };
 
-  const updateRelationType = (index: number, relationType: ArtistRelation["relationType"]) => {
-    setArtistRelationsList(prev => prev.map((r, i) =>
-      i === index ? { ...r, relationType } : r
-    ));
+  const updateRelationType = (
+    index: number,
+    relationType: ArtistRelation["relationType"],
+  ) => {
+    setArtistRelationsList((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, relationType } : r)),
+    );
   };
 
   const removeRelation = (index: number) => {
-    setArtistRelationsList(prev => prev.filter((_, i) => i !== index));
+    setArtistRelationsList((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addExternalProfile = (platform: string) => {
-    const platformConfig = platforms.find(p => p.id === platform);
-    setExternalProfiles(prev => [...prev, {
-      platform,
-      externalUrl: "",
-      handle: "",
-      isVerified: false,
-      isPrimary: prev.filter(p => p.platform === platform).length === 0,
-    }]);
+    const platformConfig = platforms.find((p) => p.id === platform);
+    setExternalProfiles((prev) => [
+      ...prev,
+      {
+        platform,
+        externalUrl: "",
+        handle: "",
+        isVerified: false,
+        isPrimary: prev.filter((p) => p.platform === platform).length === 0,
+      },
+    ]);
   };
 
-  const updateExternalProfile = (index: number, field: string, value: string | boolean) => {
-    setExternalProfiles(prev => prev.map((p, i) =>
-      i === index ? { ...p, [field]: value } : p
-    ));
+  const updateExternalProfile = (
+    index: number,
+    field: string,
+    value: string | boolean,
+  ) => {
+    setExternalProfiles((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
+    );
   };
 
   const removeExternalProfile = (index: number) => {
-    setExternalProfiles(prev => prev.filter((_, i) => i !== index));
+    setExternalProfiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addGenre = () => {
     if (newGenre.trim() && !formData.genres.includes(newGenre.trim())) {
-      setFormData(prev => ({ ...prev, genres: [...prev.genres, newGenre.trim()] }));
+      setFormData((prev) => ({
+        ...prev,
+        genres: [...prev.genres, newGenre.trim()],
+      }));
       setNewGenre("");
     }
   };
 
   const removeGenre = (genre: string) => {
-    setFormData(prev => ({ ...prev, genres: prev.genres.filter(g => g !== genre) }));
+    setFormData((prev) => ({
+      ...prev,
+      genres: prev.genres.filter((g) => g !== genre),
+    }));
   };
 
   const addLabel = () => {
     if (newLabel.trim() && !formData.labels.includes(newLabel.trim())) {
-      setFormData(prev => ({ ...prev, labels: [...prev.labels, newLabel.trim()] }));
+      setFormData((prev) => ({
+        ...prev,
+        labels: [...prev.labels, newLabel.trim()],
+      }));
       setNewLabel("");
     }
   };
 
   const removeLabel = (label: string) => {
-    setFormData(prev => ({ ...prev, labels: prev.labels.filter(l => l !== label) }));
+    setFormData((prev) => ({
+      ...prev,
+      labels: prev.labels.filter((l) => l !== label),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -445,32 +678,45 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
     setIsLoading(true);
     try {
-      const endpoint = mode === "edit"
-        ? `/api/admin/artists/${artistId}`
-        : "/api/admin/artists";
+      const endpoint =
+        mode === "edit"
+          ? `/api/admin/artists/${artistId}`
+          : "/api/admin/artists";
 
       const method = mode === "edit" ? "PUT" : "POST";
 
       // Defensive: ensure arrays are actually arrays before calling .filter()
-      const safePressQuotes = ensureArray<{ quote: string; source: string; sourceUrl: string }>(pressQuotes);
-      const safeFeaturedVideos = ensureArray<{ videoUrl: string; title: string; platform: string; views: number; thumbnailUrl: string }>(featuredVideos);
-      const safeExternalProfiles = ensureArray<ExternalProfile>(externalProfiles);
+      const safePressQuotes = ensureArray<{
+        quote: string;
+        source: string;
+        sourceUrl: string;
+      }>(pressQuotes);
+      const safeFeaturedVideos = ensureArray<{
+        videoUrl: string;
+        title: string;
+        platform: string;
+        views: number;
+        thumbnailUrl: string;
+      }>(featuredVideos);
+      const safeExternalProfiles =
+        ensureArray<ExternalProfile>(externalProfiles);
       const safeGalleryAssets = ensureArray<GalleryAsset>(galleryAssets);
-      const safeArtistRelations = ensureArray<ArtistRelation>(artistRelationsList);
+      const safeArtistRelations =
+        ensureArray<ArtistRelation>(artistRelationsList);
 
       const response = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          externalProfiles: safeExternalProfiles.filter(p => p.externalUrl),
-          galleryAssets: safeGalleryAssets.filter(a => a.assetUrl),
-          artistRelations: safeArtistRelations.map(r => ({
+          externalProfiles: safeExternalProfiles.filter((p) => p.externalUrl),
+          galleryAssets: safeGalleryAssets.filter((a) => a.assetUrl),
+          artistRelations: safeArtistRelations.map((r) => ({
             relatedArtistId: r.relatedArtistId,
             relationType: r.relationType,
           })),
-          pressQuotes: safePressQuotes.filter(q => q.quote),
-          featuredVideos: safeFeaturedVideos.filter(v => v.videoUrl),
+          pressQuotes: safePressQuotes.filter((q) => q.quote),
+          featuredVideos: safeFeaturedVideos.filter((v) => v.videoUrl),
         }),
       });
 
@@ -483,7 +729,10 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
       }
 
       if (data.success) {
-        showMessage("success", mode === "edit" ? "Artista actualizado" : "Artista creado");
+        showMessage(
+          "success",
+          mode === "edit" ? "Artista actualizado" : "Artista creado",
+        );
         setTimeout(() => {
           router.push("/admin/artists");
         }, 1500);
@@ -493,7 +742,10 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
     } catch (error: any) {
       console.error("[ArtistForm] Error saving artist:", error);
       const msg = error?.message || "Error de conexión";
-      showMessage("error", msg.includes("fetch") ? "Error de conexión al servidor" : msg);
+      showMessage(
+        "error",
+        msg.includes("fetch") ? "Error de conexión al servidor" : msg,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -560,7 +812,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
             {mode === "edit" ? "Editar Artista" : "Nuevo Artista"}
           </h1>
           <p className="text-slc-muted mt-1">
-            {mode === "edit" ? `Editando: ${formData.name}` : "Agrega un nuevo artista al roster"}
+            {mode === "edit"
+              ? `Editando: ${formData.name}`
+              : "Agrega un nuevo artista al roster"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -589,13 +843,19 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-slc-dark border border-slc-border rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="font-oswald text-xl uppercase mb-4">Eliminar Artista</h3>
+            <h3 className="font-oswald text-xl uppercase mb-4">
+              Eliminar Artista
+            </h3>
             <p className="text-slc-muted mb-6">
-              ¿Estás seguro de que quieres eliminar a <strong>{formData.name}</strong>?
-              Esta acción no se puede deshacer.
+              ¿Estás seguro de que quieres eliminar a{" "}
+              <strong>{formData.name}</strong>? Esta acción no se puede
+              deshacer.
             </p>
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
                 Cancelar
               </Button>
               <Button
@@ -603,7 +863,11 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                 onClick={handleDelete}
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Eliminar"}
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Eliminar"
+                )}
               </Button>
             </div>
           </div>
@@ -612,11 +876,13 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
       {/* Message */}
       {message && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-          message.type === "success"
-            ? "bg-green-500/10 border border-green-500/20 text-green-500"
-            : "bg-red-500/10 border border-red-500/20 text-red-500"
-        }`}>
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-green-500/10 border border-green-500/20 text-green-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500"
+          }`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
@@ -663,30 +929,50 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
-                      <label className="block text-sm text-slc-muted mb-2">Nombre Artístico *</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Nombre Artístico *
+                      </label>
                       <Input
                         value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
+                        }
                         placeholder="Nombre del artista"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Slug (URL)</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Slug (URL)
+                      </label>
                       <Input
                         value={formData.slug}
-                        onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            slug: e.target.value,
+                          }))
+                        }
                         placeholder="nombre-artista (auto-generado)"
                       />
-                      <p className="text-xs text-slc-muted mt-1">Se genera automáticamente del nombre</p>
+                      <p className="text-xs text-slc-muted mt-1">
+                        Se genera automáticamente del nombre
+                      </p>
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-sm text-slc-muted mb-2">Roles *</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Roles *
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {ARTIST_ROLES.map((role) => {
-                          const selectedRoles = formData.role.split(",").filter(Boolean);
+                          const selectedRoles = formData.role
+                            .split(",")
+                            .filter(Boolean);
                           const isSelected = selectedRoles.includes(role.value);
                           const Icon = role.icon;
                           return (
@@ -694,17 +980,25 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                               key={role.value}
                               type="button"
                               onClick={() => {
-                                const currentRoles = formData.role.split(",").filter(Boolean);
+                                const currentRoles = formData.role
+                                  .split(",")
+                                  .filter(Boolean);
                                 let newRoles: string[];
                                 if (isSelected) {
                                   // Remove role, but keep at least one
-                                  newRoles = currentRoles.filter(r => r !== role.value);
-                                  if (newRoles.length === 0) newRoles = [role.value];
+                                  newRoles = currentRoles.filter(
+                                    (r) => r !== role.value,
+                                  );
+                                  if (newRoles.length === 0)
+                                    newRoles = [role.value];
                                 } else {
                                   // Add role
                                   newRoles = [...currentRoles, role.value];
                                 }
-                                setFormData(prev => ({ ...prev, role: newRoles.join(",") }));
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  role: newRoles.join(","),
+                                }));
                               }}
                               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
                                 isSelected
@@ -718,32 +1012,55 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                           );
                         })}
                       </div>
-                      <p className="text-xs text-slc-muted mt-2">Selecciona uno o más roles</p>
+                      <p className="text-xs text-slc-muted mt-2">
+                        Selecciona uno o más roles
+                      </p>
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-sm text-slc-muted mb-2">Nombre Real (privado)</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Nombre Real (privado)
+                      </label>
                       <Input
                         value={formData.realName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, realName: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            realName: e.target.value,
+                          }))
+                        }
                         placeholder="Solo visible para admins"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-sm text-slc-muted mb-2">Bio Corta (1-2 oraciones)</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Bio Corta (1-2 oraciones)
+                      </label>
                       <Input
                         value={formData.shortBio}
-                        onChange={(e) => setFormData(prev => ({ ...prev, shortBio: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            shortBio: e.target.value,
+                          }))
+                        }
                         placeholder="Breve descripción para tarjetas"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-sm text-slc-muted mb-2">Biografía Completa</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Biografía Completa
+                      </label>
                       <textarea
                         value={formData.bio}
-                        onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            bio: e.target.value,
+                          }))
+                        }
                         placeholder="Historia completa del artista..."
                         rows={8}
                         className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -766,7 +1083,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Profile Image */}
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Foto de Perfil (1:1)</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Foto de Perfil (1:1)
+                      </label>
                       <div className="aspect-square rounded-lg overflow-hidden bg-slc-card mb-4">
                         {formData.profileImageUrl ? (
                           <Image
@@ -795,7 +1114,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                     {/* Featured Image */}
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Imagen Destacada (16:9)</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Imagen Destacada (16:9)
+                      </label>
                       <div className="aspect-video rounded-lg overflow-hidden bg-slc-card mb-4">
                         {formData.featuredImageUrl ? (
                           <Image
@@ -824,7 +1145,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                     {/* Banner Image */}
                     <div className="sm:col-span-2">
-                      <label className="block text-sm text-slc-muted mb-2">Banner (3:1)</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Banner (3:1)
+                      </label>
                       <div className="aspect-[3/1] rounded-lg overflow-hidden bg-slc-card mb-4">
                         {formData.bannerImageUrl ? (
                           <Image
@@ -853,17 +1176,29 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                     {/* Tint Color */}
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Color de Acento</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Color de Acento
+                      </label>
                       <div className="flex gap-2">
                         <input
                           type="color"
                           value={formData.tintColor || "#f97316"}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tintColor: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              tintColor: e.target.value,
+                            }))
+                          }
                           className="w-12 h-10 rounded border border-slc-border cursor-pointer"
                         />
                         <Input
                           value={formData.tintColor}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tintColor: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              tintColor: e.target.value,
+                            }))
+                          }
                           placeholder="#f97316"
                           className="flex-1"
                         />
@@ -884,8 +1219,8 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                   </h2>
 
                   <p className="text-sm text-slc-muted mb-6">
-                    Agrega fotos del artista para usar en la pagina publica y press kits.
-                    Arrastra para reordenar.
+                    Agrega fotos del artista para usar en la pagina publica y
+                    press kits. Arrastra para reordenar.
                   </p>
 
                   {/* Gallery Grid */}
@@ -912,7 +1247,13 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                           <div className="flex gap-2">
                             <select
                               value={asset.assetType}
-                              onChange={(e) => updateGalleryAsset(index, "assetType", e.target.value as GalleryAsset["assetType"])}
+                              onChange={(e) =>
+                                updateGalleryAsset(
+                                  index,
+                                  "assetType",
+                                  e.target.value as GalleryAsset["assetType"],
+                                )
+                              }
                               className="px-3 py-1.5 bg-slc-dark border border-slc-border rounded text-sm focus:outline-none focus:border-primary"
                             >
                               {assetTypes.map((type) => (
@@ -925,7 +1266,13 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                               <input
                                 type="checkbox"
                                 checked={asset.isPublic}
-                                onChange={(e) => updateGalleryAsset(index, "isPublic", e.target.checked)}
+                                onChange={(e) =>
+                                  updateGalleryAsset(
+                                    index,
+                                    "isPublic",
+                                    e.target.checked,
+                                  )
+                                }
                                 className="w-4 h-4 rounded border-slc-border"
                               />
                               Publico
@@ -933,13 +1280,25 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                           </div>
                           <Input
                             value={asset.caption || ""}
-                            onChange={(e) => updateGalleryAsset(index, "caption", e.target.value)}
+                            onChange={(e) =>
+                              updateGalleryAsset(
+                                index,
+                                "caption",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Descripcion (opcional)"
                             className="h-8 text-sm"
                           />
                           <Input
                             value={asset.credit || ""}
-                            onChange={(e) => updateGalleryAsset(index, "credit", e.target.value)}
+                            onChange={(e) =>
+                              updateGalleryAsset(
+                                index,
+                                "credit",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Credito fotografo (opcional)"
                             className="h-8 text-sm"
                           />
@@ -953,8 +1312,18 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                             disabled={index === 0}
                             className="p-1.5 text-slc-muted hover:text-white disabled:opacity-30"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 15l7-7 7 7"
+                              />
                             </svg>
                           </button>
                           <button
@@ -963,8 +1332,18 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                             disabled={index === galleryAssets.length - 1}
                             className="p-1.5 text-slc-muted hover:text-white disabled:opacity-30"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
                             </svg>
                           </button>
                           <button
@@ -982,7 +1361,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                       <div className="text-center py-12 text-slc-muted">
                         <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>No hay fotos en la galería</p>
-                        <p className="text-sm">Sube fotos usando las opciones de abajo</p>
+                        <p className="text-sm">
+                          Sube fotos usando las opciones de abajo
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1027,16 +1408,24 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                   {/* Existing Profiles */}
                   <div className="space-y-4 mb-6">
                     {externalProfiles.map((profile, index) => {
-                      const platformConfig = platforms.find(p => p.id === profile.platform);
+                      const platformConfig = platforms.find(
+                        (p) => p.id === profile.platform,
+                      );
                       return (
                         <div
                           key={index}
                           className="p-4 bg-slc-card rounded-lg"
-                          style={{ borderLeft: `3px solid ${platformConfig?.color || '#888'}` }}
+                          style={{
+                            borderLeft: `3px solid ${platformConfig?.color || "#888"}`,
+                          }}
                         >
                           <div className="flex items-center gap-3 mb-3">
-                            <span className="text-xl">{platformConfig?.icon}</span>
-                            <span className="font-medium">{platformConfig?.label}</span>
+                            <span className="text-xl">
+                              {platformConfig?.icon}
+                            </span>
+                            <span className="font-medium">
+                              {platformConfig?.label}
+                            </span>
                             <button
                               type="button"
                               onClick={() => removeExternalProfile(index)}
@@ -1048,12 +1437,26 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <Input
                               value={profile.externalUrl}
-                              onChange={(e) => updateExternalProfile(index, "externalUrl", e.target.value)}
-                              placeholder={platformConfig?.placeholder || "URL del perfil"}
+                              onChange={(e) =>
+                                updateExternalProfile(
+                                  index,
+                                  "externalUrl",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder={
+                                platformConfig?.placeholder || "URL del perfil"
+                              }
                             />
                             <Input
                               value={profile.handle || ""}
-                              onChange={(e) => updateExternalProfile(index, "handle", e.target.value)}
+                              onChange={(e) =>
+                                updateExternalProfile(
+                                  index,
+                                  "handle",
+                                  e.target.value,
+                                )
+                              }
                               placeholder="@usuario (opcional)"
                             />
                           </div>
@@ -1064,7 +1467,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                   {/* Add New Profile */}
                   <div className="border-t border-slc-border pt-6">
-                    <p className="text-sm text-slc-muted mb-4">Agregar plataforma:</p>
+                    <p className="text-sm text-slc-muted mb-4">
+                      Agregar plataforma:
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {platforms.map((platform) => (
                         <button
@@ -1095,19 +1500,31 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
-                      <label className="block text-sm text-slc-muted mb-2">Ubicación</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Ubicación
+                      </label>
                       <div className="flex gap-2">
                         <div className="flex-1">
                           <Input
                             value={formData.location}
-                            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                location: e.target.value,
+                              }))
+                            }
                             placeholder="Ciudad, Estado"
                           />
                         </div>
                         <div className="w-32">
                           <Input
                             value={formData.country}
-                            onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                country: e.target.value,
+                              }))
+                            }
                             placeholder="País"
                           />
                         </div>
@@ -1115,41 +1532,69 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                     </div>
 
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Email de Booking</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Email de Booking
+                      </label>
                       <Input
                         type="email"
                         value={formData.bookingEmail}
-                        onChange={(e) => setFormData(prev => ({ ...prev, bookingEmail: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            bookingEmail: e.target.value,
+                          }))
+                        }
                         placeholder="booking@ejemplo.com"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Email de Management</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Email de Management
+                      </label>
                       <Input
                         type="email"
                         value={formData.managementEmail}
-                        onChange={(e) => setFormData(prev => ({ ...prev, managementEmail: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            managementEmail: e.target.value,
+                          }))
+                        }
                         placeholder="management@ejemplo.com"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Email de Prensa</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Email de Prensa
+                      </label>
                       <Input
                         type="email"
                         value={formData.pressEmail}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pressEmail: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            pressEmail: e.target.value,
+                          }))
+                        }
                         placeholder="prensa@ejemplo.com"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Sitio Web</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Sitio Web
+                      </label>
                       <Input
                         type="url"
                         value={formData.websiteUrl}
-                        onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            websiteUrl: e.target.value,
+                          }))
+                        }
                         placeholder="https://..."
                       />
                     </div>
@@ -1169,11 +1614,18 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Año de Inicio</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Año de Inicio
+                      </label>
                       <Input
                         type="number"
                         value={formData.yearStarted}
-                        onChange={(e) => setFormData(prev => ({ ...prev, yearStarted: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            yearStarted: e.target.value,
+                          }))
+                        }
                         placeholder="ej: 2005"
                         min="1970"
                         max={new Date().getFullYear()}
@@ -1183,7 +1635,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                     {/* Genres */}
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Géneros</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Géneros
+                      </label>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {formData.genres.map((genre) => (
                           <span
@@ -1191,7 +1645,10 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                             className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
                           >
                             {genre}
-                            <button type="button" onClick={() => removeGenre(genre)}>
+                            <button
+                              type="button"
+                              onClick={() => removeGenre(genre)}
+                            >
                               <X className="w-3 h-3" />
                             </button>
                           </span>
@@ -1202,9 +1659,16 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                           value={newGenre}
                           onChange={(e) => setNewGenre(e.target.value)}
                           placeholder="Hip Hop, Trap, Boom Bap..."
-                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addGenre())}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" &&
+                            (e.preventDefault(), addGenre())
+                          }
                         />
-                        <Button type="button" variant="outline" onClick={addGenre}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addGenre}
+                        >
                           <Plus className="w-4 h-4" />
                         </Button>
                       </div>
@@ -1212,7 +1676,9 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                     {/* Labels */}
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Sellos Discográficos</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Sellos Discográficos
+                      </label>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {formData.labels.map((label) => (
                           <span
@@ -1220,7 +1686,10 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                             className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full text-sm"
                           >
                             {label}
-                            <button type="button" onClick={() => removeLabel(label)}>
+                            <button
+                              type="button"
+                              onClick={() => removeLabel(label)}
+                            >
                               <X className="w-3 h-3" />
                             </button>
                           </span>
@@ -1231,9 +1700,16 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                           value={newLabel}
                           onChange={(e) => setNewLabel(e.target.value)}
                           placeholder="Sonido Líquido, Independent..."
-                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLabel())}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" &&
+                            (e.preventDefault(), addLabel())
+                          }
                         />
-                        <Button type="button" variant="outline" onClick={addLabel}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addLabel}
+                        >
                           <Plus className="w-4 h-4" />
                         </Button>
                       </div>
@@ -1253,8 +1729,8 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                   </h2>
 
                   <p className="text-sm text-slc-muted mb-6">
-                    Conecta a este artista con otros miembros del crew para mostrar colaboraciones,
-                    grupos y alias en su perfil público.
+                    Conecta a este artista con otros miembros del crew para
+                    mostrar colaboraciones, grupos y alias en su perfil público.
                   </p>
 
                   {/* Existing Relations */}
@@ -1284,16 +1760,26 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                         {/* Artist Info */}
                         <div className="flex-1">
-                          <p className="font-medium">{relation.relatedArtist?.name || "Artista desconocido"}</p>
+                          <p className="font-medium">
+                            {relation.relatedArtist?.name ||
+                              "Artista desconocido"}
+                          </p>
                           <p className="text-xs text-slc-muted">
-                            {getArtistRolesDisplay(relation.relatedArtist?.role)}
+                            {getArtistRolesDisplay(
+                              relation.relatedArtist?.role,
+                            )}
                           </p>
                         </div>
 
                         {/* Relation Type */}
                         <select
                           value={relation.relationType}
-                          onChange={(e) => updateRelationType(index, e.target.value as ArtistRelation["relationType"])}
+                          onChange={(e) =>
+                            updateRelationType(
+                              index,
+                              e.target.value as ArtistRelation["relationType"],
+                            )
+                          }
                           className="px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm focus:outline-none focus:border-primary"
                         >
                           {relationTypes.map((type) => (
@@ -1318,17 +1804,26 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                       <div className="text-center py-8 text-slc-muted">
                         <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>No hay relaciones definidas</p>
-                        <p className="text-sm">Selecciona artistas del crew para conectarlos</p>
+                        <p className="text-sm">
+                          Selecciona artistas del crew para conectarlos
+                        </p>
                       </div>
                     )}
                   </div>
 
                   {/* Add Relation */}
                   <div className="border-t border-slc-border pt-6">
-                    <p className="text-sm text-slc-muted mb-4">Agregar relación con:</p>
+                    <p className="text-sm text-slc-muted mb-4">
+                      Agregar relación con:
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
                       {allArtists
-                        .filter(a => !artistRelationsList.some(r => r.relatedArtistId === a.id))
+                        .filter(
+                          (a) =>
+                            !artistRelationsList.some(
+                              (r) => r.relatedArtistId === a.id,
+                            ),
+                        )
                         .map((artist) => (
                           <button
                             key={artist.id}
@@ -1360,12 +1855,21 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
                   {/* Relation Types Legend */}
                   <div className="border-t border-slc-border mt-6 pt-6">
-                    <p className="text-sm text-slc-muted mb-3">Tipos de relación:</p>
+                    <p className="text-sm text-slc-muted mb-3">
+                      Tipos de relación:
+                    </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       {relationTypes.map((type) => (
-                        <div key={type.value} className="flex items-start gap-2">
-                          <span className="font-medium text-white">{type.label}:</span>
-                          <span className="text-slc-muted">{type.description}</span>
+                        <div
+                          key={type.value}
+                          className="flex items-start gap-2"
+                        >
+                          <span className="font-medium text-white">
+                            {type.label}:
+                          </span>
+                          <span className="text-slc-muted">
+                            {type.description}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -1387,7 +1891,12 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => setPressQuotes(prev => [...prev, { quote: "", source: "", sourceUrl: "" }])}
+                      onClick={() =>
+                        setPressQuotes((prev) => [
+                          ...prev,
+                          { quote: "", source: "", sourceUrl: "" },
+                        ])
+                      }
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Agregar Cita
@@ -1398,12 +1907,17 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                     <div className="text-center py-8 text-slc-muted">
                       <Eye className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>No hay citas de prensa</p>
-                      <p className="text-sm">Agrega citas de medios, críticas y reseñas</p>
+                      <p className="text-sm">
+                        Agrega citas de medios, críticas y reseñas
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {pressQuotes.map((quote, index) => (
-                        <div key={index} className="p-4 bg-slc-card border border-slc-border rounded-lg">
+                        <div
+                          key={index}
+                          className="p-4 bg-slc-card border border-slc-border rounded-lg"
+                        >
                           <div className="flex items-start gap-3">
                             <div className="flex-1 space-y-3">
                               <textarea
@@ -1443,7 +1957,11 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => setPressQuotes(prev => prev.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setPressQuotes((prev) =>
+                                  prev.filter((_, i) => i !== index),
+                                )
+                              }
                               className="text-red-500 hover:text-red-400"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1465,7 +1983,18 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => setFeaturedVideos(prev => [...prev, { videoUrl: "", title: "", platform: "youtube", views: 0, thumbnailUrl: "" }])}
+                      onClick={() =>
+                        setFeaturedVideos((prev) => [
+                          ...prev,
+                          {
+                            videoUrl: "",
+                            title: "",
+                            platform: "youtube",
+                            views: 0,
+                            thumbnailUrl: "",
+                          },
+                        ])
+                      }
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Agregar Video
@@ -1476,17 +2005,26 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                     <div className="text-center py-8 text-slc-muted">
                       <Youtube className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>No hay videos destacados</p>
-                      <p className="text-sm">Agrega los videos más importantes del artista</p>
+                      <p className="text-sm">
+                        Agrega los videos más importantes del artista
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {featuredVideos.map((video, index) => (
-                        <div key={index} className="p-4 bg-slc-card border border-slc-border rounded-lg">
+                        <div
+                          key={index}
+                          className="p-4 bg-slc-card border border-slc-border rounded-lg"
+                        >
                           <div className="flex items-start gap-4">
                             {/* Thumbnail Preview */}
                             <div className="w-32 h-20 rounded overflow-hidden bg-slc-dark flex-shrink-0">
                               {video.thumbnailUrl ? (
-                                <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                                <img
+                                  src={video.thumbnailUrl}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
                                   <Youtube className="w-8 h-8 text-slc-muted" />
@@ -1509,7 +2047,8 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                                   value={video.views.toString()}
                                   onChange={(e) => {
                                     const newVideos = [...featuredVideos];
-                                    newVideos[index].views = parseInt(e.target.value) || 0;
+                                    newVideos[index].views =
+                                      Number.parseInt(e.target.value) || 0;
                                     setFeaturedVideos(newVideos);
                                   }}
                                   placeholder="Vistas"
@@ -1523,9 +2062,12 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                                     const newVideos = [...featuredVideos];
                                     newVideos[index].videoUrl = e.target.value;
                                     // Auto-generate thumbnail for YouTube
-                                    const ytMatch = e.target.value.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+                                    const ytMatch = e.target.value.match(
+                                      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/,
+                                    );
                                     if (ytMatch) {
-                                      newVideos[index].thumbnailUrl = `https://img.youtube.com/vi/${ytMatch[1]}/maxresdefault.jpg`;
+                                      newVideos[index].thumbnailUrl =
+                                        `https://img.youtube.com/vi/${ytMatch[1]}/maxresdefault.jpg`;
                                     }
                                     setFeaturedVideos(newVideos);
                                   }}
@@ -1553,7 +2095,11 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => setFeaturedVideos(prev => prev.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setFeaturedVideos((prev) =>
+                                  prev.filter((_, i) => i !== index),
+                                )
+                              }
                               className="text-red-500 hover:text-red-400"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1582,12 +2128,19 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                       <input
                         type="checkbox"
                         checked={formData.isActive}
-                        onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            isActive: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <div>
                         <span className="font-medium">Artista Activo</span>
-                        <p className="text-xs text-slc-muted">Visible en el sitio público</p>
+                        <p className="text-xs text-slc-muted">
+                          Visible en el sitio público
+                        </p>
                       </div>
                     </label>
 
@@ -1595,21 +2148,35 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                       <input
                         type="checkbox"
                         checked={formData.isFeatured}
-                        onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            isFeatured: e.target.checked,
+                          }))
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <div>
                         <span className="font-medium">Destacar</span>
-                        <p className="text-xs text-slc-muted">Mostrar en secciones destacadas</p>
+                        <p className="text-xs text-slc-muted">
+                          Mostrar en secciones destacadas
+                        </p>
                       </div>
                     </label>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                       <div>
-                        <label className="block text-sm text-slc-muted mb-2">Estado de Verificación</label>
+                        <label className="block text-sm text-slc-muted mb-2">
+                          Estado de Verificación
+                        </label>
                         <select
                           value={formData.verificationStatus}
-                          onChange={(e) => setFormData(prev => ({ ...prev, verificationStatus: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              verificationStatus: e.target.value,
+                            }))
+                          }
                           className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                         >
                           {verificationStatuses.map((status) => (
@@ -1621,22 +2188,38 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                       </div>
 
                       <div>
-                        <label className="block text-sm text-slc-muted mb-2">Orden de Aparición</label>
+                        <label className="block text-sm text-slc-muted mb-2">
+                          Orden de Aparición
+                        </label>
                         <Input
                           type="number"
                           value={formData.sortOrder}
-                          onChange={(e) => setFormData(prev => ({ ...prev, sortOrder: parseInt(e.target.value) || 0 }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              sortOrder: Number.parseInt(e.target.value) || 0,
+                            }))
+                          }
                           min="0"
                         />
-                        <p className="text-xs text-slc-muted mt-1">Menor número = aparece primero</p>
+                        <p className="text-xs text-slc-muted mt-1">
+                          Menor número = aparece primero
+                        </p>
                       </div>
                     </div>
 
                     <div className="pt-4">
-                      <label className="block text-sm text-slc-muted mb-2">Notas del Admin (privado)</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Notas del Admin (privado)
+                      </label>
                       <textarea
                         value={formData.adminNotes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, adminNotes: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            adminNotes: e.target.value,
+                          }))
+                        }
                         placeholder="Notas internas sobre el artista..."
                         rows={4}
                         className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -1652,12 +2235,14 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
           <div className="space-y-6">
             {/* Preview Card */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-lg uppercase mb-4">Vista Previa</h2>
+              <h2 className="font-oswald text-lg uppercase mb-4">
+                Vista Previa
+              </h2>
 
               <div className="bg-slc-card rounded-lg overflow-hidden">
                 <div
                   className="h-20"
-                  style={{ backgroundColor: formData.tintColor || '#f97316' }}
+                  style={{ backgroundColor: formData.tintColor || "#f97316" }}
                 />
                 <div className="p-4 relative">
                   <div className="absolute -top-10 left-4">
@@ -1679,27 +2264,35 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
                     </div>
                   </div>
                   <div className="mt-8">
-                    <h3 className="font-oswald text-lg">{formData.name || "Nombre del Artista"}</h3>
+                    <h3 className="font-oswald text-lg">
+                      {formData.name || "Nombre del Artista"}
+                    </h3>
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {formData.role.split(",").filter(Boolean).map(roleValue => {
-                        const roleConfig = ARTIST_ROLES.find(r => r.value === roleValue);
-                        if (!roleConfig) return null;
-                        const Icon = roleConfig.icon;
-                        return (
-                          <span
-                            key={roleValue}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${roleConfig.bgColor} ${roleConfig.color}`}
-                          >
-                            <Icon className="w-3 h-3" />
-                            {roleConfig.shortLabel}
-                          </span>
-                        );
-                      })}
+                      {formData.role
+                        .split(",")
+                        .filter(Boolean)
+                        .map((roleValue) => {
+                          const roleConfig = ARTIST_ROLES.find(
+                            (r) => r.value === roleValue,
+                          );
+                          if (!roleConfig) return null;
+                          const Icon = roleConfig.icon;
+                          return (
+                            <span
+                              key={roleValue}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${roleConfig.bgColor} ${roleConfig.color}`}
+                            >
+                              <Icon className="w-3 h-3" />
+                              {roleConfig.shortLabel}
+                            </span>
+                          );
+                        })}
                     </div>
                     {formData.location && (
                       <p className="text-xs text-slc-muted mt-2 flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
-                        {formData.location}{formData.country && `, ${formData.country}`}
+                        {formData.location}
+                        {formData.country && `, ${formData.country}`}
                       </p>
                     )}
                   </div>
@@ -1709,21 +2302,23 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
 
             {/* Social Profiles Count */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-lg uppercase mb-4">Perfiles Sociales</h2>
+              <h2 className="font-oswald text-lg uppercase mb-4">
+                Perfiles Sociales
+              </h2>
               <div className="text-center">
-                <div className="font-oswald text-4xl text-primary">{externalProfiles.length}</div>
+                <div className="font-oswald text-4xl text-primary">
+                  {externalProfiles.length}
+                </div>
                 <p className="text-sm text-slc-muted">plataformas conectadas</p>
               </div>
               {externalProfiles.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-4 justify-center">
                   {externalProfiles.map((profile, i) => {
-                    const p = platforms.find(pl => pl.id === profile.platform);
+                    const p = platforms.find(
+                      (pl) => pl.id === profile.platform,
+                    );
                     return (
-                      <span
-                        key={i}
-                        className="text-lg"
-                        title={p?.label}
-                      >
+                      <span key={i} className="text-lg" title={p?.label}>
                         {p?.icon}
                       </span>
                     );
@@ -1736,13 +2331,18 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
               <h2 className="font-oswald text-lg uppercase mb-4">Galeria</h2>
               <div className="text-center">
-                <div className="font-oswald text-4xl text-cyan-500">{galleryAssets.length}</div>
+                <div className="font-oswald text-4xl text-cyan-500">
+                  {galleryAssets.length}
+                </div>
                 <p className="text-sm text-slc-muted">fotos en galeria</p>
               </div>
               {galleryAssets.length > 0 && (
                 <div className="grid grid-cols-4 gap-1 mt-4">
                   {galleryAssets.slice(0, 8).map((asset, i) => (
-                    <div key={asset.id || i} className="aspect-square rounded overflow-hidden">
+                    <div
+                      key={asset.id || i}
+                      className="aspect-square rounded overflow-hidden"
+                    >
                       <Image
                         src={asset.assetUrl}
                         alt=""
@@ -1761,13 +2361,18 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
               <h2 className="font-oswald text-lg uppercase mb-4">Relaciones</h2>
               <div className="text-center">
-                <div className="font-oswald text-4xl text-indigo-500">{artistRelationsList.length}</div>
+                <div className="font-oswald text-4xl text-indigo-500">
+                  {artistRelationsList.length}
+                </div>
                 <p className="text-sm text-slc-muted">artistas conectados</p>
               </div>
               {artistRelationsList.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-4 justify-center">
                   {artistRelationsList.slice(0, 6).map((rel, i) => (
-                    <div key={rel.id || i} className="w-8 h-8 rounded-full overflow-hidden bg-slc-card">
+                    <div
+                      key={rel.id || i}
+                      className="w-8 h-8 rounded-full overflow-hidden bg-slc-card"
+                    >
                       {rel.relatedArtist?.profileImageUrl ? (
                         <Image
                           src={rel.relatedArtist.profileImageUrl}
@@ -1792,11 +2397,7 @@ export default function ArtistForm({ mode, artistId, initialData }: ArtistFormPr
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
               <h2 className="font-oswald text-lg uppercase mb-4">Acciones</h2>
               <div className="space-y-3">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (

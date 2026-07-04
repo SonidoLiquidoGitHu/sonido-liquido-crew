@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // SITE SETTINGS TABLE
@@ -10,11 +10,17 @@ export const siteSettings = sqliteTable("site_settings", {
   key: text("key").notNull().unique(),
   value: text("value"),
   type: text("type", {
-    enum: ["string", "number", "boolean", "json"]
-  }).notNull().default("string"),
+    enum: ["string", "number", "boolean", "json"],
+  })
+    .notNull()
+    .default("string"),
   description: text("description"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

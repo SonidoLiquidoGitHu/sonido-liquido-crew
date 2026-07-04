@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Spotify OAuth configuration
-const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
+const SPOTIFY_CLIENT_ID =
+  process.env.SPOTIFY_CLIENT_ID || "d43c9d6653a241148c6926322b0c9568";
 const PRODUCTION_BASE_URL = "https://sonidoliquido.com";
-const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI
-  || (process.env.NEXT_PUBLIC_BASE_URL
+const REDIRECT_URI =
+  process.env.SPOTIFY_REDIRECT_URI ||
+  (process.env.NEXT_PUBLIC_BASE_URL
     ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/spotify/callback`
     : `${PRODUCTION_BASE_URL}/api/auth/spotify/callback`);
 
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
       customName,
       followArtists,
       timestamp: Date.now(),
-    })
+    }),
   ).toString("base64");
 
   const params = new URLSearchParams({

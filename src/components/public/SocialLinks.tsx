@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
+import { cn } from "@/lib/utils";
 
 const socialIcons = {
   spotify: {
@@ -94,7 +94,7 @@ export function SocialLinks({
               sizeClasses[size],
               variant === "default"
                 ? `bg-slc-card border border-slc-border text-slc-muted ${social.color}`
-                : `bg-slc-muted/10 text-slc-muted ${social.color}`
+                : `bg-slc-muted/10 text-slc-muted ${social.color}`,
             )}
             aria-label={social.name}
           >

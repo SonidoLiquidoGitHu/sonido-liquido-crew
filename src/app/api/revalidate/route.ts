@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // ISR REVALIDATION ENDPOINT
@@ -13,7 +13,10 @@ export async function POST(request: NextRequest) {
   const path = body.path || request.nextUrl.searchParams.get("path") || "/";
 
   // Verify secret
-  if (process.env.REVALIDATION_SECRET && secret !== process.env.REVALIDATION_SECRET) {
+  if (
+    process.env.REVALIDATION_SECRET &&
+    secret !== process.env.REVALIDATION_SECRET
+  ) {
     return NextResponse.json({ error: "Invalid secret" }, { status: 401 });
   }
 

@@ -1,7 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { getThemeById, type ThemeConfig, type ThemeColors } from "@/lib/themes";
+import { type ThemeColors, type ThemeConfig, getThemeById } from "@/lib/themes";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 interface ThemeSettings {
   themeId: string;
@@ -32,7 +38,10 @@ export function useTheme() {
   return context;
 }
 
-function applyThemeToDocument(theme: ThemeConfig, customColors?: Partial<ThemeColors> | null) {
+function applyThemeToDocument(
+  theme: ThemeConfig,
+  customColors?: Partial<ThemeColors> | null,
+) {
   const root = document.documentElement;
   const colors = { ...theme.colors, ...(customColors || {}) };
 
@@ -60,16 +69,23 @@ function applyThemeToDocument(theme: ThemeConfig, customColors?: Partial<ThemeCo
   root.style.setProperty("--accent", hexToHSL(colors.accent));
 
   // Font families (if using custom fonts, they need to be loaded)
-  root.style.setProperty("--font-heading", `'${theme.fonts.heading}', sans-serif`);
+  root.style.setProperty(
+    "--font-heading",
+    `'${theme.fonts.heading}', sans-serif`,
+  );
   root.style.setProperty("--font-body", `'${theme.fonts.body}', sans-serif`);
 
   // Border radius
   const radiusValue =
-    theme.style.borderRadius === "none" ? "0" :
-    theme.style.borderRadius === "sm" ? "0.25rem" :
-    theme.style.borderRadius === "md" ? "0.5rem" :
-    theme.style.borderRadius === "lg" ? "1rem" :
-    "9999px";
+    theme.style.borderRadius === "none"
+      ? "0"
+      : theme.style.borderRadius === "sm"
+        ? "0.25rem"
+        : theme.style.borderRadius === "md"
+          ? "0.5rem"
+          : theme.style.borderRadius === "lg"
+            ? "1rem"
+            : "9999px";
   root.style.setProperty("--radius", radiusValue);
 }
 
@@ -79,9 +95,9 @@ function hexToHSL(hex: string): string {
   hex = hex.replace(/^#/, "");
 
   // Parse RGB
-  const r = parseInt(hex.substring(0, 2), 16) / 255;
-  const g = parseInt(hex.substring(2, 4), 16) / 255;
-  const b = parseInt(hex.substring(4, 6), 16) / 255;
+  const r = Number.parseInt(hex.substring(0, 2), 16) / 255;
+  const g = Number.parseInt(hex.substring(2, 4), 16) / 255;
+  const b = Number.parseInt(hex.substring(4, 6), 16) / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -113,9 +129,16 @@ interface ThemeProviderProps {
   defaultThemeId?: string;
 }
 
-export function ThemeProvider({ children, defaultThemeId = "hip-hop-classic" }: ThemeProviderProps) {
-  const [themeSettings, setThemeSettings] = useState<ThemeSettings | null>(null);
-  const [theme, setTheme] = useState<ThemeConfig | null>(() => getThemeById(defaultThemeId) || null);
+export function ThemeProvider({
+  children,
+  defaultThemeId = "hip-hop-classic",
+}: ThemeProviderProps) {
+  const [themeSettings, setThemeSettings] = useState<ThemeSettings | null>(
+    null,
+  );
+  const [theme, setTheme] = useState<ThemeConfig | null>(
+    () => getThemeById(defaultThemeId) || null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isPreview, setIsPreview] = useState(false);
   const [originalTheme, setOriginalTheme] = useState<ThemeConfig | null>(null);
@@ -234,9 +257,7 @@ export function ThemePreviewBanner() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-yellow-500 text-black p-3 flex items-center justify-center gap-4">
-      <span className="font-medium">
-        Vista previa: {theme?.name}
-      </span>
+      <span className="font-medium">Vista previa: {theme?.name}</span>
       <button
         onClick={resetPreview}
         className="px-4 py-1 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"

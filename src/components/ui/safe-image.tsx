@@ -1,6 +1,6 @@
 "use client";
-import Image, { ImageProps } from "next/image";
-import { useState, useEffect, useCallback, useRef } from "react";
+import Image, { type ImageProps } from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SafeImageProps extends Omit<ImageProps, "onError" | "src"> {
   src: ImageProps["src"] | null | undefined;
@@ -24,7 +24,7 @@ const INLINE_PLACEHOLDER = `data:image/svg+xml,${encodeURIComponent(
   `<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
     <rect width="400" height="400" fill="#1a1a1a"/>
     <text x="200" y="210" text-anchor="middle" fill="#555" font-family="sans-serif" font-size="14">Sin imagen</text>
-  </svg>`
+  </svg>`,
 )}`;
 
 /**
@@ -119,7 +119,7 @@ export function SafeImage({
     const currentSrc = typeof src === "string" ? src : "unknown";
     console.warn(
       `[SafeImage] Image failed to load (attempt ${retryAttemptRef.current + 1}/${retryCount + 1}):`,
-      currentSrc.substring(0, 80)
+      currentSrc.substring(0, 80),
     );
 
     // Retry logic: on mobile, connections can be flaky and a simple retry often works
@@ -128,11 +128,13 @@ export function SafeImage({
       retryTimerRef.current = setTimeout(() => {
         // Force a re-render by toggling the src (adds cache-bust query param)
         const bustParam = `_retry=${retryAttemptRef.current}_${Date.now()}`;
-        const currentProcessedSrc = typeof processedSrc === "string" && processedSrc.startsWith("/")
-          ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
-          : typeof processedSrc === "string" && processedSrc.startsWith("http")
+        const currentProcessedSrc =
+          typeof processedSrc === "string" && processedSrc.startsWith("/")
             ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
-            : processedSrc;
+            : typeof processedSrc === "string" &&
+                processedSrc.startsWith("http")
+              ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
+              : processedSrc;
         setImageSrc(currentProcessedSrc);
       }, retryDelay * retryAttemptRef.current);
       return;
@@ -144,19 +146,28 @@ export function SafeImage({
       setImageSrc(fallbackSrc);
     }
     handleFinalError();
-  }, [src, processedSrc, error, fallbackSrc, retryCount, retryDelay, handleFinalError]);
+  }, [
+    src,
+    processedSrc,
+    error,
+    fallbackSrc,
+    retryCount,
+    retryDelay,
+    handleFinalError,
+  ]);
 
   // Manual refresh handler — busts cache and retries the image
   const handleRefresh = useCallback(() => {
     setError(false);
     retryAttemptRef.current = 0;
-    setRetryKey(prev => prev + 1);
+    setRetryKey((prev) => prev + 1);
     const bustParam = `_refresh=${Date.now()}`;
-    const refreshedSrc = typeof processedSrc === "string" && processedSrc.startsWith("/")
-      ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
-      : typeof processedSrc === "string" && processedSrc.startsWith("http")
+    const refreshedSrc =
+      typeof processedSrc === "string" && processedSrc.startsWith("/")
         ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
-        : processedSrc;
+        : typeof processedSrc === "string" && processedSrc.startsWith("http")
+          ? `${processedSrc}${processedSrc.includes("?") ? "&" : "?"}${bustParam}`
+          : processedSrc;
     setImageSrc(refreshedSrc);
   }, [processedSrc]);
 
@@ -186,7 +197,9 @@ export function SafeImage({
 
   // Only use unoptimized for data: URIs (fallbacks) — let Next.js optimize
   // everything else through its image pipeline for WebP/AVIF conversion + CDN caching
-  const shouldUnoptimize = (typeof finalSrc === "string" && finalSrc.startsWith("data:")) || props.unoptimized;
+  const shouldUnoptimize =
+    (typeof finalSrc === "string" && finalSrc.startsWith("data:")) ||
+    props.unoptimized;
 
   return (
     <div className={fill ? "absolute inset-0" : "relative"} key={retryKey}>
@@ -211,11 +224,21 @@ export function SafeImage({
           className="absolute bottom-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors z-10"
           title="Reintentar cargar imagen"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 2v6h-6"/>
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
-            <path d="M3 22v-6h6"/>
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 2v6h-6" />
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+            <path d="M3 22v-6h6" />
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
           </svg>
         </button>
       )}

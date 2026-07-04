@@ -1,27 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { DropboxUploadButton } from "@/components/admin/DropboxUploadButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropboxUploadButton } from "@/components/admin/DropboxUploadButton";
 import {
+  AlertTriangle,
   ArrowLeft,
+  CheckCircle,
+  Loader2,
+  Plus,
   Save,
   ShoppingBag,
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  Plus,
-  X,
   Upload,
+  X,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function NewProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -52,13 +55,13 @@ export default function NewProductPage() {
 
   // Handle Dropbox upload for main image
   const handleMainImageUpload = (fileUrl: string) => {
-    setFormData(prev => ({ ...prev, imageUrl: fileUrl }));
+    setFormData((prev) => ({ ...prev, imageUrl: fileUrl }));
   };
 
   // Handle Dropbox upload for additional images
   const handleAdditionalImageUpload = (fileUrl: string) => {
     if (!additionalImages.includes(fileUrl)) {
-      setAdditionalImages(prev => [...prev, fileUrl]);
+      setAdditionalImages((prev) => [...prev, fileUrl]);
     }
   };
 
@@ -66,7 +69,10 @@ export default function NewProductPage() {
     e.preventDefault();
 
     if (!formData.name || !formData.price) {
-      setMessage({ type: "error", text: "Por favor completa los campos requeridos" });
+      setMessage({
+        type: "error",
+        text: "Por favor completa los campos requeridos",
+      });
       return;
     }
 
@@ -77,9 +83,13 @@ export default function NewProductPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          price: parseFloat(formData.price),
-          compareAtPrice: formData.compareAtPrice ? parseFloat(formData.compareAtPrice) : null,
-          stockQuantity: formData.stockQuantity ? parseInt(formData.stockQuantity) : null,
+          price: Number.parseFloat(formData.price),
+          compareAtPrice: formData.compareAtPrice
+            ? Number.parseFloat(formData.compareAtPrice)
+            : null,
+          stockQuantity: formData.stockQuantity
+            ? Number.parseInt(formData.stockQuantity)
+            : null,
           additionalImages,
         }),
       });
@@ -92,7 +102,10 @@ export default function NewProductPage() {
           router.push("/admin/products");
         }, 1500);
       } else {
-        setMessage({ type: "error", text: data.error || "Error al crear producto" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error al crear producto",
+        });
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -111,7 +124,9 @@ export default function NewProductPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="font-oswald text-2xl sm:text-3xl uppercase">Nuevo Producto</h1>
+          <h1 className="font-oswald text-2xl sm:text-3xl uppercase">
+            Nuevo Producto
+          </h1>
           <p className="text-slc-muted mt-1 text-sm sm:text-base">
             Agrega un producto a la tienda
           </p>
@@ -120,11 +135,13 @@ export default function NewProductPage() {
 
       {/* Message */}
       {message && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-          message.type === "success"
-            ? "bg-green-500/10 border border-green-500/20 text-green-500"
-            : "bg-red-500/10 border border-red-500/20 text-red-500"
-        }`}>
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-green-500/10 border border-green-500/20 text-green-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500"
+          }`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="w-5 h-5 shrink-0" />
           ) : (
@@ -140,24 +157,37 @@ export default function NewProductPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Info */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-4 sm:p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Información Básica</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Información Básica
+              </h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Nombre del Producto *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Nombre del Producto *
+                  </label>
                   <Input
                     value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, name: e.target.value }))
+                    }
                     placeholder="Nombre del producto"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Categoría</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Categoría
+                  </label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        category: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   >
                     <option value="music">Música</option>
@@ -168,10 +198,17 @@ export default function NewProductPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Descripción
+                  </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Descripción del producto..."
                     rows={4}
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -182,19 +219,30 @@ export default function NewProductPage() {
 
             {/* Pricing */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-4 sm:p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Precio e Inventario</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Precio e Inventario
+              </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Precio *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Precio *
+                  </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slc-muted">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slc-muted">
+                      $
+                    </span>
                     <Input
                       type="number"
                       step="0.01"
                       min="0"
                       value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          price: e.target.value,
+                        }))
+                      }
                       placeholder="0.00"
                       className="pl-8"
                       required
@@ -203,27 +251,45 @@ export default function NewProductPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Precio Anterior</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Precio Anterior
+                  </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slc-muted">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slc-muted">
+                      $
+                    </span>
                     <Input
                       type="number"
                       step="0.01"
                       min="0"
                       value={formData.compareAtPrice}
-                      onChange={(e) => setFormData(prev => ({ ...prev, compareAtPrice: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          compareAtPrice: e.target.value,
+                        }))
+                      }
                       placeholder="0.00"
                       className="pl-8"
                     />
                   </div>
-                  <p className="text-xs text-slc-muted mt-1">Para mostrar descuento</p>
+                  <p className="text-xs text-slc-muted mt-1">
+                    Para mostrar descuento
+                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Moneda</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Moneda
+                  </label>
                   <select
                     value={formData.currency}
-                    onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        currency: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   >
                     <option value="MXN">MXN - Peso Mexicano</option>
@@ -232,22 +298,33 @@ export default function NewProductPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Stock</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Stock
+                  </label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.stockQuantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        stockQuantity: e.target.value,
+                      }))
+                    }
                     placeholder="Ilimitado"
                   />
-                  <p className="text-xs text-slc-muted mt-1">Dejar vacío para ilimitado</p>
+                  <p className="text-xs text-slc-muted mt-1">
+                    Dejar vacío para ilimitado
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Additional Images */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-4 sm:p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Imágenes Adicionales</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Imágenes Adicionales
+              </h2>
 
               {/* Dropbox Upload for Additional Images */}
               <div className="mb-4">
@@ -269,7 +346,12 @@ export default function NewProductPage() {
                   type="url"
                   className="flex-1"
                 />
-                <Button type="button" variant="outline" onClick={addImage} disabled={!newImageUrl}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addImage}
+                  disabled={!newImageUrl}
+                >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
@@ -277,8 +359,15 @@ export default function NewProductPage() {
               {additionalImages.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {additionalImages.map((url, index) => (
-                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-slc-card">
-                      <img src={url} alt="" className="w-full h-full object-cover" />
+                    <div
+                      key={index}
+                      className="relative aspect-square rounded-lg overflow-hidden bg-slc-card"
+                    >
+                      <img
+                        src={url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
@@ -313,7 +402,9 @@ export default function NewProductPage() {
           <div className="space-y-6">
             {/* Image Preview */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-4 sm:p-6">
-              <h2 className="font-oswald text-lg uppercase mb-4">Imagen Principal</h2>
+              <h2 className="font-oswald text-lg uppercase mb-4">
+                Imagen Principal
+              </h2>
               <div className="aspect-square rounded-lg overflow-hidden bg-slc-card mb-4">
                 {formData.imageUrl ? (
                   <img
@@ -343,7 +434,12 @@ export default function NewProductPage() {
               <div className="relative">
                 <Input
                   value={formData.imageUrl}
-                  onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      imageUrl: e.target.value,
+                    }))
+                  }
                   placeholder="O pega URL de imagen"
                   type="url"
                 />
@@ -354,11 +450,7 @@ export default function NewProductPage() {
             <div className="bg-slc-dark border border-slc-border rounded-xl p-4 sm:p-6 hidden lg:block">
               <h2 className="font-oswald text-lg uppercase mb-4">Acciones</h2>
               <div className="space-y-3">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
@@ -385,7 +477,12 @@ export default function NewProductPage() {
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isActive: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Activo (visible en tienda)</span>
@@ -394,7 +491,12 @@ export default function NewProductPage() {
                   <input
                     type="checkbox"
                     checked={formData.isFeatured}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isFeatured: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Destacar en Home</span>

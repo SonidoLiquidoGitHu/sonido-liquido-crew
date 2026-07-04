@@ -1,22 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DropboxUploadButton } from "@/components/admin/DropboxUploadButton";
-import {
-  ArrowLeft,
-  Save,
-  Disc3,
-  Link as LinkIcon,
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  ChevronDown,
-  Trash2,
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +10,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
+  ChevronDown,
+  Disc3,
+  Link as LinkIcon,
+  Loader2,
+  Save,
+  Trash2,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Artist {
   id: string;
@@ -41,7 +41,10 @@ export default function EditReleasePage() {
   const [isFetching, setIsFetching] = useState(true);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [artistsLoading, setArtistsLoading] = useState(true);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -49,7 +52,13 @@ export default function EditReleasePage() {
     title: "",
     spotifyUrl: "",
     spotifyId: "",
-    releaseType: "album" as "album" | "single" | "maxi-single" | "ep" | "compilation" | "mixtape",
+    releaseType: "album" as
+      | "album"
+      | "single"
+      | "maxi-single"
+      | "ep"
+      | "compilation"
+      | "mixtape",
     releaseDate: "",
     artistId: "",
     coverImageUrl: "",
@@ -84,7 +93,10 @@ export default function EditReleasePage() {
             isFeatured: release.isFeatured || false,
           });
         } else {
-          setMessage({ type: "error", text: "No se pudo cargar el lanzamiento" });
+          setMessage({
+            type: "error",
+            text: "No se pudo cargar el lanzamiento",
+          });
         }
       } catch (error) {
         console.error("Failed to fetch release:", error);
@@ -132,11 +144,14 @@ export default function EditReleasePage() {
 
       const spotifyId = match[1];
       const response = await fetch(
-        `https://open.spotify.com/oembed?url=https://open.spotify.com/album/${spotifyId}`
+        `https://open.spotify.com/oembed?url=https://open.spotify.com/album/${spotifyId}`,
       );
 
       if (!response.ok) {
-        setMessage({ type: "error", text: "No se pudo obtener información del álbum" });
+        setMessage({
+          type: "error",
+          text: "No se pudo obtener información del álbum",
+        });
         return;
       }
 
@@ -178,12 +193,18 @@ export default function EditReleasePage() {
       const data = await response.json();
 
       if (data.success) {
-        setMessage({ type: "success", text: "Lanzamiento actualizado exitosamente" });
+        setMessage({
+          type: "success",
+          text: "Lanzamiento actualizado exitosamente",
+        });
         setTimeout(() => {
           router.push("/admin/releases");
         }, 1500);
       } else {
-        setMessage({ type: "error", text: data.error || "Error al actualizar lanzamiento" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error al actualizar lanzamiento",
+        });
       }
     } catch (error) {
       console.error("Error:", error);
@@ -239,8 +260,12 @@ export default function EditReleasePage() {
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="font-oswald text-2xl sm:text-3xl uppercase">Editar Lanzamiento</h1>
-          <p className="text-slc-muted mt-1 text-sm sm:text-base">{formData.title || "Sin título"}</p>
+          <h1 className="font-oswald text-2xl sm:text-3xl uppercase">
+            Editar Lanzamiento
+          </h1>
+          <p className="text-slc-muted mt-1 text-sm sm:text-base">
+            {formData.title || "Sin título"}
+          </p>
         </div>
         <Button
           variant="outline"
@@ -291,7 +316,12 @@ export default function EditReleasePage() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input
                   value={formData.spotifyUrl}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, spotifyUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      spotifyUrl: e.target.value,
+                    }))
+                  }
                   placeholder="https://open.spotify.com/album/..."
                   className="flex-1"
                 />
@@ -316,21 +346,32 @@ export default function EditReleasePage() {
 
             {/* Basic Info */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-4 sm:p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Información Básica</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Información Básica
+              </h2>
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Título *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Título *
+                  </label>
                   <Input
                     value={formData.title}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="Nombre del álbum"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Artista Principal</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Artista Principal
+                  </label>
                   <div className="relative">
                     {artistsLoading ? (
                       <div className="w-full h-10 px-4 py-2 bg-slc-card border border-slc-border rounded-lg flex items-center text-slc-muted">
@@ -341,9 +382,17 @@ export default function EditReleasePage() {
                       <>
                         <select
                           value={formData.artistId}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, artistId: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              artistId: e.target.value,
+                            }))
+                          }
                           className="w-full h-12 px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary text-white appearance-none cursor-pointer"
-                          style={{ WebkitAppearance: "none", MozAppearance: "none" }}
+                          style={{
+                            WebkitAppearance: "none",
+                            MozAppearance: "none",
+                          }}
                         >
                           <option value="">Seleccionar artista...</option>
                           {artists.map((artist) => (
@@ -360,18 +409,24 @@ export default function EditReleasePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Tipo de Lanzamiento *</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Tipo de Lanzamiento *
+                    </label>
                     <div className="relative">
                       <select
                         value={formData.releaseType}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            releaseType: e.target.value as typeof formData.releaseType,
+                            releaseType: e.target
+                              .value as typeof formData.releaseType,
                           }))
                         }
                         className="w-full h-12 px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary text-white appearance-none cursor-pointer"
-                        style={{ WebkitAppearance: "none", MozAppearance: "none" }}
+                        style={{
+                          WebkitAppearance: "none",
+                          MozAppearance: "none",
+                        }}
                       >
                         <option value="album">Álbum</option>
                         <option value="ep">EP</option>
@@ -385,11 +440,18 @@ export default function EditReleasePage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Fecha de Lanzamiento *</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Fecha de Lanzamiento *
+                    </label>
                     <Input
                       type="date"
                       value={formData.releaseDate}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, releaseDate: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          releaseDate: e.target.value,
+                        }))
+                      }
                       required
                       className="h-12"
                     />
@@ -397,20 +459,34 @@ export default function EditReleasePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Spotify ID</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Spotify ID
+                  </label>
                   <Input
                     value={formData.spotifyId}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, spotifyId: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        spotifyId: e.target.value,
+                      }))
+                    }
                     placeholder="Se extrae de la URL"
                     disabled
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Descripción
+                  </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Descripción del lanzamiento..."
                     rows={3}
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -421,24 +497,38 @@ export default function EditReleasePage() {
 
             {/* Additional Links */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-4 sm:p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Enlaces Adicionales</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Enlaces Adicionales
+              </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Apple Music</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Apple Music
+                  </label>
                   <Input
                     value={formData.appleMusicUrl}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, appleMusicUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        appleMusicUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://music.apple.com/..."
                     type="url"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">YouTube Music</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    YouTube Music
+                  </label>
                   <Input
                     value={formData.youtubeMusicUrl}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, youtubeMusicUrl: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        youtubeMusicUrl: e.target.value,
+                      }))
                     }
                     placeholder="https://music.youtube.com/..."
                     type="url"
@@ -449,7 +539,11 @@ export default function EditReleasePage() {
 
             {/* Mobile Submit Button */}
             <div className="lg:hidden">
-              <Button type="submit" className="w-full h-12" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full h-12"
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
@@ -467,7 +561,11 @@ export default function EditReleasePage() {
               <h2 className="font-oswald text-lg uppercase mb-4">Portada</h2>
               <div className="aspect-square rounded-lg overflow-hidden bg-slc-card mb-4">
                 {formData.coverImageUrl ? (
-                  <img src={formData.coverImageUrl} alt="Cover preview" className="w-full h-full object-cover" />
+                  <img
+                    src={formData.coverImageUrl}
+                    alt="Cover preview"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Disc3 className="w-16 h-16 text-slc-muted" />
@@ -478,7 +576,9 @@ export default function EditReleasePage() {
               {/* Dropbox Upload */}
               <div className="mb-3">
                 <DropboxUploadButton
-                  onUploadComplete={(url) => setFormData((prev) => ({ ...prev, coverImageUrl: url }))}
+                  onUploadComplete={(url) =>
+                    setFormData((prev) => ({ ...prev, coverImageUrl: url }))
+                  }
                   folder="releases"
                   accept="image/*"
                   buttonText="Cambiar portada"
@@ -489,7 +589,12 @@ export default function EditReleasePage() {
               {/* Manual URL Input */}
               <Input
                 value={formData.coverImageUrl}
-                onChange={(e) => setFormData((prev) => ({ ...prev, coverImageUrl: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    coverImageUrl: e.target.value,
+                  }))
+                }
                 placeholder="O pega URL de imagen"
                 type="url"
               />
@@ -507,7 +612,12 @@ export default function EditReleasePage() {
                   )}
                   Guardar Cambios
                 </Button>
-                <Button type="button" variant="outline" className="w-full" onClick={() => router.push("/admin/releases")}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => router.push("/admin/releases")}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -520,7 +630,12 @@ export default function EditReleasePage() {
                 <input
                   type="checkbox"
                   checked={formData.isFeatured}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, isFeatured: e.target.checked }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      isFeatured: e.target.checked,
+                    }))
+                  }
                   className="w-4 h-4 rounded border-slc-border"
                 />
                 <span>Destacar en Home</span>
@@ -540,7 +655,8 @@ export default function EditReleasePage() {
             </DialogTitle>
             <DialogDescription className="text-slc-muted">
               ¿Estás seguro de que quieres eliminar{" "}
-              <span className="text-white font-medium">"{formData.title}"</span>?
+              <span className="text-white font-medium">"{formData.title}"</span>
+              ?
               <br />
               Esta acción no se puede deshacer.
             </DialogDescription>

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { upcomingReleases } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
+import { desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -20,7 +20,7 @@ export async function GET() {
     console.error("[API] Error fetching upcoming releases:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch upcoming releases" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -64,7 +64,8 @@ export async function POST(request: NextRequest) {
         downloadGateEnabled: body.downloadGateEnabled ?? false,
         downloadGateFiles: body.downloadGateFiles || null,
         requirePresaveForDownload: body.requirePresaveForDownload ?? true,
-        requireHyperfollowForDownload: body.requireHyperfollowForDownload ?? false,
+        requireHyperfollowForDownload:
+          body.requireHyperfollowForDownload ?? false,
         requireEmailForDownload: body.requireEmailForDownload ?? true,
         teaserVideoUrl: body.teaserVideoUrl || null,
         verticalVideoUrl: body.verticalVideoUrl || null,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     console.error("[API] Error creating upcoming release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create upcoming release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -91,7 +92,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -100,7 +101,7 @@ export async function PUT(request: NextRequest) {
     if (!body.id) {
       return NextResponse.json(
         { success: false, error: "Release ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -129,7 +130,8 @@ export async function PUT(request: NextRequest) {
         downloadGateEnabled: body.downloadGateEnabled ?? false,
         downloadGateFiles: body.downloadGateFiles || null,
         requirePresaveForDownload: body.requirePresaveForDownload ?? true,
-        requireHyperfollowForDownload: body.requireHyperfollowForDownload ?? false,
+        requireHyperfollowForDownload:
+          body.requireHyperfollowForDownload ?? false,
         requireEmailForDownload: body.requireEmailForDownload ?? true,
         teaserVideoUrl: body.teaserVideoUrl || null,
         verticalVideoUrl: body.verticalVideoUrl || null,
@@ -145,7 +147,7 @@ export async function PUT(request: NextRequest) {
     if (!release) {
       return NextResponse.json(
         { success: false, error: "Release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -155,7 +157,7 @@ export async function PUT(request: NextRequest) {
     console.error("[API] Error updating upcoming release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update upcoming release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -165,7 +167,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -175,7 +177,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Release ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -187,7 +189,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[API] Error deleting upcoming release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete upcoming release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

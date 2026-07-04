@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 const SETTINGS_KEY = "community_email_settings";
 
@@ -20,7 +20,8 @@ interface EmailSettings {
 const defaultSettings: EmailSettings = {
   sendApprovalEmail: true,
   emailSubject: "¡Tu mensaje ha sido publicado en Sonido Líquido!",
-  emailMessage: "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
+  emailMessage:
+    "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
   includeReward: false,
   rewardTitle: "Regalo sorpresa",
   rewardDescription: "Como agradecimiento, aquí tienes una descarga exclusiva:",
@@ -58,7 +59,7 @@ export async function GET() {
     console.error("[Community Email Settings] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error loading settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -69,18 +70,20 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     const body = await request.json();
     const settings: EmailSettings = {
-      sendApprovalEmail: body.sendApprovalEmail ?? defaultSettings.sendApprovalEmail,
+      sendApprovalEmail:
+        body.sendApprovalEmail ?? defaultSettings.sendApprovalEmail,
       emailSubject: body.emailSubject || defaultSettings.emailSubject,
       emailMessage: body.emailMessage || defaultSettings.emailMessage,
       includeReward: body.includeReward ?? defaultSettings.includeReward,
       rewardTitle: body.rewardTitle || defaultSettings.rewardTitle,
-      rewardDescription: body.rewardDescription || defaultSettings.rewardDescription,
+      rewardDescription:
+        body.rewardDescription || defaultSettings.rewardDescription,
       rewardDownloadUrl: body.rewardDownloadUrl || "",
       rewardFileName: body.rewardFileName || "",
     };
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
     console.error("[Community Email Settings] Error saving:", error);
     return NextResponse.json(
       { success: false, error: "Error saving settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

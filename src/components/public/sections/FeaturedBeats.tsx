@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, Music, Play, Pause, Volume2, Share2 } from "lucide-react";
+import { BeatStoryCard } from "@/app/(public)/beats/[slug]/BeatStoryCard";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
-import { BeatStoryCard } from "@/app/(public)/beats/[slug]/BeatStoryCard";
+import { ArrowRight, Music, Pause, Play, Share2, Volume2 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Beat {
   id: string;
@@ -49,51 +49,54 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
     };
   }, []);
 
-  const playBeat = useCallback((beatId: string) => {
-    const beat = beats.find(b => b.id === beatId);
-    if (!beat?.previewAudioUrl) return;
+  const playBeat = useCallback(
+    (beatId: string) => {
+      const beat = beats.find((b) => b.id === beatId);
+      if (!beat?.previewAudioUrl) return;
 
-    // If same beat, just resume
-    if (currentBeatId === beatId && audioRef.current) {
-      audioRef.current.play();
-      setIsPlaying(true);
-      return;
-    }
-
-    // Stop current audio if playing
-    if (audioRef.current) {
-      audioRef.current.pause();
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
+      // If same beat, just resume
+      if (currentBeatId === beatId && audioRef.current) {
+        audioRef.current.play();
+        setIsPlaying(true);
+        return;
       }
-    }
 
-    // Create new audio element
-    const audio = new Audio(beat.previewAudioUrl);
-    audio.volume = 0.8;
-
-    audio.addEventListener("loadedmetadata", () => {
-      setDuration(audio.duration);
-    });
-
-    audio.addEventListener("ended", () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-    });
-
-    audio.play();
-    audioRef.current = audio;
-    setCurrentBeatId(beatId);
-    setIsPlaying(true);
-    setCurrentTime(0);
-
-    // Update progress
-    progressInterval.current = setInterval(() => {
+      // Stop current audio if playing
       if (audioRef.current) {
-        setCurrentTime(audioRef.current.currentTime);
+        audioRef.current.pause();
+        if (progressInterval.current) {
+          clearInterval(progressInterval.current);
+        }
       }
-    }, 100);
-  }, [beats, currentBeatId]);
+
+      // Create new audio element
+      const audio = new Audio(beat.previewAudioUrl);
+      audio.volume = 0.8;
+
+      audio.addEventListener("loadedmetadata", () => {
+        setDuration(audio.duration);
+      });
+
+      audio.addEventListener("ended", () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+      });
+
+      audio.play();
+      audioRef.current = audio;
+      setCurrentBeatId(beatId);
+      setIsPlaying(true);
+      setCurrentTime(0);
+
+      // Update progress
+      progressInterval.current = setInterval(() => {
+        if (audioRef.current) {
+          setCurrentTime(audioRef.current.currentTime);
+        }
+      }, 100);
+    },
+    [beats, currentBeatId],
+  );
 
   const pauseBeat = useCallback(() => {
     if (audioRef.current) {
@@ -102,13 +105,16 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
     }
   }, []);
 
-  const togglePlay = useCallback((beatId: string) => {
-    if (isPlaying && currentBeatId === beatId) {
-      pauseBeat();
-    } else {
-      playBeat(beatId);
-    }
-  }, [isPlaying, currentBeatId, pauseBeat, playBeat]);
+  const togglePlay = useCallback(
+    (beatId: string) => {
+      if (isPlaying && currentBeatId === beatId) {
+        pauseBeat();
+      } else {
+        playBeat(beatId);
+      }
+    },
+    [isPlaying, currentBeatId, pauseBeat, playBeat],
+  );
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -146,7 +152,8 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
               Próximamente
             </h3>
             <p className="text-sm text-slc-muted max-w-md mx-auto">
-              Estamos preparando beats exclusivos de nuestros productores. ¡Muy pronto podrás escuchar y descargar instrumentales!
+              Estamos preparando beats exclusivos de nuestros productores. ¡Muy
+              pronto podrás escuchar y descargar instrumentales!
             </p>
           </div>
         </div>
@@ -167,7 +174,11 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
               Beats exclusivos de nuestros productores
             </p>
           </div>
-          <Button asChild variant="outline" className="shrink-0 border-gray-600 text-white hover:bg-white/10">
+          <Button
+            asChild
+            variant="outline"
+            className="shrink-0 border-gray-600 text-white hover:bg-white/10"
+          >
             <Link href="/beats">
               Ver todos
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -180,7 +191,8 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
           {beats.slice(0, 5).map((beat, index) => {
             const isCurrent = currentBeatId === beat.id;
             const beatIsPlaying = isPlaying && isCurrent;
-            const progress = isCurrent && duration > 0 ? (currentTime / duration) * 100 : 0;
+            const progress =
+              isCurrent && duration > 0 ? (currentTime / duration) * 100 : 0;
 
             return (
               <div
@@ -194,7 +206,11 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
                   {beat.previewAudioUrl ? (
                     <button
                       onClick={() => togglePlay(beat.id)}
-                      aria-label={beatIsPlaying ? `Pausar ${beat.title}` : `Reproducir ${beat.title}`}
+                      aria-label={
+                        beatIsPlaying
+                          ? `Pausar ${beat.title}`
+                          : `Reproducir ${beat.title}`
+                      }
                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
                         beatIsPlaying
                           ? "bg-primary text-white"
@@ -208,7 +224,9 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
                       )}
                     </button>
                   ) : (
-                    <span className="text-slc-muted text-center block">{index + 1}</span>
+                    <span className="text-slc-muted text-center block">
+                      {index + 1}
+                    </span>
                   )}
                 </div>
 
@@ -253,7 +271,8 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
                         />
                       </div>
                       <span className="text-xs text-slc-muted">
-                        {formatDuration(currentTime)} / {formatDuration(duration)}
+                        {formatDuration(currentTime)} /{" "}
+                        {formatDuration(duration)}
                       </span>
                     </div>
                   )}
@@ -302,7 +321,12 @@ export function FeaturedBeats({ beats }: FeaturedBeatsProps) {
 
         {/* Mobile CTA */}
         <div className="mt-8 text-center sm:hidden">
-          <Button asChild variant="outline" size="lg" className="border-gray-600 text-white hover:bg-white/10">
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="border-gray-600 text-white hover:bg-white/10"
+          >
             <Link href="/beats">
               Ver todos los beats
               <ArrowRight className="w-4 h-4 ml-2" />

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db, isDatabaseConfigured, executeRaw } from "@/db/client";
-import { youtubeChannels, videos } from "@/db/schema";
-import { eq, desc, asc } from "drizzle-orm";
+import { db, executeRaw, isDatabaseConfigured } from "@/db/client";
+import { videos, youtubeChannels } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
+import { asc, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Ensure the youtube_channels table exists
 async function ensureTableExists(): Promise<void> {
@@ -96,7 +96,7 @@ async function fetchChannelInfo(channelUrl: string): Promise<{
   try {
     // Try to get info from a video on the channel
     const response = await fetch(
-      `https://www.youtube.com/oembed?url=${encodeURIComponent(channelUrl)}&format=json`
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(channelUrl)}&format=json`,
     );
 
     if (response.ok) {
@@ -128,7 +128,10 @@ export async function GET() {
     const channels = await db
       .select()
       .from(youtubeChannels)
-      .orderBy(asc(youtubeChannels.displayOrder), desc(youtubeChannels.createdAt));
+      .orderBy(
+        asc(youtubeChannels.displayOrder),
+        desc(youtubeChannels.createdAt),
+      );
 
     return NextResponse.json({
       success: true,
@@ -138,7 +141,7 @@ export async function GET() {
     console.error("[API] Error fetching YouTube channels:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch YouTube channels" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -151,7 +154,7 @@ export async function POST(request: NextRequest) {
       console.error("[YouTube API] Database not configured");
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -161,12 +164,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { channelUrl, channelName, artistId, isActive = true } = body;
 
-    console.log("[YouTube API] Request body:", { channelUrl, channelName, artistId, isActive });
+    console.log("[YouTube API] Request body:", {
+      channelUrl,
+      channelName,
+      artistId,
+      isActive,
+    });
 
     if (!channelUrl) {
       return NextResponse.json(
         { success: false, error: "Channel URL is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -188,14 +196,23 @@ export async function POST(request: NextRequest) {
           .limit(1);
 
         if (existing.length > 0) {
-          console.log("[YouTube API] Channel already exists:", existing[0].channelName);
+          console.log(
+            "[YouTube API] Channel already exists:",
+            existing[0].channelName,
+          );
           return NextResponse.json(
-            { success: false, error: `El canal "${existing[0].channelName}" ya existe` },
-            { status: 400 }
+            {
+              success: false,
+              error: `El canal "${existing[0].channelName}" ya existe`,
+            },
+            { status: 400 },
           );
         }
       } catch (dbError) {
-        console.error("[YouTube API] Error checking existing channel:", dbError);
+        console.error(
+          "[YouTube API] Error checking existing channel:",
+          dbError,
+        );
         // Continue anyway - table might not exist yet
       }
     }
@@ -206,7 +223,8 @@ export async function POST(request: NextRequest) {
     console.log("[YouTube API] Channel info:", channelInfo);
 
     const id = generateUUID();
-    const finalChannelName = channelName || channelInfo?.name || "Canal de YouTube";
+    const finalChannelName =
+      channelName || channelInfo?.name || "Canal de YouTube";
 
     console.log("[YouTube API] Creating channel with:", {
       id,
@@ -229,7 +247,10 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    console.log("[YouTube API] Channel created successfully:", channel.channelName);
+    console.log(
+      "[YouTube API] Channel created successfully:",
+      channel.channelName,
+    );
 
     return NextResponse.json({
       success: true,
@@ -241,10 +262,11 @@ export async function POST(request: NextRequest) {
     console.error("[YouTube API] Error stack:", (error as Error).stack);
 
     // Return more specific error message
-    const errorMessage = (error as Error).message || "Failed to create YouTube channel";
+    const errorMessage =
+      (error as Error).message || "Failed to create YouTube channel";
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -254,7 +276,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -264,7 +286,7 @@ export async function PUT(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Channel ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -291,7 +313,7 @@ export async function PUT(request: NextRequest) {
     console.error("[API] Error updating YouTube channel:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update YouTube channel" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -301,7 +323,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -311,7 +333,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Channel ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -325,7 +347,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[API] Error deleting YouTube channel:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete YouTube channel" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

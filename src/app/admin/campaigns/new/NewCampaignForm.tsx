@@ -1,38 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { type Artist, ArtistSelector } from "@/components/admin/ArtistSelector";
+import { AudioPreviewPlayer } from "@/components/admin/AudioPreviewPlayer";
+import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
+import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SafeImage } from "@/components/ui/safe-image";
-import { DirectDropboxUploader } from "@/components/admin/DirectDropboxUploader";
-import { AudioPreviewPlayer } from "@/components/admin/AudioPreviewPlayer";
-import { ArtistSelector, type Artist } from "@/components/admin/ArtistSelector";
-import { StyleSettingsEditor } from "@/components/admin/StyleSettingsEditor";
-import { type StyleSettings } from "@/lib/style-config";
+import type { StyleSettings } from "@/lib/style-config";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export interface NewCampaignFormProps {
   artists: Artist[];
 }
 import {
-  ArrowLeft,
-  Save,
-  Megaphone,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
+  ArrowLeft,
   Calendar,
+  CheckCircle,
   Cloud,
-  Image as ImageIcon,
   Download,
+  Film,
+  Image as ImageIcon,
   Link as LinkIcon,
+  Loader2,
+  Megaphone,
   Music,
-  Youtube,
-  Video,
+  Save,
   Smartphone,
   Upload,
-  Film,
+  Video,
+  Youtube,
 } from "lucide-react";
 
 const campaignTypes = [
@@ -46,7 +46,10 @@ const campaignTypes = [
 export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -118,21 +121,33 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
       setYoutubeError("");
     }
 
-    setFormData(prev => ({ ...prev, youtubeVideoId: extractedId }));
+    setFormData((prev) => ({ ...prev, youtubeVideoId: extractedId }));
   };
 
-  const handleCoverUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, coverImageUrl: url }));
+  const handleCoverUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, coverImageUrl: url }));
     showMessage("success", `Portada "${filename}" subida a Dropbox`);
   };
 
-  const handleBannerUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({ ...prev, bannerImageUrl: url }));
+  const handleBannerUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, bannerImageUrl: url }));
     showMessage("success", `Banner "${filename}" subido a Dropbox`);
   };
 
-  const handleDownloadFileUpload = (url: string, filename: string, _fileSize: number) => {
-    setFormData(prev => ({
+  const handleDownloadFileUpload = (
+    url: string,
+    filename: string,
+    _fileSize: number,
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       downloadFileUrl: url,
       downloadFileName: filename,
@@ -140,10 +155,17 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
     showMessage("success", `Archivo "${filename}" subido a Dropbox`);
   };
 
-  const handleVideoUpload = (url: string, filename: string, fileSize: number) => {
-    setFormData(prev => ({ ...prev, previewVideoUrl: url }));
+  const handleVideoUpload = (
+    url: string,
+    filename: string,
+    fileSize: number,
+  ) => {
+    setFormData((prev) => ({ ...prev, previewVideoUrl: url }));
     const sizeMB = (fileSize / (1024 * 1024)).toFixed(1);
-    showMessage("success", `Video "${filename}" (${sizeMB}MB) subido a Dropbox`);
+    showMessage(
+      "success",
+      `Video "${filename}" (${sizeMB}MB) subido a Dropbox`,
+    );
   };
 
   const showMessage = (type: "success" | "error", text: string) => {
@@ -209,11 +231,13 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
 
       {/* Message */}
       {message && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-          message.type === "success"
-            ? "bg-green-500/10 border border-green-500/20 text-green-500"
-            : "bg-red-500/10 border border-red-500/20 text-red-500"
-        }`}>
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-green-500/10 border border-green-500/20 text-green-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500"
+          }`}
+        >
           {message.type === "success" ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
@@ -229,24 +253,40 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Info */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Información Básica</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Información Básica
+              </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Título *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Título *
+                  </label>
                   <Input
                     value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="Nombre de la campaña"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Tipo de Campaña *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Tipo de Campaña *
+                  </label>
                   <select
                     value={formData.campaignType}
-                    onChange={(e) => setFormData(prev => ({ ...prev, campaignType: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        campaignType: e.target.value,
+                      }))
+                    }
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   >
                     {campaignTypes.map((type) => (
@@ -260,7 +300,12 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                 <div>
                   <ArtistSelector
                     value={formData.artistId}
-                    onChange={(v) => setFormData(prev => ({ ...prev, artistId: Array.isArray(v) ? v[0] || "" : v }))}
+                    onChange={(v) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        artistId: Array.isArray(v) ? v[0] || "" : v,
+                      }))
+                    }
                     label="Artista"
                     placeholder="Seleccionar artista..."
                     initialArtists={artists}
@@ -268,10 +313,17 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Descripción
+                  </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Descripción de la campaña..."
                     rows={3}
                     className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
@@ -289,50 +341,85 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Smart Link (Principal)</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Smart Link (Principal)
+                  </label>
                   <Input
                     value={formData.smartLinkUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, smartLinkUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        smartLinkUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://onerpm.link/..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">OneRPM URL</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    OneRPM URL
+                  </label>
                   <Input
                     value={formData.oneRpmUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, oneRpmUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        oneRpmUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://onerpm.link/..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Spotify Presave URL</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Spotify Presave URL
+                  </label>
                   <Input
                     value={formData.spotifyPresaveUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, spotifyPresaveUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        spotifyPresaveUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Apple Music Presave</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Apple Music Presave
+                  </label>
                   <Input
                     value={formData.appleMusicPresaveUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, appleMusicPresaveUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        appleMusicPresaveUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://music.apple.com/..."
                     type="url"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Spotify Artist URL (para follow)</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Spotify Artist URL (para follow)
+                  </label>
                   <Input
                     value={formData.spotifyArtistUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, spotifyArtistUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        spotifyArtistUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://open.spotify.com/artist/..."
                     type="url"
                   />
@@ -351,7 +438,12 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.downloadGateEnabled}
-                    onChange={(e) => setFormData(prev => ({ ...prev, downloadGateEnabled: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        downloadGateEnabled: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span className="text-sm">Activar</span>
@@ -366,7 +458,8 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                       <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                         <p className="text-sm text-green-500 flex items-center gap-2">
                           <CheckCircle className="w-4 h-4" />
-                          Archivo listo: {formData.downloadFileName || "Archivo configurado"}
+                          Archivo listo:{" "}
+                          {formData.downloadFileName || "Archivo configurado"}
                         </p>
                       </div>
                       <AudioPreviewPlayer
@@ -395,22 +488,34 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   {/* Alternative: Direct URL */}
                   <div className="p-4 bg-slc-card/50 border border-slc-border rounded-lg">
                     <label className="block text-sm text-slc-muted mb-2 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4" />
-                      O pegar URL directa (opcional)
+                      <LinkIcon className="w-4 h-4" />O pegar URL directa
+                      (opcional)
                     </label>
                     <Input
                       value={formData.downloadFileUrl}
-                      onChange={(e) => setFormData(prev => ({ ...prev, downloadFileUrl: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          downloadFileUrl: e.target.value,
+                        }))
+                      }
                       placeholder="https://dl.dropboxusercontent.com/..."
                       type="url"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slc-muted mb-2">Nombre del archivo (opcional)</label>
+                    <label className="block text-sm text-slc-muted mb-2">
+                      Nombre del archivo (opcional)
+                    </label>
                     <Input
                       value={formData.downloadFileName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, downloadFileName: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          downloadFileName: e.target.value,
+                        }))
+                      }
                       placeholder="track.mp3"
                     />
                   </div>
@@ -425,7 +530,8 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                 Video Preview
               </h2>
               <p className="text-sm text-slc-muted mb-4">
-                Agrega un video de YouTube o sube un archivo de video directamente a Dropbox.
+                Agrega un video de YouTube o sube un archivo de video
+                directamente a Dropbox.
               </p>
 
               <div className="space-y-4">
@@ -462,14 +568,21 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                     <input
                       type="checkbox"
                       checked={formData.videoIsVertical}
-                      onChange={(e) => setFormData(prev => ({ ...prev, videoIsVertical: e.target.checked }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          videoIsVertical: e.target.checked,
+                        }))
+                      }
                       className="w-4 h-4 rounded border-slc-border"
                     />
                     <div className="flex items-center gap-2">
                       <Smartphone className="w-4 h-4 text-slc-muted" />
                       <div>
                         <span className="font-medium">Video Vertical</span>
-                        <p className="text-xs text-slc-muted">Activa si es un Short, Reel o TikTok</p>
+                        <p className="text-xs text-slc-muted">
+                          Activa si es un Short, Reel o TikTok
+                        </p>
                       </div>
                     </div>
                   </label>
@@ -482,7 +595,8 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                     Subir Video a Dropbox
                   </label>
                   <p className="text-xs text-slc-muted mb-3">
-                    Sube archivos de video grandes (hasta 2GB) directamente a Dropbox. Ideal para videos que no están en YouTube.
+                    Sube archivos de video grandes (hasta 2GB) directamente a
+                    Dropbox. Ideal para videos que no están en YouTube.
                   </p>
 
                   {/* Current video preview */}
@@ -495,8 +609,8 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                       <video
                         src={formData.previewVideoUrl}
                         controls
-                        className={`w-full rounded-lg ${formData.videoIsVertical ? 'max-w-xs mx-auto' : ''}`}
-                        style={{ maxHeight: '300px' }}
+                        className={`w-full rounded-lg ${formData.videoIsVertical ? "max-w-xs mx-auto" : ""}`}
+                        style={{ maxHeight: "300px" }}
                       >
                         Tu navegador no soporta video HTML5.
                       </video>
@@ -521,12 +635,18 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   </label>
                   <Input
                     value={formData.previewVideoUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, previewVideoUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        previewVideoUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://..."
                     type="url"
                   />
                   <p className="text-xs text-slc-muted mt-1">
-                    Solo si no usas YouTube ni subiste un video. Formatos: MP4, WebM
+                    Solo si no usas YouTube ni subiste un video. Formatos: MP4,
+                    WebM
                   </p>
                 </div>
 
@@ -538,7 +658,12 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   </label>
                   <Input
                     value={formData.previewAudioUrl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, previewAudioUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        previewAudioUrl: e.target.value,
+                      }))
+                    }
                     placeholder="https://..."
                     type="url"
                   />
@@ -551,19 +676,28 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
 
             {/* Requirements */}
             <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
-              <h2 className="font-oswald text-xl uppercase mb-6">Requisitos para Acceder</h2>
+              <h2 className="font-oswald text-xl uppercase mb-6">
+                Requisitos para Acceder
+              </h2>
 
               <div className="space-y-3">
                 <label className="flex items-center gap-3 p-3 bg-slc-card rounded-lg cursor-pointer hover:bg-slc-card/80">
                   <input
                     type="checkbox"
                     checked={formData.requireEmail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requireEmail: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requireEmail: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <div>
                     <span className="font-medium">Requerir Email</span>
-                    <p className="text-xs text-slc-muted">El usuario debe ingresar su email</p>
+                    <p className="text-xs text-slc-muted">
+                      El usuario debe ingresar su email
+                    </p>
                   </div>
                 </label>
 
@@ -571,12 +705,19 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.requireSpotifyFollow}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requireSpotifyFollow: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requireSpotifyFollow: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <div>
                     <span className="font-medium">Seguir en Spotify</span>
-                    <p className="text-xs text-slc-muted">El usuario debe seguir al artista</p>
+                    <p className="text-xs text-slc-muted">
+                      El usuario debe seguir al artista
+                    </p>
                   </div>
                 </label>
 
@@ -584,12 +725,19 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.requireSpotifyPresave}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requireSpotifyPresave: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        requireSpotifyPresave: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <div>
                     <span className="font-medium">Pre-save en Spotify</span>
-                    <p className="text-xs text-slc-muted">El usuario debe hacer presave del lanzamiento</p>
+                    <p className="text-xs text-slc-muted">
+                      El usuario debe hacer presave del lanzamiento
+                    </p>
                   </div>
                 </label>
               </div>
@@ -604,27 +752,48 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha de Inicio</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha de Inicio
+                  </label>
                   <Input
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        startDate: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha de Fin</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha de Fin
+                  </label>
                   <Input
                     type="date"
                     value={formData.endDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        endDate: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha de Lanzamiento</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha de Lanzamiento
+                  </label>
                   <Input
                     type="date"
                     value={formData.releaseDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, releaseDate: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        releaseDate: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               </div>
@@ -633,7 +802,9 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
             {/* Style Settings */}
             <StyleSettingsEditor
               value={formData.styleSettings}
-              onChange={(styleSettings) => setFormData(prev => ({ ...prev, styleSettings }))}
+              onChange={(styleSettings) =>
+                setFormData((prev) => ({ ...prev, styleSettings }))
+              }
             />
           </div>
 
@@ -712,7 +883,12 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isActive: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Campaña Activa</span>
@@ -721,7 +897,12 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                   <input
                     type="checkbox"
                     checked={formData.isFeatured}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isFeatured: e.target.checked,
+                      }))
+                    }
                     className="w-4 h-4 rounded border-slc-border"
                   />
                   <span>Destacar</span>
@@ -729,11 +910,7 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
               </div>
 
               <div className="space-y-3">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (

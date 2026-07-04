@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { useCallback, useEffect } from "react";
 
 interface TrackEventOptions {
   type: "pageview" | "event";
@@ -27,7 +27,10 @@ export async function trackEvent(options: TrackEventOptions): Promise<void> {
 }
 
 // Track a page view
-export function trackPageView(page: string, metadata?: Record<string, unknown>): void {
+export function trackPageView(
+  page: string,
+  metadata?: Record<string, unknown>,
+): void {
   trackEvent({
     type: "pageview",
     page,
@@ -36,7 +39,9 @@ export function trackPageView(page: string, metadata?: Record<string, unknown>):
 }
 
 // Hook to automatically track page views
-export function usePageViewTracking(additionalMetadata?: Record<string, unknown>): void {
+export function usePageViewTracking(
+  additionalMetadata?: Record<string, unknown>,
+): void {
   const pathname = usePathname();
 
   useEffect(() => {
@@ -51,20 +56,23 @@ export function usePageViewTracking(additionalMetadata?: Record<string, unknown>
 
 // Hook for custom event tracking
 export function useEventTracking() {
-  const track = useCallback((
-    event: string,
-    entityType?: string,
-    entityId?: string,
-    metadata?: Record<string, unknown>
-  ) => {
-    trackEvent({
-      type: "event",
-      event,
-      entityType,
-      entityId,
-      metadata,
-    });
-  }, []);
+  const track = useCallback(
+    (
+      event: string,
+      entityType?: string,
+      entityId?: string,
+      metadata?: Record<string, unknown>,
+    ) => {
+      trackEvent({
+        type: "event",
+        event,
+        entityType,
+        entityId,
+        metadata,
+      });
+    },
+    [],
+  );
 
   return { track };
 }
@@ -72,47 +80,53 @@ export function useEventTracking() {
 // Pre-built tracking functions for common events
 export const Analytics = {
   // Press kit events
-  pressKitView: () => trackEvent({
-    type: "event",
-    event: "press_kit_view",
-    entityType: "press",
-  }),
+  pressKitView: () =>
+    trackEvent({
+      type: "event",
+      event: "press_kit_view",
+      entityType: "press",
+    }),
 
-  pressKitDownload: (format: string) => trackEvent({
-    type: "event",
-    event: "press_kit_download",
-    entityType: "press",
-    metadata: { format },
-  }),
+  pressKitDownload: (format: string) =>
+    trackEvent({
+      type: "event",
+      event: "press_kit_download",
+      entityType: "press",
+      metadata: { format },
+    }),
 
-  pressArtistView: (artistSlug: string) => trackEvent({
-    type: "event",
-    event: "press_artist_view",
-    entityType: "artist",
-    entityId: artistSlug,
-  }),
+  pressArtistView: (artistSlug: string) =>
+    trackEvent({
+      type: "event",
+      event: "press_artist_view",
+      entityType: "artist",
+      entityId: artistSlug,
+    }),
 
   // Media release events
-  mediaReleaseView: (releaseSlug: string) => trackEvent({
-    type: "event",
-    event: "media_release_view",
-    entityType: "media_release",
-    entityId: releaseSlug,
-  }),
+  mediaReleaseView: (releaseSlug: string) =>
+    trackEvent({
+      type: "event",
+      event: "media_release_view",
+      entityType: "media_release",
+      entityId: releaseSlug,
+    }),
 
   // Download events
-  assetDownload: (assetType: string, assetId: string) => trackEvent({
-    type: "event",
-    event: "asset_download",
-    entityType: assetType,
-    entityId: assetId,
-  }),
+  assetDownload: (assetType: string, assetId: string) =>
+    trackEvent({
+      type: "event",
+      event: "asset_download",
+      entityType: assetType,
+      entityId: assetId,
+    }),
 
   // Contact events
-  pressContactClick: (contactType: string) => trackEvent({
-    type: "event",
-    event: "press_contact_click",
-    entityType: "contact",
-    metadata: { contactType },
-  }),
+  pressContactClick: (contactType: string) =>
+    trackEvent({
+      type: "event",
+      event: "press_contact_click",
+      entityType: "contact",
+      metadata: { contactType },
+    }),
 };

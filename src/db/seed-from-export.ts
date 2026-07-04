@@ -1,11 +1,11 @@
 import { config } from "dotenv";
 config(); // Load .env file
 
+import fs from "node:fs";
+import path from "node:path";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema";
-import fs from "fs";
-import path from "path";
 
 // ===========================================
 // SEED FROM JSON EXPORT
@@ -77,7 +77,9 @@ async function seedFromExport() {
   const db = drizzle(client, { schema });
 
   // ---- Load JSON export ----
-  const exportPath = process.env.EXPORT_PATH || "/home/z/my-project/upload/sonido-liquido-export-2026-04-03.json";
+  const exportPath =
+    process.env.EXPORT_PATH ||
+    "/home/z/my-project/upload/sonido-liquido-export-2026-04-03.json";
   console.log(`📄 Loading export: ${exportPath}`);
 
   if (!fs.existsSync(exportPath)) {
@@ -87,7 +89,9 @@ async function seedFromExport() {
 
   const rawData = fs.readFileSync(exportPath, "utf-8");
   const data = JSON.parse(rawData);
-  console.log(`✅ Export loaded (version: ${data.version}, exported: ${data.exportedAt})\n`);
+  console.log(
+    `✅ Export loaded (version: ${data.version}, exported: ${data.exportedAt})\n`,
+  );
 
   const counts: Record<string, number> = {};
   const errors: string[] = [];
@@ -355,7 +359,9 @@ async function seedFromExport() {
       isActive: toBool(s.isActive),
       mailchimpId: toStr(s.mailchimpId),
       source: toStr(s.source),
-      subscribedAt: s.subscribedAt ? toDateRequired(s.subscribedAt) : new Date(),
+      subscribedAt: s.subscribedAt
+        ? toDateRequired(s.subscribedAt)
+        : new Date(),
       createdAt: s.createdAt ? toDateRequired(s.createdAt) : new Date(),
       updatedAt: s.updatedAt ? toDateRequired(s.updatedAt) : new Date(),
     }));
@@ -423,7 +429,9 @@ async function seedFromExport() {
     }
     counts.galleryAlbums = albumValues.length;
     counts.galleryPhotos = photoValues.length;
-    console.log(`   ✓ ${albumValues.length} albums, ${photoValues.length} photos`);
+    console.log(
+      `   ✓ ${albumValues.length} albums, ${photoValues.length} photos`,
+    );
   } catch (e: any) {
     errors.push(`gallery: ${e.message}`);
     console.error(`   ❌ ${e.message}`);
@@ -673,7 +681,7 @@ async function seedFromExport() {
   // =============================================
   // SUMMARY
   // =============================================
-  console.log("\n" + "=".repeat(50));
+  console.log(`\n${"=".repeat(50)}`);
   console.log("📊 SEED SUMMARY");
   console.log("=".repeat(50));
   for (const [table, count] of Object.entries(counts)) {

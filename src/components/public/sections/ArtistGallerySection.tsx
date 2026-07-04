@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
-import { Camera, X, ChevronLeft, ChevronRight, Loader2, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Loader2,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 
 // ===========================================
 // Types
@@ -109,9 +116,7 @@ export function ArtistGallerySection({
         const res = await fetch(`/api/gallery?${params}`);
         const data = await res.json();
         if (data.success && data.data) {
-          setItems(
-            data.data.map((p: GalleryPhoto) => normalizeItem(p))
-          );
+          setItems(data.data.map((p: GalleryPhoto) => normalizeItem(p)));
           return;
         }
       }
@@ -136,9 +141,7 @@ export function ArtistGallerySection({
   };
   const prevPhoto = () => {
     if (lightboxIndex !== null) {
-      setLightboxIndex(
-        (lightboxIndex - 1 + items.length) % items.length
-      );
+      setLightboxIndex((lightboxIndex - 1 + items.length) % items.length);
     }
   };
 
@@ -148,10 +151,14 @@ export function ArtistGallerySection({
       if (lightboxIndex === null) return;
       if (e.key === "Escape") setLightboxIndex(null);
       if (e.key === "ArrowRight") {
-        setLightboxIndex((prev) => prev !== null ? (prev + 1) % items.length : null);
+        setLightboxIndex((prev) =>
+          prev !== null ? (prev + 1) % items.length : null,
+        );
       }
       if (e.key === "ArrowLeft") {
-        setLightboxIndex((prev) => prev !== null ? (prev - 1 + items.length) % items.length : null);
+        setLightboxIndex((prev) =>
+          prev !== null ? (prev - 1 + items.length) % items.length : null,
+        );
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -199,15 +206,11 @@ export function ArtistGallerySection({
               "group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card",
               // Make some images span 2 rows for visual interest
               index % 5 === 0 && "md:row-span-2",
-              index % 7 === 3 && "lg:col-span-2"
+              index % 7 === 3 && "lg:col-span-2",
             )}
             style={{
               aspectRatio:
-                index % 5 === 0
-                  ? "3/4"
-                  : index % 7 === 3
-                  ? "16/9"
-                  : "1/1",
+                index % 5 === 0 ? "3/4" : index % 7 === 3 ? "16/9" : "1/1",
             }}
           >
             <Image
@@ -324,18 +327,22 @@ export function ArtistGallerySection({
                   {items[lightboxIndex].displayTitle}
                 </h3>
               )}
-              {"description" in items[lightboxIndex] && (items[lightboxIndex] as GalleryPhoto).description && (
-                <p className="text-white/80 mb-2">
-                  {(items[lightboxIndex] as GalleryPhoto).description}
-                </p>
-              )}
+              {"description" in items[lightboxIndex] &&
+                (items[lightboxIndex] as GalleryPhoto).description && (
+                  <p className="text-white/80 mb-2">
+                    {(items[lightboxIndex] as GalleryPhoto).description}
+                  </p>
+                )}
               <div className="flex items-center justify-center gap-4 text-sm text-white/60">
                 {items[lightboxIndex].displayCredit && (
                   <span>Foto: {items[lightboxIndex].displayCredit}</span>
                 )}
-                {"location" in items[lightboxIndex] && (items[lightboxIndex] as GalleryPhoto).location && (
-                  <span>{(items[lightboxIndex] as GalleryPhoto).location}</span>
-                )}
+                {"location" in items[lightboxIndex] &&
+                  (items[lightboxIndex] as GalleryPhoto).location && (
+                    <span>
+                      {(items[lightboxIndex] as GalleryPhoto).location}
+                    </span>
+                  )}
                 <span>
                   {lightboxIndex + 1} / {items.length}
                 </span>

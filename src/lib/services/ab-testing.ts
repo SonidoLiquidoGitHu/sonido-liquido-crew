@@ -3,8 +3,8 @@
 // ===========================================
 
 import { db } from "@/db/client";
-import { abTests, abTestVariants, abTestEvents } from "@/db/schema";
-import { eq, and, desc, sql, gte } from "drizzle-orm";
+import { abTestEvents, abTestVariants, abTests } from "@/db/schema";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 
 export type VideoTemplate =
   | "countdown"
@@ -57,7 +57,7 @@ class ABTestingService {
    */
   async createVideoTemplateTest(
     name: string,
-    templates: { name: string; key: VideoTemplate; weight?: number }[]
+    templates: { name: string; key: VideoTemplate; weight?: number }[],
   ): Promise<string> {
     // Create the test
     const [test] = await db
@@ -80,7 +80,9 @@ class ABTestingService {
       });
     }
 
-    console.log(`[AB Test] Created test "${name}" with ${templates.length} variants`);
+    console.log(
+      `[AB Test] Created test "${name}" with ${templates.length} variants`,
+    );
     return test.id;
   }
 
@@ -94,8 +96,8 @@ class ABTestingService {
       .where(
         and(
           eq(abTests.testType, "video_template"),
-          eq(abTests.status, "active")
-        )
+          eq(abTests.status, "active"),
+        ),
       )
       .orderBy(desc(abTests.createdAt))
       .limit(1);
@@ -150,7 +152,7 @@ class ABTestingService {
       userAgent?: string;
       engagementTime?: number;
       additionalData?: Record<string, unknown>;
-    }
+    },
   ): Promise<void> {
     await db.insert(abTestEvents).values({
       testId,
@@ -164,8 +166,8 @@ class ABTestingService {
             engagementTime: metadata.engagementTime,
           })
         : metadata?.engagementTime
-        ? JSON.stringify({ engagementTime: metadata.engagementTime })
-        : null,
+          ? JSON.stringify({ engagementTime: metadata.engagementTime })
+          : null,
     });
   }
 
@@ -197,8 +199,8 @@ class ABTestingService {
           .where(
             and(
               eq(abTestEvents.variantId, variant.id),
-              eq(abTestEvents.eventType, "impression")
-            )
+              eq(abTestEvents.eventType, "impression"),
+            ),
           );
 
         const clicks = await db
@@ -207,8 +209,8 @@ class ABTestingService {
           .where(
             and(
               eq(abTestEvents.variantId, variant.id),
-              eq(abTestEvents.eventType, "click")
-            )
+              eq(abTestEvents.eventType, "click"),
+            ),
           );
 
         const conversions = await db
@@ -217,8 +219,8 @@ class ABTestingService {
           .where(
             and(
               eq(abTestEvents.variantId, variant.id),
-              eq(abTestEvents.eventType, "conversion")
-            )
+              eq(abTestEvents.eventType, "conversion"),
+            ),
           );
 
         // Get engagement time from metadata
@@ -228,8 +230,8 @@ class ABTestingService {
           .where(
             and(
               eq(abTestEvents.variantId, variant.id),
-              eq(abTestEvents.eventType, "engagement")
-            )
+              eq(abTestEvents.eventType, "engagement"),
+            ),
           );
 
         let totalEngagementTime = 0;
@@ -254,24 +256,33 @@ class ABTestingService {
           clicks: clickCount,
           conversions: conversionCount,
           engagementTime: totalEngagementTime,
-          clickRate: impressionCount > 0 ? (clickCount / impressionCount) * 100 : 0,
-          conversionRate: impressionCount > 0 ? (conversionCount / impressionCount) * 100 : 0,
+          clickRate:
+            impressionCount > 0 ? (clickCount / impressionCount) * 100 : 0,
+          conversionRate:
+            impressionCount > 0 ? (conversionCount / impressionCount) * 100 : 0,
           isWinning: false,
           confidence: 0,
         };
-      })
+      }),
     );
 
     // Calculate totals
-    const totalImpressions = variantResults.reduce((sum, v) => sum + v.impressions, 0);
-    const totalConversions = variantResults.reduce((sum, v) => sum + v.conversions, 0);
-    const overallConversionRate = totalImpressions > 0
-      ? (totalConversions / totalImpressions) * 100
-      : 0;
+    const totalImpressions = variantResults.reduce(
+      (sum, v) => sum + v.impressions,
+      0,
+    );
+    const totalConversions = variantResults.reduce(
+      (sum, v) => sum + v.conversions,
+      0,
+    );
+    const overallConversionRate =
+      totalImpressions > 0 ? (totalConversions / totalImpressions) * 100 : 0;
 
     // Determine winner (highest conversion rate with minimum sample size)
     const minSampleSize = 30;
-    const qualifiedVariants = variantResults.filter((v) => v.impressions >= minSampleSize);
+    const qualifiedVariants = variantResults.filter(
+      (v) => v.impressions >= minSampleSize,
+    );
 
     let hasWinner = false;
     let winnerVariant: string | undefined;
@@ -284,19 +295,23 @@ class ABTestingService {
       const secondBest = qualifiedVariants[1];
 
       // Calculate statistical significance (simplified z-test)
-      const pooledRate = (best.conversions + secondBest.conversions) /
-                         (best.impressions + secondBest.impressions);
+      const pooledRate =
+        (best.conversions + secondBest.conversions) /
+        (best.impressions + secondBest.impressions);
       const pooledStdErr = Math.sqrt(
-        pooledRate * (1 - pooledRate) *
-        (1 / best.impressions + 1 / secondBest.impressions)
+        pooledRate *
+          (1 - pooledRate) *
+          (1 / best.impressions + 1 / secondBest.impressions),
       );
 
-      const zScore = pooledStdErr > 0
-        ? (best.conversionRate / 100 - secondBest.conversionRate / 100) / pooledStdErr
-        : 0;
+      const zScore =
+        pooledStdErr > 0
+          ? (best.conversionRate / 100 - secondBest.conversionRate / 100) /
+            pooledStdErr
+          : 0;
 
       // 95% confidence = z-score > 1.96
-      const confidence = Math.min(99.9, Math.abs(zScore) / 1.96 * 95);
+      const confidence = Math.min(99.9, (Math.abs(zScore) / 1.96) * 95);
 
       if (confidence >= 95) {
         hasWinner = true;
@@ -345,10 +360,7 @@ class ABTestingService {
    * Get all tests
    */
   async getAllTests(): Promise<(typeof abTests.$inferSelect)[]> {
-    return db
-      .select()
-      .from(abTests)
-      .orderBy(desc(abTests.createdAt));
+    return db.select().from(abTests).orderBy(desc(abTests.createdAt));
   }
 
   /**
@@ -356,7 +368,7 @@ class ABTestingService {
    */
   async getTestStatsByDay(
     testId: string,
-    days: number = 30
+    days = 30,
   ): Promise<
     {
       date: string;
@@ -393,13 +405,16 @@ class ABTestingService {
         .where(
           and(
             eq(abTestEvents.variantId, variant.id),
-            gte(abTestEvents.createdAt, startDate.toISOString())
-          )
+            gte(abTestEvents.createdAt, startDate.toISOString()),
+          ),
         )
         .groupBy(sql`date(${abTestEvents.createdAt})`, abTestEvents.eventType);
 
       // Group by date
-      const byDate: Record<string, { impressions: number; conversions: number }> = {};
+      const byDate: Record<
+        string,
+        { impressions: number; conversions: number }
+      > = {};
 
       for (const event of events) {
         if (!byDate[event.date]) {

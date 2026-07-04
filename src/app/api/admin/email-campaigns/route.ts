@@ -2,11 +2,11 @@
 // EMAIL CAMPAIGNS API
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
-import { mailchimpClient } from "@/lib/clients/mailchimp";
 import { db } from "@/db/client";
 import { emailMarketingCampaigns } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { mailchimpClient } from "@/lib/clients/mailchimp";
+import { desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,10 +16,14 @@ export async function GET(request: NextRequest) {
     let query = db.select().from(emailMarketingCampaigns);
 
     if (releaseId) {
-      query = query.where(eq(emailMarketingCampaigns.releaseId, releaseId)) as typeof query;
+      query = query.where(
+        eq(emailMarketingCampaigns.releaseId, releaseId),
+      ) as typeof query;
     }
 
-    const campaigns = await query.orderBy(desc(emailMarketingCampaigns.createdAt));
+    const campaigns = await query.orderBy(
+      desc(emailMarketingCampaigns.createdAt),
+    );
 
     return NextResponse.json({
       success: true,
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest) {
     console.error("[Email Campaigns API] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching campaigns" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -52,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (!name || !subject || !emailBody || !templateType) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -61,9 +65,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Mailchimp not configured. Set MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, and MAILCHIMP_AUDIENCE_ID.",
+          error:
+            "Mailchimp not configured. Set MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, and MAILCHIMP_AUDIENCE_ID.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -108,7 +113,7 @@ export async function POST(request: NextRequest) {
         releaseId,
         mailchimpCampaignId: result.campaignId,
         status: result.status === "scheduled" ? "scheduled" : "sent",
-        scheduledFor: shouldSchedule ? scheduleTime!.toISOString() : null,
+        scheduledFor: shouldSchedule ? scheduleTime?.toISOString() : null,
         sentAt: result.status === "sent" ? new Date().toISOString() : null,
       })
       .returning();
@@ -133,7 +138,7 @@ export async function POST(request: NextRequest) {
     console.error("[Email Campaigns API] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -156,7 +161,7 @@ export async function OPTIONS() {
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,38 +1,38 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  ListMusic,
-  Plus,
-  Play,
-  Pause,
-  Trash2,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Copy,
+  Download,
+  ExternalLink,
+  Facebook,
   GripVertical,
+  Heart,
+  Image as ImageIcon,
+  Instagram,
+  Link2,
+  ListMusic,
+  Loader2,
+  Music,
+  Pause,
+  Play,
+  Plus,
+  Save,
   Search,
   Share2,
-  Download,
-  Music,
-  User,
-  Save,
-  CheckCircle,
-  Loader2,
-  ExternalLink,
-  Clock,
-  Heart,
-  X,
-  ChevronUp,
-  ChevronDown,
-  Copy,
-  Instagram,
-  Facebook,
-  Check,
-  Link2,
-  Image as ImageIcon,
   Sparkles,
+  Trash2,
+  User,
+  X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 
 interface Track {
   id: string;
@@ -77,9 +77,13 @@ export function UserPlaylistBuilder({
   onSave,
   className = "",
 }: UserPlaylistBuilderProps) {
-  const [playlist, setPlaylist] = useState<Playlist | null>(initialPlaylist || null);
+  const [playlist, setPlaylist] = useState<Playlist | null>(
+    initialPlaylist || null,
+  );
   const [isCreating, setIsCreating] = useState(!initialPlaylist);
-  const [tracks, setTracks] = useState<PlaylistTrack[]>(initialPlaylist?.tracks || []);
+  const [tracks, setTracks] = useState<PlaylistTrack[]>(
+    initialPlaylist?.tracks || [],
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -90,14 +94,18 @@ export function UserPlaylistBuilder({
 
   // Form state
   const [name, setName] = useState(initialPlaylist?.name || "");
-  const [description, setDescription] = useState(initialPlaylist?.description || "");
+  const [description, setDescription] = useState(
+    initialPlaylist?.description || "",
+  );
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerName, setOwnerName] = useState(initialPlaylist?.ownerName || "");
   const [isPublic, setIsPublic] = useState(initialPlaylist?.isPublic ?? true);
 
   // Playback state
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
+    null,
+  );
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
@@ -115,14 +123,16 @@ export function UserPlaylistBuilder({
         .then((res) => res.json())
         .then((data) => {
           if (data.success && data.data?.items) {
-            const tracks: Track[] = data.data.items.map((release: Record<string, unknown>) => ({
-              id: release.id as string,
-              type: "internal" as const,
-              title: release.title as string,
-              artist: (release.artistName as string) || "Sonido Líquido",
-              coverUrl: release.coverImageUrl as string | undefined,
-              spotifyUri: release.spotifyUri as string | undefined,
-            }));
+            const tracks: Track[] = data.data.items.map(
+              (release: Record<string, unknown>) => ({
+                id: release.id as string,
+                type: "internal" as const,
+                title: release.title as string,
+                artist: (release.artistName as string) || "Sonido Líquido",
+                coverUrl: release.coverImageUrl as string | undefined,
+                spotifyUri: release.spotifyUri as string | undefined,
+              }),
+            );
             setPopularTracks(tracks);
           }
         })
@@ -142,20 +152,26 @@ export function UserPlaylistBuilder({
       setIsSearching(true);
       try {
         // Search internal releases
-        const res = await fetch(`/api/releases?search=${encodeURIComponent(searchQuery)}&limit=15`);
+        const res = await fetch(
+          `/api/releases?search=${encodeURIComponent(searchQuery)}&limit=15`,
+        );
         const data = await res.json();
 
         if (data.success && data.data) {
           // Handle both array and object with items
-          const items = Array.isArray(data.data) ? data.data : data.data.items || [];
-          const results: Track[] = items.map((release: Record<string, unknown>) => ({
-            id: release.id as string,
-            type: "internal" as const,
-            title: release.title as string,
-            artist: (release.artistName as string) || "Sonido Líquido",
-            coverUrl: release.coverImageUrl as string | undefined,
-            spotifyUri: release.spotifyUri as string | undefined,
-          }));
+          const items = Array.isArray(data.data)
+            ? data.data
+            : data.data.items || [];
+          const results: Track[] = items.map(
+            (release: Record<string, unknown>) => ({
+              id: release.id as string,
+              type: "internal" as const,
+              title: release.title as string,
+              artist: (release.artistName as string) || "Sonido Líquido",
+              coverUrl: release.coverImageUrl as string | undefined,
+              spotifyUri: release.spotifyUri as string | undefined,
+            }),
+          );
           setSearchResults(results);
         }
       } catch (err) {
@@ -193,7 +209,7 @@ export function UserPlaylistBuilder({
     setTracks((prev) =>
       prev
         .filter((t) => t.id !== trackId)
-        .map((t, i) => ({ ...t, position: i }))
+        .map((t, i) => ({ ...t, position: i })),
     );
   }, []);
 
@@ -204,34 +220,40 @@ export function UserPlaylistBuilder({
       const newIndex = direction === "up" ? index - 1 : index + 1;
       if (newIndex < 0 || newIndex >= newTracks.length) return prev;
 
-      [newTracks[index], newTracks[newIndex]] = [newTracks[newIndex], newTracks[index]];
+      [newTracks[index], newTracks[newIndex]] = [
+        newTracks[newIndex],
+        newTracks[index],
+      ];
       return newTracks.map((t, i) => ({ ...t, position: i }));
     });
   }, []);
 
   // Play preview
-  const playPreview = useCallback((track: PlaylistTrack) => {
-    if (!track.previewUrl && !track.spotifyUri) return;
+  const playPreview = useCallback(
+    (track: PlaylistTrack) => {
+      if (!track.previewUrl && !track.spotifyUri) return;
 
-    if (currentlyPlaying === track.id) {
-      audioElement?.pause();
-      setCurrentlyPlaying(null);
-      return;
-    }
+      if (currentlyPlaying === track.id) {
+        audioElement?.pause();
+        setCurrentlyPlaying(null);
+        return;
+      }
 
-    if (audioElement) {
-      audioElement.pause();
-    }
+      if (audioElement) {
+        audioElement.pause();
+      }
 
-    const previewUrl = track.previewUrl;
-    if (previewUrl) {
-      const audio = new Audio(previewUrl);
-      audio.play();
-      audio.onended = () => setCurrentlyPlaying(null);
-      setAudioElement(audio);
-      setCurrentlyPlaying(track.id);
-    }
-  }, [currentlyPlaying, audioElement]);
+      const previewUrl = track.previewUrl;
+      if (previewUrl) {
+        const audio = new Audio(previewUrl);
+        audio.play();
+        audio.onended = () => setCurrentlyPlaying(null);
+        setAudioElement(audio);
+        setCurrentlyPlaying(track.id);
+      }
+    },
+    [currentlyPlaying, audioElement],
+  );
 
   // Save playlist
   const savePlaylist = async () => {
@@ -368,7 +390,9 @@ export function UserPlaylistBuilder({
         const track = tracks[i];
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const x = (canvas.width - (cols * coverSize + (cols - 1) * gap)) / 2 + col * (coverSize + gap);
+        const x =
+          (canvas.width - (cols * coverSize + (cols - 1) * gap)) / 2 +
+          col * (coverSize + gap);
         const y = startY + row * (coverSize + gap);
 
         // Draw cover background
@@ -396,7 +420,8 @@ export function UserPlaylistBuilder({
       }
 
       // Track list
-      const listStartY = startY + Math.ceil(maxCovers / cols) * (coverSize + gap) + 80;
+      const listStartY =
+        startY + Math.ceil(maxCovers / cols) * (coverSize + gap) + 80;
       ctx.font = "32px sans-serif";
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "left";
@@ -408,7 +433,10 @@ export function UserPlaylistBuilder({
         ctx.fillStyle = "#f97316";
         ctx.fillText(`${i + 1}.`, 100, y);
         ctx.fillStyle = "#ffffff";
-        const truncatedTitle = track.title.length > 30 ? track.title.substring(0, 30) + "..." : track.title;
+        const truncatedTitle =
+          track.title.length > 30
+            ? `${track.title.substring(0, 30)}...`
+            : track.title;
         ctx.fillText(truncatedTitle, 150, y);
         ctx.fillStyle = "#666666";
         ctx.fillText(track.artist, 150, y + 35);
@@ -416,7 +444,11 @@ export function UserPlaylistBuilder({
 
       if (tracks.length > 5) {
         ctx.fillStyle = "#666666";
-        ctx.fillText(`+ ${tracks.length - 5} más...`, 150, listStartY + 5 * 60 + 40);
+        ctx.fillText(
+          `+ ${tracks.length - 5} más...`,
+          150,
+          listStartY + 5 * 60 + 40,
+        );
       }
 
       // CTA
@@ -454,7 +486,12 @@ export function UserPlaylistBuilder({
 
   // Share text for social media
   const getShareText = () => {
-    return `🎵 Mi playlist "${name}" de Sonido Líquido Crew\n\n${tracks.slice(0, 3).map((t, i) => `${i + 1}. ${t.title} - ${t.artist}`).join("\n")}${tracks.length > 3 ? `\n+ ${tracks.length - 3} más...` : ""}\n\n#SonidoLiquido #HipHopMexicano #Playlist`;
+    return `🎵 Mi playlist "${name}" de Sonido Líquido Crew\n\n${tracks
+      .slice(0, 3)
+      .map((t, i) => `${i + 1}. ${t.title} - ${t.artist}`)
+      .join(
+        "\n",
+      )}${tracks.length > 3 ? `\n+ ${tracks.length - 3} más...` : ""}\n\n#SonidoLiquido #HipHopMexicano #Playlist`;
   };
 
   // Copy share text for Instagram/TikTok
@@ -477,7 +514,12 @@ export function UserPlaylistBuilder({
   };
 
   return (
-    <div className={cn("bg-slc-card border border-slc-border rounded-2xl overflow-hidden", className)}>
+    <div
+      className={cn(
+        "bg-slc-card border border-slc-border rounded-2xl overflow-hidden",
+        className,
+      )}
+    >
       {/* Header */}
       <div className="p-6 border-b border-slc-border">
         <div className="flex items-center gap-4">
@@ -633,7 +675,9 @@ export function UserPlaylistBuilder({
                   <p className="text-sm font-medium text-white truncate">
                     {track.title}
                   </p>
-                  <p className="text-xs text-slc-muted truncate">{track.artist}</p>
+                  <p className="text-xs text-slc-muted truncate">
+                    {track.artist}
+                  </p>
                 </div>
 
                 {/* Duration */}
@@ -767,7 +811,9 @@ export function UserPlaylistBuilder({
                   ) : popularTracks.length > 0 ? (
                     <div className="max-h-48 overflow-y-auto divide-y divide-slc-border/50 bg-slc-dark rounded-lg">
                       {popularTracks
-                        .filter((t) => !tracks.some((added) => added.id === t.id))
+                        .filter(
+                          (t) => !tracks.some((added) => added.id === t.id),
+                        )
                         .map((track) => (
                           <button
                             key={track.id}
@@ -825,7 +871,9 @@ export function UserPlaylistBuilder({
         <div className="p-4 border-t border-slc-border bg-slc-dark/50 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slc-muted mb-1">Tu email *</label>
+              <label className="block text-xs text-slc-muted mb-1">
+                Tu email *
+              </label>
               <input
                 type="email"
                 value={ownerEmail}
@@ -835,7 +883,9 @@ export function UserPlaylistBuilder({
               />
             </div>
             <div>
-              <label className="block text-xs text-slc-muted mb-1">Tu nombre</label>
+              <label className="block text-xs text-slc-muted mb-1">
+                Tu nombre
+              </label>
               <input
                 type="text"
                 value={ownerName}
@@ -853,7 +903,9 @@ export function UserPlaylistBuilder({
               onChange={(e) => setIsPublic(e.target.checked)}
               className="w-4 h-4 rounded border-slc-border"
             />
-            <span className="text-sm text-slc-muted">Hacer playlist pública</span>
+            <span className="text-sm text-slc-muted">
+              Hacer playlist pública
+            </span>
           </label>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
@@ -895,7 +947,9 @@ export function UserPlaylistBuilder({
                     <Share2 className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-oswald text-xl uppercase">Compartir Playlist</h3>
+                    <h3 className="font-oswald text-xl uppercase">
+                      Compartir Playlist
+                    </h3>
                     <p className="text-sm text-slc-muted">{name}</p>
                   </div>
                 </div>
@@ -913,7 +967,9 @@ export function UserPlaylistBuilder({
             <div className="p-5 space-y-4">
               {/* Social Share Buttons */}
               <div className="space-y-3">
-                <p className="text-xs text-slc-muted uppercase tracking-wider">Compartir en redes sociales</p>
+                <p className="text-xs text-slc-muted uppercase tracking-wider">
+                  Compartir en redes sociales
+                </p>
 
                 {/* Instagram */}
                 <button
@@ -925,8 +981,12 @@ export function UserPlaylistBuilder({
                     <Instagram className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-white group-hover:text-pink-400 transition-colors">Instagram</p>
-                    <p className="text-xs text-slc-muted">Descarga imagen para Stories/Posts</p>
+                    <p className="font-medium text-white group-hover:text-pink-400 transition-colors">
+                      Instagram
+                    </p>
+                    <p className="text-xs text-slc-muted">
+                      Descarga imagen para Stories/Posts
+                    </p>
                   </div>
                   {generatingImage ? (
                     <Loader2 className="w-5 h-5 text-pink-500 animate-spin" />
@@ -944,8 +1004,12 @@ export function UserPlaylistBuilder({
                     <Facebook className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-white group-hover:text-blue-400 transition-colors">Facebook</p>
-                    <p className="text-xs text-slc-muted">Compartir en tu muro</p>
+                    <p className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                      Facebook
+                    </p>
+                    <p className="text-xs text-slc-muted">
+                      Compartir en tu muro
+                    </p>
                   </div>
                   <ExternalLink className="w-5 h-5 text-slc-muted group-hover:text-blue-400 transition-colors" />
                 </button>
@@ -957,13 +1021,21 @@ export function UserPlaylistBuilder({
                   className="w-full flex items-center gap-4 p-4 bg-white/5 border border-white/20 rounded-xl hover:bg-white/10 transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-black flex items-center justify-center border border-white/20">
-                    <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+                    <svg
+                      className="w-6 h-6 text-white"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
                     </svg>
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-white group-hover:text-white transition-colors">TikTok</p>
-                    <p className="text-xs text-slc-muted">Descarga imagen para videos</p>
+                    <p className="font-medium text-white group-hover:text-white transition-colors">
+                      TikTok
+                    </p>
+                    <p className="text-xs text-slc-muted">
+                      Descarga imagen para videos
+                    </p>
                   </div>
                   {generatingImage ? (
                     <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -975,7 +1047,9 @@ export function UserPlaylistBuilder({
 
               {/* Copy Link */}
               <div className="space-y-3 pt-4 border-t border-slc-border">
-                <p className="text-xs text-slc-muted uppercase tracking-wider">Copiar enlace</p>
+                <p className="text-xs text-slc-muted uppercase tracking-wider">
+                  Copiar enlace
+                </p>
                 <div className="flex gap-2">
                   <div className="flex-1 px-4 py-3 bg-slc-dark border border-slc-border rounded-lg text-sm text-slc-muted truncate">
                     {getShareUrl()}
@@ -983,7 +1057,11 @@ export function UserPlaylistBuilder({
                   <Button
                     onClick={copyShareLink}
                     variant="outline"
-                    className={copiedLink ? "bg-green-500/20 border-green-500/50 text-green-400" : ""}
+                    className={
+                      copiedLink
+                        ? "bg-green-500/20 border-green-500/50 text-green-400"
+                        : ""
+                    }
                   >
                     {copiedLink ? (
                       <Check className="w-4 h-4" />
@@ -996,7 +1074,9 @@ export function UserPlaylistBuilder({
 
               {/* Copy Caption */}
               <div className="space-y-3 pt-4 border-t border-slc-border">
-                <p className="text-xs text-slc-muted uppercase tracking-wider">Texto para caption</p>
+                <p className="text-xs text-slc-muted uppercase tracking-wider">
+                  Texto para caption
+                </p>
                 <div className="p-3 bg-slc-dark border border-slc-border rounded-lg">
                   <p className="text-sm text-slc-muted whitespace-pre-line line-clamp-4">
                     {getShareText()}
@@ -1018,7 +1098,9 @@ export function UserPlaylistBuilder({
                 <div className="flex items-start gap-3">
                   <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-primary mb-1">Tips para compartir</p>
+                    <p className="text-sm font-medium text-primary mb-1">
+                      Tips para compartir
+                    </p>
                     <ul className="text-xs text-slc-muted space-y-1">
                       <li>• Descarga la imagen y súbela a tu historia</li>
                       <li>• Usa los hashtags sugeridos para más alcance</li>

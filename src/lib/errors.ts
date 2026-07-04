@@ -76,7 +76,7 @@ export class AppError extends Error {
     code: ErrorCode = ErrorCode.UNKNOWN_ERROR,
     statusCode = 500,
     context: ErrorContext = {},
-    originalError?: Error
+    originalError?: Error,
   ) {
     super(message);
     this.name = "AppError";
@@ -139,18 +139,27 @@ export class DatabaseError extends AppError {
     message: string,
     code: ErrorCode = ErrorCode.DB_QUERY_FAILED,
     context: ErrorContext = {},
-    originalError?: Error
+    originalError?: Error,
   ) {
-    super(message, code, 500, { ...context, service: "Database" }, originalError);
+    super(
+      message,
+      code,
+      500,
+      { ...context, service: "Database" },
+      originalError,
+    );
     this.name = "DatabaseError";
   }
 
-  static connectionFailed(details?: string, originalError?: Error): DatabaseError {
+  static connectionFailed(
+    details?: string,
+    originalError?: Error,
+  ): DatabaseError {
     return new DatabaseError(
       `Database connection failed${details ? `: ${details}` : ""}. Check DATABASE_URL and DATABASE_AUTH_TOKEN environment variables.`,
       ErrorCode.DB_CONNECTION_FAILED,
       {},
-      originalError
+      originalError,
     );
   }
 
@@ -158,7 +167,7 @@ export class DatabaseError extends AppError {
     return new DatabaseError(
       "Database is not configured. Set DATABASE_URL and DATABASE_AUTH_TOKEN environment variables.",
       ErrorCode.DB_NOT_CONFIGURED,
-      {}
+      {},
     );
   }
 
@@ -166,24 +175,33 @@ export class DatabaseError extends AppError {
     return new DatabaseError(
       `${entityType} not found with identifier: ${identifier}`,
       ErrorCode.DB_RECORD_NOT_FOUND,
-      { entityType, entityId: identifier }
+      { entityType, entityId: identifier },
     );
   }
 
-  static queryFailed(operation: string, entityType: string, details?: string, originalError?: Error): DatabaseError {
+  static queryFailed(
+    operation: string,
+    entityType: string,
+    details?: string,
+    originalError?: Error,
+  ): DatabaseError {
     return new DatabaseError(
       `Failed to ${operation} ${entityType}${details ? `: ${details}` : ""}`,
       ErrorCode.DB_QUERY_FAILED,
       { method: operation, entityType },
-      originalError
+      originalError,
     );
   }
 
-  static duplicateEntry(entityType: string, field: string, value: string): DatabaseError {
+  static duplicateEntry(
+    entityType: string,
+    field: string,
+    value: string,
+  ): DatabaseError {
     return new DatabaseError(
       `${entityType} with ${field} "${value}" already exists`,
       ErrorCode.DB_DUPLICATE_ENTRY,
-      { entityType, additionalData: { field, value } }
+      { entityType, additionalData: { field, value } },
     );
   }
 }
@@ -203,16 +221,27 @@ export class ExternalApiError extends AppError {
     httpStatus?: number,
     responseBody?: unknown,
     context: ErrorContext = {},
-    originalError?: Error
+    originalError?: Error,
   ) {
-    super(message, code, 502, { ...context, service: serviceName }, originalError);
+    super(
+      message,
+      code,
+      502,
+      { ...context, service: serviceName },
+      originalError,
+    );
     this.name = "ExternalApiError";
     this.serviceName = serviceName;
     this.httpStatus = httpStatus;
     this.responseBody = responseBody;
   }
 
-  static spotifyError(operation: string, details?: string, httpStatus?: number, originalError?: Error): ExternalApiError {
+  static spotifyError(
+    operation: string,
+    details?: string,
+    httpStatus?: number,
+    originalError?: Error,
+  ): ExternalApiError {
     return new ExternalApiError(
       "Spotify",
       `Spotify API error during ${operation}${details ? `: ${details}` : ""}`,
@@ -220,11 +249,16 @@ export class ExternalApiError extends AppError {
       httpStatus,
       undefined,
       { method: operation },
-      originalError
+      originalError,
     );
   }
 
-  static youtubeError(operation: string, details?: string, httpStatus?: number, originalError?: Error): ExternalApiError {
+  static youtubeError(
+    operation: string,
+    details?: string,
+    httpStatus?: number,
+    originalError?: Error,
+  ): ExternalApiError {
     return new ExternalApiError(
       "YouTube",
       `YouTube API error during ${operation}${details ? `: ${details}` : ""}`,
@@ -232,11 +266,16 @@ export class ExternalApiError extends AppError {
       httpStatus,
       undefined,
       { method: operation },
-      originalError
+      originalError,
     );
   }
 
-  static dropboxError(operation: string, details?: string, httpStatus?: number, originalError?: Error): ExternalApiError {
+  static dropboxError(
+    operation: string,
+    details?: string,
+    httpStatus?: number,
+    originalError?: Error,
+  ): ExternalApiError {
     return new ExternalApiError(
       "Dropbox",
       `Dropbox API error during ${operation}${details ? `: ${details}` : ""}`,
@@ -244,18 +283,21 @@ export class ExternalApiError extends AppError {
       httpStatus,
       undefined,
       { method: operation },
-      originalError
+      originalError,
     );
   }
 
-  static rateLimited(serviceName: string, retryAfter?: number): ExternalApiError {
+  static rateLimited(
+    serviceName: string,
+    retryAfter?: number,
+  ): ExternalApiError {
     return new ExternalApiError(
       serviceName,
       `${serviceName} API rate limit exceeded${retryAfter ? `. Retry after ${retryAfter} seconds` : ""}`,
       ErrorCode.API_RATE_LIMITED,
       429,
       undefined,
-      { additionalData: { retryAfter } }
+      { additionalData: { retryAfter } },
     );
   }
 
@@ -264,18 +306,22 @@ export class ExternalApiError extends AppError {
       serviceName,
       `${serviceName} API authentication failed. Check API credentials.`,
       ErrorCode.API_UNAUTHORIZED,
-      401
+      401,
     );
   }
 
-  static notFound(serviceName: string, resourceType: string, resourceId: string): ExternalApiError {
+  static notFound(
+    serviceName: string,
+    resourceType: string,
+    resourceId: string,
+  ): ExternalApiError {
     return new ExternalApiError(
       serviceName,
       `${resourceType} not found on ${serviceName}: ${resourceId}`,
       ErrorCode.API_NOT_FOUND,
       404,
       undefined,
-      { entityType: resourceType, entityId: resourceId }
+      { entityType: resourceType, entityId: resourceId },
     );
   }
 }
@@ -291,7 +337,7 @@ export class ValidationError extends AppError {
     message: string,
     field?: string,
     validationErrors?: Record<string, string[]>,
-    context: ErrorContext = {}
+    context: ErrorContext = {},
   ) {
     super(message, ErrorCode.VALIDATION_FAILED, 400, context);
     this.name = "ValidationError";
@@ -300,17 +346,11 @@ export class ValidationError extends AppError {
   }
 
   static invalidInput(field: string, message: string): ValidationError {
-    return new ValidationError(
-      `Invalid value for ${field}: ${message}`,
-      field
-    );
+    return new ValidationError(`Invalid value for ${field}: ${message}`, field);
   }
 
   static missingRequired(field: string): ValidationError {
-    return new ValidationError(
-      `Missing required field: ${field}`,
-      field
-    );
+    return new ValidationError(`Missing required field: ${field}`, field);
   }
 
   static schemaValidation(errors: Record<string, string[]>): ValidationError {
@@ -320,7 +360,7 @@ export class ValidationError extends AppError {
     return new ValidationError(
       `Validation failed: ${fieldErrors}`,
       undefined,
-      errors
+      errors,
     );
   }
 }
@@ -329,12 +369,16 @@ export class ValidationError extends AppError {
  * Resource not found error
  */
 export class NotFoundError extends AppError {
-  constructor(entityType: string, identifier: string, context: ErrorContext = {}) {
+  constructor(
+    entityType: string,
+    identifier: string,
+    context: ErrorContext = {},
+  ) {
     super(
       `${entityType} not found: ${identifier}`,
       ErrorCode.RESOURCE_NOT_FOUND,
       404,
-      { ...context, entityType, entityId: identifier }
+      { ...context, entityType, entityId: identifier },
     );
     this.name = "NotFoundError";
   }
@@ -351,7 +395,10 @@ export const errorLogger = {
   /**
    * Log error with full context
    */
-  log(error: Error | AppError, additionalContext?: Record<string, unknown>): void {
+  log(
+    error: Error | AppError,
+    additionalContext?: Record<string, unknown>,
+  ): void {
     const timestamp = new Date().toISOString();
     const isAppError = error instanceof AppError;
 
@@ -373,7 +420,9 @@ export const errorLogger = {
     if (isAppError) {
       console.error(`\n[ERROR] ${(error as AppError).toLogFormat()}`);
       if ((error as AppError).originalError) {
-        console.error(`  Original Error: ${(error as AppError).originalError?.message}`);
+        console.error(
+          `  Original Error: ${(error as AppError).originalError?.message}`,
+        );
       }
     } else {
       console.error(`\n[ERROR] ${error.name}: ${error.message}`);
@@ -397,7 +446,10 @@ export const errorLogger = {
    */
   info(message: string, context?: Record<string, unknown>): void {
     if (process.env.NODE_ENV === "development") {
-      console.info(`\n[INFO] ${message}`, context ? JSON.stringify(context) : "");
+      console.info(
+        `\n[INFO] ${message}`,
+        context ? JSON.stringify(context) : "",
+      );
     }
   },
 
@@ -432,10 +484,9 @@ export const errorLogger = {
 /**
  * Wrap async functions with error handling
  */
-export function withErrorHandling<T extends (...args: unknown[]) => Promise<unknown>>(
-  fn: T,
-  context: ErrorContext
-): T {
+export function withErrorHandling<
+  T extends (...args: unknown[]) => Promise<unknown>,
+>(fn: T, context: ErrorContext): T {
   return (async (...args: Parameters<T>) => {
     try {
       return await fn(...args);
@@ -447,7 +498,7 @@ export function withErrorHandling<T extends (...args: unknown[]) => Promise<unkn
           error.code,
           error.statusCode,
           { ...error.context, ...context },
-          error.originalError
+          error.originalError,
         );
         throw mergedError;
       }
@@ -457,7 +508,7 @@ export function withErrorHandling<T extends (...args: unknown[]) => Promise<unkn
         ErrorCode.UNKNOWN_ERROR,
         500,
         context,
-        error as Error
+        error as Error,
       );
 
       throw wrappedError;
@@ -505,7 +556,7 @@ export function isErrorCode(error: unknown, code: ErrorCode): boolean {
  */
 export function createErrorResponse(
   error: Error | AppError | unknown,
-  defaultMessage = "An unexpected error occurred"
+  defaultMessage = "An unexpected error occurred",
 ): {
   success: false;
   error: {

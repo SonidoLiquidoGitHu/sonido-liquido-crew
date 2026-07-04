@@ -1,31 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  ListMusic,
-  Play,
-  Pause,
-  Heart,
-  Share2,
-  Clock,
-  User,
-  Users,
-  Music,
-  ArrowLeft,
-  Loader2,
-  ExternalLink,
-  Copy,
-  Check,
-  Calendar,
-  Code,
-  X,
-  UserPlus,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
 import { SafeImage } from "@/components/ui/safe-image";
+import { cn } from "@/lib/utils";
+import {
+  ArrowLeft,
+  Calendar,
+  Check,
+  Clock,
+  Code,
+  Copy,
+  ExternalLink,
+  Heart,
+  ListMusic,
+  Loader2,
+  Music,
+  Pause,
+  Play,
+  Share2,
+  User,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Track {
   id: string;
@@ -78,30 +78,31 @@ export default function PlaylistPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
-  const [embedCopied, setEmbedCopied] = useState<"iframe" | "html" | null>(null);
+  const [embedCopied, setEmbedCopied] = useState<"iframe" | "html" | null>(
+    null,
+  );
 
   useEffect(() => {
+    async function fetchPlaylist() {
+      try {
+        const res = await fetch(`/api/community/playlists?slug=${slug}`);
+        const data = await res.json();
+
+        if (data.success) {
+          setPlaylist(data.data);
+          // Increment play count
+          incrementPlayCount(data.data.id);
+        } else {
+          setError(data.error || "Playlist no encontrada");
+        }
+      } catch (err) {
+        setError("Error al cargar playlist");
+      } finally {
+        setLoading(false);
+      }
+    }
     fetchPlaylist();
   }, [slug]);
-
-  async function fetchPlaylist() {
-    try {
-      const res = await fetch(`/api/community/playlists?slug=${slug}`);
-      const data = await res.json();
-
-      if (data.success) {
-        setPlaylist(data.data);
-        // Increment play count
-        incrementPlayCount(data.data.id);
-      } else {
-        setError(data.error || "Playlist no encontrada");
-      }
-    } catch (err) {
-      setError("Error al cargar playlist");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function incrementPlayCount(id: string) {
     try {
@@ -125,7 +126,10 @@ export default function PlaylistPage() {
 
   function getTotalDuration() {
     if (!playlist) return "0:00";
-    const total = playlist.tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
+    const total = playlist.tracks.reduce(
+      (acc, t) => acc + (t.duration || 0),
+      0,
+    );
     const mins = Math.floor(total / 60);
     if (mins >= 60) {
       const hours = Math.floor(mins / 60);
@@ -253,7 +257,10 @@ export default function PlaylistPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="w-4 h-4 text-slc-muted" />
                   <span className="text-sm text-slc-muted">
-                    Colaboradores: {playlist.collaborators.map(c => c.name || c.email.split("@")[0]).join(", ")}
+                    Colaboradores:{" "}
+                    {playlist.collaborators
+                      .map((c) => c.name || c.email.split("@")[0])
+                      .join(", ")}
                   </span>
                 </div>
               )}
@@ -325,7 +332,7 @@ export default function PlaylistPage() {
                     if (track.spotifyUri) {
                       window.open(
                         `https://open.spotify.com/track/${track.spotifyUri.replace("spotify:track:", "")}`,
-                        "_blank"
+                        "_blank",
                       );
                     }
                   }}
@@ -341,7 +348,8 @@ export default function PlaylistPage() {
         <div className="section-container">
           <p className="text-center text-xs text-slc-muted flex items-center justify-center gap-2">
             <Calendar className="w-3 h-3" />
-            Creada el {new Date(playlist.createdAt).toLocaleDateString("es-MX", {
+            Creada el{" "}
+            {new Date(playlist.createdAt).toLocaleDateString("es-MX", {
               day: "numeric",
               month: "long",
               year: "numeric",
@@ -359,14 +367,18 @@ export default function PlaylistPage() {
                 <Code className="w-5 h-5 text-purple-500" />
                 Embed Widget
               </h2>
-              <button onClick={() => setShowEmbedModal(false)} className="text-slc-muted hover:text-white">
+              <button
+                onClick={() => setShowEmbedModal(false)}
+                className="text-slc-muted hover:text-white"
+              >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <div className="p-6 space-y-6">
               <p className="text-sm text-slc-muted">
-                Comparte esta playlist en tu sitio web copiando el código de abajo.
+                Comparte esta playlist en tu sitio web copiando el código de
+                abajo.
               </p>
 
               {/* Preview */}
@@ -379,16 +391,19 @@ export default function PlaylistPage() {
                   width="100%"
                   height="300"
                   className="border-0"
+                  title={`Reproductor de ${playlist.name}`}
                 />
               </div>
 
               {/* iFrame Code */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">iFrame (recomendado)</label>
+                  <label className="text-sm font-medium">
+                    iFrame (recomendado)
+                  </label>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(playlist.embedCode!.iframe);
+                      navigator.clipboard.writeText(playlist.embedCode?.iframe || "");
                       setEmbedCopied("iframe");
                       setTimeout(() => setEmbedCopied(null), 2000);
                     }}
@@ -418,7 +433,7 @@ export default function PlaylistPage() {
                   <label className="text-sm font-medium">Widget Script</label>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(playlist.embedCode!.html);
+                      navigator.clipboard.writeText(playlist.embedCode?.html || "");
                       setEmbedCopied("html");
                       setTimeout(() => setEmbedCopied(null), 2000);
                     }}
@@ -445,16 +460,20 @@ export default function PlaylistPage() {
               {/* Options */}
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="text-slc-muted">Opciones de URL:</span>
-                <code className="px-2 py-1 bg-slc-dark rounded">?theme=dark</code>
-                <code className="px-2 py-1 bg-slc-dark rounded">?theme=light</code>
-                <code className="px-2 py-1 bg-slc-dark rounded">?compact=true</code>
+                <code className="px-2 py-1 bg-slc-dark rounded">
+                  ?theme=dark
+                </code>
+                <code className="px-2 py-1 bg-slc-dark rounded">
+                  ?theme=light
+                </code>
+                <code className="px-2 py-1 bg-slc-dark rounded">
+                  ?compact=true
+                </code>
               </div>
             </div>
 
             <div className="p-4 border-t border-slc-border flex justify-end">
-              <Button onClick={() => setShowEmbedModal(false)}>
-                Cerrar
-              </Button>
+              <Button onClick={() => setShowEmbedModal(false)}>Cerrar</Button>
             </div>
           </div>
         </div>
@@ -487,7 +506,7 @@ function TrackRow({
       onClick={onClick}
       className={cn(
         "group grid grid-cols-[auto_1fr_auto] md:grid-cols-[40px_1fr_1fr_80px] gap-4 px-4 py-3 hover:bg-slc-dark/50 transition-colors cursor-pointer",
-        isPlaying && "bg-purple-500/10"
+        isPlaying && "bg-purple-500/10",
       )}
     >
       {/* Number / Play */}
@@ -496,7 +515,7 @@ function TrackRow({
         <Play
           className={cn(
             "w-4 h-4 hidden group-hover:block",
-            isPlaying ? "text-purple-500" : "text-white"
+            isPlaying ? "text-purple-500" : "text-white",
           )}
           fill="currentColor"
         />
@@ -524,7 +543,7 @@ function TrackRow({
           <p
             className={cn(
               "font-medium truncate",
-              isPlaying ? "text-purple-400" : "text-white"
+              isPlaying ? "text-purple-400" : "text-white",
             )}
           >
             {track.title}

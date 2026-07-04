@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Dropbox OAuth credentials - trim to remove any accidental whitespace
 const DROPBOX_APP_KEY = (process.env.DROPBOX_APP_KEY || "").trim();
@@ -14,12 +14,18 @@ export async function GET(request: NextRequest) {
   // Check if OAuth credentials are configured
   if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET) {
     console.error("[Dropbox OAuth] Missing credentials");
-    console.error("[Dropbox OAuth] DROPBOX_APP_KEY:", DROPBOX_APP_KEY ? "set" : "missing");
-    console.error("[Dropbox OAuth] DROPBOX_APP_SECRET:", DROPBOX_APP_SECRET ? "set" : "missing");
+    console.error(
+      "[Dropbox OAuth] DROPBOX_APP_KEY:",
+      DROPBOX_APP_KEY ? "set" : "missing",
+    );
+    console.error(
+      "[Dropbox OAuth] DROPBOX_APP_SECRET:",
+      DROPBOX_APP_SECRET ? "set" : "missing",
+    );
 
     // Redirect to sync page with error instead of returning JSON
     return NextResponse.redirect(
-      `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Credenciales de Dropbox no configuradas. Contacta al administrador para configurar DROPBOX_APP_KEY y DROPBOX_APP_SECRET en Netlify.")}`
+      `${adminSyncUrl}?dropbox_error=${encodeURIComponent("Credenciales de Dropbox no configuradas. Contacta al administrador para configurar DROPBOX_APP_KEY y DROPBOX_APP_SECRET en Netlify.")}`,
     );
   }
 
@@ -29,7 +35,10 @@ export async function GET(request: NextRequest) {
 
   console.log("[Dropbox OAuth] Starting OAuth flow");
   console.log("[Dropbox OAuth] Redirect URI:", redirectUri);
-  console.log("[Dropbox OAuth] App Key:", DROPBOX_APP_KEY ? DROPBOX_APP_KEY.substring(0, 4) + "..." : "NOT SET");
+  console.log(
+    "[Dropbox OAuth] App Key:",
+    DROPBOX_APP_KEY ? `${DROPBOX_APP_KEY.substring(0, 4)}...` : "NOT SET",
+  );
 
   // Generate state for CSRF protection
   const state = Math.random().toString(36).substring(2, 15);

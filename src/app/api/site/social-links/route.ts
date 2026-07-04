@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { siteSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 export const revalidate = 300; // Cache for 5 minutes
 
@@ -39,14 +39,10 @@ export async function GET() {
       allSettings.find((s) => s.key === key)?.value;
 
     const data = {
-      spotifyUrl:
-        getSetting("spotify_playlist_url") || defaults.spotifyUrl,
-      youtubeUrl:
-        getSetting("youtube_channel_url") || defaults.youtubeUrl,
-      instagramUrl:
-        getSetting("instagram_url") || defaults.instagramUrl,
-      facebookUrl:
-        getSetting("facebook_url") || defaults.facebookUrl,
+      spotifyUrl: getSetting("spotify_playlist_url") || defaults.spotifyUrl,
+      youtubeUrl: getSetting("youtube_channel_url") || defaults.youtubeUrl,
+      instagramUrl: getSetting("instagram_url") || defaults.instagramUrl,
+      facebookUrl: getSetting("facebook_url") || defaults.facebookUrl,
     };
 
     return NextResponse.json({ success: true, data });

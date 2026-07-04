@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Mail, Gift, Download, Loader2, Check, Music2 } from "lucide-react";
+import { Check, Download, Gift, Loader2, Mail, Music2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface NewsletterSettings {
   popupTitle: string;
@@ -153,7 +153,8 @@ export default function NewsletterPopup() {
 
               {/* Description */}
               <p className="text-zinc-400 text-center text-sm mb-6">
-                {settings?.popupDescription || "Get exclusive updates, new releases, and special content delivered to your inbox."}
+                {settings?.popupDescription ||
+                  "Get exclusive updates, new releases, and special content delivered to your inbox."}
               </p>
 
               {/* Reward teaser */}

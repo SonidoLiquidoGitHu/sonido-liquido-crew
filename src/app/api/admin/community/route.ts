@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { fanWallMessages, concertMemories, siteSettings } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { concertMemories, fanWallMessages, siteSettings } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface EmailSettings {
   sendApprovalEmail: boolean;
@@ -19,10 +19,12 @@ async function getEmailSettings(): Promise<EmailSettings> {
   const defaultSettings: EmailSettings = {
     sendApprovalEmail: true,
     emailSubject: "¡Tu mensaje ha sido publicado en Sonido Líquido!",
-    emailMessage: "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
+    emailMessage:
+      "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
     includeReward: false,
     rewardTitle: "Regalo sorpresa",
-    rewardDescription: "Como agradecimiento, aquí tienes una descarga exclusiva:",
+    rewardDescription:
+      "Como agradecimiento, aquí tienes una descarga exclusiva:",
     rewardDownloadUrl: "",
     rewardFileName: "",
   };
@@ -50,13 +52,18 @@ async function sendApprovalEmail(
   recipientName: string,
   settings: EmailSettings,
   contentType: "message" | "memory",
-  contentData?: { imageUrl?: string; caption?: string; message?: string }
+  contentData?: { imageUrl?: string; caption?: string; message?: string },
 ): Promise<boolean> {
   try {
     // Try to use Mailchimp transactional or Resend
     // For now, we'll use a simple email API call
 
-    const emailHtml = generateApprovalEmailHtml(recipientName, settings, contentType, contentData);
+    const emailHtml = generateApprovalEmailHtml(
+      recipientName,
+      settings,
+      contentType,
+      contentData,
+    );
 
     // Check if we have Mailchimp configured
     const mailchimpKey = process.env.MAILCHIMP_API_KEY;
@@ -79,7 +86,9 @@ async function sendApprovalEmail(
     console.log(`  Name: ${recipientName}`);
     console.log(`  Content Type: ${contentType}`);
     if (settings.includeReward && settings.rewardDownloadUrl) {
-      console.log(`  Reward: ${settings.rewardTitle} - ${settings.rewardDownloadUrl}`);
+      console.log(
+        `  Reward: ${settings.rewardTitle} - ${settings.rewardDownloadUrl}`,
+      );
     }
 
     return true;
@@ -94,7 +103,7 @@ function generateApprovalEmailHtml(
   recipientName: string,
   settings: EmailSettings,
   contentType: "message" | "memory",
-  contentData?: { imageUrl?: string; caption?: string; message?: string }
+  contentData?: { imageUrl?: string; caption?: string; message?: string },
 ): string {
   const contentTypeLabel = contentType === "message" ? "mensaje" : "foto";
   const isPhoto = contentType === "memory";
@@ -193,7 +202,10 @@ function generateApprovalEmailHtml(
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: true, data: { messages: [], memories: [] } });
+      return NextResponse.json({
+        success: true,
+        data: { messages: [], memories: [] },
+      });
     }
 
     const { searchParams } = new URL(request.url);
@@ -210,12 +222,18 @@ export async function GET(request: NextRequest) {
       let query = db.select().from(fanWallMessages);
 
       if (status === "pending") {
-        query = query.where(eq(fanWallMessages.isApproved, false)) as typeof query;
+        query = query.where(
+          eq(fanWallMessages.isApproved, false),
+        ) as typeof query;
       } else if (status === "approved") {
-        query = query.where(eq(fanWallMessages.isApproved, true)) as typeof query;
+        query = query.where(
+          eq(fanWallMessages.isApproved, true),
+        ) as typeof query;
       }
 
-      data.messages = await query.orderBy(desc(fanWallMessages.createdAt)).limit(100);
+      data.messages = await query
+        .orderBy(desc(fanWallMessages.createdAt))
+        .limit(100);
     }
 
     // Fetch concert memories
@@ -223,12 +241,18 @@ export async function GET(request: NextRequest) {
       let query = db.select().from(concertMemories);
 
       if (status === "pending") {
-        query = query.where(eq(concertMemories.isApproved, false)) as typeof query;
+        query = query.where(
+          eq(concertMemories.isApproved, false),
+        ) as typeof query;
       } else if (status === "approved") {
-        query = query.where(eq(concertMemories.isApproved, true)) as typeof query;
+        query = query.where(
+          eq(concertMemories.isApproved, true),
+        ) as typeof query;
       }
 
-      data.memories = await query.orderBy(desc(concertMemories.createdAt)).limit(100);
+      data.memories = await query
+        .orderBy(desc(concertMemories.createdAt))
+        .limit(100);
     }
 
     return NextResponse.json({ success: true, data });
@@ -236,7 +260,7 @@ export async function GET(request: NextRequest) {
     console.error("[Admin Community] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar contenido" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -247,7 +271,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -257,14 +281,15 @@ export async function PUT(request: NextRequest) {
     if (!type || !id || !action) {
       return NextResponse.json(
         { success: false, error: "Tipo, ID y acción son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const now = new Date();
     let recipientName = "";
     let shouldSendEmail = false;
-    let contentData: { imageUrl?: string; caption?: string; message?: string } = {};
+    let contentData: { imageUrl?: string; caption?: string; message?: string } =
+      {};
 
     // Handle fan wall messages
     if (type === "message") {
@@ -299,7 +324,7 @@ export async function PUT(request: NextRequest) {
         default:
           return NextResponse.json(
             { success: false, error: "Acción no válida" },
-            { status: 400 }
+            { status: 400 },
           );
       }
 
@@ -357,7 +382,7 @@ export async function PUT(request: NextRequest) {
         default:
           return NextResponse.json(
             { success: false, error: "Acción no válida" },
-            { status: 400 }
+            { status: 400 },
           );
       }
 
@@ -395,7 +420,7 @@ export async function PUT(request: NextRequest) {
           recipientName,
           emailSettings,
           type as "message" | "memory",
-          contentData
+          contentData,
         );
       }
     }
@@ -405,7 +430,7 @@ export async function PUT(request: NextRequest) {
     console.error("[Admin Community] Error moderating:", error);
     return NextResponse.json(
       { success: false, error: "Error al moderar contenido" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -416,7 +441,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -427,7 +452,7 @@ export async function DELETE(request: NextRequest) {
     if (!type || !id) {
       return NextResponse.json(
         { success: false, error: "Tipo y ID son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -446,7 +471,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Admin Community] Error deleting:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar contenido" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

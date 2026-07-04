@@ -1,14 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { concertMemories, trustedContributors } from "@/db/schema";
-import { eq, and, desc, or, sql } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { and, desc, eq, or, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Helper function to check if a user is trusted for photos
 async function checkTrustedContributorForPhotos(
   email?: string | null,
-  instagram?: string | null
-): Promise<{ trusted: boolean; autoApprove: boolean; autoFeature: boolean } | null> {
+  instagram?: string | null,
+): Promise<{
+  trusted: boolean;
+  autoApprove: boolean;
+  autoFeature: boolean;
+} | null> {
   if (!email && !instagram) {
     return null;
   }
@@ -20,8 +24,8 @@ async function checkTrustedContributorForPhotos(
       conditions.push(
         and(
           eq(trustedContributors.identifierType, "email"),
-          eq(trustedContributors.identifierValue, email.toLowerCase().trim())
-        )
+          eq(trustedContributors.identifierValue, email.toLowerCase().trim()),
+        ),
       );
     }
 
@@ -30,8 +34,8 @@ async function checkTrustedContributorForPhotos(
       conditions.push(
         and(
           eq(trustedContributors.identifierType, "instagram"),
-          eq(trustedContributors.identifierValue, cleanInstagram)
-        )
+          eq(trustedContributors.identifierValue, cleanInstagram),
+        ),
       );
     }
 
@@ -41,8 +45,8 @@ async function checkTrustedContributorForPhotos(
       .where(
         and(
           eq(trustedContributors.isActive, true),
-          conditions.length > 1 ? or(...conditions) : conditions[0]
-        )
+          conditions.length > 1 ? or(...conditions) : conditions[0],
+        ),
       )
       .limit(1);
 
@@ -80,7 +84,7 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get("eventId");
     const artistId = searchParams.get("artistId");
     const featured = searchParams.get("featured");
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const limit = Number.parseInt(searchParams.get("limit") || "50", 10);
 
     // Build conditions
     const conditions = [
@@ -100,7 +104,10 @@ export async function GET(request: NextRequest) {
       .select()
       .from(concertMemories)
       .where(and(...conditions))
-      .orderBy(desc(concertMemories.isFeatured), desc(concertMemories.createdAt))
+      .orderBy(
+        desc(concertMemories.isFeatured),
+        desc(concertMemories.createdAt),
+      )
       .limit(limit);
 
     return NextResponse.json({ success: true, data: memories });
@@ -108,7 +115,7 @@ export async function GET(request: NextRequest) {
     console.error("[Concert Memories] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar fotos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -119,7 +126,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -127,7 +134,9 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File | null;
     const submitterName = formData.get("submitterName") as string;
     const submitterEmail = formData.get("submitterEmail") as string | null;
-    const submitterInstagram = formData.get("submitterInstagram") as string | null;
+    const submitterInstagram = formData.get("submitterInstagram") as
+      | string
+      | null;
     const eventId = formData.get("eventId") as string | null;
     const eventName = formData.get("eventName") as string | null;
     const eventVenue = formData.get("eventVenue") as string | null;
@@ -137,7 +146,7 @@ export async function POST(request: NextRequest) {
     if (!file || !submitterName?.trim()) {
       return NextResponse.json(
         { success: false, error: "Foto y nombre son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -145,7 +154,7 @@ export async function POST(request: NextRequest) {
     if (!file.type.startsWith("image/")) {
       return NextResponse.json(
         { success: false, error: "Solo se permiten imágenes" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -153,7 +162,7 @@ export async function POST(request: NextRequest) {
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
         { success: false, error: "La imagen no puede superar 10MB" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -166,7 +175,7 @@ export async function POST(request: NextRequest) {
       if (!isConfigured) {
         return NextResponse.json(
           { success: false, error: "Dropbox no está configurado" },
-          { status: 503 }
+          { status: 503 },
         );
       }
 
@@ -181,14 +190,17 @@ export async function POST(request: NextRequest) {
       console.error("[Concert Memories] Upload error:", uploadError);
       return NextResponse.json(
         { success: false, error: "Error al subir la imagen" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     const id = generateUUID();
 
     // Check if user is a trusted contributor for auto-approval
-    const trustedStatus = await checkTrustedContributorForPhotos(submitterEmail, submitterInstagram);
+    const trustedStatus = await checkTrustedContributorForPhotos(
+      submitterEmail,
+      submitterInstagram,
+    );
     const isAutoApproved = trustedStatus?.autoApprove ?? false;
     const isAutoFeatured = trustedStatus?.autoFeature ?? false;
 
@@ -198,7 +210,8 @@ export async function POST(request: NextRequest) {
         id,
         submitterName: submitterName.trim(),
         submitterEmail: submitterEmail?.trim() || null,
-        submitterInstagram: submitterInstagram?.trim()?.replace("@", "") || null,
+        submitterInstagram:
+          submitterInstagram?.trim()?.replace("@", "") || null,
         eventId: eventId || null,
         eventName: eventName?.trim() || null,
         eventVenue: eventVenue?.trim() || null,
@@ -213,7 +226,9 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    console.log(`[Concert Memories] New submission: ${id} by ${submitterName} (auto-approved: ${isAutoApproved}, trusted: ${trustedStatus?.trusted ?? false})`);
+    console.log(
+      `[Concert Memories] New submission: ${id} by ${submitterName} (auto-approved: ${isAutoApproved}, trusted: ${trustedStatus?.trusted ?? false})`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -227,7 +242,7 @@ export async function POST(request: NextRequest) {
     console.error("[Concert Memories] Error submitting:", error);
     return NextResponse.json(
       { success: false, error: "Error al enviar la foto" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

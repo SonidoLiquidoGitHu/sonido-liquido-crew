@@ -1,7 +1,7 @@
-import { db, isDatabaseConfigured } from "@/db/client";
-import { verticalVideos, verticalVideoTags, tags, artists } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
 import { TikTokFeed } from "@/components/public/sections/TikTokFeed";
+import { db, isDatabaseConfigured } from "@/db/client";
+import { artists, tags, verticalVideoTags, verticalVideos } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
 
 export const metadata = {
   title: "Reels Feed | Sonido Líquido Crew",
@@ -37,10 +37,7 @@ async function getReelsData() {
       .from(verticalVideos)
       .leftJoin(artists, eq(verticalVideos.artistId, artists.id))
       .where(eq(verticalVideos.isPublished, true))
-      .orderBy(
-        desc(verticalVideos.isFeatured),
-        desc(verticalVideos.createdAt)
-      );
+      .orderBy(desc(verticalVideos.isFeatured), desc(verticalVideos.createdAt));
 
     // Fetch tags for each video
     const videosWithTags = await Promise.all(
@@ -55,7 +52,7 @@ async function getReelsData() {
           ...video,
           tags: videoTagRows.map((row) => row.tag),
         };
-      })
+      }),
     );
 
     return videosWithTags;

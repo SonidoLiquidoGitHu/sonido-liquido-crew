@@ -18,64 +18,82 @@ export const ROSTER_ARTIST_IDS = [
 ];
 
 // Artist metadata with social links
-export const ARTIST_SOCIAL_LINKS: Record<string, { instagram?: string; youtube?: string }> = {
-  "2jJmTEMkGQfH3BxoG3MQvF": { // Brez
+export const ARTIST_SOCIAL_LINKS: Record<
+  string,
+  { instagram?: string; youtube?: string }
+> = {
+  "2jJmTEMkGQfH3BxoG3MQvF": {
+    // Brez
     instagram: "https://www.instagram.com/brez_idc",
     youtube: "https://youtube.com/@brezhiphopmexicoslc25",
   },
-  "4fNQqyvcM71IyF2EitEtCj": { // Bruno Grasso
+  "4fNQqyvcM71IyF2EitEtCj": {
+    // Bruno Grasso
     instagram: "https://www.instagram.com/brunograssosl",
     youtube: "https://youtube.com/@brunograssosl",
   },
-  "3RAg8fPmZ8RnacJO8MhLP1": { // Chas 7P
+  "3RAg8fPmZ8RnacJO8MhLP1": {
+    // Chas 7P
     instagram: "https://www.instagram.com/chas7pecados",
     youtube: "https://youtube.com/@chas7p347",
   },
-  "2zrv1oduhIYh29vvQZwI5r": { // Codak
+  "2zrv1oduhIYh29vvQZwI5r": {
+    // Codak
     instagram: "https://www.instagram.com/ilikebigbuds_i_canot_lie",
     youtube: "https://youtube.com/@codak",
   },
-  "3eCEorgAoZkvnAQLdy4x38": { // Dilema
+  "3eCEorgAoZkvnAQLdy4x38": {
+    // Dilema
     instagram: "https://www.instagram.com/dilema_ladee",
     youtube: "https://youtube.com/@dilema999",
   },
-  "5TMoczTLclVyzzDY5qf3Yb": { // Fancy Freak
+  "5TMoczTLclVyzzDY5qf3Yb": {
+    // Fancy Freak
     instagram: "https://www.instagram.com/fancyfreakcorp",
     youtube: "https://youtube.com/@fancyfreakdj",
   },
-  "6AN9ek9RwrLbSp9rT2lcDG": { // Hassyel
+  "6AN9ek9RwrLbSp9rT2lcDG": {
+    // Hassyel
     instagram: "https://www.instagram.com/ilikebigbuds_i_canot_lie",
     youtube: "https://youtube.com/channel/UCZp_YCv7jK3-lEtvSONNs8A",
   },
-  "0QdRhOmiqAcV1dPCoiSIQJ": { // Kev Cabrone
+  "0QdRhOmiqAcV1dPCoiSIQJ": {
+    // Kev Cabrone
     instagram: "https://www.instagram.com/kev.cabrone",
     youtube: "https://youtube.com/@kevcabrone",
   },
-  "16YScXC67nAnFDcA2LGdY0": { // Latin Geisha
+  "16YScXC67nAnFDcA2LGdY0": {
+    // Latin Geisha
     instagram: "https://www.instagram.com/latingeishamx",
     youtube: "https://youtube.com/@latingeishamx",
   },
-  "1SIBJEB7cX3QRhAVTqNc5N": { // Peon MC
+  "1SIBJEB7cX3QRhAVTqNc5N": {
+    // Peon MC
     instagram: "https://www.instagram.com/peonmc",
     youtube: "https://youtube.com/@peonmc",
   },
-  "5HrBwfVDf0HXzGDrJ6Znqc": { // Pepe Levine
+  "5HrBwfVDf0HXzGDrJ6Znqc": {
+    // Pepe Levine
     instagram: "https://www.instagram.com/pepelevineonline",
     youtube: "https://youtube.com/@pepelevineonline",
   },
-  "4T4Z7jvUcMV16VsslRRuC5": { // Q Master Weed
+  "4T4Z7jvUcMV16VsslRRuC5": {
+    // Q Master Weed
     instagram: "https://www.instagram.com/q.masterw",
     youtube: "https://youtube.com/@qmasterw",
   },
-  "4UqFXhJVb9zy2SbNx4ycJQ": { // Reick One
+  "4UqFXhJVb9zy2SbNx4ycJQ": {
+    // Reick One
     instagram: "https://www.instagram.com/reickuno",
     youtube: "https://youtube.com/channel/UCMvZBwXGDTnXVV7NbYKWfaA",
   },
-  "2Apt0MjZGqXAd1pl4LNQrR": { // X Santa-Ana
+  "2Apt0MjZGqXAd1pl4LNQrR": {
+    // X Santa-Ana
     instagram: "https://www.instagram.com/x_santa_ana",
     youtube: "https://youtube.com/@xsanta-ana",
   },
-  "4WQmw3fIx9F7iPKL5v8SCN": { // Zaque
+  "4WQmw3fIx9F7iPKL5v8SCN": {
+    // Zaque
     instagram: "https://www.instagram.com/zaqueslc",
     youtube: "https://youtube.com/@zakeuno",
   },
@@ -129,7 +147,9 @@ export async function getAccessToken(): Promise<string> {
     throw new Error("Spotify credentials not configured");
   }
 
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+    "base64",
+  );
 
   const response = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -141,7 +161,9 @@ export async function getAccessToken(): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to get Spotify access token: ${response.statusText}`);
+    throw new Error(
+      `Failed to get Spotify access token: ${response.statusText}`,
+    );
   }
 
   const data: SpotifyTokenResponse = await response.json();
@@ -157,7 +179,7 @@ export async function getAccessToken(): Promise<string> {
 export async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
-  maxRetries = 3
+  maxRetries = 3,
 ): Promise<Response> {
   const token = await getAccessToken();
 
@@ -174,22 +196,27 @@ export async function fetchWithRetry(
 
       // Handle rate limiting
       if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get("Retry-After") || "1", 10);
-        const delay = Math.min(retryAfter * 1000, 30000) * Math.pow(2, attempt);
+        const retryAfter = Number.parseInt(
+          response.headers.get("Retry-After") || "1",
+          10,
+        );
+        const delay = Math.min(retryAfter * 1000, 30000) * 2 ** attempt;
         console.log(`Rate limited. Waiting ${delay}ms before retry...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
 
       if (!response.ok) {
-        throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Spotify API error: ${response.status} ${response.statusText}`,
+        );
       }
 
       return response;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 1000;
+        const delay = 2 ** attempt * 1000;
         console.log(`Request failed. Retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
@@ -200,7 +227,9 @@ export async function fetchWithRetry(
 }
 
 export async function getArtist(id: string): Promise<SpotifyArtist> {
-  const response = await fetchWithRetry(`https://api.spotify.com/v1/artists/${id}`);
+  const response = await fetchWithRetry(
+    `https://api.spotify.com/v1/artists/${id}`,
+  );
   return response.json();
 }
 
@@ -215,7 +244,7 @@ export async function getArtists(ids: string[]): Promise<SpotifyArtist[]> {
 
   for (const chunk of chunks) {
     const response = await fetchWithRetry(
-      `https://api.spotify.com/v1/artists?ids=${chunk.join(",")}`
+      `https://api.spotify.com/v1/artists?ids=${chunk.join(",")}`,
     );
     const data = await response.json();
     allArtists.push(...data.artists);
@@ -226,10 +255,11 @@ export async function getArtists(ids: string[]): Promise<SpotifyArtist[]> {
 
 export async function getArtistAlbums(
   id: string,
-  includeGroups = "album,single,ep"
+  includeGroups = "album,single,ep",
 ): Promise<SpotifyAlbum[]> {
   const albums: SpotifyAlbum[] = [];
-  let url: string | null = `https://api.spotify.com/v1/artists/${id}/albums?include_groups=${includeGroups}&limit=50`;
+  let url: string | null =
+    `https://api.spotify.com/v1/artists/${id}/albums?include_groups=${includeGroups}&limit=50`;
 
   while (url) {
     const response = await fetchWithRetry(url);

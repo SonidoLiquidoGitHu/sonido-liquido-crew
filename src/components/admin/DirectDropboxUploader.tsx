@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Cloud,
-  Upload,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  X,
+  CheckCircle,
+  Cloud,
   File,
-  Image as ImageIcon,
-  Music,
   FileText,
+  Image as ImageIcon,
+  Loader2,
+  Music,
+  Upload,
+  X,
   Zap,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface DirectDropboxUploaderProps {
   onUploadComplete: (url: string, filename: string, fileSize: number) => void;
@@ -27,7 +27,13 @@ interface DirectDropboxUploaderProps {
 }
 
 interface UploadState {
-  status: "idle" | "preparing" | "uploading" | "creating-link" | "success" | "error";
+  status:
+    | "idle"
+    | "preparing"
+    | "uploading"
+    | "creating-link"
+    | "success"
+    | "error";
   progress: number;
   message?: string;
   url?: string;
@@ -53,7 +59,9 @@ export function DirectDropboxUploader({
     progress: 0,
   });
   const [isDragOver, setIsDragOver] = useState(false);
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,13 +79,20 @@ export function DirectDropboxUploader({
           console.log("[DirectDropbox] Ready for direct uploads");
         } else {
           // Token endpoint couldn't provide a valid token — check status for details
-          console.log("[DirectDropbox] Token endpoint failed, checking status...");
+          console.log(
+            "[DirectDropbox] Token endpoint failed, checking status...",
+          );
           try {
             const statusRes = await fetch("/api/admin/dropbox");
             const statusData = await statusRes.json();
             // If status says connected, the token might just need a refresh — try again
-            if (statusData?.data?.connected || statusData?.data?.hasRefreshToken) {
-              console.log("[DirectDropbox] Status says connected, retrying token fetch...");
+            if (
+              statusData?.data?.connected ||
+              statusData?.data?.hasRefreshToken
+            ) {
+              console.log(
+                "[DirectDropbox] Status says connected, retrying token fetch...",
+              );
               const retryRes = await fetch("/api/admin/dropbox/token");
               const retryData = await retryRes.json();
               if (retryData.success && retryData.data?.token) {
@@ -103,7 +118,8 @@ export function DirectDropboxUploader({
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) return <ImageIcon className="w-5 h-5" />;
     if (mimeType.startsWith("audio/")) return <Music className="w-5 h-5" />;
-    if (mimeType.startsWith("application/pdf")) return <FileText className="w-5 h-5" />;
+    if (mimeType.startsWith("application/pdf"))
+      return <FileText className="w-5 h-5" />;
     return <File className="w-5 h-5" />;
   };
 
@@ -112,120 +128,140 @@ export function DirectDropboxUploader({
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
-  const uploadToDropbox = useCallback(async (file: File) => {
-    if (!accessToken) {
-      setUploadState({
-        status: "error",
-        progress: 0,
-        message: "No hay token de Dropbox disponible",
-      });
-      return;
-    }
-
-    // Validate file size
-    if (file.size > maxSize * 1024 * 1024) {
-      setUploadState({
-        status: "error",
-        progress: 0,
-        message: `El archivo excede el límite de ${maxSize}MB`,
-      });
-      return;
-    }
-
-    const fileSizeMB = file.size / (1024 * 1024);
-    const isLargeFile = fileSizeMB > 150;
-
-    setUploadState({
-      status: "preparing",
-      progress: 5,
-      message: "Preparando archivo...",
-    });
-
-    try {
-      // Generate unique filename
-      const ext = file.name.split(".").pop() || "";
-      const baseName = file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
-      const uniqueId = generateUniqueId();
-      const filename = `${baseName}_${uniqueId}.${ext}`;
-
-      // Ensure folder starts with /
-      const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
-      const dropboxPath = `${normalizedFolder}/${filename}`;
-
-      setUploadState({
-        status: "uploading",
-        progress: 10,
-        message: `Subiendo ${formatFileSize(file.size)} directamente a Dropbox...`,
-      });
-
-      // For files larger than 150MB, use upload sessions
-      if (isLargeFile) {
-        await uploadLargeFile(file, dropboxPath, filename);
-      } else {
-        await uploadSmallFile(file, dropboxPath, filename);
+  const uploadToDropbox = useCallback(
+    async (file: File) => {
+      if (!accessToken) {
+        setUploadState({
+          status: "error",
+          progress: 0,
+          message: "No hay token de Dropbox disponible",
+        });
+        return;
       }
 
-    } catch (error) {
-      console.error("[DirectDropbox] Upload error:", error);
-      const errorMessage = (error as Error).message || "Error desconocido";
+      // Validate file size
+      if (file.size > maxSize * 1024 * 1024) {
+        setUploadState({
+          status: "error",
+          progress: 0,
+          message: `El archivo excede el límite de ${maxSize}MB`,
+        });
+        return;
+      }
 
-      // If it's a 401/auth error, try refreshing the token automatically
-      if (errorMessage.includes("401") || errorMessage.includes("expired") || errorMessage.includes("invalid_access_token")) {
-        console.log("[DirectDropbox] Auth error during upload, attempting token refresh...");
-        try {
-          const refreshRes = await fetch("/api/admin/dropbox/token");
-          const refreshData = await refreshRes.json();
-          if (refreshData.success && refreshData.data?.token) {
-            setAccessToken(refreshData.data.token);
-            // Don't retry automatically — just show a "try again" message
-            setUploadState({
-              status: "error",
-              progress: 0,
-              message: "Token renovado. Intenta subir de nuevo.",
-            });
-            return;
-          }
-        } catch {
-          // Refresh failed
+      const fileSizeMB = file.size / (1024 * 1024);
+      const isLargeFile = fileSizeMB > 150;
+
+      setUploadState({
+        status: "preparing",
+        progress: 5,
+        message: "Preparando archivo...",
+      });
+
+      try {
+        // Generate unique filename
+        const ext = file.name.split(".").pop() || "";
+        const baseName = file.name
+          .replace(`.${ext}`, "")
+          .replace(/[^a-zA-Z0-9-_]/g, "_");
+        const uniqueId = generateUniqueId();
+        const filename = `${baseName}_${uniqueId}.${ext}`;
+
+        // Ensure folder starts with /
+        const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
+        const dropboxPath = `${normalizedFolder}/${filename}`;
+
+        setUploadState({
+          status: "uploading",
+          progress: 10,
+          message: `Subiendo ${formatFileSize(file.size)} directamente a Dropbox...`,
+        });
+
+        // For files larger than 150MB, use upload sessions
+        if (isLargeFile) {
+          await uploadLargeFile(file, dropboxPath, filename);
+        } else {
+          await uploadSmallFile(file, dropboxPath, filename);
         }
+      } catch (error) {
+        console.error("[DirectDropbox] Upload error:", error);
+        const errorMessage = (error as Error).message || "Error desconocido";
+
+        // If it's a 401/auth error, try refreshing the token automatically
+        if (
+          errorMessage.includes("401") ||
+          errorMessage.includes("expired") ||
+          errorMessage.includes("invalid_access_token")
+        ) {
+          console.log(
+            "[DirectDropbox] Auth error during upload, attempting token refresh...",
+          );
+          try {
+            const refreshRes = await fetch("/api/admin/dropbox/token");
+            const refreshData = await refreshRes.json();
+            if (refreshData.success && refreshData.data?.token) {
+              setAccessToken(refreshData.data.token);
+              // Don't retry automatically — just show a "try again" message
+              setUploadState({
+                status: "error",
+                progress: 0,
+                message: "Token renovado. Intenta subir de nuevo.",
+              });
+              return;
+            }
+          } catch {
+            // Refresh failed
+          }
+        }
+
+        setUploadState({
+          status: "error",
+          progress: 0,
+          message:
+            errorMessage.includes("401") || errorMessage.includes("expired")
+              ? "Token expirado. Reconecta Dropbox en Sincronización."
+              : `Error: ${errorMessage.slice(0, 100)}`,
+        });
       }
+    },
+    [accessToken, folder, maxSize],
+  );
 
-      setUploadState({
-        status: "error",
-        progress: 0,
-        message: errorMessage.includes("401") || errorMessage.includes("expired")
-          ? "Token expirado. Reconecta Dropbox en Sincronización."
-          : `Error: ${errorMessage.slice(0, 100)}`,
-      });
-    }
-  }, [accessToken, folder, maxSize]);
-
-  const uploadSmallFile = async (file: File, dropboxPath: string, filename: string) => {
+  const uploadSmallFile = async (
+    file: File,
+    dropboxPath: string,
+    filename: string,
+  ) => {
     // Read file as ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
 
     // Upload directly to Dropbox Content API
-    const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/octet-stream",
-        "Dropbox-API-Arg": JSON.stringify({
-          path: dropboxPath,
-          mode: "overwrite",
-          autorename: false,
-          mute: false,
-        }),
+    const uploadResponse = await fetch(
+      "https://content.dropboxapi.com/2/files/upload",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({
+            path: dropboxPath,
+            mode: "overwrite",
+            autorename: false,
+            mute: false,
+          }),
+        },
+        body: arrayBuffer,
       },
-      body: arrayBuffer,
-    });
+    );
 
     if (!uploadResponse.ok) {
       const errorData = await uploadResponse.json().catch(() => ({}));
-      throw new Error(errorData.error_summary || `HTTP ${uploadResponse.status}`);
+      throw new Error(
+        errorData.error_summary || `HTTP ${uploadResponse.status}`,
+      );
     }
 
     setUploadState({
@@ -248,20 +284,27 @@ export function DirectDropboxUploader({
     onUploadComplete(sharedUrl, filename, file.size);
   };
 
-  const uploadLargeFile = async (file: File, dropboxPath: string, filename: string) => {
+  const uploadLargeFile = async (
+    file: File,
+    dropboxPath: string,
+    filename: string,
+  ) => {
     const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB chunks
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
     // Start upload session
-    const startResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/start", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/octet-stream",
-        "Dropbox-API-Arg": JSON.stringify({ close: false }),
+    const startResponse = await fetch(
+      "https://content.dropboxapi.com/2/files/upload_session/start",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({ close: false }),
+        },
+        body: new ArrayBuffer(0),
       },
-      body: new ArrayBuffer(0),
-    });
+    );
 
     if (!startResponse.ok) {
       throw new Error("Failed to start upload session");
@@ -285,23 +328,26 @@ export function DirectDropboxUploader({
 
       if (isLastChunk) {
         // Finish upload session
-        const finishResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/finish", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/octet-stream",
-            "Dropbox-API-Arg": JSON.stringify({
-              cursor: { session_id, offset },
-              commit: {
-                path: dropboxPath,
-                mode: "overwrite",
-                autorename: false,
-                mute: false,
-              },
-            }),
+        const finishResponse = await fetch(
+          "https://content.dropboxapi.com/2/files/upload_session/finish",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/octet-stream",
+              "Dropbox-API-Arg": JSON.stringify({
+                cursor: { session_id, offset },
+                commit: {
+                  path: dropboxPath,
+                  mode: "overwrite",
+                  autorename: false,
+                  mute: false,
+                },
+              }),
+            },
+            body: chunkBuffer,
           },
-          body: chunkBuffer,
-        });
+        );
 
         if (!finishResponse.ok) {
           const errorData = await finishResponse.json().catch(() => ({}));
@@ -309,18 +355,21 @@ export function DirectDropboxUploader({
         }
       } else {
         // Append chunk
-        const appendResponse = await fetch("https://content.dropboxapi.com/2/files/upload_session/append_v2", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/octet-stream",
-            "Dropbox-API-Arg": JSON.stringify({
-              cursor: { session_id, offset },
-              close: false,
-            }),
+        const appendResponse = await fetch(
+          "https://content.dropboxapi.com/2/files/upload_session/append_v2",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/octet-stream",
+              "Dropbox-API-Arg": JSON.stringify({
+                cursor: { session_id, offset },
+                close: false,
+              }),
+            },
+            body: chunkBuffer,
           },
-          body: chunkBuffer,
-        });
+        );
 
         if (!appendResponse.ok) {
           throw new Error("Failed to append chunk");
@@ -353,21 +402,24 @@ export function DirectDropboxUploader({
   const createSharedLink = async (path: string): Promise<string> => {
     try {
       // Try to create a new shared link
-      const response = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          path,
-          settings: {
-            access: "viewer",
-            audience: "public",
-            requested_visibility: "public",
+      const response = await fetch(
+        "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
           },
-        }),
-      });
+          body: JSON.stringify({
+            path,
+            settings: {
+              access: "viewer",
+              audience: "public",
+              requested_visibility: "public",
+            },
+          }),
+        },
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -376,15 +428,21 @@ export function DirectDropboxUploader({
 
       // If link already exists, get existing links
       const errorData = await response.json().catch(() => ({}));
-      if (errorData.error_summary?.includes("shared_link_already_exists") || response.status === 409) {
-        const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
+      if (
+        errorData.error_summary?.includes("shared_link_already_exists") ||
+        response.status === 409
+      ) {
+        const listResponse = await fetch(
+          "https://api.dropboxapi.com/2/sharing/list_shared_links",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ path, direct_only: true }),
           },
-          body: JSON.stringify({ path, direct_only: true }),
-        });
+        );
 
         if (listResponse.ok) {
           const listData = await listResponse.json();
@@ -394,7 +452,9 @@ export function DirectDropboxUploader({
         }
       }
 
-      throw new Error(errorData.error_summary || "Failed to create shared link");
+      throw new Error(
+        errorData.error_summary || "Failed to create shared link",
+      );
     } catch (error) {
       console.error("[DirectDropbox] Create link error:", error);
       throw error;
@@ -406,11 +466,9 @@ export function DirectDropboxUploader({
     // migrated to a new shared link format (/scl/fi/...?rlkey=...) that is
     // NOT compatible with dl.dropboxusercontent.com. The ?raw=1 parameter
     // works with BOTH old (/s/...) and new (/scl/fi/...) URL formats.
-    const result = url
-      .replace("?dl=0", "?raw=1")
-      .replace("&dl=0", "&raw=1");
+    const result = url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
     if (!result.includes("raw=1")) {
-      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+      return `${result + (result.includes("?") ? "&" : "?")}raw=1`;
     }
     return result;
   };
@@ -452,9 +510,10 @@ export function DirectDropboxUploader({
     }
   };
 
-  const isUploading = uploadState.status === "preparing" ||
-                      uploadState.status === "uploading" ||
-                      uploadState.status === "creating-link";
+  const isUploading =
+    uploadState.status === "preparing" ||
+    uploadState.status === "uploading" ||
+    uploadState.status === "creating-link";
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -464,9 +523,15 @@ export function DirectDropboxUploader({
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="text-yellow-500 font-medium">Dropbox no configurado</p>
+              <p className="text-yellow-500 font-medium">
+                Dropbox no configurado
+              </p>
               <p className="text-yellow-500/80 text-xs mt-1">
-                Ve a <a href="/admin/sync" className="underline hover:no-underline">Sincronización</a> para conectar Dropbox.
+                Ve a{" "}
+                <a href="/admin/sync" className="underline hover:no-underline">
+                  Sincronización
+                </a>{" "}
+                para conectar Dropbox.
               </p>
             </div>
           </div>
@@ -508,10 +573,10 @@ export function DirectDropboxUploader({
           isDragOver
             ? "border-primary bg-primary/5"
             : uploadState.status === "error"
-            ? "border-red-500/50 bg-red-500/5"
-            : uploadState.status === "success"
-            ? "border-green-500/50 bg-green-500/5"
-            : "border-slc-border hover:border-primary/50"
+              ? "border-red-500/50 bg-red-500/5"
+              : uploadState.status === "success"
+                ? "border-green-500/50 bg-green-500/5"
+                : "border-slc-border hover:border-primary/50"
         }`}
         onClick={() => {
           // On mobile, explicitly trigger the file input via click()
@@ -538,9 +603,7 @@ export function DirectDropboxUploader({
             <p className="text-xs text-slc-muted">
               Arrastra un archivo o haz clic para seleccionar
             </p>
-            <p className="text-xs text-slc-muted mt-1">
-              Máximo {maxSize}MB
-            </p>
+            <p className="text-xs text-slc-muted mt-1">Máximo {maxSize}MB</p>
             <p className="text-xs text-emerald-500/80 mt-2">
               Los archivos se suben directo a Dropbox desde tu navegador
             </p>
@@ -633,15 +696,17 @@ export function DirectDropboxUploadButton({
   folder = "/uploads",
   label = "Subir a Dropbox",
   disabled = false,
-}: Omit<DirectDropboxUploaderProps, "currentUrl" | "className"> & { disabled?: boolean }) {
+}: Omit<DirectDropboxUploaderProps, "currentUrl" | "className"> & {
+  disabled?: boolean;
+}) {
   const [isUploading, setIsUploading] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/admin/dropbox/token")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) {
           setAccessToken(data.data.token);
         }
@@ -664,7 +729,9 @@ export function DirectDropboxUploadButton({
 
     try {
       const ext = file.name.split(".").pop() || "";
-      const baseName = file.name.replace(`.${ext}`, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+      const baseName = file.name
+        .replace(`.${ext}`, "")
+        .replace(/[^a-zA-Z0-9-_]/g, "_");
       const uniqueId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const filename = `${baseName}_${uniqueId}.${ext}`;
       const normalizedFolder = folder.startsWith("/") ? folder : `/${folder}`;
@@ -672,55 +739,70 @@ export function DirectDropboxUploadButton({
 
       const arrayBuffer = await file.arrayBuffer();
 
-      const uploadResponse = await fetch("https://content.dropboxapi.com/2/files/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/octet-stream",
-          "Dropbox-API-Arg": JSON.stringify({
-            path: dropboxPath,
-            mode: "overwrite",
-          }),
+      const uploadResponse = await fetch(
+        "https://content.dropboxapi.com/2/files/upload",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream",
+            "Dropbox-API-Arg": JSON.stringify({
+              path: dropboxPath,
+              mode: "overwrite",
+            }),
+          },
+          body: arrayBuffer,
         },
-        body: arrayBuffer,
-      });
+      );
 
       if (!uploadResponse.ok) {
         throw new Error("Upload failed");
       }
 
       // Create shared link
-      const linkResponse = await fetch("https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          path: dropboxPath,
-          settings: { access: "viewer", audience: "public" },
-        }),
-      });
-
-      let url: string;
-      if (linkResponse.ok) {
-        const linkData = await linkResponse.json();
-        url = linkData.url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
-        if (!url.includes("raw=1")) url = url + (url.includes("?") ? "&" : "?") + "raw=1";
-      } else {
-        // Try to get existing link
-        const listResponse = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
+      const linkResponse = await fetch(
+        "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
+        {
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ path: dropboxPath }),
-        });
+          body: JSON.stringify({
+            path: dropboxPath,
+            settings: { access: "viewer", audience: "public" },
+          }),
+        },
+      );
+
+      let url: string;
+      if (linkResponse.ok) {
+        const linkData = await linkResponse.json();
+        url = linkData.url
+          .replace("?dl=0", "?raw=1")
+          .replace("&dl=0", "&raw=1");
+        if (!url.includes("raw=1"))
+          url = `${url + (url.includes("?") ? "&" : "?")}raw=1`;
+      } else {
+        // Try to get existing link
+        const listResponse = await fetch(
+          "https://api.dropboxapi.com/2/sharing/list_shared_links",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ path: dropboxPath }),
+          },
+        );
         const listData = await listResponse.json();
         if (listData.links?.[0]) {
-          url = listData.links[0].url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
-          if (!url.includes("raw=1")) url = url + (url.includes("?") ? "&" : "?") + "raw=1";
+          url = listData.links[0].url
+            .replace("?dl=0", "?raw=1")
+            .replace("&dl=0", "&raw=1");
+          if (!url.includes("raw=1"))
+            url = `${url + (url.includes("?") ? "&" : "?")}raw=1`;
         } else {
           throw new Error("Could not create shared link");
         }
@@ -763,7 +845,11 @@ export function DirectDropboxUploadButton({
         ) : (
           <Upload className="w-4 h-4 mr-2" />
         )}
-        {!accessToken ? "Dropbox no configurado" : isUploading ? "Subiendo..." : label}
+        {!accessToken
+          ? "Dropbox no configurado"
+          : isUploading
+            ? "Subiendo..."
+            : label}
       </Button>
     </>
   );

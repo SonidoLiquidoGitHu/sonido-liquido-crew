@@ -1,31 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Mail,
-  Send,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  Clock,
-  ArrowLeft,
-  Plus,
-  X,
-  MessageCircle,
-  Camera,
-  Newspaper,
-  UserPlus,
-  FileText,
-  RefreshCw,
-  AlertTriangle,
-  Server,
-  Gift,
-  Eye,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Camera,
+  CheckCircle,
+  Clock,
+  Eye,
+  FileText,
+  Gift,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Newspaper,
+  Plus,
+  RefreshCw,
+  Send,
+  Server,
+  UserPlus,
+  X,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface EmailLog {
   id: string;
@@ -43,9 +43,19 @@ interface ProvidersStatus {
   sendgrid: boolean;
 }
 
-type EmailTemplate = "approval_message" | "approval_photo" | "newsletter" | "welcome" | "custom";
+type EmailTemplate =
+  | "approval_message"
+  | "approval_photo"
+  | "newsletter"
+  | "welcome"
+  | "custom";
 
-const TEMPLATES: { id: EmailTemplate; label: string; icon: React.ElementType; description: string }[] = [
+const TEMPLATES: {
+  id: EmailTemplate;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+}[] = [
   {
     id: "approval_message",
     label: "Aprobación de Mensaje",
@@ -80,13 +90,18 @@ const TEMPLATES: { id: EmailTemplate; label: string; icon: React.ElementType; de
 
 export default function EmailTestPage() {
   const [logs, setLogs] = useState<EmailLog[]>([]);
-  const [providers, setProviders] = useState<ProvidersStatus>({ resend: false, mandrill: false, sendgrid: false });
+  const [providers, setProviders] = useState<ProvidersStatus>({
+    resend: false,
+    mandrill: false,
+    sendgrid: false,
+  });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
   // Form state
   const [recipients, setRecipients] = useState<string[]>([""]);
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate>("approval_message");
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<EmailTemplate>("approval_message");
   const [customSubject, setCustomSubject] = useState("");
   const [customContent, setCustomContent] = useState("");
   const [includeReward, setIncludeReward] = useState(false);
@@ -151,7 +166,8 @@ export default function EmailTestPage() {
             rewardDownloadUrl: rewardUrl,
             rewardFileName,
           },
-          contentType: selectedTemplate === "approval_photo" ? "memory" : "message",
+          contentType:
+            selectedTemplate === "approval_photo" ? "memory" : "message",
         }),
       });
       const data = await res.json();
@@ -165,7 +181,9 @@ export default function EmailTestPage() {
   }
 
   async function sendTestEmails() {
-    const validRecipients = recipients.filter((r) => r.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.trim()));
+    const validRecipients = recipients.filter(
+      (r) => r.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.trim()),
+    );
 
     if (validRecipients.length === 0) {
       alert("Agrega al menos un email válido");
@@ -181,7 +199,8 @@ export default function EmailTestPage() {
           recipients: validRecipients.map((r) => r.trim()),
           template: selectedTemplate,
           subject: customSubject || undefined,
-          customContent: selectedTemplate === "custom" ? customContent : undefined,
+          customContent:
+            selectedTemplate === "custom" ? customContent : undefined,
           includeReward,
           rewardUrl: includeReward ? rewardUrl : undefined,
           rewardFileName: includeReward ? rewardFileName : undefined,
@@ -204,7 +223,8 @@ export default function EmailTestPage() {
     }
   }
 
-  const hasConfiguredProvider = providers.resend || providers.mandrill || providers.sendgrid;
+  const hasConfiguredProvider =
+    providers.resend || providers.mandrill || providers.sendgrid;
 
   return (
     <div className="p-6 lg:p-8">
@@ -241,8 +261,8 @@ export default function EmailTestPage() {
           <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-yellow-500">
-              No hay proveedores de email configurados. Agrega RESEND_API_KEY, MANDRILL_API_KEY, o
-              SENDGRID_API_KEY a las variables de entorno.
+              No hay proveedores de email configurados. Agrega RESEND_API_KEY,
+              MANDRILL_API_KEY, o SENDGRID_API_KEY a las variables de entorno.
             </p>
           </div>
         )}
@@ -314,20 +334,24 @@ export default function EmailTestPage() {
                         "flex items-start gap-3 p-3 rounded-lg border text-left transition-all",
                         selectedTemplate === template.id
                           ? "bg-primary/10 border-primary"
-                          : "border-slc-border hover:border-primary/50"
+                          : "border-slc-border hover:border-primary/50",
                       )}
                     >
                       <Icon
                         className={cn(
                           "w-5 h-5 mt-0.5 flex-shrink-0",
-                          selectedTemplate === template.id ? "text-primary" : "text-slc-muted"
+                          selectedTemplate === template.id
+                            ? "text-primary"
+                            : "text-slc-muted",
                         )}
                       />
                       <div>
                         <p
                           className={cn(
                             "font-medium text-sm",
-                            selectedTemplate === template.id ? "text-white" : "text-slc-muted"
+                            selectedTemplate === template.id
+                              ? "text-white"
+                              : "text-slc-muted",
                           )}
                         >
                           {template.label}
@@ -455,7 +479,7 @@ export default function EmailTestPage() {
                     "p-3 rounded-lg border",
                     log.status === "sent"
                       ? "bg-green-500/5 border-green-500/20"
-                      : "bg-red-500/5 border-red-500/20"
+                      : "bg-red-500/5 border-red-500/20",
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -465,8 +489,12 @@ export default function EmailTestPage() {
                       <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{log.recipient}</p>
-                      <p className="text-xs text-slc-muted truncate">{log.subject}</p>
+                      <p className="font-medium text-sm truncate">
+                        {log.recipient}
+                      </p>
+                      <p className="text-xs text-slc-muted truncate">
+                        {log.subject}
+                      </p>
                       <div className="flex items-center gap-2 mt-1 text-xs text-slc-muted">
                         <span className="px-1.5 py-0.5 bg-slc-border rounded">
                           {log.template}
@@ -499,8 +527,14 @@ export default function EmailTestPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-3xl max-h-[90vh] bg-slc-card border border-slc-border rounded-2xl overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-slc-border">
-              <h2 className="font-oswald text-xl uppercase">Vista Previa del Email</h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
+              <h2 className="font-oswald text-xl uppercase">
+                Vista Previa del Email
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowPreview(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -522,14 +556,17 @@ export default function EmailTestPage() {
 }
 
 // Provider Badge Component
-function ProviderBadge({ name, configured }: { name: string; configured: boolean }) {
+function ProviderBadge({
+  name,
+  configured,
+}: { name: string; configured: boolean }) {
   return (
     <div
       className={cn(
         "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm",
         configured
           ? "bg-green-500/10 text-green-500 border border-green-500/30"
-          : "bg-slc-dark text-slc-muted border border-slc-border"
+          : "bg-slc-dark text-slc-muted border border-slc-border",
       )}
     >
       {configured ? (

@@ -1,32 +1,51 @@
-import { NextRequest, NextResponse } from "next/server";
 import { mailchimpClient } from "@/lib/clients";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { eventId, eventTitle, eventSlug, eventDate, eventLocation, eventDescription, coverImageUrl } = body;
+    const {
+      eventId,
+      eventTitle,
+      eventSlug,
+      eventDate,
+      eventLocation,
+      eventDescription,
+      coverImageUrl,
+    } = body;
 
     if (!eventTitle) {
-      return NextResponse.json({ success: false, error: "Event title is required" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Event title is required" },
+        { status: 400 },
+      );
     }
 
     // Check if Mailchimp is configured
     const isConfigured = await mailchimpClient.isConfiguredAsync();
     if (!isConfigured) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Mailchimp no está configurado. Configúralo en Email Studio → Config." 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Mailchimp no está configurado. Configúralo en Email Studio → Config.",
+        },
+        { status: 400 },
+      );
     }
 
     // Build the event share URL
-    const eventUrl = `https://sonidoliquido.com/reels`;
-    
+    const eventUrl = "https://sonidoliquido.com/reels";
+
     // Generate email HTML
-    const dateStr = eventDate 
-      ? new Date(eventDate).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" })
+    const dateStr = eventDate
+      ? new Date(eventDate).toLocaleDateString("es-MX", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
       : "";
-    
+
     const bodyText = [
       eventDescription || "",
       "",
@@ -34,7 +53,9 @@ export async function POST(request: NextRequest) {
       eventLocation ? `📍 ${eventLocation}` : "",
       "",
       `👉 Mira los videos en ${eventUrl}`,
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const htmlContent = mailchimpClient.generateCustomEmailHTML({
       title: eventTitle.toUpperCase(),
@@ -64,8 +85,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error sharing event with subscribers:", error);
     return NextResponse.json(
-      { success: false, error: (error as Error).message || "Failed to send campaign" },
-      { status: 500 }
+      {
+        success: false,
+        error: (error as Error).message || "Failed to send campaign",
+      },
+      { status: 500 },
     );
   }
 }

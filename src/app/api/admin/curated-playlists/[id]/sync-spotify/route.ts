@@ -1,13 +1,13 @@
-import { type NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { curatedPlaylists, playlistTracks, curatedTracks } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { curatedPlaylists, curatedTracks, playlistTracks } from "@/db/schema";
 import { SpotifyClient } from "@/lib/clients/spotify";
 import {
-  getSpotifyUserAccessToken,
   getClientCredentialsToken,
+  getSpotifyUserAccessToken,
 } from "@/lib/clients/spotify-tokens";
 import { generateUUID } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export const dynamic = "force-dynamic";
 async function spotifyRequestWithAuth<T>(
   endpoint: string,
   userAccessToken: string | null,
-  ctx: { forcedRefreshAttempted: boolean; lastError?: string }
+  ctx: { forcedRefreshAttempted: boolean; lastError?: string },
 ): Promise<T> {
   const url = `https://api.spotify.com/v1${endpoint}`;
 
@@ -46,18 +46,25 @@ async function spotifyRequestWithAuth<T>(
     });
 
     if (response.ok) {
-      console.log(`[Spotify API] Request succeeded with user token`);
+      console.log("[Spotify API] Request succeeded with user token");
       return response.json();
     }
 
     const errorBody = await response.text().catch(() => "");
     ctx.lastError = `User token: ${response.status} — ${errorBody.slice(0, 300)}`;
-    console.error(`[Spotify API] User token request failed ${response.status}: ${errorBody.slice(0, 500)}`);
+    console.error(
+      `[Spotify API] User token request failed ${response.status}: ${errorBody.slice(0, 500)}`,
+    );
 
     // On 401 OR 403, try forced token refresh once.
     // Spotify frequently returns 403 for expired tokens (not just 401).
-    if ((response.status === 401 || response.status === 403) && !ctx.forcedRefreshAttempted) {
-      console.log(`[Spotify Sync] Got ${response.status}, attempting forced token refresh...`);
+    if (
+      (response.status === 401 || response.status === 403) &&
+      !ctx.forcedRefreshAttempted
+    ) {
+      console.log(
+        `[Spotify Sync] Got ${response.status}, attempting forced token refresh...`,
+      );
       ctx.forcedRefreshAttempted = true;
 
       const refreshedToken = await getSpotifyUserAccessToken(true);
@@ -77,11 +84,15 @@ async function spotifyRequestWithAuth<T>(
 
         const retryErrorBody = await retryResponse.text().catch(() => "");
         ctx.lastError = `Refreshed token: ${retryResponse.status} — ${retryErrorBody.slice(0, 300)}`;
-        console.error(`[Spotify API] Retry with refreshed token failed ${retryResponse.status}: ${retryErrorBody.slice(0, 500)}`);
+        console.error(
+          `[Spotify API] Retry with refreshed token failed ${retryResponse.status}: ${retryErrorBody.slice(0, 500)}`,
+        );
 
         // If the refreshed token also gets 401, try one more time with a completely fresh token
         if (retryResponse.status === 401) {
-          console.log("[Spotify Sync] Refreshed token also got 401, trying a second refresh...");
+          console.log(
+            "[Spotify Sync] Refreshed token also got 401, trying a second refresh...",
+          );
           const secondRefreshToken = await getSpotifyUserAccessToken(true);
           if (secondRefreshToken && secondRefreshToken !== refreshedToken) {
             const secondRetry = await fetch(url, {
@@ -95,16 +106,22 @@ async function spotifyRequestWithAuth<T>(
           }
         }
       } else {
-        console.error("[Spotify Sync] Token refresh failed — no refreshed token available");
+        console.error(
+          "[Spotify Sync] Token refresh failed — no refreshed token available",
+        );
       }
     }
 
     // Specific error codes that shouldn't be retried
     if (response.status === 404) {
-      throw new Error("Spotify playlist not found (404). Verify the playlist URL/ID is correct.");
+      throw new Error(
+        "Spotify playlist not found (404). Verify the playlist URL/ID is correct.",
+      );
     }
     if (response.status === 429) {
-      throw new Error("Spotify API rate limit reached (429). Please try again in a few moments.");
+      throw new Error(
+        "Spotify API rate limit reached (429). Please try again in a few moments.",
+      );
     }
   }
 
@@ -120,22 +137,26 @@ async function spotifyRequestWithAuth<T>(
     });
 
     if (ccResponse.ok) {
-      console.log("[Spotify Sync] Client credentials fallback succeeded (public playlist)");
+      console.log(
+        "[Spotify Sync] Client credentials fallback succeeded (public playlist)",
+      );
       return ccResponse.json();
     }
 
     const ccErrorBody = await ccResponse.text().catch(() => "");
-    console.error(`[Spotify API] Client credentials fallback failed ${ccResponse.status}: ${ccErrorBody.slice(0, 500)}`);
+    console.error(
+      `[Spotify API] Client credentials fallback failed ${ccResponse.status}: ${ccErrorBody.slice(0, 500)}`,
+    );
 
     // If client credentials returns 403, the playlist is private and needs user auth
     if (ccResponse.status === 403) {
       if (!userAccessToken) {
         throw new Error(
-          "NO_SPOTIFY_TOKEN: This playlist requires a connected Spotify account. Client credentials cannot access it. Please connect your Spotify account first."
+          "NO_SPOTIFY_TOKEN: This playlist requires a connected Spotify account. Client credentials cannot access it. Please connect your Spotify account first.",
         );
       }
       throw new Error(
-        `PRIVATE_PLAYLIST: This playlist is private and your Spotify token could not access it (possibly expired scopes). Error detail: ${ccErrorBody.slice(0, 200)}. Try clicking 'Conectar Spotify' to re-authorize with full permissions.`
+        `PRIVATE_PLAYLIST: This playlist is private and your Spotify token could not access it (possibly expired scopes). Error detail: ${ccErrorBody.slice(0, 200)}. Try clicking 'Conectar Spotify' to re-authorize with full permissions.`,
       );
     }
   }
@@ -143,25 +164,25 @@ async function spotifyRequestWithAuth<T>(
   // All methods failed
   if (!userAccessToken) {
     throw new Error(
-      "NO_SPOTIFY_TOKEN: No Spotify user access token available. Please connect your Spotify account first."
+      "NO_SPOTIFY_TOKEN: No Spotify user access token available. Please connect your Spotify account first.",
     );
   }
 
   throw new Error(
-    `Spotify API request failed for ${endpoint}. Last error: ${ctx.lastError || 'unknown'}. All authentication methods exhausted. Try reconnecting your Spotify account.`
+    `Spotify API request failed for ${endpoint}. Last error: ${ctx.lastError || "unknown"}. All authentication methods exhausted. Try reconnecting your Spotify account.`,
   );
 }
 
 // POST - Sync tracks from a Spotify playlist into the local curated playlist
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -177,7 +198,7 @@ export async function POST(
     if (!playlist) {
       return NextResponse.json(
         { success: false, error: "Playlist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -186,7 +207,8 @@ export async function POST(
     let spotifyPlaylistId = body.spotifyPlaylistId as string | undefined;
 
     if (!spotifyPlaylistId && playlist.spotifyPlaylistUrl) {
-      spotifyPlaylistId = SpotifyClient.extractId(playlist.spotifyPlaylistUrl) || undefined;
+      spotifyPlaylistId =
+        SpotifyClient.extractId(playlist.spotifyPlaylistUrl) || undefined;
     }
 
     if (!spotifyPlaylistId && playlist.spotifyPlaylistId) {
@@ -194,13 +216,18 @@ export async function POST(
     }
 
     if (!spotifyPlaylistId && body.spotifyPlaylistUrl) {
-      spotifyPlaylistId = SpotifyClient.extractId(body.spotifyPlaylistUrl) || undefined;
+      spotifyPlaylistId =
+        SpotifyClient.extractId(body.spotifyPlaylistUrl) || undefined;
     }
 
     if (!spotifyPlaylistId) {
       return NextResponse.json(
-        { success: false, error: "No Spotify playlist ID found. Set a Spotify Playlist URL first." },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            "No Spotify playlist ID found. Set a Spotify Playlist URL first.",
+        },
+        { status: 400 },
       );
     }
 
@@ -215,7 +242,9 @@ export async function POST(
     let userAccessToken: string | null = body.accessToken || null;
 
     if (!userAccessToken) {
-      console.log("[Spotify Sync] No access token from frontend, getting from DB...");
+      console.log(
+        "[Spotify Sync] No access token from frontend, getting from DB...",
+      );
       userAccessToken = await getSpotifyUserAccessToken();
       if (userAccessToken) {
         console.log("[Spotify Sync] Got access token from DB");
@@ -223,11 +252,17 @@ export async function POST(
         console.warn("[Spotify Sync] No access token available from DB either");
       }
     } else {
-      console.log("[Spotify Sync] Using access token provided by frontend (skipping pre-validation — will validate on actual API call)");
+      console.log(
+        "[Spotify Sync] Using access token provided by frontend (skipping pre-validation — will validate on actual API call)",
+      );
     }
 
-    console.log(`[Spotify Sync] Syncing playlist "${playlist.name}" from Spotify ID: ${spotifyPlaylistId}`);
-    console.log(`[Spotify Sync] User auth token: ${userAccessToken ? 'available' : 'not available'}`);
+    console.log(
+      `[Spotify Sync] Syncing playlist "${playlist.name}" from Spotify ID: ${spotifyPlaylistId}`,
+    );
+    console.log(
+      `[Spotify Sync] User auth token: ${userAccessToken ? "available" : "not available"}`,
+    );
 
     // Fetch playlist metadata using user access token
     // Spotify API 2025+: Use "items.total" instead of "tracks.total" in fields parameter.
@@ -239,7 +274,11 @@ export async function POST(
       items?: { total: number };
       tracks?: { total: number };
       external_urls: { spotify: string };
-    }>(`/playlists/${spotifyPlaylistId}?fields=id,name,description,images,items.total,tracks.total,external_urls`, userAccessToken, requestCtx);
+    }>(
+      `/playlists/${spotifyPlaylistId}?fields=id,name,description,images,items.total,tracks.total,external_urls`,
+      userAccessToken,
+      requestCtx,
+    );
 
     // Fetch all tracks with pagination using the NEW /playlists/{id}/items endpoint.
     // IMPORTANT: Spotify deprecated /playlists/{id}/tracks (returns 403 since 2025).
@@ -268,7 +307,8 @@ export async function POST(
         limit: String(limit),
         offset: String(offset),
         market: "MX",
-        fields: "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
+        fields:
+          "items(item(id,name,artists(id,name),album(id,name,images,release_date),duration_ms,preview_url,popularity,explicit,is_local),is_local),total,next",
       });
 
       const response = await spotifyRequestWithAuth<{
@@ -310,7 +350,11 @@ export async function POST(
         }>;
         total: number;
         next: string | null;
-      }>(`/playlists/${spotifyPlaylistId}/items?${trackParams.toString()}`, userAccessToken, requestCtx);
+      }>(
+        `/playlists/${spotifyPlaylistId}/items?${trackParams.toString()}`,
+        userAccessToken,
+        requestCtx,
+      );
 
       if (!response.items?.length) {
         break;
@@ -345,12 +389,18 @@ export async function POST(
       }
     }
 
-    console.log(`[Spotify Sync] Fetched ${tracks.length} tracks from playlist ${spotifyPlaylistId}`);
+    console.log(
+      `[Spotify Sync] Fetched ${tracks.length} tracks from playlist ${spotifyPlaylistId}`,
+    );
 
     if (!tracks.length) {
       return NextResponse.json(
-        { success: false, error: "The Spotify playlist has no tracks or they could not be fetched." },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            "The Spotify playlist has no tracks or they could not be fetched.",
+        },
+        { status: 400 },
       );
     }
 
@@ -366,7 +416,9 @@ export async function POST(
       playlistUpdates.coverImageUrl = playlistMeta.images[0].url;
     }
     playlistUpdates.spotifyPlaylistId = spotifyPlaylistId;
-    playlistUpdates.spotifyPlaylistUrl = playlistMeta.external_urls?.spotify || `https://open.spotify.com/playlist/${spotifyPlaylistId}`;
+    playlistUpdates.spotifyPlaylistUrl =
+      playlistMeta.external_urls?.spotify ||
+      `https://open.spotify.com/playlist/${spotifyPlaylistId}`;
 
     await db
       .update(curatedPlaylists)
@@ -374,9 +426,7 @@ export async function POST(
       .where(eq(curatedPlaylists.id, id));
 
     // Delete existing tracks for this playlist (full replace)
-    await db
-      .delete(playlistTracks)
-      .where(eq(playlistTracks.playlistId, id));
+    await db.delete(playlistTracks).where(eq(playlistTracks.playlistId, id));
 
     // Insert new tracks from Spotify
     let added = 0;
@@ -419,7 +469,9 @@ export async function POST(
       }
     }
 
-    console.log(`[Spotify Sync] Playlist "${playlist.name}": ${added} tracks added, ${skipped} skipped, ${errors.length} errors`);
+    console.log(
+      `[Spotify Sync] Playlist "${playlist.name}": ${added} tracks added, ${skipped} skipped, ${errors.length} errors`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -441,27 +493,33 @@ export async function POST(
 
     if (errorMessage.includes("NO_SPOTIFY_TOKEN")) {
       needsAuth = true;
-      errorMessage = "Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso a tus playlists.";
+      errorMessage =
+        "Necesitas conectar tu cuenta de Spotify primero. Haz clic en 'Conectar Spotify' para autorizar el acceso a tus playlists.";
     } else if (errorMessage.includes("PRIVATE_PLAYLIST")) {
       needsAuth = true;
-      errorMessage = "Esta playlist es privada y tu token de Spotify no pudo acceder. Intenta reconectar Spotify para actualizar los permisos. Haz clic en 'Conectar Spotify'.";
+      errorMessage =
+        "Esta playlist es privada y tu token de Spotify no pudo acceder. Intenta reconectar Spotify para actualizar los permisos. Haz clic en 'Conectar Spotify'.";
     } else if (errorMessage.includes("404")) {
-      errorMessage = "Playlist de Spotify no encontrada. Verifica la URL/ID de la playlist.";
+      errorMessage =
+        "Playlist de Spotify no encontrada. Verifica la URL/ID de la playlist.";
     } else if (errorMessage.includes("429")) {
-      errorMessage = "Spotify API rate limit reached. Please try again in a few moments.";
+      errorMessage =
+        "Spotify API rate limit reached. Please try again in a few moments.";
     } else if (errorMessage.includes("403") || errorMessage.includes("401")) {
       // Only treat as auth issue if the error specifically mentions 403 or 401
       // from the Spotify API (not from our own 403 response)
       needsAuth = true;
-      errorMessage = "Spotify denegó el acceso. Tu conexión de Spotify puede haber expirado o los permisos son insuficientes. Haz clic en 'Conectar Spotify' para reconectar con permisos completos.";
+      errorMessage =
+        "Spotify denegó el acceso. Tu conexión de Spotify puede haber expirado o los permisos son insuficientes. Haz clic en 'Conectar Spotify' para reconectar con permisos completos.";
     }
 
     // Include debug info in development
-    const debugInfo = process.env.NODE_ENV === 'development' ? { debug: errorMessage } : {};
+    const debugInfo =
+      process.env.NODE_ENV === "development" ? { debug: errorMessage } : {};
 
     return NextResponse.json(
       { success: false, error: errorMessage, needsAuth, ...debugInfo },
-      { status: needsAuth ? 403 : 500 }
+      { status: needsAuth ? 403 : 500 },
     );
   }
 }

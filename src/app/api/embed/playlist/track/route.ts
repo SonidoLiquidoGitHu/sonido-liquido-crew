@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { playlistEmbedStats, userPlaylists } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { and, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // POST - Track embed view/play
 export async function POST(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     if (!slug) {
       return NextResponse.json(
         { success: false, error: "Slug required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (!playlist) {
       return NextResponse.json(
         { success: false, error: "Playlist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
       .where(
         and(
           eq(playlistEmbedStats.playlistId, playlist.id),
-          eq(playlistEmbedStats.referrerDomain, referrerDomain)
-        )
+          eq(playlistEmbedStats.referrerDomain, referrerDomain),
+        ),
       )
       .limit(1);
 

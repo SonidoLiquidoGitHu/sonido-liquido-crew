@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
 import { BeatCard, BeatCardCompact } from "@/components/public/cards/BeatCard";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import {
-  Music,
-  Loader2,
   Grid3X3,
   List,
-  Play,
+  Loader2,
+  Music,
   Pause,
+  Play,
   SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
   X,
 } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Beat {
   id: string;
@@ -80,59 +80,62 @@ export default function BeatsPage() {
     }
   };
 
-  const currentBeat = beats.find(b => b.id === currentBeatId);
+  const currentBeat = beats.find((b) => b.id === currentBeatId);
 
-  const playBeat = useCallback((beatId: string) => {
-    const beat = beats.find(b => b.id === beatId);
-    if (!beat?.previewAudioUrl) return;
+  const playBeat = useCallback(
+    (beatId: string) => {
+      const beat = beats.find((b) => b.id === beatId);
+      if (!beat?.previewAudioUrl) return;
 
-    // If same beat, just resume
-    if (currentBeatId === beatId && audioRef.current) {
-      audioRef.current.play();
-      setIsPlaying(true);
-      return;
-    }
-
-    // Stop current audio if playing
-    if (audioRef.current) {
-      audioRef.current.pause();
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
+      // If same beat, just resume
+      if (currentBeatId === beatId && audioRef.current) {
+        audioRef.current.play();
+        setIsPlaying(true);
+        return;
       }
-    }
 
-    // Create new audio element
-    const audio = new Audio(beat.previewAudioUrl);
-    audio.volume = isMuted ? 0 : volume;
-
-    audio.addEventListener("loadedmetadata", () => {
-      setDuration(audio.duration);
-    });
-
-    audio.addEventListener("ended", () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      // Auto-play next beat
-      const currentIndex = beats.findIndex(b => b.id === beatId);
-      const nextBeat = beats[currentIndex + 1];
-      if (nextBeat?.previewAudioUrl) {
-        playBeat(nextBeat.id);
-      }
-    });
-
-    audio.play();
-    audioRef.current = audio;
-    setCurrentBeatId(beatId);
-    setIsPlaying(true);
-    setCurrentTime(0);
-
-    // Update progress
-    progressInterval.current = setInterval(() => {
+      // Stop current audio if playing
       if (audioRef.current) {
-        setCurrentTime(audioRef.current.currentTime);
+        audioRef.current.pause();
+        if (progressInterval.current) {
+          clearInterval(progressInterval.current);
+        }
       }
-    }, 100);
-  }, [beats, currentBeatId, volume, isMuted]);
+
+      // Create new audio element
+      const audio = new Audio(beat.previewAudioUrl);
+      audio.volume = isMuted ? 0 : volume;
+
+      audio.addEventListener("loadedmetadata", () => {
+        setDuration(audio.duration);
+      });
+
+      audio.addEventListener("ended", () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        // Auto-play next beat
+        const currentIndex = beats.findIndex((b) => b.id === beatId);
+        const nextBeat = beats[currentIndex + 1];
+        if (nextBeat?.previewAudioUrl) {
+          playBeat(nextBeat.id);
+        }
+      });
+
+      audio.play();
+      audioRef.current = audio;
+      setCurrentBeatId(beatId);
+      setIsPlaying(true);
+      setCurrentTime(0);
+
+      // Update progress
+      progressInterval.current = setInterval(() => {
+        if (audioRef.current) {
+          setCurrentTime(audioRef.current.currentTime);
+        }
+      }, 100);
+    },
+    [beats, currentBeatId, volume, isMuted],
+  );
 
   const pauseBeat = useCallback(() => {
     if (audioRef.current) {
@@ -154,7 +157,7 @@ export default function BeatsPage() {
 
   const playPrevious = useCallback(() => {
     if (!currentBeatId) return;
-    const currentIndex = beats.findIndex(b => b.id === currentBeatId);
+    const currentIndex = beats.findIndex((b) => b.id === currentBeatId);
     const prevBeat = beats[currentIndex - 1];
     if (prevBeat?.previewAudioUrl) {
       playBeat(prevBeat.id);
@@ -163,19 +166,22 @@ export default function BeatsPage() {
 
   const playNext = useCallback(() => {
     if (!currentBeatId) return;
-    const currentIndex = beats.findIndex(b => b.id === currentBeatId);
+    const currentIndex = beats.findIndex((b) => b.id === currentBeatId);
     const nextBeat = beats[currentIndex + 1];
     if (nextBeat?.previewAudioUrl) {
       playBeat(nextBeat.id);
     }
   }, [currentBeatId, beats, playBeat]);
 
-  const seekTo = useCallback((percent: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = (percent / 100) * duration;
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  }, [duration]);
+  const seekTo = useCallback(
+    (percent: number) => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = (percent / 100) * duration;
+        setCurrentTime(audioRef.current.currentTime);
+      }
+    },
+    [duration],
+  );
 
   const toggleMute = useCallback(() => {
     if (audioRef.current) {
@@ -216,7 +222,8 @@ export default function BeatsPage() {
               Beats
             </h1>
             <p className="text-gray-400 mt-4">
-              Escucha y descarga beats exclusivos de los productores de Sonido Líquido
+              Escucha y descarga beats exclusivos de los productores de Sonido
+              Líquido
             </p>
           </div>
         </div>
@@ -226,7 +233,8 @@ export default function BeatsPage() {
       <div className="section-container py-6">
         <div className="flex items-center justify-between">
           <p className="text-slc-muted">
-            {beats.length} beat{beats.length !== 1 ? "s" : ""} disponible{beats.length !== 1 ? "s" : ""}
+            {beats.length} beat{beats.length !== 1 ? "s" : ""} disponible
+            {beats.length !== 1 ? "s" : ""}
           </p>
 
           <div className="flex items-center gap-2">
@@ -259,7 +267,9 @@ export default function BeatsPage() {
         ) : beats.length === 0 ? (
           <div className="text-center py-20">
             <Music className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-            <h2 className="text-xl font-oswald uppercase mb-2">No hay beats disponibles</h2>
+            <h2 className="text-xl font-oswald uppercase mb-2">
+              No hay beats disponibles
+            </h2>
             <p className="text-slc-muted">Próximamente agregaremos más beats</p>
           </div>
         ) : viewMode === "grid" ? (
@@ -272,7 +282,9 @@ export default function BeatsPage() {
                 onPlay={playBeat}
                 onPause={pauseBeat}
                 currentTime={currentBeatId === beat.id ? currentTime : 0}
-                duration={currentBeatId === beat.id ? duration : beat.duration || 0}
+                duration={
+                  currentBeatId === beat.id ? duration : beat.duration || 0
+                }
               />
             ))}
           </div>
@@ -286,7 +298,9 @@ export default function BeatsPage() {
                 onPlay={playBeat}
                 onPause={pauseBeat}
                 currentTime={currentBeatId === beat.id ? currentTime : 0}
-                duration={currentBeatId === beat.id ? duration : beat.duration || 0}
+                duration={
+                  currentBeatId === beat.id ? duration : beat.duration || 0
+                }
               />
             ))}
           </div>
@@ -341,7 +355,9 @@ export default function BeatsPage() {
                   </h4>
                 </Link>
                 {currentBeat.producerName && (
-                  <p className="text-sm text-slc-muted truncate">{currentBeat.producerName}</p>
+                  <p className="text-sm text-slc-muted truncate">
+                    {currentBeat.producerName}
+                  </p>
                 )}
               </div>
 
@@ -403,7 +419,7 @@ export default function BeatsPage() {
                   step="0.1"
                   value={isMuted ? 0 : volume}
                   onChange={(e) => {
-                    const newVolume = parseFloat(e.target.value);
+                    const newVolume = Number.parseFloat(e.target.value);
                     setVolume(newVolume);
                     setIsMuted(false);
                     if (audioRef.current) {

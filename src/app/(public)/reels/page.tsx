@@ -1,16 +1,23 @@
-import { Suspense } from "react";
-import Link from "next/link";
-import { Smartphone, PlayCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { verticalVideos, verticalVideoTags, tags, artists, verticalVideoEvents } from "@/db/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import {
+  artists,
+  tags,
+  verticalVideoEvents,
+  verticalVideoTags,
+  verticalVideos,
+} from "@/db/schema";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { PlayCircle, Smartphone } from "lucide-react";
+import Link from "next/link";
+import { Suspense } from "react";
 import { ReelsGrid } from "./ReelsGrid";
 
 export const metadata = {
   title: "Reels | Sonido Líquido Crew",
-  description: "Videos verticales, Reels, TikToks y YouTube Shorts de Sonido Líquido Crew.",
+  description:
+    "Videos verticales, Reels, TikToks y YouTube Shorts de Sonido Líquido Crew.",
 };
 
 export const dynamic = "force-dynamic";
@@ -52,7 +59,10 @@ interface VideoEvent {
   updatedAt: Date | string | null;
 }
 
-async function getReelsData(): Promise<{ videos: ReelVideo[]; events: VideoEvent[] }> {
+async function getReelsData(): Promise<{
+  videos: ReelVideo[];
+  events: VideoEvent[];
+}> {
   if (!isDatabaseConfigured()) return { videos: [], events: [] };
 
   try {
@@ -95,7 +105,7 @@ async function getReelsData(): Promise<{ videos: ReelVideo[]; events: VideoEvent
           ...video,
           tags: videoTagRows.map((row) => row.tag),
         };
-      })
+      }),
     );
 
     // Fetch all published events with video counts
@@ -103,27 +113,32 @@ async function getReelsData(): Promise<{ videos: ReelVideo[]; events: VideoEvent
       .select()
       .from(verticalVideoEvents)
       .where(eq(verticalVideoEvents.isPublished, true))
-      .orderBy(verticalVideoEvents.displayOrder, desc(verticalVideoEvents.eventDate));
+      .orderBy(
+        verticalVideoEvents.displayOrder,
+        desc(verticalVideoEvents.eventDate),
+      );
 
     const eventsWithCounts = await Promise.all(
       allEvents.map(async (event) => {
         const [countResult] = await db
           .select({ total: sql<number>`count(*)` })
           .from(verticalVideos)
-          .where(and(
-            eq(verticalVideos.eventId, event.id),
-            eq(verticalVideos.isPublished, true)
-          ));
+          .where(
+            and(
+              eq(verticalVideos.eventId, event.id),
+              eq(verticalVideos.isPublished, true),
+            ),
+          );
 
         return {
           ...event,
           videoCount: countResult?.total || 0,
         };
-      })
+      }),
     );
 
     // Only include events that have at least 1 video
-    const activeEvents = eventsWithCounts.filter(e => e.videoCount > 0);
+    const activeEvents = eventsWithCounts.filter((e) => e.videoCount > 0);
 
     return { videos: videosWithTags, events: activeEvents };
   } catch (error) {
@@ -185,7 +200,9 @@ export default async function ReelsPage() {
                   Modo Inmersivo
                 </Link>
               </Button>
-              <p className="text-xs text-gray-500 mt-2">Desliza como en TikTok</p>
+              <p className="text-xs text-gray-500 mt-2">
+                Desliza como en TikTok
+              </p>
             </div>
           )}
         </div>

@@ -1,34 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import {
-  Bell,
-  BellRing,
-  Send,
-  Users,
-  Trash2,
-  RefreshCw,
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Rocket,
-  Calendar,
-  Settings,
-  Mail,
-  Smartphone,
-  Globe,
-  ChevronRight,
-  Search,
-  Filter,
-  History,
-  BarChart3,
-  XCircle,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  AlertTriangle,
+  BarChart3,
+  Bell,
+  BellRing,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  Clock,
+  Filter,
+  Globe,
+  History,
+  Loader2,
+  Mail,
+  RefreshCw,
+  Rocket,
+  Search,
+  Send,
+  Settings,
+  Smartphone,
+  Trash2,
+  Users,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Subscription {
   id: string;
@@ -75,7 +75,9 @@ interface HistoryStats {
 }
 
 export default function NotificationsAdminPage() {
-  const [activeTab, setActiveTab] = useState<"subscriptions" | "send" | "history" | "settings">("subscriptions");
+  const [activeTab, setActiveTab] = useState<
+    "subscriptions" | "send" | "history" | "settings"
+  >("subscriptions");
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [releases, setReleases] = useState<UpcomingRelease[]>([]);
   const [stats, setStats] = useState<NotificationStats | null>(null);
@@ -92,7 +94,10 @@ export default function NotificationsAdminPage() {
     releaseId: "",
   });
   const [isSending, setIsSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [sendResult, setSendResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -108,12 +113,13 @@ export default function NotificationsAdminPage() {
         fetch("/api/admin/notifications/history?limit=50"),
       ]);
 
-      const [subsData, statsData, releasesData, historyData] = await Promise.all([
-        subsRes.json(),
-        statsRes.json(),
-        releasesRes.json(),
-        historyRes.json(),
-      ]);
+      const [subsData, statsData, releasesData, historyData] =
+        await Promise.all([
+          subsRes.json(),
+          statsRes.json(),
+          releasesRes.json(),
+          historyRes.json(),
+        ]);
 
       if (subsData.success) setSubscriptions(subsData.data);
       if (statsData.success) setStats(statsData.data);
@@ -132,9 +138,12 @@ export default function NotificationsAdminPage() {
     if (!confirm("¿Eliminar esta suscripción?")) return;
 
     try {
-      const res = await fetch(`/api/admin/notifications/subscriptions?id=${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/admin/notifications/subscriptions?id=${id}`,
+        {
+          method: "DELETE",
+        },
+      );
       const data = await res.json();
       if (data.success) {
         setSubscriptions((prev) => prev.filter((s) => s.id !== id));
@@ -147,7 +156,10 @@ export default function NotificationsAdminPage() {
   async function sendNotification(e: React.FormEvent) {
     e.preventDefault();
     if (!sendForm.title || !sendForm.body) {
-      setSendResult({ success: false, message: "Título y mensaje son requeridos" });
+      setSendResult({
+        success: false,
+        message: "Título y mensaje son requeridos",
+      });
       return;
     }
 
@@ -163,10 +175,16 @@ export default function NotificationsAdminPage() {
       const data = await res.json();
 
       if (data.success) {
-        setSendResult({ success: true, message: `Enviado a ${data.sent} suscriptores` });
+        setSendResult({
+          success: true,
+          message: `Enviado a ${data.sent} suscriptores`,
+        });
         setSendForm({ title: "", body: "", url: "", releaseId: "" });
       } else {
-        setSendResult({ success: false, message: data.error || "Error al enviar" });
+        setSendResult({
+          success: false,
+          message: data.error || "Error al enviar",
+        });
       }
     } catch (error) {
       setSendResult({ success: false, message: "Error de conexión" });
@@ -185,9 +203,15 @@ export default function NotificationsAdminPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setSendResult({ success: true, message: `Enviadas ${data.sent} notificaciones programadas` });
+        setSendResult({
+          success: true,
+          message: `Enviadas ${data.sent} notificaciones programadas`,
+        });
       } else {
-        setSendResult({ success: false, message: data.error || "Error al enviar" });
+        setSendResult({
+          success: false,
+          message: data.error || "Error al enviar",
+        });
       }
     } catch (error) {
       setSendResult({ success: false, message: "Error de conexión" });
@@ -206,7 +230,11 @@ export default function NotificationsAdminPage() {
 
   function getDeviceIcon(userAgent: string | null) {
     if (!userAgent) return <Globe className="w-4 h-4" />;
-    if (userAgent.includes("Mobile") || userAgent.includes("Android") || userAgent.includes("iPhone")) {
+    if (
+      userAgent.includes("Mobile") ||
+      userAgent.includes("Android") ||
+      userAgent.includes("iPhone")
+    ) {
       return <Smartphone className="w-4 h-4" />;
     }
     return <Globe className="w-4 h-4" />;
@@ -221,9 +249,10 @@ export default function NotificationsAdminPage() {
     return "Otro";
   }
 
-  const filteredSubscriptions = subscriptions.filter((sub) =>
-    sub.endpoint.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (sub.userAgent && sub.userAgent.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredSubscriptions = subscriptions.filter(
+    (sub) =>
+      sub.endpoint.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sub.userAgent?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -240,7 +269,9 @@ export default function NotificationsAdminPage() {
           </p>
         </div>
         <Button onClick={fetchData} variant="outline" disabled={isLoading}>
-          <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
+          <RefreshCw
+            className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")}
+          />
           Actualizar
         </Button>
       </div>
@@ -253,7 +284,9 @@ export default function NotificationsAdminPage() {
               <Users className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-oswald">{stats?.activeSubscriptions || 0}</p>
+              <p className="text-2xl font-oswald">
+                {stats?.activeSubscriptions || 0}
+              </p>
               <p className="text-xs text-slc-muted">Suscriptores activos</p>
             </div>
           </div>
@@ -265,7 +298,9 @@ export default function NotificationsAdminPage() {
               <Rocket className="w-5 h-5 text-yellow-500" />
             </div>
             <div>
-              <p className="text-2xl font-oswald">{stats?.upcomingReleasesIn7Days || 0}</p>
+              <p className="text-2xl font-oswald">
+                {stats?.upcomingReleasesIn7Days || 0}
+              </p>
               <p className="text-xs text-slc-muted">Lanzamientos en 7 días</p>
             </div>
           </div>
@@ -273,14 +308,18 @@ export default function NotificationsAdminPage() {
 
         <div className="bg-slc-card border border-slc-border rounded-xl p-5">
           <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center",
-              stats?.vapidConfigured ? "bg-green-500/20" : "bg-red-500/20"
-            )}>
-              <Settings className={cn(
-                "w-5 h-5",
-                stats?.vapidConfigured ? "text-green-500" : "text-red-500"
-              )} />
+            <div
+              className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center",
+                stats?.vapidConfigured ? "bg-green-500/20" : "bg-red-500/20",
+              )}
+            >
+              <Settings
+                className={cn(
+                  "w-5 h-5",
+                  stats?.vapidConfigured ? "text-green-500" : "text-red-500",
+                )}
+              />
             </div>
             <div>
               <p className="text-sm font-medium">
@@ -300,7 +339,7 @@ export default function NotificationsAdminPage() {
             "px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2",
             activeTab === "subscriptions"
               ? "bg-primary text-white"
-              : "bg-slc-card text-slc-muted hover:text-white"
+              : "bg-slc-card text-slc-muted hover:text-white",
           )}
         >
           <Users className="w-4 h-4" />
@@ -312,7 +351,7 @@ export default function NotificationsAdminPage() {
             "px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2",
             activeTab === "send"
               ? "bg-primary text-white"
-              : "bg-slc-card text-slc-muted hover:text-white"
+              : "bg-slc-card text-slc-muted hover:text-white",
           )}
         >
           <Send className="w-4 h-4" />
@@ -324,13 +363,15 @@ export default function NotificationsAdminPage() {
             "px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2",
             activeTab === "history"
               ? "bg-primary text-white"
-              : "bg-slc-card text-slc-muted hover:text-white"
+              : "bg-slc-card text-slc-muted hover:text-white",
           )}
         >
           <History className="w-4 h-4" />
           Historial
           {history.length > 0 && (
-            <span className="px-1.5 py-0.5 bg-white/20 rounded text-xs">{history.length}</span>
+            <span className="px-1.5 py-0.5 bg-white/20 rounded text-xs">
+              {history.length}
+            </span>
           )}
         </button>
         <button
@@ -339,7 +380,7 @@ export default function NotificationsAdminPage() {
             "px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2",
             activeTab === "settings"
               ? "bg-primary text-white"
-              : "bg-slc-card text-slc-muted hover:text-white"
+              : "bg-slc-card text-slc-muted hover:text-white",
           )}
         >
           <Settings className="w-4 h-4" />
@@ -387,7 +428,10 @@ export default function NotificationsAdminPage() {
             <div className="bg-slc-card border border-slc-border rounded-xl overflow-hidden">
               <div className="divide-y divide-slc-border">
                 {filteredSubscriptions.map((sub) => (
-                  <div key={sub.id} className="p-4 flex items-center gap-4 hover:bg-slc-dark/50">
+                  <div
+                    key={sub.id}
+                    className="p-4 flex items-center gap-4 hover:bg-slc-dark/50"
+                  >
                     <div className="w-10 h-10 rounded-full bg-slc-dark flex items-center justify-center">
                       {getDeviceIcon(sub.userAgent)}
                     </div>
@@ -405,7 +449,8 @@ export default function NotificationsAdminPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          Último: {new Date(sub.lastUsedAt).toLocaleDateString("es-MX")}
+                          Último:{" "}
+                          {new Date(sub.lastUsedAt).toLocaleDateString("es-MX")}
                         </span>
                       </div>
                     </div>
@@ -437,20 +482,28 @@ export default function NotificationsAdminPage() {
 
             <form onSubmit={sendNotification} className="space-y-4">
               <div>
-                <label className="block text-sm text-slc-muted mb-1">Título *</label>
+                <label className="block text-sm text-slc-muted mb-1">
+                  Título *
+                </label>
                 <Input
                   value={sendForm.title}
-                  onChange={(e) => setSendForm({ ...sendForm, title: e.target.value })}
+                  onChange={(e) =>
+                    setSendForm({ ...sendForm, title: e.target.value })
+                  }
                   placeholder="🚀 ¡Nueva música!"
                   maxLength={100}
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-slc-muted mb-1">Mensaje *</label>
+                <label className="block text-sm text-slc-muted mb-1">
+                  Mensaje *
+                </label>
                 <textarea
                   value={sendForm.body}
-                  onChange={(e) => setSendForm({ ...sendForm, body: e.target.value })}
+                  onChange={(e) =>
+                    setSendForm({ ...sendForm, body: e.target.value })
+                  }
                   placeholder="Descripción de la notificación..."
                   className="w-full h-24 px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm resize-none focus:outline-none focus:border-primary"
                   maxLength={200}
@@ -458,20 +511,32 @@ export default function NotificationsAdminPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-slc-muted mb-1">URL (opcional)</label>
+                <label className="block text-sm text-slc-muted mb-1">
+                  URL (opcional)
+                </label>
                 <Input
                   value={sendForm.url}
-                  onChange={(e) => setSendForm({ ...sendForm, url: e.target.value })}
+                  onChange={(e) =>
+                    setSendForm({ ...sendForm, url: e.target.value })
+                  }
                   placeholder="/proximos/nuevo-lanzamiento"
                 />
               </div>
 
               {sendResult && (
-                <div className={cn(
-                  "p-3 rounded-lg flex items-center gap-2 text-sm",
-                  sendResult.success ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
-                )}>
-                  {sendResult.success ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                <div
+                  className={cn(
+                    "p-3 rounded-lg flex items-center gap-2 text-sm",
+                    sendResult.success
+                      ? "bg-green-500/20 text-green-500"
+                      : "bg-red-500/20 text-red-500",
+                  )}
+                >
+                  {sendResult.success ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4" />
+                  )}
                   {sendResult.message}
                 </div>
               )}
@@ -496,7 +561,9 @@ export default function NotificationsAdminPage() {
               </h3>
 
               {releases.length === 0 ? (
-                <p className="text-sm text-slc-muted">No hay próximos lanzamientos</p>
+                <p className="text-sm text-slc-muted">
+                  No hay próximos lanzamientos
+                </p>
               ) : (
                 <div className="space-y-2">
                   {releases.slice(0, 5).map((release) => (
@@ -509,8 +576,12 @@ export default function NotificationsAdminPage() {
                         <Rocket className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{release.title}</p>
-                        <p className="text-xs text-slc-muted">{release.artistName}</p>
+                        <p className="text-sm font-medium truncate">
+                          {release.title}
+                        </p>
+                        <p className="text-xs text-slc-muted">
+                          {release.artistName}
+                        </p>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slc-muted" />
                     </button>
@@ -526,9 +597,14 @@ export default function NotificationsAdminPage() {
                 Notificaciones Programadas
               </h3>
               <p className="text-sm text-slc-muted mb-4">
-                Envía notificaciones automáticas para lanzamientos que se acercan (7 días, 24 horas, 1 hora antes).
+                Envía notificaciones automáticas para lanzamientos que se
+                acercan (7 días, 24 horas, 1 hora antes).
               </p>
-              <Button onClick={triggerScheduledNotifications} variant="outline" disabled={isSending}>
+              <Button
+                onClick={triggerScheduledNotifications}
+                variant="outline"
+                disabled={isSending}
+              >
                 {isSending ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
@@ -553,7 +629,9 @@ export default function NotificationsAdminPage() {
                     <Send className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xl font-oswald">{historyStats.totalNotifications}</p>
+                    <p className="text-xl font-oswald">
+                      {historyStats.totalNotifications}
+                    </p>
                     <p className="text-xs text-slc-muted">Total enviadas</p>
                   </div>
                 </div>
@@ -565,7 +643,9 @@ export default function NotificationsAdminPage() {
                     <CheckCircle className="w-4 h-4 text-green-500" />
                   </div>
                   <div>
-                    <p className="text-xl font-oswald">{historyStats.totalSent}</p>
+                    <p className="text-xl font-oswald">
+                      {historyStats.totalSent}
+                    </p>
                     <p className="text-xs text-slc-muted">Entregadas</p>
                   </div>
                 </div>
@@ -577,7 +657,9 @@ export default function NotificationsAdminPage() {
                     <XCircle className="w-4 h-4 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-xl font-oswald">{historyStats.totalFailed}</p>
+                    <p className="text-xl font-oswald">
+                      {historyStats.totalFailed}
+                    </p>
                     <p className="text-xs text-slc-muted">Fallidas</p>
                   </div>
                 </div>
@@ -589,7 +671,9 @@ export default function NotificationsAdminPage() {
                     <BarChart3 className="w-4 h-4 text-cyan-500" />
                   </div>
                   <div>
-                    <p className="text-xl font-oswald">{historyStats.successRate.toFixed(1)}%</p>
+                    <p className="text-xl font-oswald">
+                      {historyStats.successRate.toFixed(1)}%
+                    </p>
                     <p className="text-xs text-slc-muted">Tasa de éxito</p>
                   </div>
                 </div>
@@ -605,8 +689,12 @@ export default function NotificationsAdminPage() {
           ) : history.length === 0 ? (
             <div className="text-center py-12 bg-slc-card rounded-xl border border-slc-border">
               <History className="w-12 h-12 text-slc-muted mx-auto mb-4" />
-              <p className="text-slc-muted">No hay notificaciones en el historial</p>
-              <p className="text-xs text-slc-muted mt-1">Las notificaciones enviadas aparecerán aquí</p>
+              <p className="text-slc-muted">
+                No hay notificaciones en el historial
+              </p>
+              <p className="text-xs text-slc-muted mt-1">
+                Las notificaciones enviadas aparecerán aquí
+              </p>
             </div>
           ) : (
             <div className="bg-slc-card border border-slc-border rounded-xl overflow-hidden">
@@ -617,16 +705,31 @@ export default function NotificationsAdminPage() {
               </div>
               <div className="divide-y divide-slc-border">
                 {history.map((entry) => (
-                  <div key={entry.id} className="p-4 hover:bg-slc-dark/30 transition-colors">
+                  <div
+                    key={entry.id}
+                    className="p-4 hover:bg-slc-dark/30 transition-colors"
+                  >
                     <div className="flex items-start gap-4">
                       {/* Icon */}
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-                        entry.type === "manual" ? "bg-primary/20" :
-                        entry.type === "automated" ? "bg-cyan-500/20" : "bg-yellow-500/20"
-                      )}>
+                      <div
+                        className={cn(
+                          "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                          entry.type === "manual"
+                            ? "bg-primary/20"
+                            : entry.type === "automated"
+                              ? "bg-cyan-500/20"
+                              : "bg-yellow-500/20",
+                        )}
+                      >
                         {entry.type === "manual" ? (
-                          <Send className={cn("w-5 h-5", entry.type === "manual" ? "text-primary" : "text-cyan-500")} />
+                          <Send
+                            className={cn(
+                              "w-5 h-5",
+                              entry.type === "manual"
+                                ? "text-primary"
+                                : "text-cyan-500",
+                            )}
+                          />
                         ) : entry.type === "automated" ? (
                           <Clock className="w-5 h-5 text-cyan-500" />
                         ) : (
@@ -638,18 +741,25 @@ export default function NotificationsAdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <h4 className="font-medium text-sm">{entry.title}</h4>
-                            <p className="text-xs text-slc-muted mt-1 line-clamp-2">{entry.body}</p>
+                            <h4 className="font-medium text-sm">
+                              {entry.title}
+                            </h4>
+                            <p className="text-xs text-slc-muted mt-1 line-clamp-2">
+                              {entry.body}
+                            </p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-xs text-slc-muted">
-                              {new Date(entry.sentAt).toLocaleDateString("es-MX", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(entry.sentAt).toLocaleDateString(
+                                "es-MX",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
                             </p>
                           </div>
                         </div>
@@ -657,13 +767,21 @@ export default function NotificationsAdminPage() {
                         {/* Meta info */}
                         <div className="flex flex-wrap items-center gap-3 mt-3">
                           {/* Type Badge */}
-                          <span className={cn(
-                            "px-2 py-0.5 rounded text-xs font-medium",
-                            entry.type === "manual" ? "bg-primary/20 text-primary" :
-                            entry.type === "automated" ? "bg-cyan-500/20 text-cyan-500" : "bg-yellow-500/20 text-yellow-500"
-                          )}>
-                            {entry.type === "manual" ? "Manual" :
-                             entry.type === "automated" ? "Automática" : "Programada"}
+                          <span
+                            className={cn(
+                              "px-2 py-0.5 rounded text-xs font-medium",
+                              entry.type === "manual"
+                                ? "bg-primary/20 text-primary"
+                                : entry.type === "automated"
+                                  ? "bg-cyan-500/20 text-cyan-500"
+                                  : "bg-yellow-500/20 text-yellow-500",
+                            )}
+                          >
+                            {entry.type === "manual"
+                              ? "Manual"
+                              : entry.type === "automated"
+                                ? "Automática"
+                                : "Programada"}
                           </span>
 
                           {/* Stats */}
@@ -688,7 +806,9 @@ export default function NotificationsAdminPage() {
                           {entry.url && (
                             <div className="flex items-center gap-1 text-xs text-slc-muted">
                               <Globe className="w-3 h-3" />
-                              <span className="truncate max-w-[150px]">{entry.url}</span>
+                              <span className="truncate max-w-[150px]">
+                                {entry.url}
+                              </span>
                             </div>
                           )}
 
@@ -721,27 +841,38 @@ export default function NotificationsAdminPage() {
       {activeTab === "settings" && (
         <div className="max-w-2xl space-y-6">
           <div className="bg-slc-card border border-slc-border rounded-xl p-6">
-            <h3 className="font-oswald text-lg uppercase mb-4">Configuración VAPID</h3>
+            <h3 className="font-oswald text-lg uppercase mb-4">
+              Configuración VAPID
+            </h3>
             <p className="text-sm text-slc-muted mb-4">
-              Las claves VAPID son necesarias para enviar notificaciones push. Se configuran en las variables de entorno de Netlify.
+              Las claves VAPID son necesarias para enviar notificaciones push.
+              Se configuran en las variables de entorno de Netlify.
             </p>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
                 <span className="text-sm">VAPID_PUBLIC_KEY</span>
-                <span className={cn(
-                  "px-2 py-0.5 rounded text-xs",
-                  stats?.vapidConfigured ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
-                )}>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded text-xs",
+                    stats?.vapidConfigured
+                      ? "bg-green-500/20 text-green-500"
+                      : "bg-red-500/20 text-red-500",
+                  )}
+                >
                   {stats?.vapidConfigured ? "Configurado" : "No configurado"}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
                 <span className="text-sm">VAPID_PRIVATE_KEY</span>
-                <span className={cn(
-                  "px-2 py-0.5 rounded text-xs",
-                  stats?.vapidConfigured ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
-                )}>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded text-xs",
+                    stats?.vapidConfigured
+                      ? "bg-green-500/20 text-green-500"
+                      : "bg-red-500/20 text-red-500",
+                  )}
+                >
                   {stats?.vapidConfigured ? "Configurado" : "No configurado"}
                 </span>
               </div>
@@ -750,7 +881,10 @@ export default function NotificationsAdminPage() {
             {!stats?.vapidConfigured && (
               <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                 <p className="text-sm text-yellow-500">
-                  Para generar claves VAPID, ejecuta: <code className="bg-slc-dark px-1 rounded">npx web-push generate-vapid-keys</code>
+                  Para generar claves VAPID, ejecuta:{" "}
+                  <code className="bg-slc-dark px-1 rounded">
+                    npx web-push generate-vapid-keys
+                  </code>
                 </p>
               </div>
             )}
@@ -759,7 +893,8 @@ export default function NotificationsAdminPage() {
           <div className="bg-slc-card border border-slc-border rounded-xl p-6">
             <h3 className="font-oswald text-lg uppercase mb-4">Cron Job</h3>
             <p className="text-sm text-slc-muted mb-4">
-              Configura un cron job para enviar notificaciones automáticamente. En Netlify, usa Scheduled Functions.
+              Configura un cron job para enviar notificaciones automáticamente.
+              En Netlify, usa Scheduled Functions.
             </p>
 
             <div className="p-3 bg-slc-dark rounded-lg font-mono text-sm">

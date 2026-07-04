@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Plus,
-  Search,
-  Trash2,
-  ExternalLink,
-  Play,
-  Eye,
-  Star,
-  RefreshCw,
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  GripVertical,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import { formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  CheckCircle,
+  ExternalLink,
+  Eye,
+  GripVertical,
+  Loader2,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Star,
+  Trash2,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Video {
   id: string;
@@ -52,7 +52,10 @@ export default function AdminVideosPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [artistFilter, setArtistFilter] = useState("");
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,8 +103,8 @@ export default function AdminVideosPage() {
       if (data.success) {
         setVideos((prev) =>
           prev.map((v) =>
-            v.id === video.id ? { ...v, isFeatured: !v.isFeatured } : v
-          )
+            v.id === video.id ? { ...v, isFeatured: !v.isFeatured } : v,
+          ),
         );
         setMessage({
           type: "success",
@@ -110,7 +113,10 @@ export default function AdminVideosPage() {
             : "Video marcado como destacado",
         });
       } else {
-        setMessage({ type: "error", text: data.error || "Error al actualizar" });
+        setMessage({
+          type: "error",
+          text: data.error || "Error al actualizar",
+        });
       }
     } catch (error) {
       setMessage({ type: "error", text: "Error de conexión" });
@@ -144,11 +150,14 @@ export default function AdminVideosPage() {
   }
 
   async function moveVideo(video: Video, direction: "up" | "down") {
-    const sortedVideos = [...videos].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    const sortedVideos = [...videos].sort(
+      (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
+    );
     const currentIndex = sortedVideos.findIndex((v) => v.id === video.id);
 
     if (direction === "up" && currentIndex === 0) return;
-    if (direction === "down" && currentIndex === sortedVideos.length - 1) return;
+    if (direction === "down" && currentIndex === sortedVideos.length - 1)
+      return;
 
     const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
     const swapVideo = sortedVideos[swapIndex];
@@ -182,7 +191,10 @@ export default function AdminVideosPage() {
         const swapIdx = updated.findIndex((v) => v.id === swapVideo.id);
 
         const tempOrder = updated[videoIdx].displayOrder;
-        updated[videoIdx] = { ...updated[videoIdx], displayOrder: updated[swapIdx].displayOrder };
+        updated[videoIdx] = {
+          ...updated[videoIdx],
+          displayOrder: updated[swapIdx].displayOrder,
+        };
         updated[swapIdx] = { ...updated[swapIdx], displayOrder: tempOrder };
 
         return updated;
@@ -229,7 +241,9 @@ export default function AdminVideosPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchData} disabled={isLoading}>
-            <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
+            <RefreshCw
+              className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")}
+            />
             Actualizar
           </Button>
           <Button asChild>
@@ -248,7 +262,7 @@ export default function AdminVideosPage() {
             "mb-6 p-4 rounded-lg flex items-center gap-2",
             message.type === "success"
               ? "bg-green-500/10 border border-green-500/20 text-green-500"
-              : "bg-red-500/10 border border-red-500/20 text-red-500"
+              : "bg-red-500/10 border border-red-500/20 text-red-500",
           )}
         >
           {message.type === "success" ? (
@@ -288,11 +302,15 @@ export default function AdminVideosPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-primary">{videos.length}</div>
+          <div className="font-oswald text-2xl text-primary">
+            {videos.length}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Total Videos</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-yellow-500">{featuredCount}</div>
+          <div className="font-oswald text-2xl text-yellow-500">
+            {featuredCount}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Destacados</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
@@ -319,7 +337,7 @@ export default function AdminVideosPage() {
                   "bg-slc-dark border rounded-xl overflow-hidden group relative",
                   video.isFeatured
                     ? "border-yellow-500/50 ring-1 ring-yellow-500/20"
-                    : "border-slc-border"
+                    : "border-slc-border",
                 )}
               >
                 {/* Thumbnail */}
@@ -383,7 +401,9 @@ export default function AdminVideosPage() {
                   </h3>
 
                   {video.artist && (
-                    <p className="text-xs text-primary mb-1">{video.artist.name}</p>
+                    <p className="text-xs text-primary mb-1">
+                      {video.artist.name}
+                    </p>
                   )}
 
                   {video.viewCount != null && (
@@ -413,11 +433,15 @@ export default function AdminVideosPage() {
                           "h-8 w-8",
                           video.isFeatured
                             ? "text-yellow-500 hover:text-yellow-400"
-                            : "text-slc-muted hover:text-yellow-500"
+                            : "text-slc-muted hover:text-yellow-500",
                         )}
                         onClick={() => toggleFeatured(video)}
                         disabled={updatingId === video.id}
-                        title={video.isFeatured ? "Quitar de destacados" : "Marcar como destacado"}
+                        title={
+                          video.isFeatured
+                            ? "Quitar de destacados"
+                            : "Marcar como destacado"
+                        }
                       >
                         {updatingId === video.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -450,7 +474,9 @@ export default function AdminVideosPage() {
           {sortedVideos.length === 0 && !isLoading && (
             <div className="text-center py-16">
               <Play className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-              <h3 className="font-oswald text-xl uppercase mb-2">No hay videos</h3>
+              <h3 className="font-oswald text-xl uppercase mb-2">
+                No hay videos
+              </h3>
               <p className="text-slc-muted mb-6">
                 {searchQuery || artistFilter
                   ? "No se encontraron videos con esos filtros."

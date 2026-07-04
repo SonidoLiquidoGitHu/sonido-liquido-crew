@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
 import { spotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
+import { eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -37,7 +37,9 @@ async function getExistingTrackIds(trackIds: string[]): Promise<Set<string>> {
 }
 
 // Helper: insert tracks with batch + one-by-one fallback
-async function insertTracks(newTracks: any[]): Promise<{ added: number; skipped: number }> {
+async function insertTracks(
+  newTracks: any[],
+): Promise<{ added: number; skipped: number }> {
   if (newTracks.length === 0) return { added: 0, skipped: 0 };
 
   let added = 0;
@@ -47,7 +49,10 @@ async function insertTracks(newTracks: any[]): Promise<{ added: number; skipped:
     await db.insert(curatedTracks).values(newTracks);
     added = newTracks.length;
   } catch (batchErr) {
-    console.warn("[Sync] Batch insert failed, falling back to one-by-one:", batchErr);
+    console.warn(
+      "[Sync] Batch insert failed, falling back to one-by-one:",
+      batchErr,
+    );
     for (const newTrack of newTracks) {
       try {
         await db.insert(curatedTracks).values(newTrack);
@@ -69,10 +74,10 @@ async function processAlbumTracks(
 ): Promise<{ added: number; skipped: number; errors: number }> {
   if (!fullAlbum?.tracks?.items) return { added: 0, skipped: 0, errors: 0 };
 
-  const tracks = (fullAlbum.tracks.items as any[]).filter(t => t?.id);
+  const tracks = (fullAlbum.tracks.items as any[]).filter((t) => t?.id);
   if (tracks.length === 0) return { added: 0, skipped: 0, errors: 0 };
 
-  const trackIds = tracks.map(t => t.id as string);
+  const trackIds = tracks.map((t) => t.id as string);
   const existingIds = await getExistingTrackIds(trackIds);
 
   let errors = 0;
@@ -85,10 +90,13 @@ async function processAlbumTracks(
       newTracks.push({
         id: generateUUID(),
         spotifyTrackId: track.id as string,
-        spotifyTrackUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+        spotifyTrackUrl:
+          track.external_urls?.spotify ||
+          `https://open.spotify.com/track/${track.id}`,
         spotifyAlbumId: fullAlbum.id as string,
         name: (track.name || "Unknown") as string,
-        artistName: track.artists?.map((a: any) => a.name).join(", ") || channelName,
+        artistName:
+          track.artists?.map((a: any) => a.name).join(", ") || channelName,
         artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
         albumName: (fullAlbum.name || null) as string | null,
         albumImageUrl: fullAlbum.images?.[0]?.url ?? null,
@@ -108,7 +116,11 @@ async function processAlbumTracks(
   }
 
   const { added, skipped } = await insertTracks(newTracks);
-  return { added, skipped: skipped + (tracks.length - newTracks.length - errors), errors };
+  return {
+    added,
+    skipped: skipped + (tracks.length - newTracks.length - errors),
+    errors,
+  };
 }
 
 // Helper: insert top tracks as fallback
@@ -118,14 +130,16 @@ async function insertTopTracksAsFallback(
   spotifyArtistId: string,
 ): Promise<{ added: number; skipped: number } | null> {
   try {
-    console.log(`[Sync] Trying top-tracks fallback for artist ${spotifyArtistId}...`);
+    console.log(
+      `[Sync] Trying top-tracks fallback for artist ${spotifyArtistId}...`,
+    );
     const topTracks = await spotifyClient.getArtistTopTracks(spotifyArtistId);
     if (!topTracks || topTracks.length === 0) {
-      console.log(`[Sync] Top-tracks fallback: no tracks returned`);
+      console.log("[Sync] Top-tracks fallback: no tracks returned");
       return null;
     }
 
-    const trackIds = topTracks.filter(t => t?.id).map(t => t.id as string);
+    const trackIds = topTracks.filter((t) => t?.id).map((t) => t.id as string);
     const existingIds = await getExistingTrackIds(trackIds);
 
     const newTracks: any[] = [];
@@ -133,22 +147,35 @@ async function insertTopTracksAsFallback(
 
     for (const track of topTracks) {
       if (!track?.id) continue;
-      if (existingIds.has(track.id)) { skipped++; continue; }
+      if (existingIds.has(track.id)) {
+        skipped++;
+        continue;
+      }
 
       try {
         newTracks.push({
           id: generateUUID(),
           spotifyTrackId: track.id as string,
-          spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+          spotifyTrackUrl:
+            (track as any).external_urls?.spotify ||
+            `https://open.spotify.com/track/${track.id}`,
           spotifyAlbumId: (track as any).album?.id || null,
           name: (track.name || "Unknown") as string,
-          artistName: (track as any).artists?.map((a: any) => a.name).join(", ") || channelName,
-          artistIds: JSON.stringify((track as any).artists?.map((a: any) => a.id) || []),
+          artistName:
+            (track as any).artists?.map((a: any) => a.name).join(", ") ||
+            channelName,
+          artistIds: JSON.stringify(
+            (track as any).artists?.map((a: any) => a.id) || [],
+          ),
           albumName: ((track as any).album?.name || null) as string | null,
-          albumImageUrl: ((track as any).album?.images?.[0]?.url ?? null) as string | null,
+          albumImageUrl: ((track as any).album?.images?.[0]?.url ?? null) as
+            | string
+            | null,
           durationMs: (track.duration_ms ?? null) as number | null,
           previewUrl: (track.preview_url ?? null) as string | null,
-          releaseDate: ((track as any).album?.release_date ?? null) as string | null,
+          releaseDate: ((track as any).album?.release_date ?? null) as
+            | string
+            | null,
           popularity: ((track as any).popularity ?? null) as number | null,
           explicit: Boolean((track as any).explicit),
           curatedChannelId: channelId,
@@ -161,10 +188,12 @@ async function insertTopTracksAsFallback(
     }
 
     const { added } = await insertTracks(newTracks);
-    console.log(`[Sync] Top-tracks fallback: added=${added}, skipped=${skipped}`);
+    console.log(
+      `[Sync] Top-tracks fallback: added=${added}, skipped=${skipped}`,
+    );
     return added > 0 || skipped > 0 ? { added, skipped } : null;
   } catch (err) {
-    console.warn(`[Sync] Top-tracks fallback failed:`, err);
+    console.warn("[Sync] Top-tracks fallback failed:", err);
     return null;
   }
 }
@@ -172,7 +201,7 @@ async function insertTopTracksAsFallback(
 // POST - Sync tracks from a curated channel (resumable batch mode)
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const startTime = Date.now();
 
@@ -180,15 +209,27 @@ export async function POST(
     const { id } = await params;
 
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     // Parse batch pagination params
     const url = new URL(request.url);
-    const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
+    const offset = Math.max(
+      0,
+      Number.parseInt(url.searchParams.get("offset") || "0", 10),
+    );
     const batchSize = Math.min(
-      Math.max(1, parseInt(url.searchParams.get("batch") || String(ALBUMS_PER_BATCH), 10)),
-      5
+      Math.max(
+        1,
+        Number.parseInt(
+          url.searchParams.get("batch") || String(ALBUMS_PER_BATCH),
+          10,
+        ),
+      ),
+      5,
     );
 
     // Get the channel
@@ -201,33 +242,49 @@ export async function POST(
     if (!channel) {
       return NextResponse.json(
         { success: false, error: "Channel not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    console.log(`[Sync] Starting sync for "${channel.name}" (artist: ${channel.spotifyArtistId}), offset=${offset}, batch=${batchSize}`);
+    console.log(
+      `[Sync] Starting sync for "${channel.name}" (artist: ${channel.spotifyArtistId}), offset=${offset}, batch=${batchSize}`,
+    );
 
     // Fetch album list from Spotify
     let albumList: any[] = [];
     try {
-      const albumsResponse = await spotifyClient.getArtistAlbums(channel.spotifyArtistId, {
-        includeGroups: "album,single",
-        limit: 10,
-        offset: 0,
-      });
+      const albumsResponse = await spotifyClient.getArtistAlbums(
+        channel.spotifyArtistId,
+        {
+          includeGroups: "album,single",
+          limit: 10,
+          offset: 0,
+        },
+      );
       albumList = albumsResponse.items || [];
-      console.log(`[Sync] Found ${albumList.length} albums for "${channel.name}" (total available: ${albumsResponse.total}, elapsed: ${Date.now() - startTime}ms)`);
+      console.log(
+        `[Sync] Found ${albumList.length} albums for "${channel.name}" (total available: ${albumsResponse.total}, elapsed: ${Date.now() - startTime}ms)`,
+      );
     } catch (albumFetchErr) {
       const errMsg = (albumFetchErr as Error).message || "";
-      console.error(`[Sync] Error fetching album list for "${channel.name}": ${errMsg} (elapsed: ${Date.now() - startTime}ms)`);
+      console.error(
+        `[Sync] Error fetching album list for "${channel.name}": ${errMsg} (elapsed: ${Date.now() - startTime}ms)`,
+      );
 
       // Try fallback: fetch top tracks instead of full album sync
-      const result = await insertTopTracksAsFallback(id, channel.name, channel.spotifyArtistId);
+      const result = await insertTopTracksAsFallback(
+        id,
+        channel.name,
+        channel.spotifyArtistId,
+      );
       if (result) {
-        await db.update(curatedSpotifyChannels).set({
-          lastSyncedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(eq(curatedSpotifyChannels.id, id));
+        await db
+          .update(curatedSpotifyChannels)
+          .set({
+            lastSyncedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(curatedSpotifyChannels.id, id));
 
         return NextResponse.json({
           success: true,
@@ -246,26 +303,42 @@ export async function POST(
 
       // Both methods failed
       if (errMsg.includes("400") || errMsg.includes("403")) {
-        return NextResponse.json({
-          success: false,
-          error: "Spotify API no permite listar álbumes ni obtener tracks. Verifica las credenciales de Spotify.",
-        }, { status: 500 });
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Spotify API no permite listar álbumes ni obtener tracks. Verifica las credenciales de Spotify.",
+          },
+          { status: 500 },
+        );
       }
-      return NextResponse.json({
-        success: false,
-        error: `Error al obtener álbumes: ${errMsg}`,
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Error al obtener álbumes: ${errMsg}`,
+        },
+        { status: 500 },
+      );
     }
 
     // If no albums found, try top tracks
     if (albumList.length === 0) {
-      console.log(`[Sync] No albums found for "${channel.name}", trying top tracks fallback...`);
-      const result = await insertTopTracksAsFallback(id, channel.name, channel.spotifyArtistId);
+      console.log(
+        `[Sync] No albums found for "${channel.name}", trying top tracks fallback...`,
+      );
+      const result = await insertTopTracksAsFallback(
+        id,
+        channel.name,
+        channel.spotifyArtistId,
+      );
       if (result && result.added > 0) {
-        await db.update(curatedSpotifyChannels).set({
-          lastSyncedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(eq(curatedSpotifyChannels.id, id));
+        await db
+          .update(curatedSpotifyChannels)
+          .set({
+            lastSyncedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(curatedSpotifyChannels.id, id));
 
         return NextResponse.json({
           success: true,
@@ -282,10 +355,13 @@ export async function POST(
         });
       }
 
-      await db.update(curatedSpotifyChannels).set({
-        lastSyncedAt: new Date(),
-        updatedAt: new Date(),
-      }).where(eq(curatedSpotifyChannels.id, id));
+      await db
+        .update(curatedSpotifyChannels)
+        .set({
+          lastSyncedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(curatedSpotifyChannels.id, id));
 
       return NextResponse.json({
         success: true,
@@ -298,7 +374,8 @@ export async function POST(
           hasMore: false,
           nextOffset: 0,
         },
-        message: "No se encontraron álbumes ni tracks para este artista en Spotify.",
+        message:
+          "No se encontraron álbumes ni tracks para este artista en Spotify.",
       });
     }
 
@@ -313,14 +390,20 @@ export async function POST(
         updatedAt: new Date(),
       };
       try {
-        const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId) as any;
+        const artistInfo = (await spotifyClient.getArtist(
+          channel.spotifyArtistId,
+        )) as any;
         if (artistInfo.name) metadataUpdates.name = artistInfo.name;
-        if (artistInfo.images?.[0]?.url) metadataUpdates.imageUrl = artistInfo.images[0].url;
+        if (artistInfo.images?.[0]?.url)
+          metadataUpdates.imageUrl = artistInfo.images[0].url;
       } catch (err) {
-        console.warn(`[Sync] Could not refresh artist metadata:`, err);
+        console.warn("[Sync] Could not refresh artist metadata:", err);
       }
 
-      await db.update(curatedSpotifyChannels).set(metadataUpdates).where(eq(curatedSpotifyChannels.id, id));
+      await db
+        .update(curatedSpotifyChannels)
+        .set(metadataUpdates)
+        .where(eq(curatedSpotifyChannels.id, id));
 
       return NextResponse.json({
         success: true,
@@ -344,26 +427,32 @@ export async function POST(
     // Process albums in this batch
     for (let i = 0; i < albumsToProcess.length; i++) {
       const album = albumsToProcess[i];
-      console.log(`[Sync] Processing album ${offset + i + 1}/${albumList.length}: "${album.name}" (elapsed: ${Date.now() - startTime}ms)`);
+      console.log(
+        `[Sync] Processing album ${offset + i + 1}/${albumList.length}: "${album.name}" (elapsed: ${Date.now() - startTime}ms)`,
+      );
 
       try {
-        const fullAlbum = await spotifyClient.getAlbum(album.id) as any;
+        const fullAlbum = (await spotifyClient.getAlbum(album.id)) as any;
         const result = await processAlbumTracks(fullAlbum, id, channel.name);
         addedTracks += result.added;
         skippedTracks += result.skipped;
         errorsCount += result.errors;
       } catch (albumErr) {
-        console.error(`[Sync] Error fetching album "${album.name}": ${(albumErr as Error).message}`);
+        console.error(
+          `[Sync] Error fetching album "${album.name}": ${(albumErr as Error).message}`,
+        );
         errorsCount++;
       }
 
       // Rate limiting pause between albums
       if (i < albumsToProcess.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
 
-    console.log(`[Sync] Batch complete: added=${addedTracks}, skipped=${skippedTracks}, errors=${errorsCount}, hasMore=${hasMore} (elapsed: ${Date.now() - startTime}ms)`);
+    console.log(
+      `[Sync] Batch complete: added=${addedTracks}, skipped=${skippedTracks}, errors=${errorsCount}, hasMore=${hasMore} (elapsed: ${Date.now() - startTime}ms)`,
+    );
 
     // Update metadata on last batch
     if (!hasMore) {
@@ -372,14 +461,20 @@ export async function POST(
         updatedAt: new Date(),
       };
       try {
-        const artistInfo = await spotifyClient.getArtist(channel.spotifyArtistId) as any;
+        const artistInfo = (await spotifyClient.getArtist(
+          channel.spotifyArtistId,
+        )) as any;
         if (artistInfo.name) metadataUpdates.name = artistInfo.name;
-        if (artistInfo.images?.[0]?.url) metadataUpdates.imageUrl = artistInfo.images[0].url;
+        if (artistInfo.images?.[0]?.url)
+          metadataUpdates.imageUrl = artistInfo.images[0].url;
       } catch (err) {
-        console.warn(`[Sync] Could not refresh artist metadata:`, err);
+        console.warn("[Sync] Could not refresh artist metadata:", err);
       }
 
-      await db.update(curatedSpotifyChannels).set(metadataUpdates).where(eq(curatedSpotifyChannels.id, id));
+      await db
+        .update(curatedSpotifyChannels)
+        .set(metadataUpdates)
+        .where(eq(curatedSpotifyChannels.id, id));
     }
 
     const message = hasMore
@@ -403,10 +498,11 @@ export async function POST(
     });
   } catch (error) {
     console.error("[Sync] Unhandled error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Error syncing channel";
+    const errorMessage =
+      error instanceof Error ? error.message : "Error syncing channel";
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

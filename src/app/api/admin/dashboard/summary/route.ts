@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { dashboardService } from "@/lib/services";
 import { getSyncHealth } from "@/lib/sync";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -20,7 +20,7 @@ export async function GET() {
     console.error("Error fetching dashboard summary:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch dashboard summary" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { playlistCollaborators, userPlaylists } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - List collaborators for a playlist
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -22,8 +22,8 @@ export async function GET(
       .where(
         and(
           eq(playlistCollaborators.playlistId, playlistId),
-          eq(playlistCollaborators.isActive, true)
-        )
+          eq(playlistCollaborators.isActive, true),
+        ),
       )
       .orderBy(desc(playlistCollaborators.createdAt));
 
@@ -32,7 +32,7 @@ export async function GET(
     console.error("[Playlist Collaborators] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar colaboradores" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -40,7 +40,7 @@ export async function GET(
 // POST - Invite a collaborator
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -48,7 +48,7 @@ export async function POST(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -57,8 +57,11 @@ export async function POST(
 
     if (!email?.trim() || !invitedByEmail?.trim()) {
       return NextResponse.json(
-        { success: false, error: "Email del colaborador y del invitante son requeridos" },
-        { status: 400 }
+        {
+          success: false,
+          error: "Email del colaborador y del invitante son requeridos",
+        },
+        { status: 400 },
       );
     }
 
@@ -72,7 +75,7 @@ export async function POST(
     if (!playlist) {
       return NextResponse.json(
         { success: false, error: "Playlist no encontrada" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -89,15 +92,18 @@ export async function POST(
             eq(playlistCollaborators.playlistId, playlistId),
             eq(playlistCollaborators.email, invitedByEmail),
             eq(playlistCollaborators.isActive, true),
-            eq(playlistCollaborators.canInviteOthers, true)
-          )
+            eq(playlistCollaborators.canInviteOthers, true),
+          ),
         )
         .limit(1);
 
       if (!inviterCollab) {
         return NextResponse.json(
-          { success: false, error: "No tienes permiso para invitar colaboradores" },
-          { status: 403 }
+          {
+            success: false,
+            error: "No tienes permiso para invitar colaboradores",
+          },
+          { status: 403 },
         );
       }
     }
@@ -109,8 +115,8 @@ export async function POST(
       .where(
         and(
           eq(playlistCollaborators.playlistId, playlistId),
-          eq(playlistCollaborators.email, email.toLowerCase().trim())
-        )
+          eq(playlistCollaborators.email, email.toLowerCase().trim()),
+        ),
       )
       .limit(1);
 
@@ -118,7 +124,7 @@ export async function POST(
       if (existing.isActive) {
         return NextResponse.json(
           { success: false, error: "Este usuario ya es colaborador" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       // Reactivate
@@ -175,7 +181,7 @@ export async function POST(
     console.error("[Playlist Collaborators] Error inviting:", error);
     return NextResponse.json(
       { success: false, error: "Error al invitar colaborador" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -183,7 +189,7 @@ export async function POST(
 // PUT - Accept invite or update permissions
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -191,12 +197,13 @@ export async function PUT(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     const body = await request.json();
-    const { action, inviteToken, collaboratorId, updaterEmail, permissions } = body;
+    const { action, inviteToken, collaboratorId, updaterEmail, permissions } =
+      body;
 
     // Accept invite
     if (action === "accept" && inviteToken) {
@@ -206,15 +213,15 @@ export async function PUT(
         .where(
           and(
             eq(playlistCollaborators.playlistId, playlistId),
-            eq(playlistCollaborators.inviteToken, inviteToken)
-          )
+            eq(playlistCollaborators.inviteToken, inviteToken),
+          ),
         )
         .limit(1);
 
       if (!collaborator) {
         return NextResponse.json(
           { success: false, error: "Invitación no válida o expirada" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -228,7 +235,9 @@ export async function PUT(
         .where(eq(playlistCollaborators.id, collaborator.id))
         .returning();
 
-      console.log(`[Playlist Collaborators] Accepted: ${collaborator.email} for ${playlistId}`);
+      console.log(
+        `[Playlist Collaborators] Accepted: ${collaborator.email} for ${playlistId}`,
+      );
 
       return NextResponse.json({
         success: true,
@@ -249,7 +258,7 @@ export async function PUT(
       if (!playlist || playlist.ownerEmail !== updaterEmail) {
         return NextResponse.json(
           { success: false, error: "Solo el dueño puede cambiar permisos" },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
@@ -273,13 +282,13 @@ export async function PUT(
 
     return NextResponse.json(
       { success: false, error: "Acción no válida" },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     console.error("[Playlist Collaborators] Error updating:", error);
     return NextResponse.json(
       { success: false, error: "Error al actualizar colaborador" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -287,7 +296,7 @@ export async function PUT(
 // DELETE - Remove a collaborator
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -295,7 +304,7 @@ export async function DELETE(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -306,7 +315,7 @@ export async function DELETE(
     if (!collaboratorId || !removerEmail) {
       return NextResponse.json(
         { success: false, error: "Colaborador y email son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -326,7 +335,7 @@ export async function DELETE(
     if (!collaborator) {
       return NextResponse.json(
         { success: false, error: "Colaborador no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -335,8 +344,11 @@ export async function DELETE(
 
     if (!isOwner && !isSelf) {
       return NextResponse.json(
-        { success: false, error: "No tienes permiso para eliminar este colaborador" },
-        { status: 403 }
+        {
+          success: false,
+          error: "No tienes permiso para eliminar este colaborador",
+        },
+        { status: 403 },
       );
     }
 
@@ -345,14 +357,16 @@ export async function DELETE(
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(playlistCollaborators.id, collaboratorId));
 
-    console.log(`[Playlist Collaborators] Removed: ${collaborator.email} from ${playlistId}`);
+    console.log(
+      `[Playlist Collaborators] Removed: ${collaborator.email} from ${playlistId}`,
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[Playlist Collaborators] Error removing:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar colaborador" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

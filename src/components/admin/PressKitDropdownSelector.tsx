@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import {
-  Package,
-  Loader2,
-  Users,
-  FileDown,
-  X,
   ChevronDown,
+  FileDown,
+  Loader2,
+  Package,
+  Users,
+  X,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface PressKit {
   id: string;
@@ -224,7 +224,7 @@ export function PressKitDropdownSelector({
                     );
                   })}
                 </div>
-              )
+              ),
             )}
 
             {/* Ungrouped kits (no artist) */}

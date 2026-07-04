@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { mediaReleases, artists, pressKits } from "@/db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { artists, mediaReleases, pressKits } from "@/db/schema";
+import { and, eq, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
     const { slug } = await params;
@@ -13,7 +13,7 @@ export async function GET(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -30,7 +30,7 @@ export async function GET(
     if (!release) {
       return NextResponse.json(
         { success: false, error: "Media release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -38,7 +38,7 @@ export async function GET(
     if (release.accessCode && release.accessCode !== accessCode && !isPreview) {
       return NextResponse.json(
         { success: false, error: "Access code required" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -46,7 +46,7 @@ export async function GET(
     if (!release.isPublished && !accessCode && !isPreview) {
       return NextResponse.json(
         { success: false, error: "Media release not published" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -74,7 +74,7 @@ export async function GET(
     }
 
     // Resolve attachedPressKitIds → press kit data
-    let attachedPressKits: Array<{
+    const attachedPressKits: Array<{
       id: string;
       title: string;
       downloadUrl: string;
@@ -136,7 +136,7 @@ export async function GET(
     console.error("[API] Error fetching media release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch media release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

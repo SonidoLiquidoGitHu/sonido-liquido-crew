@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { dropboxClient } from "@/lib/clients/dropbox";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Video proxy endpoint for client-side thumbnail extraction.
@@ -61,11 +61,16 @@ export async function GET(request: NextRequest) {
         // Convert direct link back to shared link format for metadata lookup
         let sharedLink = downloadUrl;
         if (sharedLink.includes("dl.dropboxusercontent.com")) {
-          sharedLink = sharedLink.replace("dl.dropboxusercontent.com", "www.dropbox.com");
+          sharedLink = sharedLink.replace(
+            "dl.dropboxusercontent.com",
+            "www.dropbox.com",
+          );
         }
         // Handle ?raw=1 URLs — convert back to standard shared link format
         if (sharedLink.includes("raw=1")) {
-          sharedLink = sharedLink.replace("?raw=1", "?dl=0").replace("&raw=1", "&dl=0");
+          sharedLink = sharedLink
+            .replace("?raw=1", "?dl=0")
+            .replace("&raw=1", "&dl=0");
         }
         if (!sharedLink.includes("?")) {
           sharedLink += "?dl=0";
@@ -81,7 +86,7 @@ export async function GET(request: NextRequest) {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ url: sharedLink }),
-          }
+          },
         );
 
         if (metaResponse.ok) {
@@ -99,7 +104,7 @@ export async function GET(request: NextRequest) {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ path: filePath }),
-              }
+              },
             );
 
             if (tempLinkResponse.ok) {
@@ -109,7 +114,10 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (err) {
-        console.warn("[Video Proxy] Could not resolve Dropbox path, using original URL:", err);
+        console.warn(
+          "[Video Proxy] Could not resolve Dropbox path, using original URL:",
+          err,
+        );
       }
     }
 
@@ -124,7 +132,7 @@ export async function GET(request: NextRequest) {
     if (!response.ok && response.status !== 206) {
       return NextResponse.json(
         { error: `Failed to fetch video: ${response.status}` },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -132,7 +140,7 @@ export async function GET(request: NextRequest) {
     const contentRange = response.headers.get("content-range");
     const contentLength = response.headers.get("content-length");
     const totalSize = contentRange
-      ? parseInt(contentRange.split("/")[1], 10)
+      ? Number.parseInt(contentRange.split("/")[1], 10)
       : body.byteLength;
 
     // Re-serve with CORS headers and proper content type
@@ -141,7 +149,8 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": "video/mp4",
         "Content-Length": body.byteLength.toString(),
-        "Content-Range": contentRange || `bytes 0-${body.byteLength - 1}/${totalSize}`,
+        "Content-Range":
+          contentRange || `bytes 0-${body.byteLength - 1}/${totalSize}`,
         "Accept-Ranges": "bytes",
         // CORS headers so the client canvas is not tainted
         "Access-Control-Allow-Origin": "*",
@@ -155,7 +164,7 @@ export async function GET(request: NextRequest) {
     console.error("[Video Proxy] Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

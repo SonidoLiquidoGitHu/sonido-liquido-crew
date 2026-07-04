@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AlertTriangle, Home, RefreshCw } from "lucide-react";
+import { useEffect } from "react";
 
 export default function AdminError({
   error,
@@ -23,13 +23,11 @@ export default function AdminError({
           <AlertTriangle className="w-8 h-8" />
         </div>
 
-        <h1 className="font-oswald text-2xl uppercase mb-2">
-          Error en Admin
-        </h1>
+        <h1 className="font-oswald text-2xl uppercase mb-2">Error en Admin</h1>
 
         <p className="text-slc-muted mb-6">
-          Ha ocurrido un error al cargar esta página. Esto puede deberse a un problema
-          de conexión con la base de datos o un error temporal.
+          Ha ocurrido un error al cargar esta página. Esto puede deberse a un
+          problema de conexión con la base de datos o un error temporal.
         </p>
 
         {process.env.NODE_ENV === "development" && error.message && (
@@ -60,8 +58,8 @@ export default function AdminError({
 
         <div className="mt-8 pt-6 border-t border-slc-border">
           <p className="text-xs text-slc-muted">
-            Si el problema persiste, verifica que la base de datos esté configurada correctamente
-            o contacta a soporte.
+            Si el problema persiste, verifica que la base de datos esté
+            configurada correctamente o contacta a soporte.
           </p>
         </div>
       </div>

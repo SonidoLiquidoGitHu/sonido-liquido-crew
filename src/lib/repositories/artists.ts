@@ -1,17 +1,17 @@
 import { db } from "@/db/client";
 import {
-  artists,
+  type Artist,
+  type ArtistExternalProfile,
+  type NewArtist,
+  type NewArtistExternalProfile,
   artistExternalProfiles,
   artistGalleryAssets,
+  artists,
   releaseArtists,
   releases,
-  type Artist,
-  type NewArtist,
-  type ArtistExternalProfile,
-  type NewArtistExternalProfile,
 } from "@/db/schema";
-import { eq, and, desc, asc, like, sql } from "drizzle-orm";
 import { generateUUID, slugify } from "@/lib/utils";
+import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 
 // ===========================================
 // ARTISTS REPOSITORY
@@ -21,7 +21,9 @@ export const artistsRepository = {
   /**
    * Get all active artists with their external profiles
    */
-  async findAllWithProfiles(): Promise<(Artist & { externalProfiles: ArtistExternalProfile[] })[]> {
+  async findAllWithProfiles(): Promise<
+    (Artist & { externalProfiles: ArtistExternalProfile[] })[]
+  > {
     const allArtists = await db
       .select()
       .from(artists)
@@ -41,7 +43,7 @@ export const artistsRepository = {
       if (!profilesByArtistId.has(artistId)) {
         profilesByArtistId.set(artistId, []);
       }
-      profilesByArtistId.get(artistId)!.push(row.artist_external_profiles);
+      profilesByArtistId.get(artistId)?.push(row.artist_external_profiles);
     }
 
     return allArtists.map((artist) => ({
@@ -53,13 +55,15 @@ export const artistsRepository = {
   /**
    * Get all artists
    */
-  async findAll(options: {
-    onlyActive?: boolean;
-    onlyFeatured?: boolean;
-    role?: string;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<Artist[]> {
+  async findAll(
+    options: {
+      onlyActive?: boolean;
+      onlyFeatured?: boolean;
+      role?: string;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<Artist[]> {
     const conditions = [];
 
     if (options.onlyActive !== false) {
@@ -121,25 +125,27 @@ export const artistsRepository = {
     const artist = await this.findBySlug(slug);
     if (!artist) return null;
 
-    const [externalProfiles, galleryAssets, artistReleases] = await Promise.all([
-      db
-        .select()
-        .from(artistExternalProfiles)
-        .where(eq(artistExternalProfiles.artistId, artist.id)),
-      db
-        .select()
-        .from(artistGalleryAssets)
-        .where(eq(artistGalleryAssets.artistId, artist.id))
-        .orderBy(asc(artistGalleryAssets.sortOrder)),
-      db
-        .select({
-          release: releases,
-        })
-        .from(releaseArtists)
-        .innerJoin(releases, eq(releaseArtists.releaseId, releases.id))
-        .where(eq(releaseArtists.artistId, artist.id))
-        .orderBy(desc(releases.releaseDate)),
-    ]);
+    const [externalProfiles, galleryAssets, artistReleases] = await Promise.all(
+      [
+        db
+          .select()
+          .from(artistExternalProfiles)
+          .where(eq(artistExternalProfiles.artistId, artist.id)),
+        db
+          .select()
+          .from(artistGalleryAssets)
+          .where(eq(artistGalleryAssets.artistId, artist.id))
+          .orderBy(asc(artistGalleryAssets.sortOrder)),
+        db
+          .select({
+            release: releases,
+          })
+          .from(releaseArtists)
+          .innerJoin(releases, eq(releaseArtists.releaseId, releases.id))
+          .where(eq(releaseArtists.artistId, artist.id))
+          .orderBy(desc(releases.releaseDate)),
+      ],
+    );
 
     return {
       ...artist,
@@ -157,10 +163,7 @@ export const artistsRepository = {
     return db
       .select()
       .from(artists)
-      .where(and(
-        eq(artists.isActive, true),
-        like(artists.name, `%${query}%`)
-      ))
+      .where(and(eq(artists.isActive, true), like(artists.name, `%${query}%`)))
       .orderBy(asc(artists.name))
       .limit(limit);
   },
@@ -183,10 +186,7 @@ export const artistsRepository = {
     return db
       .select()
       .from(artists)
-      .where(and(
-        eq(artists.isActive, true),
-        eq(artists.isFeatured, true)
-      ))
+      .where(and(eq(artists.isActive, true), eq(artists.isFeatured, true)))
       .orderBy(asc(artists.name))
       .limit(limit);
   },
@@ -206,7 +206,11 @@ export const artistsRepository = {
   /**
    * Create artist
    */
-  async create(data: Omit<NewArtist, "id" | "slug" | "createdAt" | "updatedAt"> & { slug?: string }): Promise<Artist> {
+  async create(
+    data: Omit<NewArtist, "id" | "slug" | "createdAt" | "updatedAt"> & {
+      slug?: string;
+    },
+  ): Promise<Artist> {
     const id = generateUUID();
     const slug = data.slug || slugify(data.name);
 
@@ -242,9 +246,7 @@ export const artistsRepository = {
    * Delete artist
    */
   async delete(id: string): Promise<boolean> {
-    const result = await db
-      .delete(artists)
-      .where(eq(artists.id, id));
+    const result = await db.delete(artists).where(eq(artists.id, id));
 
     return (result.rowsAffected ?? 0) > 0;
   },
@@ -253,7 +255,7 @@ export const artistsRepository = {
    * Add external profile
    */
   async addExternalProfile(
-    data: Omit<NewArtistExternalProfile, "id" | "createdAt" | "updatedAt">
+    data: Omit<NewArtistExternalProfile, "id" | "createdAt" | "updatedAt">,
   ): Promise<ArtistExternalProfile> {
     const [profile] = await db
       .insert(artistExternalProfiles)
@@ -269,7 +271,9 @@ export const artistsRepository = {
   /**
    * Get external profiles for artist
    */
-  async getExternalProfiles(artistId: string): Promise<ArtistExternalProfile[]> {
+  async getExternalProfiles(
+    artistId: string,
+  ): Promise<ArtistExternalProfile[]> {
     return db
       .select()
       .from(artistExternalProfiles)
@@ -281,7 +285,7 @@ export const artistsRepository = {
    */
   async updateExternalProfile(
     id: string,
-    data: Partial<NewArtistExternalProfile>
+    data: Partial<NewArtistExternalProfile>,
   ): Promise<ArtistExternalProfile | null> {
     const [profile] = await db
       .update(artistExternalProfiles)
@@ -314,10 +318,12 @@ export const artistsRepository = {
       .select({ artist: artists })
       .from(artistExternalProfiles)
       .innerJoin(artists, eq(artistExternalProfiles.artistId, artists.id))
-      .where(and(
-        eq(artistExternalProfiles.platform, "spotify"),
-        eq(artistExternalProfiles.externalId, spotifyId)
-      ))
+      .where(
+        and(
+          eq(artistExternalProfiles.platform, "spotify"),
+          eq(artistExternalProfiles.externalId, spotifyId),
+        ),
+      )
       .limit(1);
 
     return result?.artist || null;

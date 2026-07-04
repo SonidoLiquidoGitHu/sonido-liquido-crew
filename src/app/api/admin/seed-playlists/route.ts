@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { curatedPlaylists, playlistTracks, curatedTracks, releases } from "@/db/schema";
-import { eq, sql, desc, asc } from "drizzle-orm";
+import {
+  curatedPlaylists,
+  curatedTracks,
+  playlistTracks,
+  releases,
+} from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
+import { asc, desc, eq, sql } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +71,7 @@ export async function POST() {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -171,7 +176,9 @@ export async function POST() {
       for (const p of allPlaylists) {
         if (!defaultIds.includes(p.id)) {
           // Delete this old playlist
-          await db.delete(curatedPlaylists).where(eq(curatedPlaylists.id, p.id));
+          await db
+            .delete(curatedPlaylists)
+            .where(eq(curatedPlaylists.id, p.id));
         }
       }
     } catch {
@@ -181,7 +188,7 @@ export async function POST() {
     // Step 3: Get existing playlist tracks to avoid duplicates
     const existingPlaylistTracks = await db.select().from(playlistTracks);
     const existingKeys = new Set(
-      existingPlaylistTracks.map((t) => `${t.playlistId}:${t.spotifyTrackId}`)
+      existingPlaylistTracks.map((t) => `${t.playlistId}:${t.spotifyTrackId}`),
     );
 
     // If already have tracks, skip seeding
@@ -222,14 +229,14 @@ export async function POST() {
     console.error("[Seed Playlists API] Error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Error seeding playlists" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 async function seedFromCuratedTracks(
   results: { tracksAdded: number; tracksSkipped: number; errors: string[] },
-  existingKeys: Set<string>
+  existingKeys: Set<string>,
 ) {
   const allCuratedTracks = await db
     .select()
@@ -238,13 +245,13 @@ async function seedFromCuratedTracks(
 
   const featuredTracks = allCuratedTracks.filter((t) => t.isFeatured);
   const tracksByPopularity = [...allCuratedTracks].sort(
-    (a, b) => (b.popularity || 0) - (a.popularity || 0)
+    (a, b) => (b.popularity || 0) - (a.popularity || 0),
   );
-  const tracksByDate = [...allCuratedTracks].sort(
-    (a, b) => (b.releaseDate || "").localeCompare(a.releaseDate || "")
+  const tracksByDate = [...allCuratedTracks].sort((a, b) =>
+    (b.releaseDate || "").localeCompare(a.releaseDate || ""),
   );
-  const tracksByOldest = [...allCuratedTracks].sort(
-    (a, b) => (a.releaseDate || "").localeCompare(b.releaseDate || "")
+  const tracksByOldest = [...allCuratedTracks].sort((a, b) =>
+    (a.releaseDate || "").localeCompare(b.releaseDate || ""),
   );
 
   const collabTracks = allCuratedTracks.filter((t) => {
@@ -257,11 +264,23 @@ async function seedFromCuratedTracks(
   });
 
   const assignments = [
-    { playlistId: "gran-reserva", tracks: featuredTracks.length > 0 ? featuredTracks : tracksByPopularity.slice(0, 30) },
+    {
+      playlistId: "gran-reserva",
+      tracks:
+        featuredTracks.length > 0
+          ? featuredTracks
+          : tracksByPopularity.slice(0, 30),
+    },
     { playlistId: "weekly-picks", tracks: tracksByDate.slice(0, 20) },
     { playlistId: "new-releases", tracks: tracksByDate.slice(0, 40) },
     { playlistId: "classics", tracks: tracksByOldest.slice(0, 30) },
-    { playlistId: "collaborations", tracks: collabTracks.length > 0 ? collabTracks : tracksByPopularity.slice(0, 20) },
+    {
+      playlistId: "collaborations",
+      tracks:
+        collabTracks.length > 0
+          ? collabTracks
+          : tracksByPopularity.slice(0, 20),
+    },
   ];
 
   for (const assignment of assignments) {
@@ -276,7 +295,9 @@ async function seedFromCuratedTracks(
         await db.insert(playlistTracks).values({
           id: generateUUID(),
           playlistId: assignment.playlistId,
-          playlistName: DEFAULT_PLAYLISTS.find((p) => p.id === assignment.playlistId)?.name || null,
+          playlistName:
+            DEFAULT_PLAYLISTS.find((p) => p.id === assignment.playlistId)
+              ?.name || null,
           spotifyTrackId: track.spotifyTrackId,
           curatedTrackId: track.id,
           trackName: track.name,
@@ -300,7 +321,7 @@ async function seedFromCuratedTracks(
 
 async function seedFromReleases(
   results: { tracksAdded: number; tracksSkipped: number; errors: string[] },
-  existingKeys: Set<string>
+  existingKeys: Set<string>,
 ) {
   // Get all releases that have a Spotify ID
   const allReleases = await db
@@ -319,17 +340,22 @@ async function seedFromReleases(
   // Sort releases for different playlists
   const featuredReleases = releasesWithSpotify.filter((r) => r.isFeatured);
   const recentReleases = [...releasesWithSpotify].sort(
-    (a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+    (a, b) =>
+      new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime(),
   );
   const oldestReleases = [...releasesWithSpotify].sort(
-    (a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()
+    (a, b) =>
+      new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime(),
   );
 
   // Build assignments using releases (as albums in the playlist)
   const assignments = [
     {
       playlistId: "gran-reserva",
-      items: featuredReleases.length > 0 ? featuredReleases : recentReleases.slice(0, 25),
+      items:
+        featuredReleases.length > 0
+          ? featuredReleases
+          : recentReleases.slice(0, 25),
     },
     {
       playlistId: "weekly-picks",
@@ -372,7 +398,9 @@ async function seedFromReleases(
         await db.insert(playlistTracks).values({
           id: generateUUID(),
           playlistId: assignment.playlistId,
-          playlistName: DEFAULT_PLAYLISTS.find((p) => p.id === assignment.playlistId)?.name || null,
+          playlistName:
+            DEFAULT_PLAYLISTS.find((p) => p.id === assignment.playlistId)
+              ?.name || null,
           spotifyTrackId: release.spotifyId!, // Album ID, used for Spotify URI construction
           curatedTrackId: null,
           trackName: release.title,
@@ -449,12 +477,13 @@ export async function GET() {
       playlistTrackCount: trackCount,
       curatedTrackCount,
       releaseCount,
-      needsSeeding: (curatedTrackCount > 0 || releaseCount > 0) && trackCount === 0,
+      needsSeeding:
+        (curatedTrackCount > 0 || releaseCount > 0) && trackCount === 0,
     });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

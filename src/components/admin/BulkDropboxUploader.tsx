@@ -1,28 +1,29 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Cloud,
-  Upload,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  X,
-  File,
-  Image as ImageIcon,
-  Music,
-  FileText,
-  Trash2,
-  Play,
-  Pause,
-  RotateCcw,
-  FolderUp,
   Archive,
+  CheckCircle,
+  Cloud,
+  File,
+  FileText,
+  FolderUp,
+  Image as ImageIcon,
+  Loader2,
+  Music,
+  Pause,
+  Play,
+  RotateCcw,
+  Trash2,
+  Upload,
+  X,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Comprehensive file type support
-export const AUDIO_TYPES = ".mp3,.wav,.flac,.aac,.m4a,.ogg,.wma,.aiff,.alac,.opus,.webm";
+export const AUDIO_TYPES =
+  ".mp3,.wav,.flac,.aac,.m4a,.ogg,.wma,.aiff,.alac,.opus,.webm";
 export const IMAGE_TYPES = ".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.tiff,.ico";
 export const VIDEO_TYPES = ".mp4,.mov,.avi,.mkv,.wmv,.flv,.webm";
 export const DOCUMENT_TYPES = ".pdf,.doc,.docx,.txt";
@@ -40,7 +41,9 @@ interface FileUpload {
 }
 
 interface BulkDropboxUploaderProps {
-  onUploadComplete?: (files: { url: string; filename: string; fileSize: number }[]) => void;
+  onUploadComplete?: (
+    files: { url: string; filename: string; fileSize: number }[],
+  ) => void;
   onFileUploaded?: (url: string, filename: string, fileSize: number) => void;
   accept?: string;
   maxSize?: number; // in MB per file
@@ -59,7 +62,11 @@ function getFileIcon(mimeType: string) {
   if (mimeType.startsWith("audio/")) return <Music className="w-4 h-4" />;
   if (mimeType.startsWith("video/")) return <Play className="w-4 h-4" />;
   if (mimeType.includes("pdf")) return <FileText className="w-4 h-4" />;
-  if (mimeType.includes("zip") || mimeType.includes("rar") || mimeType.includes("archive")) {
+  if (
+    mimeType.includes("zip") ||
+    mimeType.includes("rar") ||
+    mimeType.includes("archive")
+  ) {
     return <Archive className="w-4 h-4" />;
   }
   return <File className="w-4 h-4" />;
@@ -70,7 +77,7 @@ function formatFileSize(bytes: number): string {
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
 export function BulkDropboxUploader({
@@ -86,7 +93,9 @@ export function BulkDropboxUploader({
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(null);
+  const [dropboxConfigured, setDropboxConfigured] = useState<boolean | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -99,10 +108,17 @@ export function BulkDropboxUploader({
         const data = await res.json();
 
         // Must check BOTH configured AND connected
-        const hasToken = data?.data?.configured === true || data?.data?.hasDatabaseToken === true;
+        const hasToken =
+          data?.data?.configured === true ||
+          data?.data?.hasDatabaseToken === true;
         const isConnected = data?.data?.connected === true;
 
-        console.log("[BulkDropboxUploader] Has token:", hasToken, "Connected:", isConnected);
+        console.log(
+          "[BulkDropboxUploader] Has token:",
+          hasToken,
+          "Connected:",
+          isConnected,
+        );
         setDropboxConfigured(hasToken && isConnected);
       } catch (error) {
         console.error("[BulkDropboxUploader] Error checking Dropbox:", error);
@@ -113,29 +129,32 @@ export function BulkDropboxUploader({
     checkDropbox();
   }, []);
 
-  const addFiles = useCallback((newFiles: FileList | File[]) => {
-    const filesToAdd = Array.from(newFiles).slice(0, maxFiles - files.length);
+  const addFiles = useCallback(
+    (newFiles: FileList | File[]) => {
+      const filesToAdd = Array.from(newFiles).slice(0, maxFiles - files.length);
 
-    const newUploads: FileUpload[] = filesToAdd.map(file => ({
-      id: generateId(),
-      file,
-      status: "pending",
-      progress: 0,
-    }));
+      const newUploads: FileUpload[] = filesToAdd.map((file) => ({
+        id: generateId(),
+        file,
+        status: "pending",
+        progress: 0,
+      }));
 
-    // Validate file sizes
-    for (const upload of newUploads) {
-      if (upload.file.size > maxSize * 1024 * 1024) {
-        upload.status = "error";
-        upload.error = `Excede el límite de ${maxSize}MB`;
+      // Validate file sizes
+      for (const upload of newUploads) {
+        if (upload.file.size > maxSize * 1024 * 1024) {
+          upload.status = "error";
+          upload.error = `Excede el límite de ${maxSize}MB`;
+        }
       }
-    }
 
-    setFiles(prev => [...prev, ...newUploads]);
-  }, [files.length, maxFiles, maxSize]);
+      setFiles((prev) => [...prev, ...newUploads]);
+    },
+    [files.length, maxFiles, maxSize],
+  );
 
   const removeFile = (id: string) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
+    setFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   const clearAll = () => {
@@ -197,25 +216,31 @@ export function BulkDropboxUploader({
   };
 
   const startUpload = async () => {
-    const pendingFiles = files.filter(f => f.status === "pending");
+    const pendingFiles = files.filter((f) => f.status === "pending");
     if (pendingFiles.length === 0) return;
 
     setIsUploading(true);
     abortControllerRef.current = new AbortController();
 
-    const completedFiles: { url: string; filename: string; fileSize: number }[] = [];
+    const completedFiles: {
+      url: string;
+      filename: string;
+      fileSize: number;
+    }[] = [];
 
     // Upload files sequentially to avoid overwhelming the server
     for (const upload of pendingFiles) {
       // Update status to uploading
-      setFiles(prev =>
-        prev.map(f => (f.id === upload.id ? { ...f, status: "uploading", progress: 50 } : f))
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === upload.id ? { ...f, status: "uploading", progress: 50 } : f,
+        ),
       );
 
       const result = await uploadFile(upload);
 
       // Update file status
-      setFiles(prev => prev.map(f => (f.id === upload.id ? result : f)));
+      setFiles((prev) => prev.map((f) => (f.id === upload.id ? result : f)));
 
       if (result.status === "success" && result.url) {
         completedFiles.push({
@@ -235,8 +260,12 @@ export function BulkDropboxUploader({
   };
 
   const retryFailed = () => {
-    setFiles(prev =>
-      prev.map(f => (f.status === "error" ? { ...f, status: "pending", progress: 0, error: undefined } : f))
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.status === "error"
+          ? { ...f, status: "pending", progress: 0, error: undefined }
+          : f,
+      ),
     );
   };
 
@@ -265,10 +294,10 @@ export function BulkDropboxUploader({
     }
   };
 
-  const pendingCount = files.filter(f => f.status === "pending").length;
-  const successCount = files.filter(f => f.status === "success").length;
-  const errorCount = files.filter(f => f.status === "error").length;
-  const uploadingCount = files.filter(f => f.status === "uploading").length;
+  const pendingCount = files.filter((f) => f.status === "pending").length;
+  const successCount = files.filter((f) => f.status === "success").length;
+  const errorCount = files.filter((f) => f.status === "error").length;
+  const uploadingCount = files.filter((f) => f.status === "uploading").length;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -278,12 +307,19 @@ export function BulkDropboxUploader({
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="text-yellow-500 font-medium">Dropbox no configurado</p>
+              <p className="text-yellow-500 font-medium">
+                Dropbox no configurado
+              </p>
               <p className="text-yellow-500/80 text-xs mt-1">
-                Ve a <a href="/admin/sync" className="underline hover:no-underline">Sincronización</a> para configurar tu Access Token de Dropbox.
+                Ve a{" "}
+                <a href="/admin/sync" className="underline hover:no-underline">
+                  Sincronización
+                </a>{" "}
+                para configurar tu Access Token de Dropbox.
               </p>
               <p className="text-yellow-500/60 text-xs mt-1">
-                Nota: Los tokens de Dropbox expiran cada 4 horas. Si recibes "Unauthorized", genera un nuevo token.
+                Nota: Los tokens de Dropbox expiran cada 4 horas. Si recibes
+                "Unauthorized", genera un nuevo token.
               </p>
             </div>
           </div>
@@ -299,8 +335,8 @@ export function BulkDropboxUploader({
           dropboxConfigured === false
             ? "border-yellow-500/50 bg-yellow-500/5 opacity-50 cursor-not-allowed"
             : isDragOver
-            ? "border-primary bg-primary/5"
-            : "border-slc-border hover:border-primary/50"
+              ? "border-primary bg-primary/5"
+              : "border-slc-border hover:border-primary/50"
         }`}
       >
         <input
@@ -310,7 +346,11 @@ export function BulkDropboxUploader({
           onChange={handleInputChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           multiple
-          disabled={isUploading || files.length >= maxFiles || dropboxConfigured === false}
+          disabled={
+            isUploading ||
+            files.length >= maxFiles ||
+            dropboxConfigured === false
+          }
         />
 
         <FolderUp className="w-12 h-12 mx-auto mb-4 text-slc-muted" />
@@ -322,10 +362,18 @@ export function BulkDropboxUploader({
           Máximo {maxFiles} archivos, {maxSize}MB cada uno
         </p>
         <div className="mt-3 flex flex-wrap gap-1 justify-center">
-          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">Audio</span>
-          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">Imágenes</span>
-          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">Video</span>
-          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">ZIP</span>
+          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">
+            Audio
+          </span>
+          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">
+            Imágenes
+          </span>
+          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">
+            Video
+          </span>
+          <span className="px-2 py-1 text-xs bg-slc-card rounded text-slc-muted">
+            ZIP
+          </span>
         </div>
       </div>
 
@@ -335,18 +383,28 @@ export function BulkDropboxUploader({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-slc-card/50 border-b border-slc-border">
             <div className="flex items-center gap-4 text-sm">
-              <span className="font-medium">{files.length} archivo{files.length !== 1 ? "s" : ""}</span>
+              <span className="font-medium">
+                {files.length} archivo{files.length !== 1 ? "s" : ""}
+              </span>
               {pendingCount > 0 && (
-                <span className="text-yellow-500">{pendingCount} pendiente{pendingCount !== 1 ? "s" : ""}</span>
+                <span className="text-yellow-500">
+                  {pendingCount} pendiente{pendingCount !== 1 ? "s" : ""}
+                </span>
               )}
               {uploadingCount > 0 && (
-                <span className="text-blue-500">{uploadingCount} subiendo...</span>
+                <span className="text-blue-500">
+                  {uploadingCount} subiendo...
+                </span>
               )}
               {successCount > 0 && (
-                <span className="text-green-500">{successCount} completado{successCount !== 1 ? "s" : ""}</span>
+                <span className="text-green-500">
+                  {successCount} completado{successCount !== 1 ? "s" : ""}
+                </span>
               )}
               {errorCount > 0 && (
-                <span className="text-red-500">{errorCount} error{errorCount !== 1 ? "es" : ""}</span>
+                <span className="text-red-500">
+                  {errorCount} error{errorCount !== 1 ? "es" : ""}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -373,15 +431,17 @@ export function BulkDropboxUploader({
                 }`}
               >
                 {/* File icon */}
-                <div className={`w-8 h-8 rounded flex items-center justify-center ${
-                  upload.status === "success"
-                    ? "bg-green-500/20 text-green-500"
-                    : upload.status === "error"
-                    ? "bg-red-500/20 text-red-500"
-                    : upload.status === "uploading"
-                    ? "bg-blue-500/20 text-blue-500"
-                    : "bg-slc-card text-slc-muted"
-                }`}>
+                <div
+                  className={`w-8 h-8 rounded flex items-center justify-center ${
+                    upload.status === "success"
+                      ? "bg-green-500/20 text-green-500"
+                      : upload.status === "error"
+                        ? "bg-red-500/20 text-red-500"
+                        : upload.status === "uploading"
+                          ? "bg-blue-500/20 text-blue-500"
+                          : "bg-slc-card text-slc-muted"
+                  }`}
+                >
                   {upload.status === "uploading" ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : upload.status === "success" ? (
@@ -395,7 +455,9 @@ export function BulkDropboxUploader({
 
                 {/* File info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{upload.file.name}</p>
+                  <p className="text-sm font-medium truncate">
+                    {upload.file.name}
+                  </p>
                   <div className="flex items-center gap-2 text-xs text-slc-muted">
                     <span>{formatFileSize(upload.file.size)}</span>
                     {upload.error && (
@@ -449,12 +511,14 @@ export function BulkDropboxUploader({
                 {isUploading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Subiendo {uploadingCount} de {pendingCount + uploadingCount}...
+                    Subiendo {uploadingCount} de {pendingCount + uploadingCount}
+                    ...
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Subir {pendingCount} archivo{pendingCount !== 1 ? "s" : ""} a Dropbox
+                    Subir {pendingCount} archivo{pendingCount !== 1 ? "s" : ""}{" "}
+                    a Dropbox
                   </>
                 )}
               </Button>

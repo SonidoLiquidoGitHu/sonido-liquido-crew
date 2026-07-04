@@ -79,7 +79,9 @@ const COLORS = {
   live: "#22C55E", // Green for live data indicator
 };
 
-export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Array> {
+export async function generatePressKitPDF(
+  data: PressKitData,
+): Promise<Uint8Array> {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -136,7 +138,9 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
   doc.setFont("helvetica", "bold");
   doc.setFontSize(32);
   doc.setTextColor("#FFFFFF");
-  doc.text(data.heroTitle.toUpperCase(), pageWidth / 2, 30, { align: "center" });
+  doc.text(data.heroTitle.toUpperCase(), pageWidth / 2, 30, {
+    align: "center",
+  });
 
   // Subtitle
   doc.setFont("helvetica", "normal");
@@ -170,13 +174,17 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
     doc.setFont("helvetica", "bold");
     doc.setFontSize(24);
     doc.setTextColor(COLORS.primary);
-    doc.text(stat.value, xPos + statsBoxWidth / 2, yPos + 15, { align: "center" });
+    doc.text(stat.value, xPos + statsBoxWidth / 2, yPos + 15, {
+      align: "center",
+    });
 
     // Label
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(COLORS.muted);
-    doc.text(stat.label, xPos + statsBoxWidth / 2, yPos + 24, { align: "center" });
+    doc.text(stat.label, xPos + statsBoxWidth / 2, yPos + 24, {
+      align: "center",
+    });
   });
 
   yPos += 45;
@@ -228,7 +236,10 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
         doc.setTextColor(COLORS.muted);
-        const descLines = doc.splitTextToSize(point.description, contentWidth - 10);
+        const descLines = doc.splitTextToSize(
+          point.description,
+          contentWidth - 10,
+        );
         yPos += 5;
         descLines.forEach((line: string) => {
           doc.text(line, margin + 8, yPos);
@@ -309,7 +320,10 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
 
       // Quote box
       doc.setFillColor(COLORS.light);
-      const quoteLines = doc.splitTextToSize(`"${quote.quote}"`, contentWidth - 20);
+      const quoteLines = doc.splitTextToSize(
+        `"${quote.quote}"`,
+        contentWidth - 20,
+      );
       const quoteHeight = quoteLines.length * 5 + 15;
       doc.roundedRect(margin, yPos, contentWidth, quoteHeight, 3, 3, "F");
 
@@ -351,7 +365,7 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(COLORS.muted);
-      doc.text(info.label + ":", margin, yPos);
+      doc.text(`${info.label}:`, margin, yPos);
 
       doc.setFont("helvetica", "normal");
       doc.setTextColor(COLORS.text);
@@ -370,7 +384,7 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
     { label: "YouTube", value: data.youtubeUrl },
     { label: "Twitter/X", value: data.twitterUrl },
     { label: "Facebook", value: data.facebookUrl },
-  ].filter(s => s.value);
+  ].filter((s) => s.value);
 
   if (socialLinks.length > 0) {
     checkPageBreak(30);
@@ -380,7 +394,7 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(COLORS.primary);
-      doc.text(social.label + ":", margin, yPos);
+      doc.text(`${social.label}:`, margin, yPos);
 
       doc.setFont("helvetica", "normal");
       doc.setTextColor(COLORS.text);
@@ -434,11 +448,7 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(COLORS.muted);
-  doc.text(
-    `${data.heroTitle} - Press Kit`,
-    margin,
-    footerY
-  );
+  doc.text(`${data.heroTitle} - Press Kit`, margin, footerY);
 
   // Generation info
   const generatedText = data.generatedAt
@@ -447,12 +457,12 @@ export async function generatePressKitPDF(data: PressKitData): Promise<Uint8Arra
         month: "short",
         day: "numeric",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
       })}${data.includesLiveData ? " • Datos en vivo" : ""}`
     : `Generado: ${new Date().toLocaleDateString("es-MX", {
         year: "numeric",
         month: "long",
-        day: "numeric"
+        day: "numeric",
       })}`;
 
   doc.text(generatedText, pageWidth - margin, footerY, { align: "right" });

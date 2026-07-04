@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artists } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * One-time fix: Clean up double-escaped JSON in artist fields.
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -30,7 +30,12 @@ export async function POST(request: NextRequest) {
       let needsUpdate = false;
 
       // Check each JSON field for double-escaping
-      const jsonFields = ["genres", "labels", "pressQuotes", "featuredVideos"] as const;
+      const jsonFields = [
+        "genres",
+        "labels",
+        "pressQuotes",
+        "featuredVideos",
+      ] as const;
 
       for (const field of jsonFields) {
         const raw = (artist as any)[field];
@@ -46,7 +51,11 @@ export async function POST(request: NextRequest) {
       if (needsUpdate) {
         updates.updatedAt = new Date();
         await db.update(artists).set(updates).where(eq(artists.id, artist.id));
-        fixed.push(`${artist.name}: ${Object.keys(updates).filter(k => k !== 'updatedAt').join(", ")}`);
+        fixed.push(
+          `${artist.name}: ${Object.keys(updates)
+            .filter((k) => k !== "updatedAt")
+            .join(", ")}`,
+        );
       }
     }
 
@@ -59,7 +68,7 @@ export async function POST(request: NextRequest) {
     console.error("[API] Error fixing double-escaped JSON:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fix data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

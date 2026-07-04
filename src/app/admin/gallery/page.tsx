@@ -1,39 +1,39 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
+import { DropboxUploader } from "@/components/admin/DropboxUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropboxUploader } from "@/components/admin/DropboxUploader";
 import { uploadToDropboxDirect } from "@/lib/clients/dropbox-browser";
 import {
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  X,
+  Calendar,
+  Camera,
   Check,
-  Image as ImageIcon,
-  Tag,
-  Folder,
-  Star,
+  CheckSquare,
+  Cloud,
   Eye,
   EyeOff,
-  Grid3X3,
-  List,
   Filter,
-  Loader2,
-  CheckSquare,
-  Square,
+  Folder,
   FolderPlus,
-  Cloud,
-  Calendar,
-  Pencil,
-  User,
+  Grid3X3,
+  Image as ImageIcon,
+  List,
+  Loader2,
   MapPin,
-  Camera,
+  Pencil,
+  Plus,
   Save,
+  Search,
+  Square,
+  Star,
+  Tag,
+  Trash2,
+  Upload,
+  User,
+  X,
 } from "lucide-react";
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
 
 interface GalleryPhoto {
   id: string;
@@ -123,21 +123,25 @@ export default function AdminGalleryPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [photosRes, albumsRes, tagsRes, eventsRes, artistsRes] = await Promise.all([
-        fetch(`/api/admin/gallery${selectedAlbum ? `?albumId=${selectedAlbum}` : ""}`),
-        fetch("/api/admin/gallery/albums"),
-        fetch("/api/admin/gallery/tags"),
-        fetch("/api/admin/events"),
-        fetch("/api/admin/artists"),
-      ]);
+      const [photosRes, albumsRes, tagsRes, eventsRes, artistsRes] =
+        await Promise.all([
+          fetch(
+            `/api/admin/gallery${selectedAlbum ? `?albumId=${selectedAlbum}` : ""}`,
+          ),
+          fetch("/api/admin/gallery/albums"),
+          fetch("/api/admin/gallery/tags"),
+          fetch("/api/admin/events"),
+          fetch("/api/admin/artists"),
+        ]);
 
-      const [photosData, albumsData, tagsData, eventsData, artistsData] = await Promise.all([
-        photosRes.json(),
-        albumsRes.json(),
-        tagsRes.json(),
-        eventsRes.json(),
-        artistsRes.json(),
-      ]);
+      const [photosData, albumsData, tagsData, eventsData, artistsData] =
+        await Promise.all([
+          photosRes.json(),
+          albumsRes.json(),
+          tagsRes.json(),
+          eventsRes.json(),
+          artistsRes.json(),
+        ]);
 
       if (photosData.success) setPhotos(photosData.data || []);
       if (albumsData.success) setAlbums(albumsData.data || []);
@@ -159,7 +163,9 @@ export default function AdminGalleryPage() {
       description: photo.description || "",
       photographer: photo.photographer || "",
       location: photo.location || "",
-      takenAt: photo.takenAt ? new Date(photo.takenAt).toISOString().split("T")[0] : "",
+      takenAt: photo.takenAt
+        ? new Date(photo.takenAt).toISOString().split("T")[0]
+        : "",
       artistId: photo.artistId || "",
       albumId: photo.albumId || "",
       altText: photo.altText || "",
@@ -209,14 +215,18 @@ export default function AdminGalleryPage() {
   }, [fetchData]);
 
   // Create or get album for an event
-  const getOrCreateEventAlbum = async (eventId: string): Promise<string | null> => {
+  const getOrCreateEventAlbum = async (
+    eventId: string,
+  ): Promise<string | null> => {
     const event = events.find((e) => e.id === eventId);
     if (!event) return null;
 
     // Check if album already exists for this event
     const eventAlbumTitle = `📅 ${event.title} - ${event.city}`;
     const existingAlbum = albums.find(
-      (a) => a.title === eventAlbumTitle || a.slug.includes(event.id.substring(0, 8))
+      (a) =>
+        a.title === eventAlbumTitle ||
+        a.slug.includes(event.id.substring(0, 8)),
     );
 
     if (existingAlbum) {
@@ -260,16 +270,25 @@ export default function AdminGalleryPage() {
     try {
       for (const file of fileArray) {
         // Use browser-direct upload to Dropbox (bypasses serverless timeout)
-        const result = await uploadToDropboxDirect(file, "/gallery", (progress) => {
-          console.log(`[Gallery] Uploading ${file.name}: ${progress.percent}%`);
-        });
+        const result = await uploadToDropboxDirect(
+          file,
+          "/gallery",
+          (progress) => {
+            console.log(
+              `[Gallery] Uploading ${file.name}: ${progress.percent}%`,
+            );
+          },
+        );
 
         if (result.success && result.url) {
           uploadedUrls.push(result.url);
         } else {
-          console.error(`[Gallery] Upload failed for ${file.name}:`, result.error);
+          console.error(
+            `[Gallery] Upload failed for ${file.name}:`,
+            result.error,
+          );
           // If browser-direct fails, try server-side as fallback
-          console.log(`[Gallery] Trying server-side upload as fallback...`);
+          console.log("[Gallery] Trying server-side upload as fallback...");
           try {
             const formData = new FormData();
             formData.append("file", file);
@@ -283,7 +302,10 @@ export default function AdminGalleryPage() {
               uploadedUrls.push(data.data.url);
             }
           } catch (fallbackError) {
-            console.error(`[Gallery] Server-side fallback also failed:`, fallbackError);
+            console.error(
+              "[Gallery] Server-side fallback also failed:",
+              fallbackError,
+            );
           }
         }
       }
@@ -301,10 +323,18 @@ export default function AdminGalleryPage() {
     } catch (error) {
       console.error("Error uploading files:", error);
       const errorMsg = (error as Error)?.message || "";
-      if (errorMsg.includes("token") || errorMsg.includes("Token") || errorMsg.includes("expirado")) {
-        alert("Token de Dropbox expirado. Ve a Admin > Sincronización > Dropbox y reconecta tu cuenta.");
+      if (
+        errorMsg.includes("token") ||
+        errorMsg.includes("Token") ||
+        errorMsg.includes("expirado")
+      ) {
+        alert(
+          "Token de Dropbox expirado. Ve a Admin > Sincronización > Dropbox y reconecta tu cuenta.",
+        );
       } else {
-        alert("Error al subir archivos. Verifica que Dropbox esté configurado en Admin > Sincronización.");
+        alert(
+          "Error al subir archivos. Verifica que Dropbox esté configurado en Admin > Sincronización.",
+        );
       }
     } finally {
       setUploading(false);
@@ -469,7 +499,7 @@ export default function AdminGalleryPage() {
   const moveToAlbum = async (selection: string | null) => {
     let albumIdToUse: string | null = null;
 
-    if (selection && selection.startsWith("event:")) {
+    if (selection?.startsWith("event:")) {
       const eventId = selection.replace("event:", "");
       albumIdToUse = await getOrCreateEventAlbum(eventId);
     } else {
@@ -492,7 +522,9 @@ export default function AdminGalleryPage() {
     const matchesSearch =
       !searchQuery ||
       photo.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      photo.tags.some((t) => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      photo.tags.some((t) =>
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
     return matchesSearch;
   });
 
@@ -500,7 +532,11 @@ export default function AdminGalleryPage() {
   const formatEventDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+      return date.toLocaleDateString("es-MX", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
     } catch {
       return "";
     }
@@ -532,10 +568,15 @@ export default function AdminGalleryPage() {
       <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-3">
         <Star className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
         <div className="text-sm">
-          <p className="text-yellow-300 font-medium">¿Cómo mostrar fotos en la página principal?</p>
+          <p className="text-yellow-300 font-medium">
+            ¿Cómo mostrar fotos en la página principal?
+          </p>
           <p className="text-yellow-300/70 mt-1">
-            Solo las fotos marcadas como <Star className="w-3 h-3 inline text-yellow-500 fill-yellow-500" /> <span className="font-medium">Destacadas</span> aparecen en la página principal.
-            Haz clic en una foto para editarla y activa la opción "Destacada".
+            Solo las fotos marcadas como{" "}
+            <Star className="w-3 h-3 inline text-yellow-500 fill-yellow-500" />{" "}
+            <span className="font-medium">Destacadas</span> aparecen en la
+            página principal. Haz clic en una foto para editarla y activa la
+            opción "Destacada".
           </p>
         </div>
       </div>
@@ -592,13 +633,18 @@ export default function AdminGalleryPage() {
             {selectedPhotos.size} foto(s) seleccionada(s)
           </span>
           <div className="flex-1" />
-          <Button size="sm" variant="outline" onClick={() => setShowTagManager(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowTagManager(true)}
+          >
             <Tag className="w-4 h-4 mr-1" />
             Etiquetar
           </Button>
           <select
             onChange={(e) => {
-              if (e.target.value) moveToAlbum(e.target.value === "none" ? null : e.target.value);
+              if (e.target.value)
+                moveToAlbum(e.target.value === "none" ? null : e.target.value);
               e.target.value = "";
             }}
             className="px-3 py-1.5 text-sm bg-slc-card border border-slc-border rounded-lg"
@@ -616,13 +662,18 @@ export default function AdminGalleryPage() {
               <optgroup label="Eventos">
                 {events.map((event) => (
                   <option key={event.id} value={`event:${event.id}`}>
-                    {event.title} - {event.city} ({formatEventDate(event.eventDate)})
+                    {event.title} - {event.city} (
+                    {formatEventDate(event.eventDate)})
                   </option>
                 ))}
               </optgroup>
             )}
           </select>
-          <Button size="sm" variant="outline" onClick={() => toggleFeatureSelected(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => toggleFeatureSelected(true)}
+          >
             <Star className="w-4 h-4 mr-1" />
             Destacar
           </Button>
@@ -630,7 +681,11 @@ export default function AdminGalleryPage() {
             <Trash2 className="w-4 h-4 mr-1" />
             Eliminar
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setSelectedPhotos(new Set())}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedPhotos(new Set())}
+          >
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -642,7 +697,8 @@ export default function AdminGalleryPage() {
           onClick={selectAll}
           className="flex items-center gap-2 text-sm text-slc-muted hover:text-white"
         >
-          {selectedPhotos.size === filteredPhotos.length && filteredPhotos.length > 0 ? (
+          {selectedPhotos.size === filteredPhotos.length &&
+          filteredPhotos.length > 0 ? (
             <CheckSquare className="w-4 h-4" />
           ) : (
             <Square className="w-4 h-4" />
@@ -660,7 +716,9 @@ export default function AdminGalleryPage() {
         <div className="text-center py-20">
           <ImageIcon className="w-16 h-16 text-slc-muted mx-auto mb-4" />
           <h3 className="text-xl font-medium mb-2">No hay fotos</h3>
-          <p className="text-slc-muted mb-4">Sube tus primeras fotos a la galería</p>
+          <p className="text-slc-muted mb-4">
+            Sube tus primeras fotos a la galería
+          </p>
           <Button onClick={() => setShowUploader(true)}>
             <Upload className="w-4 h-4 mr-2" />
             Subir Fotos
@@ -783,7 +841,9 @@ export default function AdminGalleryPage() {
               {/* Info (list view) */}
               {viewMode === "list" && (
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{photo.title || "Sin título"}</p>
+                  <p className="font-medium truncate">
+                    {photo.title || "Sin título"}
+                  </p>
                   {photo.photographer && (
                     <p className="text-xs text-slc-muted flex items-center gap-1">
                       <Camera className="w-3 h-3" />
@@ -815,7 +875,9 @@ export default function AdminGalleryPage() {
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
-                  {photo.isFeatured && <Star className="w-4 h-4 text-yellow-500" />}
+                  {photo.isFeatured && (
+                    <Star className="w-4 h-4 text-yellow-500" />
+                  )}
                   {photo.isPublished ? (
                     <Eye className="w-4 h-4 text-green-500" />
                   ) : (
@@ -834,7 +896,11 @@ export default function AdminGalleryPage() {
           <div className="bg-slc-dark border border-slc-border rounded-xl w-full max-w-2xl max-h-[80vh] overflow-auto">
             <div className="flex items-center justify-between p-4 border-b border-slc-border">
               <h2 className="font-oswald text-xl uppercase">Subir Fotos</h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowUploader(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowUploader(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -850,21 +916,29 @@ export default function AdminGalleryPage() {
                 onClick={() => document.getElementById("file-input")?.click()}
               >
                 <Upload className="w-12 h-12 text-slc-muted mx-auto mb-4" />
-                <p className="text-lg mb-2">Arrastra fotos aquí o haz clic para seleccionar</p>
-                <p className="text-sm text-slc-muted">JPG, PNG, WebP hasta 10MB</p>
+                <p className="text-lg mb-2">
+                  Arrastra fotos aquí o haz clic para seleccionar
+                </p>
+                <p className="text-sm text-slc-muted">
+                  JPG, PNG, WebP hasta 10MB
+                </p>
                 <input
                   id="file-input"
                   type="file"
                   multiple
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                  onChange={(e) =>
+                    e.target.files && handleFileUpload(e.target.files)
+                  }
                 />
               </div>
 
               {/* URL Upload */}
               <div className="mt-6">
-                <p className="text-sm text-slc-muted mb-2">O pega URLs de imágenes (una por línea):</p>
+                <p className="text-sm text-slc-muted mb-2">
+                  O pega URLs de imágenes (una por línea):
+                </p>
                 <textarea
                   id="url-input"
                   className="w-full h-32 p-3 bg-slc-card border border-slc-border rounded-lg text-sm"
@@ -874,7 +948,9 @@ export default function AdminGalleryPage() {
 
               {/* Album Selection - Now includes Events */}
               <div className="mt-4">
-                <label className="block text-sm text-slc-muted mb-2">Álbum (opcional)</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Álbum (opcional)
+                </label>
                 <select
                   value={uploadAlbumSelection}
                   onChange={(e) => setUploadAlbumSelection(e.target.value)}
@@ -892,7 +968,8 @@ export default function AdminGalleryPage() {
                     <optgroup label="Eventos">
                       {events.map((event) => (
                         <option key={event.id} value={`event:${event.id}`}>
-                          {event.title} - {event.city} ({formatEventDate(event.eventDate)})
+                          {event.title} - {event.city} (
+                          {formatEventDate(event.eventDate)})
                         </option>
                       ))}
                     </optgroup>
@@ -908,14 +985,18 @@ export default function AdminGalleryPage() {
 
               {/* Tags Selection */}
               <div className="mt-4">
-                <label className="block text-sm text-slc-muted mb-2">Etiquetas</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Etiquetas
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
                     <button
                       key={tag.id}
                       onClick={() => {
                         if (batchTagIds.includes(tag.id)) {
-                          setBatchTagIds(batchTagIds.filter((id) => id !== tag.id));
+                          setBatchTagIds(
+                            batchTagIds.filter((id) => id !== tag.id),
+                          );
                         } else {
                           setBatchTagIds([...batchTagIds, tag.id]);
                         }
@@ -947,12 +1028,17 @@ export default function AdminGalleryPage() {
 
               {/* Upload Button */}
               <div className="mt-6 flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowUploader(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowUploader(false)}
+                >
                   Cancelar
                 </Button>
                 <Button
                   onClick={() => {
-                    const textarea = document.getElementById("url-input") as HTMLTextAreaElement;
+                    const textarea = document.getElementById(
+                      "url-input",
+                    ) as HTMLTextAreaElement;
                     const urls = textarea.value
                       .split("\n")
                       .map((u) => u.trim())
@@ -981,14 +1067,21 @@ export default function AdminGalleryPage() {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-slc-dark border border-slc-border rounded-xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-slc-border">
-              <h2 className="font-oswald text-xl uppercase">Agregar Etiquetas</h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowTagManager(false)}>
+              <h2 className="font-oswald text-xl uppercase">
+                Agregar Etiquetas
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowTagManager(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
             <div className="p-6">
               <p className="text-sm text-slc-muted mb-4">
-                Selecciona etiquetas para agregar a {selectedPhotos.size} foto(s):
+                Selecciona etiquetas para agregar a {selectedPhotos.size}{" "}
+                foto(s):
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {tags.map((tag) => (
@@ -996,7 +1089,9 @@ export default function AdminGalleryPage() {
                     key={tag.id}
                     onClick={() => {
                       if (batchTagIds.includes(tag.id)) {
-                        setBatchTagIds(batchTagIds.filter((id) => id !== tag.id));
+                        setBatchTagIds(
+                          batchTagIds.filter((id) => id !== tag.id),
+                        );
                       } else {
                         setBatchTagIds([...batchTagIds, tag.id]);
                       }
@@ -1023,10 +1118,16 @@ export default function AdminGalleryPage() {
                 </Button>
               </div>
               <div className="mt-6 flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowTagManager(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTagManager(false)}
+                >
                   Cancelar
                 </Button>
-                <Button onClick={() => addTagsToSelected(batchTagIds)} disabled={batchTagIds.length === 0}>
+                <Button
+                  onClick={() => addTagsToSelected(batchTagIds)}
+                  disabled={batchTagIds.length === 0}
+                >
                   Aplicar Etiquetas
                 </Button>
               </div>
@@ -1041,7 +1142,11 @@ export default function AdminGalleryPage() {
           <div className="bg-slc-dark border border-slc-border rounded-xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-slc-border">
               <h2 className="font-oswald text-xl uppercase">Nuevo Álbum</h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowAlbumCreator(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowAlbumCreator(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -1053,7 +1158,10 @@ export default function AdminGalleryPage() {
                 onKeyDown={(e) => e.key === "Enter" && createAlbum()}
               />
               <div className="mt-6 flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowAlbumCreator(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAlbumCreator(false)}
+                >
                   Cancelar
                 </Button>
                 <Button onClick={createAlbum} disabled={!newAlbumName.trim()}>
@@ -1076,7 +1184,11 @@ export default function AdminGalleryPage() {
                 <Pencil className="w-5 h-5 text-primary" />
                 Editar Foto
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => setEditingPhoto(null)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setEditingPhoto(null)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -1108,7 +1220,9 @@ export default function AdminGalleryPage() {
                     </label>
                     <Input
                       value={editForm.title}
-                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, title: e.target.value })
+                      }
                       placeholder="Título de la foto..."
                     />
                   </div>
@@ -1120,7 +1234,12 @@ export default function AdminGalleryPage() {
                     </label>
                     <textarea
                       value={editForm.description}
-                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          description: e.target.value,
+                        })
+                      }
                       placeholder="Descripción de la foto..."
                       rows={3}
                       className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg resize-none focus:outline-none focus:border-primary"
@@ -1135,7 +1254,12 @@ export default function AdminGalleryPage() {
                     </label>
                     <Input
                       value={editForm.photographer}
-                      onChange={(e) => setEditForm({ ...editForm, photographer: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          photographer: e.target.value,
+                        })
+                      }
                       placeholder="Nombre del fotógrafo..."
                     />
                   </div>
@@ -1148,7 +1272,9 @@ export default function AdminGalleryPage() {
                     </label>
                     <Input
                       value={editForm.location}
-                      onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, location: e.target.value })
+                      }
                       placeholder="Lugar donde se tomó la foto..."
                     />
                   </div>
@@ -1162,7 +1288,9 @@ export default function AdminGalleryPage() {
                     <Input
                       type="date"
                       value={editForm.takenAt}
-                      onChange={(e) => setEditForm({ ...editForm, takenAt: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, takenAt: e.target.value })
+                      }
                     />
                   </div>
 
@@ -1174,7 +1302,9 @@ export default function AdminGalleryPage() {
                     </label>
                     <select
                       value={editForm.artistId}
-                      onChange={(e) => setEditForm({ ...editForm, artistId: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, artistId: e.target.value })
+                      }
                       className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     >
                       <option value="">Sin artista</option>
@@ -1194,7 +1324,9 @@ export default function AdminGalleryPage() {
                     </label>
                     <select
                       value={editForm.albumId}
-                      onChange={(e) => setEditForm({ ...editForm, albumId: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, albumId: e.target.value })
+                      }
                       className="w-full px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     >
                       <option value="">Sin álbum</option>
@@ -1213,7 +1345,9 @@ export default function AdminGalleryPage() {
                     </label>
                     <Input
                       value={editForm.altText}
-                      onChange={(e) => setEditForm({ ...editForm, altText: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, altText: e.target.value })
+                      }
                       placeholder="Descripción para accesibilidad..."
                     />
                   </div>
@@ -1233,7 +1367,9 @@ export default function AdminGalleryPage() {
                             if (editForm.tagIds.includes(tag.id)) {
                               setEditForm({
                                 ...editForm,
-                                tagIds: editForm.tagIds.filter((id) => id !== tag.id),
+                                tagIds: editForm.tagIds.filter(
+                                  (id) => id !== tag.id,
+                                ),
                               });
                             } else {
                               setEditForm({
@@ -1260,7 +1396,12 @@ export default function AdminGalleryPage() {
                       <input
                         type="checkbox"
                         checked={editForm.isFeatured}
-                        onChange={(e) => setEditForm({ ...editForm, isFeatured: e.target.checked })}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            isFeatured: e.target.checked,
+                          })
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <Star className="w-4 h-4 text-yellow-500" />
@@ -1270,7 +1411,12 @@ export default function AdminGalleryPage() {
                       <input
                         type="checkbox"
                         checked={editForm.isPublished}
-                        onChange={(e) => setEditForm({ ...editForm, isPublished: e.target.checked })}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            isPublished: e.target.checked,
+                          })
+                        }
                         className="w-4 h-4 rounded border-slc-border"
                       />
                       <Eye className="w-4 h-4 text-green-500" />
@@ -1287,7 +1433,9 @@ export default function AdminGalleryPage() {
                 variant="destructive"
                 onClick={async () => {
                   if (confirm("¿Eliminar esta foto permanentemente?")) {
-                    await fetch(`/api/admin/gallery/${editingPhoto.id}`, { method: "DELETE" });
+                    await fetch(`/api/admin/gallery/${editingPhoto.id}`, {
+                      method: "DELETE",
+                    });
                     setEditingPhoto(null);
                     fetchData();
                   }

@@ -5,9 +5,10 @@ import BeatPageClient, { type Beat } from "./BeatPageClient";
 async function getBeat(slug: string): Promise<Beat | null> {
   try {
     // Use absolute URL for server-side fetch
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
-                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                   "https://sonidoliquido.com";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "https://sonidoliquido.com";
 
     const res = await fetch(`${baseUrl}/api/beats/${slug}`, {
       next: { revalidate: 60 }, // Cache for 60 seconds
@@ -40,11 +41,13 @@ export async function generateMetadata({
   }
 
   const title = `${beat.title}${beat.producerName ? ` - ${beat.producerName}` : ""} | Sonido Líquido`;
-  const description = beat.description ||
+  const description =
+    beat.description ||
     `Descarga el beat "${beat.title}"${beat.bpm ? ` - ${beat.bpm} BPM` : ""}${beat.genre ? ` - ${beat.genre}` : ""}. Sonido Líquido Crew - Hip Hop Mexicano.`;
 
   // Use cover image or fallback
-  const imageUrl = beat.coverImageUrl || "https://sonidoliquido.com/og-image.jpg";
+  const imageUrl =
+    beat.coverImageUrl || "https://sonidoliquido.com/og-image.jpg";
 
   // Ensure absolute URL for OG image
   const absoluteImageUrl = imageUrl.startsWith("http")

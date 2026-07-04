@@ -1,10 +1,15 @@
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artists } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import NewMediaReleaseForm from "./NewMediaReleaseForm";
 
 export default async function NewMediaReleasePage() {
-  let artistsList: { id: string; name: string; profileImageUrl: string | null; role: string }[] = [];
+  let artistsList: {
+    id: string;
+    name: string;
+    profileImageUrl: string | null;
+    role: string;
+  }[] = [];
 
   // Fetch artists directly from database
   if (isDatabaseConfigured()) {
@@ -20,7 +25,7 @@ export default async function NewMediaReleasePage() {
         .where(eq(artists.isActive, true))
         .orderBy(asc(artists.name));
 
-      artistsList = dbArtists.map(a => ({
+      artistsList = dbArtists.map((a) => ({
         id: a.id,
         name: a.name,
         profileImageUrl: a.profileImageUrl,

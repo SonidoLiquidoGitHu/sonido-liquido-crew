@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { proxyImageUrl, isDropboxImageUrl } from "@/lib/utils";
+import { isDropboxImageUrl, proxyImageUrl } from "@/lib/utils";
+import { useCallback, useState } from "react";
 
 /**
  * Img - A reliable image component that:
@@ -41,9 +41,18 @@ export function Img({
 
   if (!processedSrc || error) {
     return (
-      <div className={`bg-slc-card flex items-center justify-center ${fill ? "absolute inset-0" : "w-full h-full"}`}>
+      <div
+        className={`bg-slc-card flex items-center justify-center ${fill ? "absolute inset-0" : "w-full h-full"}`}
+      >
         <svg viewBox="0 0 24 24" className="w-12 h-12 text-slc-border">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="2"
+            fill="none"
+          />
           <circle cx="12" cy="12" r="3" fill="currentColor" />
         </svg>
       </div>

@@ -1,11 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { userPlaylists, userPlaylistTracks, playlistCollaborators } from "@/db/schema";
-import { eq, and, desc, max } from "drizzle-orm";
+import {
+  playlistCollaborators,
+  userPlaylistTracks,
+  userPlaylists,
+} from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
+import { and, desc, eq, max } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Helper to check permissions
-async function checkPermissions(playlistId: string, email: string): Promise<{
+async function checkPermissions(
+  playlistId: string,
+  email: string,
+): Promise<{
   canAddTracks: boolean;
   canRemoveTracks: boolean;
   isOwner: boolean;
@@ -33,12 +40,12 @@ async function checkPermissions(playlistId: string, email: string): Promise<{
       and(
         eq(playlistCollaborators.playlistId, playlistId),
         eq(playlistCollaborators.email, email),
-        eq(playlistCollaborators.isActive, true)
-      )
+        eq(playlistCollaborators.isActive, true),
+      ),
     )
     .limit(1);
 
-  if (collaborator && collaborator.acceptedAt) {
+  if (collaborator?.acceptedAt) {
     return {
       canAddTracks: collaborator.canAddTracks ?? true,
       canRemoveTracks: collaborator.canRemoveTracks ?? false,
@@ -52,7 +59,7 @@ async function checkPermissions(playlistId: string, email: string): Promise<{
 // GET - Get tracks for a playlist
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -86,7 +93,7 @@ export async function GET(
     console.error("[Playlist Tracks] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar tracks" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -94,7 +101,7 @@ export async function GET(
 // POST - Add a track to the playlist
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -102,7 +109,7 @@ export async function POST(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -115,13 +122,16 @@ export async function POST(
       trackArtist,
       trackCoverUrl,
       trackDuration,
-      spotifyUri
+      spotifyUri,
     } = body;
 
     if (!email || !trackId || !trackTitle || !trackArtist) {
       return NextResponse.json(
-        { success: false, error: "Email, trackId, título y artista son requeridos" },
-        { status: 400 }
+        {
+          success: false,
+          error: "Email, trackId, título y artista son requeridos",
+        },
+        { status: 400 },
       );
     }
 
@@ -131,7 +141,7 @@ export async function POST(
     if (!permissions.canAddTracks) {
       return NextResponse.json(
         { success: false, error: "No tienes permiso para agregar tracks" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -142,15 +152,15 @@ export async function POST(
       .where(
         and(
           eq(userPlaylistTracks.playlistId, playlistId),
-          eq(userPlaylistTracks.trackId, trackId)
-        )
+          eq(userPlaylistTracks.trackId, trackId),
+        ),
       )
       .limit(1);
 
     if (existing) {
       return NextResponse.json(
         { success: false, error: "Este track ya está en la playlist" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -193,7 +203,9 @@ export async function POST(
       .set({ updatedAt: new Date() })
       .where(eq(userPlaylists.id, playlistId));
 
-    console.log(`[Playlist Tracks] Added: ${trackTitle} to ${playlistId} by ${email}`);
+    console.log(
+      `[Playlist Tracks] Added: ${trackTitle} to ${playlistId} by ${email}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -213,7 +225,7 @@ export async function POST(
     console.error("[Playlist Tracks] Error adding:", error);
     return NextResponse.json(
       { success: false, error: "Error al agregar track" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -221,7 +233,7 @@ export async function POST(
 // DELETE - Remove a track from the playlist
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -229,7 +241,7 @@ export async function DELETE(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -240,7 +252,7 @@ export async function DELETE(
     if (!trackInternalId || !email) {
       return NextResponse.json(
         { success: false, error: "trackId y email son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -250,7 +262,7 @@ export async function DELETE(
     if (!permissions.canRemoveTracks) {
       return NextResponse.json(
         { success: false, error: "No tienes permiso para eliminar tracks" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -260,8 +272,8 @@ export async function DELETE(
       .where(
         and(
           eq(userPlaylistTracks.id, trackInternalId),
-          eq(userPlaylistTracks.playlistId, playlistId)
-        )
+          eq(userPlaylistTracks.playlistId, playlistId),
+        ),
       );
 
     // Update playlist timestamp
@@ -270,14 +282,16 @@ export async function DELETE(
       .set({ updatedAt: new Date() })
       .where(eq(userPlaylists.id, playlistId));
 
-    console.log(`[Playlist Tracks] Removed: ${trackInternalId} from ${playlistId} by ${email}`);
+    console.log(
+      `[Playlist Tracks] Removed: ${trackInternalId} from ${playlistId} by ${email}`,
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[Playlist Tracks] Error removing:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar track" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -285,7 +299,7 @@ export async function DELETE(
 // PUT - Reorder tracks
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: playlistId } = await params;
@@ -293,7 +307,7 @@ export async function PUT(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -303,7 +317,7 @@ export async function PUT(
     if (!email || !trackOrder || !Array.isArray(trackOrder)) {
       return NextResponse.json(
         { success: false, error: "Email y trackOrder son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -313,7 +327,7 @@ export async function PUT(
     if (!permissions.canAddTracks) {
       return NextResponse.json(
         { success: false, error: "No tienes permiso para reordenar tracks" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -326,8 +340,8 @@ export async function PUT(
         .where(
           and(
             eq(userPlaylistTracks.id, trackId),
-            eq(userPlaylistTracks.playlistId, playlistId)
-          )
+            eq(userPlaylistTracks.playlistId, playlistId),
+          ),
         );
     }
 
@@ -344,7 +358,7 @@ export async function PUT(
     console.error("[Playlist Tracks] Error reordering:", error);
     return NextResponse.json(
       { success: false, error: "Error al reordenar tracks" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,15 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Share2,
-  Copy,
-  Check,
-  X,
-  MessageCircle,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Check, Copy, MessageCircle, Share2, X } from "lucide-react";
+import { useState } from "react";
 
 // Social media icons as SVG
 function TwitterIcon({ className }: { className?: string }) {
@@ -69,7 +63,8 @@ export function ShareButton({
   const [copied, setCopied] = useState(false);
 
   // Use current URL if not provided
-  const shareUrl = url || (typeof window !== "undefined" ? window.location.href : "");
+  const shareUrl =
+    url || (typeof window !== "undefined" ? window.location.href : "");
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
   const encodedDescription = encodeURIComponent(description);
@@ -177,7 +172,7 @@ export function ShareButton({
                   onClick={() => setIsOpen(false)}
                   className={cn(
                     "flex flex-col items-center gap-2 p-3 rounded-xl bg-slc-card border border-slc-border transition-all",
-                    link.color
+                    link.color,
                   )}
                 >
                   <link.icon className="w-6 h-6" />
@@ -221,7 +216,8 @@ export function ShareButtons({
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const shareUrl = url || (typeof window !== "undefined" ? window.location.href : "");
+  const shareUrl =
+    url || (typeof window !== "undefined" ? window.location.href : "");
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
 
@@ -269,7 +265,11 @@ export function ShareButtons({
         className="p-2 rounded-full bg-slc-card border border-slc-border hover:bg-primary hover:text-white hover:border-primary transition-all"
         title="Copiar enlace"
       >
-        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+        {copied ? (
+          <Check className="w-4 h-4 text-green-500" />
+        ) : (
+          <Copy className="w-4 h-4" />
+        )}
       </button>
     </div>
   );

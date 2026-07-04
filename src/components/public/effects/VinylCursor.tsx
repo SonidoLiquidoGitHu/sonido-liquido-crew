@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface CursorPosition {
   x: number;
@@ -8,16 +8,22 @@ interface CursorPosition {
 }
 
 export function VinylCursor() {
-  const [position, setPosition] = useState<CursorPosition>({ x: -100, y: -100 });
+  const [position, setPosition] = useState<CursorPosition>({
+    x: -100,
+    y: -100,
+  });
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    setPosition({ x: e.clientX, y: e.clientY });
-    if (!isVisible) setIsVisible(true);
-  }, [isVisible]);
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+      if (!isVisible) setIsVisible(true);
+    },
+    [isVisible],
+  );
 
   const handleMouseEnter = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -70,10 +76,19 @@ export function VinylCursor() {
       document.removeEventListener("mousedown", handleMouseDown);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [handleMouseMove, handleMouseEnter, handleMouseLeave, handleMouseDown, handleMouseUp]);
+  }, [
+    handleMouseMove,
+    handleMouseEnter,
+    handleMouseLeave,
+    handleMouseDown,
+    handleMouseUp,
+  ]);
 
   // Don't render on mobile/touch devices
-  if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
+  if (
+    typeof window !== "undefined" &&
+    window.matchMedia("(pointer: coarse)").matches
+  ) {
     return null;
   }
 
@@ -184,7 +199,8 @@ export function VinylCursor() {
           <div
             className="absolute inset-0 rounded-full pointer-events-none"
             style={{
-              background: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)",
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)",
             }}
           />
         </div>

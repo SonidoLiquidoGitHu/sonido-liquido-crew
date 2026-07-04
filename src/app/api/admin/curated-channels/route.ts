@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
-import { eq, desc, asc } from "drizzle-orm";
-import { spotifyClient, SpotifyClient } from "@/lib/clients/spotify";
+import { SpotifyClient, spotifyClient } from "@/lib/clients/spotify";
 import { generateUUID } from "@/lib/utils";
+import { asc, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,25 +11,30 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const activeOnly = searchParams.get("active") !== "false";
 
-    let query = db.select().from(curatedSpotifyChannels);
+    const query = db.select().from(curatedSpotifyChannels);
 
-    const channels = await query
-      .orderBy(desc(curatedSpotifyChannels.priority), asc(curatedSpotifyChannels.name));
+    const channels = await query.orderBy(
+      desc(curatedSpotifyChannels.priority),
+      asc(curatedSpotifyChannels.name),
+    );
 
     // Filter in JS since SQLite doesn't support dynamic where clauses well
     let filtered = channels;
     if (category) {
-      filtered = filtered.filter(c => c.category === category);
+      filtered = filtered.filter((c) => c.category === category);
     }
     if (activeOnly) {
-      filtered = filtered.filter(c => c.isActive);
+      filtered = filtered.filter((c) => c.isActive);
     }
 
     return NextResponse.json({
@@ -41,7 +46,7 @@ export async function GET(request: NextRequest) {
     console.error("[Curated Channels API] Error fetching channels:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching channels" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -50,16 +55,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     const body = await request.json();
-    const { spotifyUrl, category, priority, description, autoSync, syncNewReleases, syncTopTracks } = body;
+    const {
+      spotifyUrl,
+      category,
+      priority,
+      description,
+      autoSync,
+      syncNewReleases,
+      syncTopTracks,
+    } = body;
 
     if (!spotifyUrl) {
       return NextResponse.json(
         { success: false, error: "Spotify URL is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -67,8 +83,12 @@ export async function POST(request: NextRequest) {
     const spotifyArtistId = SpotifyClient.extractId(spotifyUrl);
     if (!spotifyArtistId) {
       return NextResponse.json(
-        { success: false, error: "Invalid Spotify URL. Supported formats: https://open.spotify.com/artist/..., https://open.spotify.com/intl-XX/artist/..., or spotify:artist:..." },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            "Invalid Spotify URL. Supported formats: https://open.spotify.com/artist/..., https://open.spotify.com/intl-XX/artist/..., or spotify:artist:...",
+        },
+        { status: 400 },
       );
     }
 
@@ -94,9 +114,12 @@ export async function POST(request: NextRequest) {
 
         // Refresh artist info from Spotify
         try {
-          const artistInfo = await spotifyClient.getArtist(spotifyArtistId) as any;
+          const artistInfo = (await spotifyClient.getArtist(
+            spotifyArtistId,
+          )) as any;
           updates.name = artistInfo.name || existingChannel.name;
-          updates.imageUrl = artistInfo.images?.[0]?.url ?? existingChannel.imageUrl;
+          updates.imageUrl =
+            artistInfo.images?.[0]?.url ?? existingChannel.imageUrl;
         } catch {
           // Keep existing data if Spotify fetch fails
         }
@@ -115,8 +138,12 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { success: false, error: "This channel is already curated", existing: existingChannel },
-        { status: 409 }
+        {
+          success: false,
+          error: "This channel is already curated",
+          existing: existingChannel,
+        },
+        { status: 409 },
       );
     }
 
@@ -128,7 +155,7 @@ export async function POST(request: NextRequest) {
       console.error("[Curated Channels API] Error fetching from Spotify:", err);
       return NextResponse.json(
         { success: false, error: "Could not fetch artist from Spotify" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -174,11 +201,17 @@ export async function POST(request: NextRequest) {
             const newTrack = {
               id: generateUUID(),
               spotifyTrackId: track.id,
-              spotifyTrackUrl: (track as any).external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
+              spotifyTrackUrl:
+                (track as any).external_urls?.spotify ||
+                `https://open.spotify.com/track/${track.id}`,
               spotifyAlbumId: (track as any).album?.id || null,
-              name: track.name || 'Unknown',
-              artistName: (track as any).artists?.map((a: any) => a.name).join(", ") || artistInfo.name,
-              artistIds: JSON.stringify((track as any).artists?.map((a: any) => a.id) || []),
+              name: track.name || "Unknown",
+              artistName:
+                (track as any).artists?.map((a: any) => a.name).join(", ") ||
+                artistInfo.name,
+              artistIds: JSON.stringify(
+                (track as any).artists?.map((a: any) => a.id) || [],
+              ),
               albumName: (track as any).album?.name || null,
               albumImageUrl: (track as any).album?.images?.[0]?.url || null,
               durationMs: track.duration_ms ?? null,
@@ -194,14 +227,22 @@ export async function POST(request: NextRequest) {
             await db.insert(curatedTracks).values(newTrack);
             topTracksAdded++;
           } catch (trackErr) {
-            console.warn(`[Curated Channels API] Error inserting track ${track?.id}:`, trackErr);
+            console.warn(
+              `[Curated Channels API] Error inserting track ${track?.id}:`,
+              trackErr,
+            );
           }
         }
       }
 
-      console.log(`[Curated Channels API] Auto-fetched ${topTracksAdded} top tracks for ${artistInfo.name}`);
+      console.log(
+        `[Curated Channels API] Auto-fetched ${topTracksAdded} top tracks for ${artistInfo.name}`,
+      );
     } catch (err) {
-      console.warn(`[Curated Channels API] Could not fetch top tracks for ${artistInfo.name}:`, err);
+      console.warn(
+        `[Curated Channels API] Could not fetch top tracks for ${artistInfo.name}:`,
+        err,
+      );
       // Non-blocking — channel is still created
     }
 
@@ -214,7 +255,7 @@ export async function POST(request: NextRequest) {
     console.error("[Curated Channels API] Error creating channel:", error);
     return NextResponse.json(
       { success: false, error: "Error creating channel" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

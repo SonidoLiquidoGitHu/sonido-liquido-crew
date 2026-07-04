@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // DELETED RELEASES BLOCKLIST
@@ -16,20 +16,25 @@ import { sql } from "drizzle-orm";
 // releases (no spotifyId) cannot be re-imported by the sync, so they don't
 // need blocklist protection.
 
-export const deletedReleasesBlocklist = sqliteTable("deleted_releases_blocklist", {
-  id: text("id").primaryKey(),
-  spotifyId: text("spotify_id").notNull().unique(),
-  title: text("title"),
-  artistName: text("artist_name"),
-  spotifyUrl: text("spotify_url"),
-  deletedAt: integer("deleted_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
-});
+export const deletedReleasesBlocklist = sqliteTable(
+  "deleted_releases_blocklist",
+  {
+    id: text("id").primaryKey(),
+    spotifyId: text("spotify_id").notNull().unique(),
+    title: text("title"),
+    artistName: text("artist_name"),
+    spotifyUrl: text("spotify_url"),
+    deletedAt: integer("deleted_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+);
 
 // ===========================================
 // TYPE EXPORTS
 // ===========================================
 
-export type DeletedReleaseBlocklist = typeof deletedReleasesBlocklist.$inferSelect;
-export type NewDeletedReleaseBlocklist = typeof deletedReleasesBlocklist.$inferInsert;
+export type DeletedReleaseBlocklist =
+  typeof deletedReleasesBlocklist.$inferSelect;
+export type NewDeletedReleaseBlocklist =
+  typeof deletedReleasesBlocklist.$inferInsert;

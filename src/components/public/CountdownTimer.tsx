@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface CountdownTimerProps {
   targetDate: string;
@@ -72,7 +72,11 @@ export function CountdownTimer({ targetDate }: CountdownTimerProps) {
     { value: timeLeft.seconds, label: "Seg" },
   ];
 
-  const isExpired = timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0;
+  const isExpired =
+    timeLeft.days === 0 &&
+    timeLeft.hours === 0 &&
+    timeLeft.minutes === 0 &&
+    timeLeft.seconds === 0;
 
   if (isExpired) {
     return null;
@@ -82,9 +86,7 @@ export function CountdownTimer({ targetDate }: CountdownTimerProps) {
     <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4">
       {timeUnits.map((unit, index) => (
         <div key={unit.label} className="relative">
-          <div
-            className="flex flex-col items-center px-4 py-4 sm:px-6 sm:py-5 bg-white/10 backdrop-blur-sm rounded-xl min-w-[70px] sm:min-w-[90px] border border-white/10 hover:border-white/20 transition-colors"
-          >
+          <div className="flex flex-col items-center px-4 py-4 sm:px-6 sm:py-5 bg-white/10 backdrop-blur-sm rounded-xl min-w-[70px] sm:min-w-[90px] border border-white/10 hover:border-white/20 transition-colors">
             <span className="font-oswald text-3xl sm:text-4xl lg:text-5xl text-white tabular-nums">
               {String(unit.value).padStart(2, "0")}
             </span>

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -13,7 +13,7 @@ export async function GET() {
     console.error("Failed to fetch settings:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -32,12 +32,18 @@ export async function POST(request: NextRequest) {
         where: (s, { eq }) => eq(s.key, key),
       });
 
-      const stringValue = typeof value === "boolean" ? String(value) : String(value);
-      const settingType = typeof value === "boolean" ? "boolean" :
-                         typeof value === "number" ? "number" : "string";
+      const stringValue =
+        typeof value === "boolean" ? String(value) : String(value);
+      const settingType =
+        typeof value === "boolean"
+          ? "boolean"
+          : typeof value === "number"
+            ? "number"
+            : "string";
 
       if (existing) {
-        await db.update(siteSettings)
+        await db
+          .update(siteSettings)
           .set({
             value: stringValue,
             type: settingType as "string" | "number" | "boolean" | "json",
@@ -59,7 +65,7 @@ export async function POST(request: NextRequest) {
     console.error("Failed to save settings:", error);
     return NextResponse.json(
       { success: false, error: "Failed to save settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -72,7 +78,7 @@ export async function DELETE(request: NextRequest) {
     if (!key) {
       return NextResponse.json(
         { success: false, error: "Missing setting key" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,7 +89,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Failed to delete setting:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete setting" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

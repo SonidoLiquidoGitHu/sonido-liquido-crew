@@ -64,7 +64,9 @@ const TOKEN_CACHE_DURATION = 30 * 1000; // 30 seconds (reduced from 1 minute for
 const DROPBOX_APP_KEY = (process.env.DROPBOX_APP_KEY || "").trim();
 const DROPBOX_APP_SECRET = (process.env.DROPBOX_APP_SECRET || "").trim();
 // Direct access token fallback (when database is not available)
-const DROPBOX_ACCESS_TOKEN_ENV = (process.env.DROPBOX_ACCESS_TOKEN || "").trim();
+const DROPBOX_ACCESS_TOKEN_ENV = (
+  process.env.DROPBOX_ACCESS_TOKEN || ""
+).trim();
 
 /**
  * Check if we have a direct environment token (no database needed)
@@ -80,7 +82,11 @@ function hasEnvToken(): boolean {
 async function getTokensFromDatabase(): Promise<DropboxTokens> {
   // Return cached tokens if still valid
   if (_cachedTokens.accessToken && Date.now() < _tokenCacheExpiry) {
-    console.log("[Dropbox] Using cached tokens (expires in", Math.round((_tokenCacheExpiry - Date.now()) / 1000), "s)");
+    console.log(
+      "[Dropbox] Using cached tokens (expires in",
+      Math.round((_tokenCacheExpiry - Date.now()) / 1000),
+      "s)",
+    );
     return _cachedTokens;
   }
 
@@ -103,8 +109,8 @@ async function getTokensFromDatabase(): Promise<DropboxTokens> {
         inArray(siteSettings.key, [
           "dropbox_access_token",
           "dropbox_refresh_token",
-          "dropbox_token_expiry"
-        ])
+          "dropbox_token_expiry",
+        ]),
       );
 
     const tokens: DropboxTokens = {
@@ -119,7 +125,7 @@ async function getTokensFromDatabase(): Promise<DropboxTokens> {
       } else if (row.key === "dropbox_refresh_token") {
         tokens.refreshToken = row.value;
       } else if (row.key === "dropbox_token_expiry") {
-        tokens.expiryTime = row.value ? parseInt(row.value, 10) : null;
+        tokens.expiryTime = row.value ? Number.parseInt(row.value, 10) : null;
       }
     }
 
@@ -129,7 +135,9 @@ async function getTokensFromDatabase(): Promise<DropboxTokens> {
 
     console.log("[Dropbox] Tokens loaded from database:", {
       hasAccessToken: !!tokens.accessToken,
-      tokenPreview: tokens.accessToken ? `${tokens.accessToken.slice(0, 10)}...` : null,
+      tokenPreview: tokens.accessToken
+        ? `${tokens.accessToken.slice(0, 10)}...`
+        : null,
       hasRefreshToken: !!tokens.refreshToken,
       expiryTime: tokens.expiryTime,
     });
@@ -144,7 +152,9 @@ async function getTokensFromDatabase(): Promise<DropboxTokens> {
 /**
  * Refresh the access token using refresh token
  */
-async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+async function refreshAccessToken(
+  refreshToken: string,
+): Promise<string | null> {
   if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET) {
     console.error("[Dropbox] Cannot refresh token: missing app credentials");
     return null;
@@ -168,7 +178,11 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error("[Dropbox] Token refresh failed:", response.status, errorBody);
+      console.error(
+        "[Dropbox] Token refresh failed:",
+        response.status,
+        errorBody,
+      );
       return null;
     }
 
@@ -182,7 +196,7 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
     const { eq } = await import("drizzle-orm");
 
     if (isDatabaseConfigured()) {
-      const expiryTime = Date.now() + (expiresIn * 1000);
+      const expiryTime = Date.now() + expiresIn * 1000;
 
       // Update access token
       await db
@@ -200,7 +214,11 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
       _cachedTokens.accessToken = newAccessToken;
       _cachedTokens.expiryTime = expiryTime;
 
-      console.log("[Dropbox] Token refreshed successfully, expires in:", expiresIn, "seconds");
+      console.log(
+        "[Dropbox] Token refreshed successfully, expires in:",
+        expiresIn,
+        "seconds",
+      );
     }
 
     return newAccessToken;
@@ -233,7 +251,7 @@ export async function refreshDropboxToken(): Promise<string | null> {
  */
 export async function saveDropboxToken(token: string): Promise<boolean> {
   console.log("[Dropbox] saveDropboxToken called, token length:", token.length);
-  console.log("[Dropbox] Token preview:", token.slice(0, 15) + "...");
+  console.log("[Dropbox] Token preview:", `${token.slice(0, 15)}...`);
 
   try {
     const { db, isDatabaseConfigured } = await import("@/db/client");
@@ -262,9 +280,15 @@ export async function saveDropboxToken(token: string): Promise<boolean> {
       if (existing && existing.length > 0) {
         existingId = existing[0].id;
       }
-      console.log("[Dropbox] Existing token check:", existingId ? "found" : "not found");
+      console.log(
+        "[Dropbox] Existing token check:",
+        existingId ? "found" : "not found",
+      );
     } catch (selectError) {
-      console.log("[Dropbox] Select error (table may not exist):", (selectError as Error).message);
+      console.log(
+        "[Dropbox] Select error (table may not exist):",
+        (selectError as Error).message,
+      );
       existingId = null;
     }
 
@@ -325,32 +349,53 @@ export async function testDropboxConnection(token: string): Promise<{
       return { success: false, error: "Token is empty" };
     }
 
-    console.log("[Dropbox] Testing connection with token (length:", cleanToken.length, ", preview:", cleanToken.slice(0, 15) + "...)");
+    console.log(
+      "[Dropbox] Testing connection with token (length:",
+      cleanToken.length,
+      ", preview:",
+      `${cleanToken.slice(0, 15)}...)`,
+    );
 
-    const response = await fetch("https://api.dropboxapi.com/2/users/get_current_account", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${cleanToken}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://api.dropboxapi.com/2/users/get_current_account",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          "Content-Type": "application/json",
+        },
+        body: "null",
       },
-      body: "null",
-    });
+    );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error_summary: response.statusText }));
-      console.error("[Dropbox] Connection test failed:", response.status, errorData);
+      const errorData = await response
+        .json()
+        .catch(() => ({ error_summary: response.statusText }));
+      console.error(
+        "[Dropbox] Connection test failed:",
+        response.status,
+        errorData,
+      );
 
       // Provide helpful error message
       let errorMessage = errorData.error_summary || `HTTP ${response.status}`;
-      if (errorMessage.includes("invalid_access_token") || response.status === 401) {
-        errorMessage = "Token inválido o expirado. Genera un nuevo token en Dropbox App Console.";
+      if (
+        errorMessage.includes("invalid_access_token") ||
+        response.status === 401
+      ) {
+        errorMessage =
+          "Token inválido o expirado. Genera un nuevo token en Dropbox App Console.";
       }
 
       return { success: false, error: errorMessage };
     }
 
     const data = await response.json();
-    console.log("[Dropbox] Connection test SUCCESS - Account:", data.name?.display_name || data.email);
+    console.log(
+      "[Dropbox] Connection test SUCCESS - Account:",
+      data.name?.display_name || data.email,
+    );
     return {
       success: true,
       accountName: data.name?.display_name || data.name?.familiar_name,
@@ -378,7 +423,9 @@ export function isOAuthConfigured(): boolean {
 export function getOAuthStatus(): { configured: boolean; appKey?: string } {
   return {
     configured: isOAuthConfigured(),
-    appKey: DROPBOX_APP_KEY ? DROPBOX_APP_KEY.substring(0, 4) + "..." : undefined,
+    appKey: DROPBOX_APP_KEY
+      ? `${DROPBOX_APP_KEY.substring(0, 4)}...`
+      : undefined,
   };
 }
 
@@ -431,7 +478,8 @@ class DropboxClient {
 
     if (tokens.accessToken) {
       // Check if token is expired or about to expire (5 min buffer)
-      const isExpired = tokens.expiryTime && Date.now() > (tokens.expiryTime - 5 * 60 * 1000);
+      const isExpired =
+        tokens.expiryTime && Date.now() > tokens.expiryTime - 5 * 60 * 1000;
 
       if (!isExpired) {
         return tokens.accessToken;
@@ -463,16 +511,15 @@ class DropboxClient {
   private async request<T>(
     endpoint: string,
     body?: Record<string, unknown>,
-    useContentUrl = false
+    useContentUrl = false,
   ): Promise<T> {
     const token = await this.getAccessToken();
     const url = `${useContentUrl ? this.contentUrl : this.baseUrl}${endpoint}`;
 
     // Dropbox API requires a body even for endpoints that don't need data
     // Send null for empty requests, or the actual body
-    const bodyString = body && Object.keys(body).length > 0
-      ? JSON.stringify(body)
-      : "null";
+    const bodyString =
+      body && Object.keys(body).length > 0 ? JSON.stringify(body) : "null";
 
     const response = await fetch(url, {
       method: "POST",
@@ -504,13 +551,15 @@ class DropboxClient {
           }
         }
       }
-      throw new Error("Sesión de Dropbox expirada. Por favor reconecta tu cuenta.");
+      throw new Error(
+        "Sesión de Dropbox expirada. Por favor reconecta tu cuenta.",
+      );
     }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(
-        `Dropbox API error: ${response.status} - ${error.error_summary || response.statusText}`
+        `Dropbox API error: ${response.status} - ${error.error_summary || response.statusText}`,
       );
     }
 
@@ -523,20 +572,26 @@ class DropboxClient {
   async listFolder(path: string): Promise<(DropboxFile | DropboxFolder)[]> {
     const entries: (DropboxFile | DropboxFolder)[] = [];
 
-    let response = await this.request<DropboxListFolderResponse>("/files/list_folder", {
-      path: path === "/" ? "" : path,
-      recursive: false,
-      include_deleted: false,
-      include_has_explicit_shared_members: false,
-      include_mounted_folders: true,
-    });
+    let response = await this.request<DropboxListFolderResponse>(
+      "/files/list_folder",
+      {
+        path: path === "/" ? "" : path,
+        recursive: false,
+        include_deleted: false,
+        include_has_explicit_shared_members: false,
+        include_mounted_folders: true,
+      },
+    );
 
     entries.push(...response.entries);
 
     while (response.has_more) {
-      response = await this.request<DropboxListFolderResponse>("/files/list_folder/continue", {
-        cursor: response.cursor,
-      });
+      response = await this.request<DropboxListFolderResponse>(
+        "/files/list_folder/continue",
+        {
+          cursor: response.cursor,
+        },
+      );
       entries.push(...response.entries);
     }
 
@@ -549,11 +604,14 @@ class DropboxClient {
   async listFolderRecursive(path: string): Promise<DropboxFile[]> {
     const files: DropboxFile[] = [];
 
-    let response = await this.request<DropboxListFolderResponse>("/files/list_folder", {
-      path: path === "/" ? "" : path,
-      recursive: true,
-      include_deleted: false,
-    });
+    let response = await this.request<DropboxListFolderResponse>(
+      "/files/list_folder",
+      {
+        path: path === "/" ? "" : path,
+        recursive: true,
+        include_deleted: false,
+      },
+    );
 
     for (const entry of response.entries) {
       if (".tag" in entry && (entry as { ".tag": string })[".tag"] === "file") {
@@ -562,11 +620,17 @@ class DropboxClient {
     }
 
     while (response.has_more) {
-      response = await this.request<DropboxListFolderResponse>("/files/list_folder/continue", {
-        cursor: response.cursor,
-      });
+      response = await this.request<DropboxListFolderResponse>(
+        "/files/list_folder/continue",
+        {
+          cursor: response.cursor,
+        },
+      );
       for (const entry of response.entries) {
-        if (".tag" in entry && (entry as { ".tag": string })[".tag"] === "file") {
+        if (
+          ".tag" in entry &&
+          (entry as { ".tag": string })[".tag"] === "file"
+        ) {
           files.push(entry as DropboxFile);
         }
       }
@@ -591,14 +655,17 @@ class DropboxClient {
   async getSharedLink(path: string): Promise<string> {
     try {
       console.log("[Dropbox] Creating shared link for:", path);
-      const response = await this.request<DropboxSharedLink>("/sharing/create_shared_link_with_settings", {
-        path,
-        settings: {
-          access: "viewer",
-          audience: "public",
-          requested_visibility: "public",
+      const response = await this.request<DropboxSharedLink>(
+        "/sharing/create_shared_link_with_settings",
+        {
+          path,
+          settings: {
+            access: "viewer",
+            audience: "public",
+            requested_visibility: "public",
+          },
         },
-      });
+      );
       console.log("[Dropbox] Shared link created:", response.url);
       return this.convertToDirectLink(response.url);
     } catch (error) {
@@ -606,15 +673,20 @@ class DropboxClient {
       console.log("[Dropbox] Error creating shared link:", errorMessage);
 
       // Check if link already exists - handle multiple error formats
-      if (errorMessage.includes("shared_link_already_exists") ||
-          errorMessage.includes("already exists") ||
-          errorMessage.includes("409")) {
+      if (
+        errorMessage.includes("shared_link_already_exists") ||
+        errorMessage.includes("already exists") ||
+        errorMessage.includes("409")
+      ) {
         try {
           console.log("[Dropbox] Link exists, fetching existing link...");
-          const links = await this.request<{ links: DropboxSharedLink[] }>("/sharing/list_shared_links", {
-            path,
-            direct_only: true,
-          });
+          const links = await this.request<{ links: DropboxSharedLink[] }>(
+            "/sharing/list_shared_links",
+            {
+              path,
+              direct_only: true,
+            },
+          );
           if (links.links && links.links.length > 0) {
             console.log("[Dropbox] Found existing link:", links.links[0].url);
             return this.convertToDirectLink(links.links[0].url);
@@ -634,11 +706,9 @@ class DropboxClient {
     // migrated to a new shared link format (/scl/fi/...?rlkey=...) that is
     // NOT compatible with dl.dropboxusercontent.com. The ?raw=1 parameter
     // works with BOTH old (/s/...) and new (/scl/fi/...) URL formats.
-    const result = url
-      .replace("?dl=0", "?raw=1")
-      .replace("&dl=0", "&raw=1");
+    const result = url.replace("?dl=0", "?raw=1").replace("&dl=0", "&raw=1");
     if (!result.includes("raw=1")) {
-      return result + (result.includes("?") ? "&" : "?") + "raw=1";
+      return `${result + (result.includes("?") ? "&" : "?")}raw=1`;
     }
     return result;
   }
@@ -667,7 +737,10 @@ class DropboxClient {
   /**
    * Upload file
    */
-  async uploadFile(path: string, content: ArrayBuffer | Blob): Promise<DropboxFile> {
+  async uploadFile(
+    path: string,
+    content: ArrayBuffer | Blob,
+  ): Promise<DropboxFile> {
     const token = await this.getAccessToken();
 
     const response = await fetch(`${this.contentUrl}/files/upload`, {
@@ -687,7 +760,9 @@ class DropboxClient {
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error("Token de Dropbox expirado. Reconecta tu cuenta en Sincronización → Dropbox.");
+        throw new Error(
+          "Token de Dropbox expirado. Reconecta tu cuenta en Sincronización → Dropbox.",
+        );
       }
       throw new Error(`Failed to upload file: ${response.statusText}`);
     }
@@ -731,7 +806,7 @@ class DropboxClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        `Dropbox API error: ${response.status} - ${errorData.error_summary || response.statusText}`
+        `Dropbox API error: ${response.status} - ${errorData.error_summary || response.statusText}`,
       );
     }
 
@@ -761,7 +836,7 @@ class DropboxClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        `Dropbox API error: ${response.status} - ${errorData.error_summary || response.statusText}`
+        `Dropbox API error: ${response.status} - ${errorData.error_summary || response.statusText}`,
       );
     }
 

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { upcomingReleasesService } from "@/lib/services";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - Fetch upcoming releases
 export async function GET(request: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const artistName = searchParams.get("artistName");
     const featured = searchParams.get("featured");
     const slug = searchParams.get("slug");
-    const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const limit = Number.parseInt(searchParams.get("limit") || "10", 10);
 
     // Get single release by slug
     if (slug) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       if (!release) {
         return NextResponse.json(
           { success: false, error: "Release not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       return NextResponse.json({ success: true, data: release });
@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
 
     // Get by artist name
     if (artistName) {
-      const releases = await upcomingReleasesService.getByArtistName(artistName, limit);
+      const releases = await upcomingReleasesService.getByArtistName(
+        artistName,
+        limit,
+      );
       return NextResponse.json({ success: true, data: releases });
     }
 
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
     console.error("[Upcoming Releases API] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching releases" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

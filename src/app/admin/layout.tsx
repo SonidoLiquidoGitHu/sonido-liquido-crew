@@ -1,59 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Users,
-  Disc3,
-  Video,
-  ShoppingBag,
+  Brush,
   Calendar,
-  Mail,
-  Settings,
-  RefreshCw,
-  Menu,
-  X,
   ChevronLeft,
+  Cloud,
+  Disc3,
+  Download,
+  FileText,
+  Headphones,
+  Image,
+  LayoutDashboard,
+  ListMusic,
   LogOut,
+  Mail,
   Megaphone,
+  Menu,
+  MessageCircle,
   Music,
   Newspaper,
-  FileText,
-  Image,
-  Cloud,
-  Youtube,
-  Rocket,
-  MessageCircle,
   Palette,
-  ListMusic,
-  Download,
-  Brush,
+  RefreshCw,
+  Rocket,
+  Settings,
   Share2,
+  ShoppingBag,
   Smartphone,
+  Users,
+  Video,
+  X,
+  Youtube,
   Zap,
-  Headphones,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const sidebarLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/artists", label: "Artistas", icon: Users },
   { href: "/admin/releases", label: "Lanzamientos", icon: Disc3 },
-  { href: "/admin/upcoming-releases", label: "Próximos Lanzamientos", icon: Rocket },
+  {
+    href: "/admin/upcoming-releases",
+    label: "Próximos Lanzamientos",
+    icon: Rocket,
+  },
   { href: "/admin/campaigns", label: "Campañas", icon: Megaphone },
   { href: "/admin/beats", label: "Beats", icon: Music },
-  { href: "/admin/sampling-resources", label: "Sampling Resources", icon: Headphones },
+  {
+    href: "/admin/sampling-resources",
+    label: "Sampling Resources",
+    icon: Headphones,
+  },
   { href: "/admin/press-kits", label: "Press Kits", icon: FileText },
   { href: "/admin/media-releases", label: "Media Releases", icon: Newspaper },
   { href: "/admin/styles", label: "Estilos", icon: Palette },
   { href: "/admin/videos", label: "Videos", icon: Video },
   { href: "/admin/youtube-channels", label: "Canales YouTube", icon: Youtube },
-  { href: "/admin/curated-channels", label: "Canales Spotify", icon: ListMusic },
-  { href: "/admin/curated-channels/playlists", label: "Playlists Curadas", icon: Music },
-  { href: "/admin/vertical-videos", label: "Reels / Verticales", icon: Smartphone },
+  {
+    href: "/admin/curated-channels",
+    label: "Canales Spotify",
+    icon: ListMusic,
+  },
+  {
+    href: "/admin/curated-channels/playlists",
+    label: "Playlists Curadas",
+    icon: Music,
+  },
+  {
+    href: "/admin/vertical-videos",
+    label: "Reels / Verticales",
+    icon: Smartphone,
+  },
   { href: "/admin/gallery", label: "Galería", icon: Image },
   { href: "/admin/uploads", label: "Test Uploads", icon: Cloud },
   { href: "/admin/products", label: "Productos", icon: ShoppingBag },
@@ -92,7 +112,11 @@ export default function AdminLayout({
           size="icon"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {isMobileMenuOpen ? (
+            <X className="w-5 h-5" />
+          ) : (
+            <Menu className="w-5 h-5" />
+          )}
         </Button>
       </header>
 
@@ -108,12 +132,13 @@ export default function AdminLayout({
       <aside
         className={cn(
           "lg:hidden fixed top-16 left-0 z-50 w-64 h-[calc(100vh-4rem)] bg-slc-dark border-r border-slc-border transform transition-transform duration-200 flex flex-col",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {sidebarLinks.map((link) => {
-            const isActive = pathname === link.href ||
+            const isActive =
+              pathname === link.href ||
               (link.href !== "/admin" && pathname.startsWith(link.href));
             return (
               <Link
@@ -124,7 +149,7 @@ export default function AdminLayout({
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                   isActive
                     ? "bg-primary/10 text-primary"
-                    : "text-slc-muted hover:text-white hover:bg-slc-card"
+                    : "text-slc-muted hover:text-white hover:bg-slc-card",
                 )}
               >
                 <link.icon className="w-5 h-5" />
@@ -161,7 +186,7 @@ export default function AdminLayout({
         <aside
           className={cn(
             "hidden lg:flex flex-col sticky top-0 h-screen border-r border-slc-border bg-slc-dark transition-all duration-200",
-            isSidebarOpen ? "w-64" : "w-20"
+            isSidebarOpen ? "w-64" : "w-20",
           )}
         >
           {/* Logo */}
@@ -170,13 +195,24 @@ export default function AdminLayout({
               <Link href="/" className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                   <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      fill="none"
+                    />
                     <circle cx="12" cy="12" r="3" fill="currentColor" />
                   </svg>
                 </div>
                 <div>
-                  <span className="font-oswald text-sm uppercase">Sonido Líquido</span>
-                  <span className="block text-[10px] text-primary uppercase">Admin</span>
+                  <span className="font-oswald text-sm uppercase">
+                    Sonido Líquido
+                  </span>
+                  <span className="block text-[10px] text-primary uppercase">
+                    Admin
+                  </span>
                 </div>
               </Link>
             )}
@@ -186,17 +222,20 @@ export default function AdminLayout({
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="ml-auto"
             >
-              <ChevronLeft className={cn(
-                "w-4 h-4 transition-transform",
-                !isSidebarOpen && "rotate-180"
-              )} />
+              <ChevronLeft
+                className={cn(
+                  "w-4 h-4 transition-transform",
+                  !isSidebarOpen && "rotate-180",
+                )}
+              />
             </Button>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {sidebarLinks.map((link) => {
-              const isActive = pathname === link.href ||
+              const isActive =
+                pathname === link.href ||
                 (link.href !== "/admin" && pathname.startsWith(link.href));
               return (
                 <Link
@@ -207,7 +246,7 @@ export default function AdminLayout({
                     isActive
                       ? "bg-primary/10 text-primary"
                       : "text-slc-muted hover:text-white hover:bg-slc-card",
-                    !isSidebarOpen && "justify-center px-2"
+                    !isSidebarOpen && "justify-center px-2",
                   )}
                   title={!isSidebarOpen ? link.label : undefined}
                 >
@@ -224,7 +263,7 @@ export default function AdminLayout({
               href="/"
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg text-slc-muted hover:text-white hover:bg-slc-card transition-colors",
-                !isSidebarOpen && "justify-center px-2"
+                !isSidebarOpen && "justify-center px-2",
               )}
               title={!isSidebarOpen ? "Volver al sitio" : undefined}
             >
@@ -238,7 +277,7 @@ export default function AdminLayout({
               }}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full",
-                !isSidebarOpen && "justify-center px-2"
+                !isSidebarOpen && "justify-center px-2",
               )}
               title={!isSidebarOpen ? "Cerrar sesión" : undefined}
             >
@@ -249,9 +288,7 @@ export default function AdminLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen">
-          {children}
-        </main>
+        <main className="flex-1 min-h-screen">{children}</main>
       </div>
     </div>
   );

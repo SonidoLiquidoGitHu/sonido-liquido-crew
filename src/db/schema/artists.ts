@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // ARTISTS TABLE
@@ -13,8 +13,10 @@ export const artists = sqliteTable("artists", {
   bio: text("bio"),
   shortBio: text("short_bio"), // 1-2 sentence bio for cards
   role: text("role", {
-    enum: ["mc", "dj", "producer", "cantante", "divo", "lado_b"]
-  }).notNull().default("mc"),
+    enum: ["mc", "dj", "producer", "cantante", "divo", "lado_b"],
+  })
+    .notNull()
+    .default("mc"),
 
   // Images
   profileImageUrl: text("profile_image_url"),
@@ -47,17 +49,27 @@ export const artists = sqliteTable("artists", {
 
   // Status
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   verificationStatus: text("verification_status", {
-    enum: ["pending", "verified", "rejected"]
-  }).notNull().default("pending"),
-  identityConflictFlag: integer("identity_conflict_flag", { mode: "boolean" }).notNull().default(false),
+    enum: ["pending", "verified", "rejected"],
+  })
+    .notNull()
+    .default("pending"),
+  identityConflictFlag: integer("identity_conflict_flag", { mode: "boolean" })
+    .notNull()
+    .default(false),
   adminNotes: text("admin_notes"),
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -66,7 +78,9 @@ export const artists = sqliteTable("artists", {
 
 export const artistExternalProfiles = sqliteTable("artist_external_profiles", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
   platform: text("platform", {
     enum: [
       "spotify",
@@ -87,19 +101,27 @@ export const artistExternalProfiles = sqliteTable("artist_external_profiles", {
       "discogs",
       "genius",
       "linktree",
-      "other"
-    ]
+      "other",
+    ],
   }).notNull(),
   externalId: text("external_id"),
   externalUrl: text("external_url").notNull(),
   handle: text("handle"), // @username
   displayName: text("display_name"), // Name shown on the platform
-  isVerified: integer("is_verified", { mode: "boolean" }).notNull().default(false),
-  isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false), // Primary profile for this platform
+  isVerified: integer("is_verified", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isPrimary: integer("is_primary", { mode: "boolean" })
+    .notNull()
+    .default(false), // Primary profile for this platform
   followerCount: integer("follower_count"),
   lastSynced: integer("last_synced", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -108,18 +130,26 @@ export const artistExternalProfiles = sqliteTable("artist_external_profiles", {
 
 export const artistGalleryAssets = sqliteTable("artist_gallery_assets", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
   assetUrl: text("asset_url").notNull(),
   thumbnailUrl: text("thumbnail_url"),
   assetType: text("asset_type", {
-    enum: ["photo", "press_photo", "album_art", "logo", "banner"]
-  }).notNull().default("photo"),
+    enum: ["photo", "press_photo", "album_art", "logo", "banner"],
+  })
+    .notNull()
+    .default("photo"),
   caption: text("caption"),
   credit: text("credit"), // Photographer credit
   isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -128,12 +158,27 @@ export const artistGalleryAssets = sqliteTable("artist_gallery_assets", {
 
 export const artistRelations = sqliteTable("artist_relations", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
-  relatedArtistId: text("related_artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
+  relatedArtistId: text("related_artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
   relationType: text("relation_type", {
-    enum: ["collaborator", "alias", "member_of", "featured", "producer", "dj_duo"]
-  }).notNull().default("collaborator"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    enum: [
+      "collaborator",
+      "alias",
+      "member_of",
+      "featured",
+      "producer",
+      "dj_duo",
+    ],
+  })
+    .notNull()
+    .default("collaborator"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -143,7 +188,8 @@ export const artistRelations = sqliteTable("artist_relations", {
 export type Artist = typeof artists.$inferSelect;
 export type NewArtist = typeof artists.$inferInsert;
 export type ArtistExternalProfile = typeof artistExternalProfiles.$inferSelect;
-export type NewArtistExternalProfile = typeof artistExternalProfiles.$inferInsert;
+export type NewArtistExternalProfile =
+  typeof artistExternalProfiles.$inferInsert;
 export type ArtistGalleryAsset = typeof artistGalleryAssets.$inferSelect;
 export type NewArtistGalleryAsset = typeof artistGalleryAssets.$inferInsert;
 export type ArtistRelation = typeof artistRelations.$inferSelect;

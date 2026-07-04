@@ -628,7 +628,7 @@ export default function ExportPage() {
     setExporting(true);
     setExportResult(null);
     try {
-      const url = `/api/admin/export?sections=all&format=json&sanitize=true`;
+      const url = "/api/admin/export?sections=all&format=json&sanitize=true";
       const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
@@ -893,8 +893,8 @@ netlify deploy --prod
                     </h3>
                     <p className="text-sm text-slc-muted mb-3">
                       Un clic. Todo el sitio en JSON, con datos sensibles
-                      saneados (sin PII, sin llaves criptográficas). Seguro
-                      para compartir o respaldar.
+                      saneados (sin PII, sin llaves criptográficas). Seguro para
+                      compartir o respaldar.
                     </p>
                     <Button
                       onClick={handleQuickExport}

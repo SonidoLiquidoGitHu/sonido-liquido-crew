@@ -6,15 +6,33 @@ export type UUID = string;
 
 export type VerificationStatus = "pending" | "verified" | "rejected";
 
-export type ArtistRole = "mc" | "dj" | "producer" | "cantante" | "divo" | "lado_b";
+export type ArtistRole =
+  | "mc"
+  | "dj"
+  | "producer"
+  | "cantante"
+  | "divo"
+  | "lado_b";
 
-export type ReleaseType = "album" | "ep" | "single" | "maxi-single" | "compilation" | "mixtape";
+export type ReleaseType =
+  | "album"
+  | "ep"
+  | "single"
+  | "maxi-single"
+  | "compilation"
+  | "mixtape";
 
 export type SyncStatus = "pending" | "running" | "completed" | "failed";
 
 export type SyncSource = "spotify" | "youtube" | "dropbox";
 
-export type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled" | "refunded";
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "refunded";
 
 export type DownloadGateType = "email" | "social_follow" | "free";
 
@@ -44,7 +62,13 @@ export interface Artist {
 export interface ArtistExternalProfile {
   id: UUID;
   artistId: UUID;
-  platform: "spotify" | "youtube" | "instagram" | "mixcloud" | "soundcloud" | "twitter";
+  platform:
+    | "spotify"
+    | "youtube"
+    | "instagram"
+    | "mixcloud"
+    | "soundcloud"
+    | "twitter";
   externalId: string | null;
   externalUrl: string;
   handle: string | null;

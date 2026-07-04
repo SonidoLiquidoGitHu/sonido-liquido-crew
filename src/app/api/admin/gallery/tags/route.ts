@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { tags, photoTags } from "@/db/schema";
-import { eq, desc, sql, or } from "drizzle-orm";
+import { photoTags, tags } from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
+import { desc, eq, or, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - List all tags (optionally filter by gallery-related)
 export async function GET(request: NextRequest) {
@@ -25,7 +25,10 @@ export async function GET(request: NextRequest) {
           slug: tags.slug,
           category: tags.category,
           createdAt: tags.createdAt,
-          photoCount: sql<number>`(SELECT COUNT(*) FROM photo_tags WHERE tag_id = ${tags.id})`.as("photo_count"),
+          photoCount:
+            sql<number>`(SELECT COUNT(*) FROM photo_tags WHERE tag_id = ${tags.id})`.as(
+              "photo_count",
+            ),
         })
         .from(tags)
         .where(or(eq(tags.category, "gallery"), eq(tags.category, "photo")))
@@ -38,7 +41,10 @@ export async function GET(request: NextRequest) {
           slug: tags.slug,
           category: tags.category,
           createdAt: tags.createdAt,
-          photoCount: sql<number>`(SELECT COUNT(*) FROM photo_tags WHERE tag_id = ${tags.id})`.as("photo_count"),
+          photoCount:
+            sql<number>`(SELECT COUNT(*) FROM photo_tags WHERE tag_id = ${tags.id})`.as(
+              "photo_count",
+            ),
         })
         .from(tags)
         .orderBy(tags.name);
@@ -52,7 +58,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching tags:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch tags" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -63,7 +69,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
     if (!body.name) {
       return NextResponse.json(
         { success: false, error: "Tag name is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -111,7 +117,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating tag:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create tag" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -122,7 +128,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -132,7 +138,7 @@ export async function DELETE(request: NextRequest) {
     if (!tagId) {
       return NextResponse.json(
         { success: false, error: "Tag ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -147,7 +153,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Error deleting tag:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete tag" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

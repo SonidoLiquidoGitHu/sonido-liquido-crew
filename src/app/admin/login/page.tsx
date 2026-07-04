@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, Loader2, Lock, Music2, User } from "lucide-react";
 import Link from "next/link";
-import { Music2, Lock, User, Loader2, AlertCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 function AdminLoginForm() {
   const router = useRouter();
@@ -146,7 +146,10 @@ function AdminLoginForm() {
 
         {/* Back to site */}
         <p className="text-center mt-6">
-          <Link href="/" className="text-zinc-400 hover:text-white text-sm transition-colors">
+          <Link
+            href="/"
+            className="text-zinc-400 hover:text-white text-sm transition-colors"
+          >
             ← Volver al sitio
           </Link>
         </p>
@@ -157,11 +160,13 @@ function AdminLoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+        </div>
+      }
+    >
       <AdminLoginForm />
     </Suspense>
   );

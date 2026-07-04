@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { releases, releaseArtists, upcomingReleases, artists } from "@/db/schema";
-import { eq, like, or, and } from "drizzle-orm";
+import {
+  artists,
+  releaseArtists,
+  releases,
+  upcomingReleases,
+} from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
+import { and, eq, like, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * POST /api/admin/upcoming-releases/convert
@@ -15,17 +20,18 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     const body = await request.json();
-    const { upcomingReleaseId, spotifyUrl, appleMusicUrl, youtubeMusicUrl } = body;
+    const { upcomingReleaseId, spotifyUrl, appleMusicUrl, youtubeMusicUrl } =
+      body;
 
     if (!upcomingReleaseId) {
       return NextResponse.json(
         { success: false, error: "upcomingReleaseId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -39,15 +45,19 @@ export async function POST(request: NextRequest) {
     if (!upcomingRelease) {
       return NextResponse.json(
         { success: false, error: "Upcoming release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Check if already converted
     if (upcomingRelease.releasedReleaseId) {
       return NextResponse.json(
-        { success: false, error: "This release has already been converted", releaseId: upcomingRelease.releasedReleaseId },
-        { status: 400 }
+        {
+          success: false,
+          error: "This release has already been converted",
+          releaseId: upcomingRelease.releasedReleaseId,
+        },
+        { status: 400 },
       );
     }
 
@@ -81,15 +91,22 @@ export async function POST(request: NextRequest) {
     const releaseId = generateUUID();
 
     // Map release type
-    const releaseType = upcomingRelease.releaseType === "mixtape"
-      ? "mixtape"
-      : upcomingRelease.releaseType;
+    const releaseType =
+      upcomingRelease.releaseType === "mixtape"
+        ? "mixtape"
+        : upcomingRelease.releaseType;
 
     await db.insert(releases).values({
       id: releaseId,
       title: upcomingRelease.title,
       slug: upcomingRelease.slug,
-      releaseType: releaseType as "album" | "ep" | "single" | "maxi-single" | "compilation" | "mixtape",
+      releaseType: releaseType as
+        | "album"
+        | "ep"
+        | "single"
+        | "maxi-single"
+        | "compilation"
+        | "mixtape",
       releaseDate: upcomingRelease.releaseDate,
       coverImageUrl: upcomingRelease.coverImageUrl,
       description: upcomingRelease.description,
@@ -106,10 +123,7 @@ export async function POST(request: NextRequest) {
       .select()
       .from(artists)
       .where(
-        or(
-          eq(artists.name, artistName),
-          like(artists.name, `%${artistName}%`)
-        )
+        or(eq(artists.name, artistName), like(artists.name, `%${artistName}%`)),
       )
       .limit(1);
 
@@ -133,8 +147,8 @@ export async function POST(request: NextRequest) {
             .where(
               or(
                 eq(artists.name, featName),
-                like(artists.name, `%${featName}%`)
-              )
+                like(artists.name, `%${featName}%`),
+              ),
             )
             .limit(1);
 
@@ -146,8 +160,8 @@ export async function POST(request: NextRequest) {
               .where(
                 and(
                   eq(releaseArtists.releaseId, releaseId),
-                  eq(releaseArtists.artistId, featArtist[0].id)
-                )
+                  eq(releaseArtists.artistId, featArtist[0].id),
+                ),
               )
               .limit(1);
 
@@ -186,7 +200,7 @@ export async function POST(request: NextRequest) {
     console.error("[Convert Upcoming Release] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to convert release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -200,7 +214,7 @@ export async function GET() {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -213,7 +227,7 @@ export async function GET() {
       .where(eq(upcomingReleases.isActive, true));
 
     const readyToConvert = pendingConversions.filter(
-      (r) => r.releaseDate <= now && !r.releasedReleaseId
+      (r) => r.releaseDate <= now && !r.releasedReleaseId,
     );
 
     return NextResponse.json({
@@ -225,7 +239,7 @@ export async function GET() {
     console.error("[Get Pending Conversions] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch pending conversions" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

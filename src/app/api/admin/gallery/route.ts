@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { galleryPhotos, photoTags, tags, galleryAlbums } from "@/db/schema";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { galleryAlbums, galleryPhotos, photoTags, tags } from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - List all photos with optional filters
 export async function GET(request: NextRequest) {
@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
     const tagId = searchParams.get("tagId");
     const featured = searchParams.get("featured") === "true";
     const published = searchParams.get("published");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = Number.parseInt(searchParams.get("limit") || "50");
 
-    let conditions = [];
+    const conditions = [];
 
     if (albumId) {
       conditions.push(eq(galleryPhotos.albumId, albumId));
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
           ...photo,
           tags: photoTagsList,
         };
-      })
+      }),
     );
 
     return NextResponse.json({
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching gallery photos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch photos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
       return NextResponse.json(
         { success: false, error: "No photos provided" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     console.error("Error uploading photos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to upload photos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -160,7 +160,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -170,7 +170,7 @@ export async function DELETE(request: NextRequest) {
     if (!photoIds || !Array.isArray(photoIds) || photoIds.length === 0) {
       return NextResponse.json(
         { success: false, error: "No photo IDs provided" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -188,7 +188,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Error deleting photos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete photos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

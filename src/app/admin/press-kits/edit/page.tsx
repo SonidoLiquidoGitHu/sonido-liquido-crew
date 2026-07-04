@@ -1,27 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  Save,
+  Download,
+  ExternalLink,
+  FileDown,
   FileText,
   Image as ImageIcon,
-  Users,
-  Mail,
-  Share2,
-  Quote,
-  Video,
   Loader2,
+  Mail,
   Plus,
+  Quote,
+  Save,
+  Share2,
   Trash2,
-  ExternalLink,
-  Download,
-  FileDown,
+  Users,
+  Video,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface KeyPoint {
   icon: string;
@@ -83,9 +83,21 @@ const defaultData: PressKitData = {
   aboutTitle: "Sobre Nosotros",
   aboutContent: "",
   keyPoints: [
-    { icon: "calendar", title: "Fundado en 1999", description: "Más de 25 años de historia en el Hip Hop mexicano" },
-    { icon: "disc", title: "160+ Lanzamientos", description: "Catálogo extenso de música original" },
-    { icon: "users", title: "20+ Artistas", description: "Roster activo de talento mexicano" },
+    {
+      icon: "calendar",
+      title: "Fundado en 1999",
+      description: "Más de 25 años de historia en el Hip Hop mexicano",
+    },
+    {
+      icon: "disc",
+      title: "160+ Lanzamientos",
+      description: "Catálogo extenso de música original",
+    },
+    {
+      icon: "users",
+      title: "20+ Artistas",
+      description: "Roster activo de talento mexicano",
+    },
   ],
   contactEmail: "prensasonidoliquido@gmail.com",
   contactPhone: "+52 55 2801 1881",
@@ -150,7 +162,8 @@ export default function EditPressKitPage() {
           featuredVideoUrl: d.featuredVideoUrl || "",
           featuredVideoTitle: d.featuredVideoTitle || "",
           footerCtaTitle: d.footerCtaTitle || defaultData.footerCtaTitle,
-          footerCtaButtonText: d.footerCtaButtonText || defaultData.footerCtaButtonText,
+          footerCtaButtonText:
+            d.footerCtaButtonText || defaultData.footerCtaButtonText,
           metaTitle: d.metaTitle || defaultData.metaTitle,
           metaDescription: d.metaDescription || defaultData.metaDescription,
         });
@@ -162,7 +175,10 @@ export default function EditPressKitPage() {
     }
   }
 
-  function parseJson<T>(value: string | T | null | undefined, defaultValue: T): T {
+  function parseJson<T>(
+    value: string | T | null | undefined,
+    defaultValue: T,
+  ): T {
     if (!value) return defaultValue;
     if (typeof value === "string") {
       try {
@@ -174,7 +190,10 @@ export default function EditPressKitPage() {
     return value as T;
   }
 
-  function handleChange(field: keyof PressKitData, value: string | KeyPoint[] | DownloadItem[] | PressQuote[]) {
+  function handleChange(
+    field: keyof PressKitData,
+    value: string | KeyPoint[] | DownloadItem[] | PressQuote[],
+  ) {
     setData((prev) => ({ ...prev, [field]: value }));
     setSuccess(false);
   }
@@ -251,7 +270,10 @@ export default function EditPressKitPage() {
 
   // Key Points handlers
   function addKeyPoint() {
-    handleChange("keyPoints", [...data.keyPoints, { icon: "star", title: "", description: "" }]);
+    handleChange("keyPoints", [
+      ...data.keyPoints,
+      { icon: "star", title: "", description: "" },
+    ]);
   }
 
   function updateKeyPoint(index: number, field: keyof KeyPoint, value: string) {
@@ -261,27 +283,43 @@ export default function EditPressKitPage() {
   }
 
   function removeKeyPoint(index: number) {
-    handleChange("keyPoints", data.keyPoints.filter((_, i) => i !== index));
+    handleChange(
+      "keyPoints",
+      data.keyPoints.filter((_, i) => i !== index),
+    );
   }
 
   // Downloads handlers
   function addDownload() {
-    handleChange("downloads", [...data.downloads, { name: "", url: "", description: "" }]);
+    handleChange("downloads", [
+      ...data.downloads,
+      { name: "", url: "", description: "" },
+    ]);
   }
 
-  function updateDownload(index: number, field: keyof DownloadItem, value: string) {
+  function updateDownload(
+    index: number,
+    field: keyof DownloadItem,
+    value: string,
+  ) {
     const updated = [...data.downloads];
     updated[index] = { ...updated[index], [field]: value };
     handleChange("downloads", updated);
   }
 
   function removeDownload(index: number) {
-    handleChange("downloads", data.downloads.filter((_, i) => i !== index));
+    handleChange(
+      "downloads",
+      data.downloads.filter((_, i) => i !== index),
+    );
   }
 
   // Press Quotes handlers
   function addQuote() {
-    handleChange("pressQuotes", [...data.pressQuotes, { quote: "", source: "", url: "" }]);
+    handleChange("pressQuotes", [
+      ...data.pressQuotes,
+      { quote: "", source: "", url: "" },
+    ]);
   }
 
   function updateQuote(index: number, field: keyof PressQuote, value: string) {
@@ -291,7 +329,10 @@ export default function EditPressKitPage() {
   }
 
   function removeQuote(index: number) {
-    handleChange("pressQuotes", data.pressQuotes.filter((_, i) => i !== index));
+    handleChange(
+      "pressQuotes",
+      data.pressQuotes.filter((_, i) => i !== index),
+    );
   }
 
   const tabs = [
@@ -394,7 +435,9 @@ export default function EditPressKitPage() {
           {/* Hero Tab */}
           {activeTab === "hero" && (
             <div className="space-y-6">
-              <h2 className="font-oswald text-xl uppercase mb-4">Sección de Portada</h2>
+              <h2 className="font-oswald text-xl uppercase mb-4">
+                Sección de Portada
+              </h2>
 
               {/* Cover Image */}
               <div className="grid gap-6 sm:grid-cols-2">
@@ -405,7 +448,9 @@ export default function EditPressKitPage() {
                   <input
                     type="url"
                     value={data.heroCoverImageUrl}
-                    onChange={(e) => handleChange("heroCoverImageUrl", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("heroCoverImageUrl", e.target.value)
+                    }
                     placeholder="https://..."
                     className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   />
@@ -429,7 +474,9 @@ export default function EditPressKitPage() {
                   <input
                     type="url"
                     value={data.heroBannerImageUrl}
-                    onChange={(e) => handleChange("heroBannerImageUrl", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("heroBannerImageUrl", e.target.value)
+                    }
                     placeholder="https://..."
                     className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   />
@@ -448,7 +495,9 @@ export default function EditPressKitPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Título Principal</label>
+                <label className="block text-sm font-medium mb-2">
+                  Título Principal
+                </label>
                 <input
                   type="text"
                   value={data.heroTitle}
@@ -458,7 +507,9 @@ export default function EditPressKitPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Subtítulo</label>
+                <label className="block text-sm font-medium mb-2">
+                  Subtítulo
+                </label>
                 <input
                   type="text"
                   value={data.heroSubtitle}
@@ -468,7 +519,9 @@ export default function EditPressKitPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Tagline</label>
+                <label className="block text-sm font-medium mb-2">
+                  Tagline
+                </label>
                 <input
                   type="text"
                   value={data.heroTagline}
@@ -482,29 +535,41 @@ export default function EditPressKitPage() {
                 <h3 className="font-medium mb-4">Estadísticas</h3>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1">Artistas</label>
+                    <label className="block text-sm text-slc-muted mb-1">
+                      Artistas
+                    </label>
                     <input
                       type="text"
                       value={data.statsArtists}
-                      onChange={(e) => handleChange("statsArtists", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("statsArtists", e.target.value)
+                      }
                       className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1">Lanzamientos</label>
+                    <label className="block text-sm text-slc-muted mb-1">
+                      Lanzamientos
+                    </label>
                     <input
                       type="text"
                       value={data.statsReleases}
-                      onChange={(e) => handleChange("statsReleases", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("statsReleases", e.target.value)
+                      }
                       className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1">Años</label>
+                    <label className="block text-sm text-slc-muted mb-1">
+                      Años
+                    </label>
                     <input
                       type="text"
                       value={data.statsYears}
-                      onChange={(e) => handleChange("statsYears", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("statsYears", e.target.value)
+                      }
                       className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     />
                   </div>
@@ -516,10 +581,14 @@ export default function EditPressKitPage() {
           {/* About Tab */}
           {activeTab === "about" && (
             <div className="space-y-6">
-              <h2 className="font-oswald text-xl uppercase mb-4">Sección Sobre Nosotros</h2>
+              <h2 className="font-oswald text-xl uppercase mb-4">
+                Sección Sobre Nosotros
+              </h2>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Título de la Sección</label>
+                <label className="block text-sm font-medium mb-2">
+                  Título de la Sección
+                </label>
                 <input
                   type="text"
                   value={data.aboutTitle}
@@ -545,7 +614,12 @@ export default function EditPressKitPage() {
               <div className="pt-6 border-t border-slc-border">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-medium">Puntos Clave</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addKeyPoint}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addKeyPoint}
+                  >
                     <Plus className="w-4 h-4 mr-1" />
                     Agregar
                   </Button>
@@ -559,21 +633,31 @@ export default function EditPressKitPage() {
                           <input
                             type="text"
                             value={point.icon}
-                            onChange={(e) => updateKeyPoint(index, "icon", e.target.value)}
+                            onChange={(e) =>
+                              updateKeyPoint(index, "icon", e.target.value)
+                            }
                             placeholder="Icono (calendar, disc, users)"
                             className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                           />
                           <input
                             type="text"
                             value={point.title}
-                            onChange={(e) => updateKeyPoint(index, "title", e.target.value)}
+                            onChange={(e) =>
+                              updateKeyPoint(index, "title", e.target.value)
+                            }
                             placeholder="Título"
                             className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                           />
                           <input
                             type="text"
                             value={point.description}
-                            onChange={(e) => updateKeyPoint(index, "description", e.target.value)}
+                            onChange={(e) =>
+                              updateKeyPoint(
+                                index,
+                                "description",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Descripción"
                             className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                           />
@@ -598,58 +682,82 @@ export default function EditPressKitPage() {
           {/* Contact Tab */}
           {activeTab === "contact" && (
             <div className="space-y-6">
-              <h2 className="font-oswald text-xl uppercase mb-4">Información de Contacto</h2>
+              <h2 className="font-oswald text-xl uppercase mb-4">
+                Información de Contacto
+              </h2>
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Email de Prensa</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Email de Prensa
+                  </label>
                   <input
                     type="email"
                     value={data.contactEmail}
-                    onChange={(e) => handleChange("contactEmail", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("contactEmail", e.target.value)
+                    }
                     className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Teléfono</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Teléfono
+                  </label>
                   <input
                     type="text"
                     value={data.contactPhone}
-                    onChange={(e) => handleChange("contactPhone", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("contactPhone", e.target.value)
+                    }
                     className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Ubicación</label>
+                <label className="block text-sm font-medium mb-2">
+                  Ubicación
+                </label>
                 <input
                   type="text"
                   value={data.contactLocation}
-                  onChange={(e) => handleChange("contactLocation", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("contactLocation", e.target.value)
+                  }
                   className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                 />
               </div>
 
               {/* Footer CTA */}
               <div className="pt-6 border-t border-slc-border">
-                <h3 className="font-medium mb-4">Llamada a la Acción (Footer)</h3>
+                <h3 className="font-medium mb-4">
+                  Llamada a la Acción (Footer)
+                </h3>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1">Título CTA</label>
+                    <label className="block text-sm text-slc-muted mb-1">
+                      Título CTA
+                    </label>
                     <input
                       type="text"
                       value={data.footerCtaTitle}
-                      onChange={(e) => handleChange("footerCtaTitle", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("footerCtaTitle", e.target.value)
+                      }
                       className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1">Texto del Botón</label>
+                    <label className="block text-sm text-slc-muted mb-1">
+                      Texto del Botón
+                    </label>
                     <input
                       type="text"
                       value={data.footerCtaButtonText}
-                      onChange={(e) => handleChange("footerCtaButtonText", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("footerCtaButtonText", e.target.value)
+                      }
                       className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     />
                   </div>
@@ -661,11 +769,15 @@ export default function EditPressKitPage() {
           {/* Social Tab */}
           {activeTab === "social" && (
             <div className="space-y-6">
-              <h2 className="font-oswald text-xl uppercase mb-4">Redes Sociales</h2>
+              <h2 className="font-oswald text-xl uppercase mb-4">
+                Redes Sociales
+              </h2>
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Spotify URL</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Spotify URL
+                  </label>
                   <input
                     type="url"
                     value={data.spotifyUrl}
@@ -675,17 +787,23 @@ export default function EditPressKitPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Instagram URL</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Instagram URL
+                  </label>
                   <input
                     type="url"
                     value={data.instagramUrl}
-                    onChange={(e) => handleChange("instagramUrl", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("instagramUrl", e.target.value)
+                    }
                     placeholder="https://instagram.com/..."
                     className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">YouTube URL</label>
+                  <label className="block text-sm font-medium mb-2">
+                    YouTube URL
+                  </label>
                   <input
                     type="url"
                     value={data.youtubeUrl}
@@ -695,7 +813,9 @@ export default function EditPressKitPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Twitter/X URL</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Twitter/X URL
+                  </label>
                   <input
                     type="url"
                     value={data.twitterUrl}
@@ -705,11 +825,15 @@ export default function EditPressKitPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Facebook URL</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Facebook URL
+                  </label>
                   <input
                     type="url"
                     value={data.facebookUrl}
-                    onChange={(e) => handleChange("facebookUrl", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("facebookUrl", e.target.value)
+                    }
                     placeholder="https://facebook.com/..."
                     className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                   />
@@ -722,8 +846,15 @@ export default function EditPressKitPage() {
           {activeTab === "quotes" && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="font-oswald text-xl uppercase">Citas de Prensa</h2>
-                <Button type="button" variant="outline" size="sm" onClick={addQuote}>
+                <h2 className="font-oswald text-xl uppercase">
+                  Citas de Prensa
+                </h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addQuote}
+                >
                   <Plus className="w-4 h-4 mr-1" />
                   Agregar Cita
                 </Button>
@@ -732,7 +863,10 @@ export default function EditPressKitPage() {
               {data.pressQuotes.length === 0 ? (
                 <div className="text-center py-12 text-slc-muted">
                   <Quote className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No hay citas de prensa. Agrega algunas para mostrar en la página.</p>
+                  <p>
+                    No hay citas de prensa. Agrega algunas para mostrar en la
+                    página.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -743,7 +877,9 @@ export default function EditPressKitPage() {
                         <div className="flex-1 space-y-3">
                           <textarea
                             value={quote.quote}
-                            onChange={(e) => updateQuote(index, "quote", e.target.value)}
+                            onChange={(e) =>
+                              updateQuote(index, "quote", e.target.value)
+                            }
                             placeholder="La cita textual..."
                             rows={3}
                             className="w-full px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm resize-none"
@@ -752,14 +888,18 @@ export default function EditPressKitPage() {
                             <input
                               type="text"
                               value={quote.source}
-                              onChange={(e) => updateQuote(index, "source", e.target.value)}
+                              onChange={(e) =>
+                                updateQuote(index, "source", e.target.value)
+                              }
                               placeholder="Fuente (ej: Rolling Stone)"
                               className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                             />
                             <input
                               type="url"
                               value={quote.url}
-                              onChange={(e) => updateQuote(index, "url", e.target.value)}
+                              onChange={(e) =>
+                                updateQuote(index, "url", e.target.value)
+                              }
                               placeholder="URL de la fuente (opcional)"
                               className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                             />
@@ -786,8 +926,15 @@ export default function EditPressKitPage() {
           {activeTab === "downloads" && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="font-oswald text-xl uppercase">Archivos para Descargar</h2>
-                <Button type="button" variant="outline" size="sm" onClick={addDownload}>
+                <h2 className="font-oswald text-xl uppercase">
+                  Archivos para Descargar
+                </h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addDownload}
+                >
                   <Plus className="w-4 h-4 mr-1" />
                   Agregar Archivo
                 </Button>
@@ -796,7 +943,9 @@ export default function EditPressKitPage() {
               {data.downloads.length === 0 ? (
                 <div className="text-center py-12 text-slc-muted">
                   <Download className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No hay archivos para descargar. Agrega logos, fotos, etc.</p>
+                  <p>
+                    No hay archivos para descargar. Agrega logos, fotos, etc.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -808,21 +957,31 @@ export default function EditPressKitPage() {
                           <input
                             type="text"
                             value={download.name}
-                            onChange={(e) => updateDownload(index, "name", e.target.value)}
+                            onChange={(e) =>
+                              updateDownload(index, "name", e.target.value)
+                            }
                             placeholder="Nombre del archivo"
                             className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                           />
                           <input
                             type="url"
                             value={download.url}
-                            onChange={(e) => updateDownload(index, "url", e.target.value)}
+                            onChange={(e) =>
+                              updateDownload(index, "url", e.target.value)
+                            }
                             placeholder="URL de descarga"
                             className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                           />
                           <input
                             type="text"
                             value={download.description}
-                            onChange={(e) => updateDownload(index, "description", e.target.value)}
+                            onChange={(e) =>
+                              updateDownload(
+                                index,
+                                "description",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Descripción"
                             className="px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                           />
@@ -847,25 +1006,35 @@ export default function EditPressKitPage() {
           {/* Video Tab */}
           {activeTab === "video" && (
             <div className="space-y-6">
-              <h2 className="font-oswald text-xl uppercase mb-4">Video Destacado</h2>
+              <h2 className="font-oswald text-xl uppercase mb-4">
+                Video Destacado
+              </h2>
 
               <div>
-                <label className="block text-sm font-medium mb-2">URL del Video (YouTube)</label>
+                <label className="block text-sm font-medium mb-2">
+                  URL del Video (YouTube)
+                </label>
                 <input
                   type="url"
                   value={data.featuredVideoUrl}
-                  onChange={(e) => handleChange("featuredVideoUrl", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("featuredVideoUrl", e.target.value)
+                  }
                   placeholder="https://youtube.com/watch?v=..."
                   className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Título del Video</label>
+                <label className="block text-sm font-medium mb-2">
+                  Título del Video
+                </label>
                 <input
                   type="text"
                   value={data.featuredVideoTitle}
-                  onChange={(e) => handleChange("featuredVideoTitle", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("featuredVideoTitle", e.target.value)
+                  }
                   placeholder="Nombre del video"
                   className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                 />
@@ -876,19 +1045,27 @@ export default function EditPressKitPage() {
                 <h3 className="font-medium mb-4">SEO</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1">Meta Title</label>
+                    <label className="block text-sm text-slc-muted mb-1">
+                      Meta Title
+                    </label>
                     <input
                       type="text"
                       value={data.metaTitle}
-                      onChange={(e) => handleChange("metaTitle", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("metaTitle", e.target.value)
+                      }
                       className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-slc-muted mb-1">Meta Description</label>
+                    <label className="block text-sm text-slc-muted mb-1">
+                      Meta Description
+                    </label>
                     <textarea
                       value={data.metaDescription}
-                      onChange={(e) => handleChange("metaDescription", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("metaDescription", e.target.value)
+                      }
                       rows={3}
                       className="w-full px-4 py-2 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
                     />

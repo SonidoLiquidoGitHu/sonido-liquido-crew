@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, useCallback, type ReactNode, type CSSProperties } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 
 interface Parallax3DProps {
   children: ReactNode;
@@ -53,7 +59,7 @@ export function Parallax3D({
 
       setGlarePosition({ x: glareX, y: glareY });
     },
-    [intensity, perspective, scale]
+    [intensity, perspective, scale],
   );
 
   const handleMouseEnter = useCallback(() => {
@@ -76,9 +82,10 @@ export function Parallax3D({
       style={{
         transformStyle: "preserve-3d",
         ...transform,
-        boxShadow: isHovering && borderGlow
-          ? `0 20px 50px -10px rgba(0, 0, 0, 0.5), 0 0 30px ${borderGlowColor}`
-          : "0 10px 30px -10px rgba(0, 0, 0, 0.3)",
+        boxShadow:
+          isHovering && borderGlow
+            ? `0 20px 50px -10px rgba(0, 0, 0, 0.5), 0 0 30px ${borderGlowColor}`
+            : "0 10px 30px -10px rgba(0, 0, 0, 0.3)",
       }}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
@@ -127,7 +134,11 @@ const glowColors = [
   "rgba(167, 139, 250, 0.5)", // Purple
 ];
 
-export function Parallax3DCard({ children, className = "", index = 0 }: Parallax3DCardProps) {
+export function Parallax3DCard({
+  children,
+  className = "",
+  index = 0,
+}: Parallax3DCardProps) {
   const glowColor = glowColors[index % glowColors.length];
 
   return (

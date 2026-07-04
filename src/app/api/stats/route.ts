@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server";
-import { artistsRepository, releasesRepository, videosRepository } from "@/lib/repositories";
 import { isDatabaseConfigured } from "@/db/client";
+import {
+  artistsRepository,
+  releasesRepository,
+  videosRepository,
+} from "@/lib/repositories";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // Cache for 1 hour

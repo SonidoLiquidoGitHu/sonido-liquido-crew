@@ -1,38 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { SafeImage } from "@/components/ui/safe-image";
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  ExternalLink,
-  Rocket,
-  Calendar,
-  Star,
-  Eye,
-  Users,
-  Clock,
-  CheckCircle,
-  XCircle,
-  MoreHorizontal,
-  Mail,
-  Bell,
-  Download,
-  TrendingUp,
-  BarChart3,
-  RefreshCw,
-  Send,
-  Copy,
-  Check,
-  Disc3,
-  Loader2,
-  ArrowRight,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +9,38 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SafeImage } from "@/components/ui/safe-image";
+import { cn } from "@/lib/utils";
+import {
+  ArrowRight,
+  BarChart3,
+  Bell,
+  Calendar,
+  Check,
+  CheckCircle,
+  Clock,
+  Copy,
+  Disc3,
+  Download,
+  Edit,
+  ExternalLink,
+  Eye,
+  Loader2,
+  Mail,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Rocket,
+  Search,
+  Send,
+  Star,
+  Trash2,
+  TrendingUp,
+  Users,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface UpcomingRelease {
   id: string;
@@ -148,15 +148,25 @@ export default function AdminUpcomingReleasesPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [releaseToDelete, setReleaseToDelete] = useState<UpcomingRelease | null>(null);
+  const [releaseToDelete, setReleaseToDelete] =
+    useState<UpcomingRelease | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // Convert to release state
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [releaseToConvert, setReleaseToConvert] = useState<UpcomingRelease | null>(null);
+  const [releaseToConvert, setReleaseToConvert] =
+    useState<UpcomingRelease | null>(null);
   const [converting, setConverting] = useState(false);
-  const [convertUrls, setConvertUrls] = useState({ spotifyUrl: "", appleMusicUrl: "", youtubeMusicUrl: "" });
-  const [convertResult, setConvertResult] = useState<{ success: boolean; message: string; releaseId?: string } | null>(null);
+  const [convertUrls, setConvertUrls] = useState({
+    spotifyUrl: "",
+    appleMusicUrl: "",
+    youtubeMusicUrl: "",
+  });
+  const [convertResult, setConvertResult] = useState<{
+    success: boolean;
+    message: string;
+    releaseId?: string;
+  } | null>(null);
 
   // Tabs
   const [activeTab, setActiveTab] = useState<TabType>("releases");
@@ -165,7 +175,8 @@ export default function AdminUpcomingReleasesPage() {
   const [stats, setStats] = useState<PresaveStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [copiedEmails, setCopiedEmails] = useState(false);
-  const [selectedReleaseForExport, setSelectedReleaseForExport] = useState<string>("");
+  const [selectedReleaseForExport, setSelectedReleaseForExport] =
+    useState<string>("");
 
   useEffect(() => {
     fetchReleases();
@@ -194,7 +205,9 @@ export default function AdminUpcomingReleasesPage() {
   async function fetchStats() {
     setLoadingStats(true);
     try {
-      const res = await fetch("/api/admin/upcoming-releases/subscribers?stats=true");
+      const res = await fetch(
+        "/api/admin/upcoming-releases/subscribers?stats=true",
+      );
       const data = await res.json();
       if (data.success) {
         setStats(data.data);
@@ -245,9 +258,12 @@ export default function AdminUpcomingReleasesPage() {
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/upcoming-releases?id=${releaseToDelete.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/admin/upcoming-releases?id=${releaseToDelete.id}`,
+        {
+          method: "DELETE",
+        },
+      );
       const data = await res.json();
       if (data.success) {
         setReleases((prev) => prev.filter((r) => r.id !== releaseToDelete.id));
@@ -282,14 +298,16 @@ export default function AdminUpcomingReleasesPage() {
       if (data.success) {
         setConvertResult({
           success: true,
-          message: data.isNew ? "Lanzamiento creado exitosamente" : "Vinculado a lanzamiento existente",
+          message: data.isNew
+            ? "Lanzamiento creado exitosamente"
+            : "Vinculado a lanzamiento existente",
           releaseId: data.releaseId,
         });
         // Update local state to mark as inactive
         setReleases((prev) =>
           prev.map((r) =>
-            r.id === releaseToConvert.id ? { ...r, isActive: false } : r
-          )
+            r.id === releaseToConvert.id ? { ...r, isActive: false } : r,
+          ),
         );
       } else {
         setConvertResult({
@@ -321,15 +339,21 @@ export default function AdminUpcomingReleasesPage() {
     const matchesType = !typeFilter || release.releaseType === typeFilter;
     const matchesStatus =
       !statusFilter ||
-      (statusFilter === "active" && release.isActive && !isReleased(release.releaseDate)) ||
+      (statusFilter === "active" &&
+        release.isActive &&
+        !isReleased(release.releaseDate)) ||
       (statusFilter === "inactive" && !release.isActive) ||
       (statusFilter === "released" && isReleased(release.releaseDate));
     return matchesSearch && matchesType && matchesStatus;
   });
 
   // Stats
-  const activeCount = releases.filter((r) => r.isActive && !isReleased(r.releaseDate)).length;
-  const releasedCount = releases.filter((r) => isReleased(r.releaseDate)).length;
+  const activeCount = releases.filter(
+    (r) => r.isActive && !isReleased(r.releaseDate),
+  ).length;
+  const releasedCount = releases.filter((r) =>
+    isReleased(r.releaseDate),
+  ).length;
   const totalPresaves = releases.reduce((acc, r) => acc + r.presaveCount, 0);
   const totalViews = releases.reduce((acc, r) => acc + r.viewCount, 0);
 
@@ -379,7 +403,7 @@ export default function AdminUpcomingReleasesPage() {
             "px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px",
             activeTab === "releases"
               ? "border-primary text-primary"
-              : "border-transparent text-slc-muted hover:text-white"
+              : "border-transparent text-slc-muted hover:text-white",
           )}
         >
           <Rocket className="w-4 h-4 inline mr-2" />
@@ -391,7 +415,7 @@ export default function AdminUpcomingReleasesPage() {
             "px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px",
             activeTab === "subscribers"
               ? "border-primary text-primary"
-              : "border-transparent text-slc-muted hover:text-white"
+              : "border-transparent text-slc-muted hover:text-white",
           )}
         >
           <Bell className="w-4 h-4 inline mr-2" />
@@ -403,7 +427,7 @@ export default function AdminUpcomingReleasesPage() {
             "px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px",
             activeTab === "analytics"
               ? "border-primary text-primary"
-              : "border-transparent text-slc-muted hover:text-white"
+              : "border-transparent text-slc-muted hover:text-white",
           )}
         >
           <BarChart3 className="w-4 h-4 inline mr-2" />
@@ -414,268 +438,318 @@ export default function AdminUpcomingReleasesPage() {
       {/* Releases Tab */}
       {activeTab === "releases" && (
         <>
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/20 rounded-lg">
-              <Rocket className="w-5 h-5 text-primary" />
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-primary/20 rounded-lg">
+                  <Rocket className="w-5 h-5 text-primary" />
+                </div>
+              </div>
+              <div className="font-oswald text-3xl text-primary">
+                {activeCount}
+              </div>
+              <div className="text-xs text-slc-muted uppercase tracking-wider">
+                Activos
+              </div>
+            </div>
+            <div className="bg-slc-card border border-slc-border rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-green-500/20 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                </div>
+              </div>
+              <div className="font-oswald text-3xl text-green-500">
+                {releasedCount}
+              </div>
+              <div className="text-xs text-slc-muted uppercase tracking-wider">
+                Lanzados
+              </div>
+            </div>
+            <div className="bg-slc-card border border-slc-border rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                  <Users className="w-5 h-5 text-blue-500" />
+                </div>
+              </div>
+              <div className="font-oswald text-3xl text-blue-500">
+                {totalPresaves}
+              </div>
+              <div className="text-xs text-slc-muted uppercase tracking-wider">
+                Presaves
+              </div>
+            </div>
+            <div className="bg-slc-card border border-slc-border rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-purple-500/20 rounded-lg">
+                  <Eye className="w-5 h-5 text-purple-500" />
+                </div>
+              </div>
+              <div className="font-oswald text-3xl text-purple-500">
+                {totalViews}
+              </div>
+              <div className="text-xs text-slc-muted uppercase tracking-wider">
+                Vistas
+              </div>
             </div>
           </div>
-          <div className="font-oswald text-3xl text-primary">{activeCount}</div>
-          <div className="text-xs text-slc-muted uppercase tracking-wider">Activos</div>
-        </div>
-        <div className="bg-slc-card border border-slc-border rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-green-500/20 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            </div>
-          </div>
-          <div className="font-oswald text-3xl text-green-500">{releasedCount}</div>
-          <div className="text-xs text-slc-muted uppercase tracking-wider">Lanzados</div>
-        </div>
-        <div className="bg-slc-card border border-slc-border rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Users className="w-5 h-5 text-blue-500" />
-            </div>
-          </div>
-          <div className="font-oswald text-3xl text-blue-500">{totalPresaves}</div>
-          <div className="text-xs text-slc-muted uppercase tracking-wider">Presaves</div>
-        </div>
-        <div className="bg-slc-card border border-slc-border rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-500/20 rounded-lg">
-              <Eye className="w-5 h-5 text-purple-500" />
-            </div>
-          </div>
-          <div className="font-oswald text-3xl text-purple-500">{totalViews}</div>
-          <div className="text-xs text-slc-muted uppercase tracking-wider">Vistas</div>
-        </div>
-      </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
-          <input
-            type="text"
-            placeholder="Buscar por título o artista..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
-          />
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
-          >
-            <option value="">Todos los tipos</option>
-            <option value="single">Single</option>
-            <option value="ep">EP</option>
-            <option value="album">Álbum</option>
-            <option value="mixtape">Mixtape</option>
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
-          >
-            <option value="">Todos los estados</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
-            <option value="released">Ya lanzados</option>
-          </select>
-        </div>
-      </div>
+          {/* Search & Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
+              <input
+                type="text"
+                placeholder="Buscar por título o artista..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
+              >
+                <option value="">Todos los tipos</option>
+                <option value="single">Single</option>
+                <option value="ep">EP</option>
+                <option value="album">Álbum</option>
+                <option value="mixtape">Mixtape</option>
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg focus:outline-none focus:border-primary"
+              >
+                <option value="">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+                <option value="released">Ya lanzados</option>
+              </select>
+            </div>
+          </div>
 
-      {/* Releases Table */}
-      {filteredReleases.length === 0 ? (
-        <div className="bg-slc-card border border-slc-border rounded-xl p-12 text-center">
-          <Rocket className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-          <h3 className="font-oswald text-xl mb-2">No hay próximos lanzamientos</h3>
-          <p className="text-slc-muted mb-6">
-            {searchQuery || typeFilter || statusFilter
-              ? "No se encontraron resultados con los filtros actuales"
-              : "Crea tu primer próximo lanzamiento para comenzar a recibir presaves"}
-          </p>
-          {!searchQuery && !typeFilter && !statusFilter && (
-            <Button asChild>
-              <Link href="/admin/upcoming-releases/new">
-                <Plus className="w-4 h-4 mr-2" />
-                Crear Próximo Lanzamiento
-              </Link>
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="bg-slc-dark border border-slc-border rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slc-border">
-                  <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    Lanzamiento
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    Tipo
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    Countdown
-                  </th>
-                  <th className="text-center px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    Presaves
-                  </th>
-                  <th className="text-center px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="text-right px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slc-border">
-                {filteredReleases.map((release) => (
-                  <tr key={release.id} className="hover:bg-slc-card/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-12 h-12 rounded-lg overflow-hidden bg-slc-card flex-shrink-0"
-                          style={{ backgroundColor: release.backgroundColor || "#1a1a1a" }}
-                        >
-                          {release.coverImageUrl ? (
-                            <SafeImage
-                              src={release.coverImageUrl}
-                              alt={release.title}
-                              width={48}
-                              height={48}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Rocket className="w-6 h-6 text-slc-muted" />
+          {/* Releases Table */}
+          {filteredReleases.length === 0 ? (
+            <div className="bg-slc-card border border-slc-border rounded-xl p-12 text-center">
+              <Rocket className="w-16 h-16 text-slc-muted mx-auto mb-4" />
+              <h3 className="font-oswald text-xl mb-2">
+                No hay próximos lanzamientos
+              </h3>
+              <p className="text-slc-muted mb-6">
+                {searchQuery || typeFilter || statusFilter
+                  ? "No se encontraron resultados con los filtros actuales"
+                  : "Crea tu primer próximo lanzamiento para comenzar a recibir presaves"}
+              </p>
+              {!searchQuery && !typeFilter && !statusFilter && (
+                <Button asChild>
+                  <Link href="/admin/upcoming-releases/new">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Crear Próximo Lanzamiento
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slc-dark border border-slc-border rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slc-border">
+                      <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
+                        Lanzamiento
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
+                        Tipo
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
+                        Fecha
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
+                        Countdown
+                      </th>
+                      <th className="text-center px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
+                        Presaves
+                      </th>
+                      <th className="text-center px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
+                        Estado
+                      </th>
+                      <th className="text-right px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slc-border">
+                    {filteredReleases.map((release) => (
+                      <tr
+                        key={release.id}
+                        className="hover:bg-slc-card/50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-12 h-12 rounded-lg overflow-hidden bg-slc-card flex-shrink-0"
+                              style={{
+                                backgroundColor:
+                                  release.backgroundColor || "#1a1a1a",
+                              }}
+                            >
+                              {release.coverImageUrl ? (
+                                <SafeImage
+                                  src={release.coverImageUrl}
+                                  alt={release.title}
+                                  width={48}
+                                  height={48}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Rocket className="w-6 h-6 text-slc-muted" />
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{release.title}</span>
-                            {release.isFeatured && (
-                              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                            )}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {release.title}
+                                </span>
+                                {release.isFeatured && (
+                                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                )}
+                              </div>
+                              <p className="text-sm text-slc-muted">
+                                {release.artistName}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-sm text-slc-muted">{release.artistName}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${
-                          releaseTypeColors[release.releaseType] ||
-                          "bg-slc-card text-slc-muted border-slc-border"
-                        }`}
-                      >
-                        {releaseTypeLabels[release.releaseType] || release.releaseType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="w-4 h-4 text-slc-muted" />
-                        <span>{formatDate(release.releaseDate)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div
-                        className={`flex items-center gap-2 text-sm ${
-                          isReleased(release.releaseDate) ? "text-green-500" : "text-primary"
-                        }`}
-                      >
-                        <Clock className="w-4 h-4" />
-                        <span>{getTimeUntilRelease(release.releaseDate)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Users className="w-4 h-4 text-slc-muted" />
-                        <span className="font-medium">{release.presaveCount}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {isReleased(release.releaseDate) ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-500/10 text-green-500 border border-green-500/20">
-                          <CheckCircle className="w-3 h-3" />
-                          Lanzado
-                        </span>
-                      ) : release.isActive ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20">
-                          <Rocket className="w-3 h-3" />
-                          Activo
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-slc-card text-slc-muted border border-slc-border">
-                          <XCircle className="w-3 h-3" />
-                          Inactivo
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {/* Publicar a Discografía - solo si ya pasó la fecha */}
-                        {isReleased(release.releaseDate) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-green-500 hover:text-green-400"
-                            title="Publicar a Discografía"
-                            onClick={() => openConvertDialog(release)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${
+                              releaseTypeColors[release.releaseType] ||
+                              "bg-slc-card text-slc-muted border-slc-border"
+                            }`}
                           >
-                            <Disc3 className="w-4 h-4" />
-                          </Button>
-                        )}
-                        <Button asChild variant="ghost" size="icon" title="Ver página">
-                          <Link href={`/proximos/${release.slug}`} target="_blank">
-                            <ExternalLink className="w-4 h-4" />
-                          </Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="icon" title="Editar">
-                          <Link href={`/admin/upcoming-releases/${release.id}`}>
-                            <Edit className="w-4 h-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-400"
-                          title="Eliminar"
-                          onClick={() => {
-                            setReleaseToDelete(release);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                            {releaseTypeLabels[release.releaseType] ||
+                              release.releaseType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="w-4 h-4 text-slc-muted" />
+                            <span>{formatDate(release.releaseDate)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div
+                            className={`flex items-center gap-2 text-sm ${
+                              isReleased(release.releaseDate)
+                                ? "text-green-500"
+                                : "text-primary"
+                            }`}
+                          >
+                            <Clock className="w-4 h-4" />
+                            <span>
+                              {getTimeUntilRelease(release.releaseDate)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Users className="w-4 h-4 text-slc-muted" />
+                            <span className="font-medium">
+                              {release.presaveCount}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {isReleased(release.releaseDate) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-500/10 text-green-500 border border-green-500/20">
+                              <CheckCircle className="w-3 h-3" />
+                              Lanzado
+                            </span>
+                          ) : release.isActive ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20">
+                              <Rocket className="w-3 h-3" />
+                              Activo
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-slc-card text-slc-muted border border-slc-border">
+                              <XCircle className="w-3 h-3" />
+                              Inactivo
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Publicar a Discografía - solo si ya pasó la fecha */}
+                            {isReleased(release.releaseDate) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-green-500 hover:text-green-400"
+                                title="Publicar a Discografía"
+                                onClick={() => openConvertDialog(release)}
+                              >
+                                <Disc3 className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              title="Ver página"
+                            >
+                              <Link
+                                href={`/proximos/${release.slug}`}
+                                target="_blank"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              title="Editar"
+                            >
+                              <Link
+                                href={`/admin/upcoming-releases/${release.id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-500 hover:text-red-400"
+                              title="Eliminar"
+                              onClick={() => {
+                                setReleaseToDelete(release);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slc-border">
-            <p className="text-sm text-slc-muted">
-              Mostrando {filteredReleases.length} de {releases.length} lanzamientos
-            </p>
-          </div>
-        </div>
-      )}
-
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slc-border">
+                <p className="text-sm text-slc-muted">
+                  Mostrando {filteredReleases.length} de {releases.length}{" "}
+                  lanzamientos
+                </p>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -693,28 +767,40 @@ export default function AdminUpcomingReleasesPage() {
                 <div className="bg-slc-card border border-slc-border rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Bell className="w-5 h-5 text-primary" />
-                    <span className="text-xs text-slc-muted uppercase">Total Suscriptores</span>
+                    <span className="text-xs text-slc-muted uppercase">
+                      Total Suscriptores
+                    </span>
                   </div>
-                  <p className="font-oswald text-3xl">{stats.totalSubscribers}</p>
+                  <p className="font-oswald text-3xl">
+                    {stats.totalSubscribers}
+                  </p>
                 </div>
                 <div className="bg-slc-card border border-slc-border rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Eye className="w-5 h-5 text-purple-500" />
-                    <span className="text-xs text-slc-muted uppercase">Total Vistas</span>
+                    <span className="text-xs text-slc-muted uppercase">
+                      Total Vistas
+                    </span>
                   </div>
                   <p className="font-oswald text-3xl">{stats.totalViews}</p>
                 </div>
                 <div className="bg-slc-card border border-slc-border rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="w-5 h-5 text-green-500" />
-                    <span className="text-xs text-slc-muted uppercase">Conversión</span>
+                    <span className="text-xs text-slc-muted uppercase">
+                      Conversión
+                    </span>
                   </div>
-                  <p className="font-oswald text-3xl">{stats.conversionRate}%</p>
+                  <p className="font-oswald text-3xl">
+                    {stats.conversionRate}%
+                  </p>
                 </div>
                 <div className="bg-slc-card border border-slc-border rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Rocket className="w-5 h-5 text-blue-500" />
-                    <span className="text-xs text-slc-muted uppercase">Releases Activos</span>
+                    <span className="text-xs text-slc-muted uppercase">
+                      Releases Activos
+                    </span>
                   </div>
                   <p className="font-oswald text-3xl">{activeCount}</p>
                 </div>
@@ -729,19 +815,25 @@ export default function AdminUpcomingReleasesPage() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <select
                     value={selectedReleaseForExport}
-                    onChange={(e) => setSelectedReleaseForExport(e.target.value)}
+                    onChange={(e) =>
+                      setSelectedReleaseForExport(e.target.value)
+                    }
                     className="flex-1 px-4 py-2 bg-slc-dark border border-slc-border rounded-lg"
                   >
                     <option value="">Selecciona un lanzamiento...</option>
                     {releases.map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.title} - {r.artistName} ({r.presaveCount} suscriptores)
+                        {r.title} - {r.artistName} ({r.presaveCount}{" "}
+                        suscriptores)
                       </option>
                     ))}
                   </select>
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => selectedReleaseForExport && exportEmails(selectedReleaseForExport)}
+                      onClick={() =>
+                        selectedReleaseForExport &&
+                        exportEmails(selectedReleaseForExport)
+                      }
                       disabled={!selectedReleaseForExport}
                       variant="outline"
                     >
@@ -758,7 +850,10 @@ export default function AdminUpcomingReleasesPage() {
                       )}
                     </Button>
                     <Button
-                      onClick={() => selectedReleaseForExport && markAllNotified(selectedReleaseForExport)}
+                      onClick={() =>
+                        selectedReleaseForExport &&
+                        markAllNotified(selectedReleaseForExport)
+                      }
                       disabled={!selectedReleaseForExport}
                     >
                       <Send className="w-4 h-4 mr-2" />
@@ -771,7 +866,9 @@ export default function AdminUpcomingReleasesPage() {
               {/* Recent Subscribers */}
               <div className="bg-slc-dark border border-slc-border rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-slc-border">
-                  <h3 className="font-oswald text-lg uppercase">Suscriptores Recientes</h3>
+                  <h3 className="font-oswald text-lg uppercase">
+                    Suscriptores Recientes
+                  </h3>
                 </div>
                 <div className="divide-y divide-slc-border">
                   {stats.recentSubscribers.length === 0 ? (
@@ -781,7 +878,10 @@ export default function AdminUpcomingReleasesPage() {
                     </div>
                   ) : (
                     stats.recentSubscribers.map((sub) => (
-                      <div key={sub.id} className="px-6 py-3 flex items-center justify-between">
+                      <div
+                        key={sub.id}
+                        className="px-6 py-3 flex items-center justify-between"
+                      >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-slc-card flex items-center justify-center">
                             <Mail className="w-4 h-4 text-slc-muted" />
@@ -789,7 +889,8 @@ export default function AdminUpcomingReleasesPage() {
                           <div>
                             <p className="font-medium text-sm">{sub.email}</p>
                             <p className="text-xs text-slc-muted">
-                              {sub.releaseTitle || "Sin release"} • {formatDate(sub.subscribedAt)}
+                              {sub.releaseTitle || "Sin release"} •{" "}
+                              {formatDate(sub.subscribedAt)}
                             </p>
                           </div>
                         </div>
@@ -844,7 +945,10 @@ export default function AdminUpcomingReleasesPage() {
                     </div>
                   ) : (
                     stats.topReleases.map((release, index) => (
-                      <div key={release.id} className="px-6 py-4 flex items-center gap-4">
+                      <div
+                        key={release.id}
+                        className="px-6 py-4 flex items-center gap-4"
+                      >
                         <div className="w-8 h-8 rounded-full bg-slc-card flex items-center justify-center font-oswald">
                           {index + 1}
                         </div>
@@ -863,20 +967,29 @@ export default function AdminUpcomingReleasesPage() {
                         </div>
                         <div className="flex-1">
                           <p className="font-medium">{release.title}</p>
-                          <p className="text-sm text-slc-muted">{release.artistName}</p>
+                          <p className="text-sm text-slc-muted">
+                            {release.artistName}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-oswald text-xl text-primary">{release.presaveCount}</p>
+                          <p className="font-oswald text-xl text-primary">
+                            {release.presaveCount}
+                          </p>
                           <p className="text-xs text-slc-muted">presaves</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-oswald text-xl text-purple-500">{release.viewCount}</p>
+                          <p className="font-oswald text-xl text-purple-500">
+                            {release.viewCount}
+                          </p>
                           <p className="text-xs text-slc-muted">vistas</p>
                         </div>
                         <div className="text-right min-w-[80px]">
                           <p className="font-oswald text-lg text-green-500">
                             {release.viewCount > 0
-                              ? ((release.presaveCount / release.viewCount) * 100).toFixed(1)
+                              ? (
+                                  (release.presaveCount / release.viewCount) *
+                                  100
+                                ).toFixed(1)
                               : 0}
                             %
                           </p>
@@ -898,9 +1011,14 @@ export default function AdminUpcomingReleasesPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-24 text-sm text-slc-muted">Vistas</div>
                     <div className="flex-1 h-8 bg-slc-dark rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-500 rounded-full" style={{ width: "100%" }} />
+                      <div
+                        className="h-full bg-purple-500 rounded-full"
+                        style={{ width: "100%" }}
+                      />
                     </div>
-                    <div className="w-24 text-right font-oswald">{stats.totalViews}</div>
+                    <div className="w-24 text-right font-oswald">
+                      {stats.totalViews}
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-24 text-sm text-slc-muted">Presaves</div>
@@ -912,13 +1030,17 @@ export default function AdminUpcomingReleasesPage() {
                         }}
                       />
                     </div>
-                    <div className="w-24 text-right font-oswald">{stats.totalSubscribers}</div>
+                    <div className="w-24 text-right font-oswald">
+                      {stats.totalSubscribers}
+                    </div>
                   </div>
                 </div>
                 <div className="mt-6 pt-4 border-t border-slc-border text-center">
                   <p className="text-sm text-slc-muted">
                     Tasa de conversión promedio:{" "}
-                    <span className="text-green-500 font-bold">{stats.conversionRate}%</span>
+                    <span className="text-green-500 font-bold">
+                      {stats.conversionRate}%
+                    </span>
                   </p>
                 </div>
               </div>
@@ -933,15 +1055,24 @@ export default function AdminUpcomingReleasesPage() {
           <DialogHeader>
             <DialogTitle>Eliminar Próximo Lanzamiento</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que quieres eliminar &quot;{releaseToDelete?.title}&quot;? Esta
-              acción no se puede deshacer y se perderán todos los datos de presaves asociados.
+              ¿Estás seguro de que quieres eliminar &quot;
+              {releaseToDelete?.title}&quot;? Esta acción no se puede deshacer y
+              se perderán todos los datos de presaves asociados.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
               {deleting ? "Eliminando..." : "Eliminar"}
             </Button>
           </DialogFooter>
@@ -957,25 +1088,32 @@ export default function AdminUpcomingReleasesPage() {
               Publicar a Discografía
             </DialogTitle>
             <DialogDescription>
-              Convierte &quot;{releaseToConvert?.title}&quot; de {releaseToConvert?.artistName} a un
-              lanzamiento oficial en la discografía.
+              Convierte &quot;{releaseToConvert?.title}&quot; de{" "}
+              {releaseToConvert?.artistName} a un lanzamiento oficial en la
+              discografía.
             </DialogDescription>
           </DialogHeader>
 
           {convertResult ? (
-            <div className={cn(
-              "p-4 rounded-lg flex items-center gap-3",
-              convertResult.success
-                ? "bg-green-500/10 border border-green-500/20"
-                : "bg-red-500/10 border border-red-500/20"
-            )}>
+            <div
+              className={cn(
+                "p-4 rounded-lg flex items-center gap-3",
+                convertResult.success
+                  ? "bg-green-500/10 border border-green-500/20"
+                  : "bg-red-500/10 border border-red-500/20",
+              )}
+            >
               {convertResult.success ? (
                 <CheckCircle className="w-6 h-6 text-green-500" />
               ) : (
                 <XCircle className="w-6 h-6 text-red-500" />
               )}
               <div>
-                <p className={convertResult.success ? "text-green-500" : "text-red-500"}>
+                <p
+                  className={
+                    convertResult.success ? "text-green-500" : "text-red-500"
+                  }
+                >
                   {convertResult.message}
                 </p>
                 {convertResult.releaseId && (
@@ -991,34 +1129,56 @@ export default function AdminUpcomingReleasesPage() {
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-slc-muted">
-                Opcionalmente, agrega los enlaces de streaming (si ya están disponibles):
+                Opcionalmente, agrega los enlaces de streaming (si ya están
+                disponibles):
               </p>
               <div>
-                <label className="block text-sm text-slc-muted mb-1">Spotify URL</label>
+                <label className="block text-sm text-slc-muted mb-1">
+                  Spotify URL
+                </label>
                 <input
                   type="url"
                   value={convertUrls.spotifyUrl}
-                  onChange={(e) => setConvertUrls(prev => ({ ...prev, spotifyUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setConvertUrls((prev) => ({
+                      ...prev,
+                      spotifyUrl: e.target.value,
+                    }))
+                  }
                   placeholder="https://open.spotify.com/album/..."
                   className="w-full px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-1">Apple Music URL</label>
+                <label className="block text-sm text-slc-muted mb-1">
+                  Apple Music URL
+                </label>
                 <input
                   type="url"
                   value={convertUrls.appleMusicUrl}
-                  onChange={(e) => setConvertUrls(prev => ({ ...prev, appleMusicUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setConvertUrls((prev) => ({
+                      ...prev,
+                      appleMusicUrl: e.target.value,
+                    }))
+                  }
                   placeholder="https://music.apple.com/..."
                   className="w-full px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slc-muted mb-1">YouTube Music URL</label>
+                <label className="block text-sm text-slc-muted mb-1">
+                  YouTube Music URL
+                </label>
                 <input
                   type="url"
                   value={convertUrls.youtubeMusicUrl}
-                  onChange={(e) => setConvertUrls(prev => ({ ...prev, youtubeMusicUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setConvertUrls((prev) => ({
+                      ...prev,
+                      youtubeMusicUrl: e.target.value,
+                    }))
+                  }
                   placeholder="https://music.youtube.com/..."
                   className="w-full px-3 py-2 bg-slc-card border border-slc-border rounded-lg text-sm"
                 />
@@ -1033,10 +1193,18 @@ export default function AdminUpcomingReleasesPage() {
               </Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => setConvertDialogOpen(false)} disabled={converting}>
+                <Button
+                  variant="outline"
+                  onClick={() => setConvertDialogOpen(false)}
+                  disabled={converting}
+                >
                   Cancelar
                 </Button>
-                <Button onClick={handleConvert} disabled={converting} className="bg-green-600 hover:bg-green-700">
+                <Button
+                  onClick={handleConvert}
+                  disabled={converting}
+                  className="bg-green-600 hover:bg-green-700"
+                >
                   {converting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />

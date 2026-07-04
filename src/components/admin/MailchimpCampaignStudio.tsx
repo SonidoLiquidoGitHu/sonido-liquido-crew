@@ -1,37 +1,39 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import {
+  AudienceSelector,
+  type AudienceTag,
+} from "@/components/admin/AudienceSelector";
 import { Button } from "@/components/ui/button";
 import {
-  Mail,
-  Send,
-  Calendar,
-  Users,
-  Eye,
-  Trash2,
-  Plus,
-  RefreshCw,
-  ChevronDown,
-  ExternalLink,
-  BarChart3,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
-  Copy,
-  Sparkles,
-  Tag,
   Activity,
-  ArrowUpRight,
+  AlertTriangle,
   ArrowDownRight,
-  Zap,
+  ArrowUpRight,
+  BarChart3,
+  Calendar,
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  Copy,
+  ExternalLink,
+  Eye,
   FileEdit,
   Image as ImageIcon,
   Link2,
+  Mail,
+  Plus,
+  RefreshCw,
+  Send,
+  Sparkles,
+  Tag,
+  Trash2,
+  TrendingUp,
+  Users,
+  XCircle,
+  Zap,
 } from "lucide-react";
-import { AudienceSelector, type AudienceTag } from "@/components/admin/AudienceSelector";
-
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Proxy a Dropbox URL through our image-proxy endpoint so mobile browsers
@@ -189,23 +191,23 @@ function generatePreviewHTML(data: {
   const bodyFont = data.bodyFont || "inter";
 
   const fontMap: Record<string, string> = {
-    "oswald": "'Oswald', sans-serif",
-    "bebas": "'Bebas Neue', sans-serif",
-    "anton": "'Anton', sans-serif",
+    oswald: "'Oswald', sans-serif",
+    bebas: "'Bebas Neue', sans-serif",
+    anton: "'Anton', sans-serif",
     "archivo-black": "'Archivo Black', sans-serif",
-    "righteous": "'Righteous', sans-serif",
-    "bangers": "'Bangers', sans-serif",
+    righteous: "'Righteous', sans-serif",
+    bangers: "'Bangers', sans-serif",
     "permanent-marker": "'Permanent Marker', sans-serif",
-    "montserrat": "'Montserrat', sans-serif",
-    "poppins": "'Poppins', sans-serif",
-    "inter": "'Inter', sans-serif",
-    "raleway": "'Raleway', sans-serif",
+    montserrat: "'Montserrat', sans-serif",
+    poppins: "'Poppins', sans-serif",
+    inter: "'Inter', sans-serif",
+    raleway: "'Raleway', sans-serif",
     "dm-sans": "'DM Sans', sans-serif",
-    "outfit": "'Outfit', sans-serif",
-    "sora": "'Sora', sans-serif",
+    outfit: "'Outfit', sans-serif",
+    sora: "'Sora', sans-serif",
     "space-grotesk": "'Space Grotesk', sans-serif",
-    "playfair": "'Playfair Display', serif",
-    "merriweather": "'Merriweather', serif",
+    playfair: "'Playfair Display', serif",
+    merriweather: "'Merriweather', serif",
     "roboto-mono": "'Roboto Mono', monospace",
   };
 
@@ -218,25 +220,50 @@ function generatePreviewHTML(data: {
   const footerBgColor = darkMode ? "#0a0a0a" : "#eeeeee";
   const footerTextColor = darkMode ? "#666666" : "#999999";
 
-  const buttonRoundedMap: Record<string, string> = { "none": "0px", "sm": "4px", "md": "6px", "lg": "8px", "full": "50px" };
+  const buttonRoundedMap: Record<string, string> = {
+    none: "0px",
+    sm: "4px",
+    md: "6px",
+    lg: "8px",
+    full: "50px",
+  };
   const buttonRadius = buttonRoundedMap[data.buttonRounded || "full"] || "50px";
 
   let buttonCss = "";
   switch (data.buttonStyle || "gradient") {
-    case "solid": buttonCss = `background: ${primaryColor}; color: #ffffff; border: none;`; break;
-    case "gradient": buttonCss = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`; break;
-    case "outline": buttonCss = `background: transparent; border: 2px solid ${primaryColor}; color: ${primaryColor};`; break;
-    case "glass": buttonCss = `background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff;`; break;
-    default: buttonCss = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`;
+    case "solid":
+      buttonCss = `background: ${primaryColor}; color: #ffffff; border: none;`;
+      break;
+    case "gradient":
+      buttonCss = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`;
+      break;
+    case "outline":
+      buttonCss = `background: transparent; border: 2px solid ${primaryColor}; color: ${primaryColor};`;
+      break;
+    case "glass":
+      buttonCss =
+        "background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff;";
+      break;
+    default:
+      buttonCss = `background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; border: none;`;
   }
 
   const formattedBody = body
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\n\n/g, "</p><p>")
     .replace(/\n/g, "<br>")
-    .replace(/\[(.*?)\]\((.*?)\)/g, `<a href="$2" style="color: ${primaryColor}; text-decoration: underline;">$1</a>`)
-    .replace(/^### (.*?)$/gm, `<h3 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h3>`)
-    .replace(/^# (.*?)$/gm, `<h1 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h1>`);
+    .replace(
+      /\[(.*?)\]\((.*?)\)/g,
+      `<a href="$2" style="color: ${primaryColor}; text-decoration: underline;">$1</a>`,
+    )
+    .replace(
+      /^### (.*?)$/gm,
+      `<h3 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h3>`,
+    )
+    .replace(
+      /^# (.*?)$/gm,
+      `<h1 style="color: ${primaryColor}; margin: 20px 0 10px;">$1</h1>`,
+    );
 
   return `
 <!DOCTYPE html>
@@ -256,13 +283,17 @@ function generatePreviewHTML(data: {
               <h1 style="margin: 0; color: white; font-size: 24px; font-family: ${titleFontFamily}, sans-serif;">SONIDO LIQUIDO CREW</h1>
             </td>
           </tr>
-          ${coverImageUrl ? `
+          ${
+            coverImageUrl
+              ? `
           <tr>
             <td style="padding: 30px 40px 0;">
               <img src="${coverImageUrl}" alt="${title}" style="width: 100%; max-width: 500px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
             </td>
           </tr>
-          ` : ""}
+          `
+              : ""
+          }
           <tr>
             <td style="padding: 30px 40px 10px; text-align: center;">
               <h1 style="margin: 0; color: ${primaryColor}; font-size: 28px; font-weight: bold; font-family: ${titleFontFamily}, sans-serif;">${title}</h1>
@@ -275,7 +306,9 @@ function generatePreviewHTML(data: {
               </p>
             </td>
           </tr>
-          ${ctaText && ctaUrl ? `
+          ${
+            ctaText && ctaUrl
+              ? `
           <tr>
             <td style="padding: 0 40px 30px; text-align: center;">
               <a href="${ctaUrl}" style="display: inline-block; padding: 16px 40px; ${buttonCss} text-decoration: none; font-weight: bold; font-size: 18px; border-radius: ${buttonRadius}; text-transform: uppercase; letter-spacing: 1px; font-family: ${titleFontFamily}, sans-serif;">
@@ -283,13 +316,15 @@ function generatePreviewHTML(data: {
               </a>
             </td>
           </tr>
-          ` : ""}
+          `
+              : ""
+          }
           <tr>
             <td style="padding: 30px 40px; background-color: ${footerBgColor}; text-align: center;">
               <p style="margin: 0 0 15px; color: ${footerTextColor}; font-size: 12px;">
                 Sonido Liquido Crew - Hip Hop Mexico desde 1999
               </p>
-              <p style="margin: 0; color: ${darkMode ? '#444444' : '#aaaaaa'}; font-size: 11px;">
+              <p style="margin: 0; color: ${darkMode ? "#444444" : "#aaaaaa"}; font-size: 11px;">
                 <a href="https://sonidoliquido.com" style="color: ${primaryColor}; text-decoration: none;">sonidoliquido.com</a>
               </p>
             </td>
@@ -318,7 +353,9 @@ export function MailchimpCampaignStudio() {
 
   // Create campaign form
   const [selectedTemplate, setSelectedTemplate] = useState(EMAIL_TEMPLATES[0]);
-  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(
+    null,
+  );
   const [formSubject, setFormSubject] = useState("");
   const [formPreviewText, setFormPreviewText] = useState("");
   const [formTitle, setFormTitle] = useState("");
@@ -329,29 +366,40 @@ export function MailchimpCampaignStudio() {
   const [formScheduleTime, setFormScheduleTime] = useState("");
   const [formSelectedTags, setFormSelectedTags] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [sendResult, setSendResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   // Email style customization
   const [formStylePrimaryColor, setFormStylePrimaryColor] = useState("#f97316");
-  const [formStyleSecondaryColor, setFormStyleSecondaryColor] = useState("#ea580c");
+  const [formStyleSecondaryColor, setFormStyleSecondaryColor] =
+    useState("#ea580c");
   const [formStyleDarkMode, setFormStyleDarkMode] = useState(true);
   const [formStyleTitleFont, setFormStyleTitleFont] = useState("oswald");
   const [formStyleBodyFont, setFormStyleBodyFont] = useState("inter");
-  const [formStyleButtonStyle, setFormStyleButtonStyle] = useState<"solid" | "gradient" | "outline" | "glass">("gradient");
-  const [formStyleButtonRounded, setFormStyleButtonRounded] = useState<"none" | "sm" | "md" | "lg" | "full">("full");
+  const [formStyleButtonStyle, setFormStyleButtonStyle] = useState<
+    "solid" | "gradient" | "outline" | "glass"
+  >("gradient");
+  const [formStyleButtonRounded, setFormStyleButtonRounded] = useState<
+    "none" | "sm" | "md" | "lg" | "full"
+  >("full");
   const [showStylePanel, setShowStylePanel] = useState(false);
 
   // Campaign detail
-  const [selectedCampaign, setSelectedCampaign] = useState<CampaignData | null>(null);
-  const [campaignReport, setCampaignReport] = useState<Record<string, unknown> | null>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignData | null>(
+    null,
+  );
+  const [campaignReport, setCampaignReport] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [campaignHtml, setCampaignHtml] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
   // Campaigns filter
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [campaignsLoading, setCampaignsLoading] = useState(false);
-
-
 
   // Fetch dashboard data
   const fetchDashboard = useCallback(async () => {
@@ -404,10 +452,8 @@ export function MailchimpCampaignStudio() {
     }
   }, [isConfigured, campaignFilter, fetchCampaigns]);
 
-
-
   // Handle template selection
-  const handleTemplateSelect = (template: typeof EMAIL_TEMPLATES[0]) => {
+  const handleTemplateSelect = (template: (typeof EMAIL_TEMPLATES)[0]) => {
     setSelectedTemplate(template);
     setFormSubject(template.subject);
     setFormBody(template.body);
@@ -425,14 +471,18 @@ export function MailchimpCampaignStudio() {
     setActiveTab("create");
     // Try to extract body text from the HTML content
     try {
-      const contentRes = await fetch(`/api/admin/mailchimp/campaigns/${campaign.id}?detail=content`);
+      const contentRes = await fetch(
+        `/api/admin/mailchimp/campaigns/${campaign.id}?detail=content`,
+      );
       const contentData = await contentRes.json();
       if (contentData.success && contentData.data?.html) {
         const html = contentData.data.html as string;
         // Extract text between paragraph tags in the main content area
-        const bodyMatch = html.match(/<p[^>]*style="[^"]*line-height[^"]*"[^>]*>([\s\S]*?)<\/p>/);
+        const bodyMatch = html.match(
+          /<p[^>]*style="[^"]*line-height[^"]*"[^>]*>([\s\S]*?)<\/p>/,
+        );
         if (bodyMatch) {
-          let text = bodyMatch[1]
+          const text = bodyMatch[1]
             .replace(/<br\s*\/?>/g, "\n")
             .replace(/<\/p>\s*<p[^>]*>/g, "\n\n")
             .replace(/<strong>(.*?)<\/strong>/g, "**$1**")
@@ -477,28 +527,36 @@ export function MailchimpCampaignStudio() {
 
       if (editingCampaignId) {
         // Update existing campaign
-        const res = await fetch(`/api/admin/mailchimp/campaigns/${editingCampaignId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "update",
-            subject: formSubject,
-            previewText: formPreviewText,
-            title: formTitle || formSubject,
-            body: formBody,
-            ctaText: formCtaText || undefined,
-            ctaUrl: formCtaUrl || undefined,
-            coverImageUrl: formCoverImageUrl || undefined,
-            styleSettings: styleSettingsPayload,
-          }),
-        });
+        const res = await fetch(
+          `/api/admin/mailchimp/campaigns/${editingCampaignId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "update",
+              subject: formSubject,
+              previewText: formPreviewText,
+              title: formTitle || formSubject,
+              body: formBody,
+              ctaText: formCtaText || undefined,
+              ctaUrl: formCtaUrl || undefined,
+              coverImageUrl: formCoverImageUrl || undefined,
+              styleSettings: styleSettingsPayload,
+            }),
+          },
+        );
 
         let data: { success: boolean; error?: string; data?: unknown };
         try {
           const text = await res.text();
-          data = text ? JSON.parse(text) : { success: false, error: "Respuesta vacía del servidor" };
+          data = text
+            ? JSON.parse(text)
+            : { success: false, error: "Respuesta vacía del servidor" };
         } catch {
-          data = { success: false, error: "Error al procesar la respuesta del servidor" };
+          data = {
+            success: false,
+            error: "Error al procesar la respuesta del servidor",
+          };
         }
 
         if (data.success) {
@@ -527,7 +585,10 @@ export function MailchimpCampaignStudio() {
           };
           setTimeout(() => refreshWithRetry(), 1000);
         } else {
-          setSendResult({ success: false, message: data.error || "Error al actualizar borrador" });
+          setSendResult({
+            success: false,
+            message: data.error || "Error al actualizar borrador",
+          });
         }
       } else {
         // Create new campaign (existing code)
@@ -557,9 +618,14 @@ export function MailchimpCampaignStudio() {
         let data: { success: boolean; error?: string; data?: unknown };
         try {
           const text = await res.text();
-          data = text ? JSON.parse(text) : { success: false, error: "Respuesta vacía del servidor" };
+          data = text
+            ? JSON.parse(text)
+            : { success: false, error: "Respuesta vacía del servidor" };
         } catch {
-          data = { success: false, error: "Error al procesar la respuesta del servidor" };
+          data = {
+            success: false,
+            error: "Error al procesar la respuesta del servidor",
+          };
         }
 
         if (data.success) {
@@ -594,7 +660,10 @@ export function MailchimpCampaignStudio() {
           };
           setTimeout(() => refreshWithRetry(), 1000);
         } else {
-          setSendResult({ success: false, message: data.error || "Error al crear campana" });
+          setSendResult({
+            success: false,
+            message: data.error || "Error al crear campana",
+          });
         }
       }
     } catch (err) {
@@ -605,10 +674,16 @@ export function MailchimpCampaignStudio() {
   };
 
   // Handle campaign action (supports optional extra payload fields like scheduleTime)
-  const handleCampaignAction = async (campaignId: string, action: string, extra?: Record<string, unknown>) => {
+  const handleCampaignAction = async (
+    campaignId: string,
+    action: string,
+    extra?: Record<string, unknown>,
+  ) => {
     // Require confirmation before sending
     if (action === "send") {
-      const confirmed = confirm("Estas seguro de enviar esta campana ahora? Esta accion no se puede deshacer.");
+      const confirmed = confirm(
+        "Estas seguro de enviar esta campana ahora? Esta accion no se puede deshacer.",
+      );
       if (!confirmed) return;
     }
     try {
@@ -626,9 +701,12 @@ export function MailchimpCampaignStudio() {
       } else {
         // Provide actionable error messages for common issues
         const errorMsg = data.error || "Error desconocido";
-        if (errorMsg.includes("currently 'sending'") || errorMsg.includes("ya se esta enviando")) {
+        if (
+          errorMsg.includes("currently 'sending'") ||
+          errorMsg.includes("ya se esta enviando")
+        ) {
           const shouldCancel = confirm(
-            `${errorMsg}\n\nQuieres cancelar el envio y duplicar la campana para reintentar?`
+            `${errorMsg}\n\nQuieres cancelar el envio y duplicar la campana para reintentar?`,
           );
           if (shouldCancel) {
             try {
@@ -639,34 +717,44 @@ export function MailchimpCampaignStudio() {
                 body: JSON.stringify({ action: "cancel" }),
               });
               // Replicate the campaign as a new draft
-              const replicateRes = await fetch(`/api/admin/mailchimp/campaigns/${campaignId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "replicate" }),
-              });
+              const replicateRes = await fetch(
+                `/api/admin/mailchimp/campaigns/${campaignId}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "replicate" }),
+                },
+              );
               const replicateData = await replicateRes.json();
               if (replicateData.success && replicateData.data?.campaignId) {
                 // Send the new replicated campaign
-                const sendRes = await fetch(`/api/admin/mailchimp/campaigns/${replicateData.data.campaignId}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ action: "send" }),
-                });
+                const sendRes = await fetch(
+                  `/api/admin/mailchimp/campaigns/${replicateData.data.campaignId}`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "send" }),
+                  },
+                );
                 const sendData = await sendRes.json();
                 if (sendData.success) {
                   alert("Campana duplicada y enviada exitosamente!");
                 } else {
-                  alert(`Se duplico la campana pero no se pudo enviar: ${sendData.error}`);
+                  alert(
+                    `Se duplico la campana pero no se pudo enviar: ${sendData.error}`,
+                  );
                 }
               }
               fetchCampaigns(campaignFilter);
             } catch {
-              alert("No se pudo recuperar la campana. Intenta duplicarla manualmente.");
+              alert(
+                "No se pudo recuperar la campana. Intenta duplicarla manualmente.",
+              );
             }
           }
         } else if (errorMsg.includes("ya fue enviada")) {
           const shouldDuplicate = confirm(
-            `${errorMsg}\n\nQuieres duplicar esta campana para crear una nueva copia?`
+            `${errorMsg}\n\nQuieres duplicar esta campana para crear una nueva copia?`,
           );
           if (shouldDuplicate) {
             handleCampaignAction(campaignId, "replicate");
@@ -706,11 +794,15 @@ export function MailchimpCampaignStudio() {
     setCampaignHtml(null);
     try {
       if (campaign.status === "sent") {
-        const reportRes = await fetch(`/api/admin/mailchimp/campaigns/${campaign.id}?detail=report`);
+        const reportRes = await fetch(
+          `/api/admin/mailchimp/campaigns/${campaign.id}?detail=report`,
+        );
         const reportData = await reportRes.json();
         if (reportData.success) setCampaignReport(reportData.data);
       }
-      const contentRes = await fetch(`/api/admin/mailchimp/campaigns/${campaign.id}?detail=content`);
+      const contentRes = await fetch(
+        `/api/admin/mailchimp/campaigns/${campaign.id}?detail=content`,
+      );
       const contentData = await contentRes.json();
       if (contentData.success) setCampaignHtml(contentData.data?.html || null);
     } catch (err) {
@@ -722,20 +814,48 @@ export function MailchimpCampaignStudio() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "sent":
-        return { color: "bg-green-500/10 text-green-500", label: "Enviado", icon: CheckCircle };
+        return {
+          color: "bg-green-500/10 text-green-500",
+          label: "Enviado",
+          icon: CheckCircle,
+        };
       case "schedule":
-        return { color: "bg-blue-500/10 text-blue-500", label: "Programado", icon: Clock };
+        return {
+          color: "bg-blue-500/10 text-blue-500",
+          label: "Programado",
+          icon: Clock,
+        };
       case "saving":
-        return { color: "bg-yellow-500/10 text-yellow-500", label: "Guardando", icon: RefreshCw };
+        return {
+          color: "bg-yellow-500/10 text-yellow-500",
+          label: "Guardando",
+          icon: RefreshCw,
+        };
       case "sending":
-        return { color: "bg-orange-500/10 text-orange-500", label: "Enviando", icon: Send };
+        return {
+          color: "bg-orange-500/10 text-orange-500",
+          label: "Enviando",
+          icon: Send,
+        };
       case "draft":
       case "save":
-        return { color: "bg-slc-muted/10 text-slc-muted", label: "Borrador", icon: FileEdit };
+        return {
+          color: "bg-slc-muted/10 text-slc-muted",
+          label: "Borrador",
+          icon: FileEdit,
+        };
       case "paused":
-        return { color: "bg-yellow-500/10 text-yellow-500", label: "Pausado", icon: AlertTriangle };
+        return {
+          color: "bg-yellow-500/10 text-yellow-500",
+          label: "Pausado",
+          icon: AlertTriangle,
+        };
       default:
-        return { color: "bg-slc-muted/10 text-slc-muted", label: status, icon: XCircle };
+        return {
+          color: "bg-slc-muted/10 text-slc-muted",
+          label: status,
+          icon: XCircle,
+        };
     }
   };
 
@@ -745,15 +865,17 @@ export function MailchimpCampaignStudio() {
   const formatRate = (rate: number) => {
     if (rate > 1) {
       // Already a percentage (e.g. 45.23 means 45.23%)
-      return rate.toFixed(1) + "%";
+      return `${rate.toFixed(1)}%`;
     }
     // Decimal format (e.g. 0.4523 means 45.23%)
-    return (rate * 100).toFixed(1) + "%";
+    return `${(rate * 100).toFixed(1)}%`;
   };
 
   // Calculate real average rates from sent campaigns
   const getRealCampaignRates = () => {
-    const sentCampaigns = campaigns.filter(c => c.status === "sent" && c.report_summary);
+    const sentCampaigns = campaigns.filter(
+      (c) => c.status === "sent" && c.report_summary,
+    );
     if (sentCampaigns.length === 0) {
       return { avgOpenRate: null, avgClickRate: null, campaignCount: 0 };
     }
@@ -765,20 +887,22 @@ export function MailchimpCampaignStudio() {
 
     for (const c of sentCampaigns) {
       const emailsSent = c.emails_sent || 0;
-      const openRate = c.report_summary!.open_rate;
-      const clickRate = c.report_summary!.click_rate;
+      const openRate = c.report_summary?.open_rate;
+      const clickRate = c.report_summary?.click_rate;
 
       // Normalize to decimal (0-1) for calculation
-      const normalizedOpenRate = openRate > 1 ? openRate / 100 : openRate;
-      const normalizedClickRate = clickRate > 1 ? clickRate / 100 : clickRate;
+      const normalizedOpenRate = (openRate ?? 0) > 1 ? (openRate ?? 0) / 100 : (openRate ?? 0);
+      const normalizedClickRate = (clickRate ?? 0) > 1 ? (clickRate ?? 0) / 100 : (clickRate ?? 0);
 
       totalEmailsSent += emailsSent;
       weightedOpenSum += emailsSent * normalizedOpenRate;
       weightedClickSum += emailsSent * normalizedClickRate;
     }
 
-    const avgOpenRate = totalEmailsSent > 0 ? weightedOpenSum / totalEmailsSent : 0;
-    const avgClickRate = totalEmailsSent > 0 ? weightedClickSum / totalEmailsSent : 0;
+    const avgOpenRate =
+      totalEmailsSent > 0 ? weightedOpenSum / totalEmailsSent : 0;
+    const avgClickRate =
+      totalEmailsSent > 0 ? weightedClickSum / totalEmailsSent : 0;
 
     return { avgOpenRate, avgClickRate, campaignCount: sentCampaigns.length };
   };
@@ -810,35 +934,72 @@ export function MailchimpCampaignStudio() {
           </div>
           <h2 className="font-oswald text-3xl uppercase mb-4">Email Studio</h2>
           <p className="text-slc-muted mb-8">
-            Conecta tu cuenta de Mailchimp para crear y gestionar campanas de email directamente desde aqui.
+            Conecta tu cuenta de Mailchimp para crear y gestionar campanas de
+            email directamente desde aqui.
           </p>
           <div className="p-6 bg-slc-card rounded-xl border border-slc-border text-left space-y-4">
-            <h3 className="font-oswald text-lg uppercase">Configuracion Requerida</h3>
+            <h3 className="font-oswald text-lg uppercase">
+              Configuracion Requerida
+            </h3>
             <p className="text-sm text-slc-muted">
               Agrega estas variables de entorno en tu dashboard de Netlify:
             </p>
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-3 bg-slc-dark rounded-lg">
-                <code className="text-sm text-primary font-mono">MAILCHIMP_API_KEY</code>
-                <span className="text-xs text-slc-muted ml-auto">Tu API key de Mailchimp</span>
+                <code className="text-sm text-primary font-mono">
+                  MAILCHIMP_API_KEY
+                </code>
+                <span className="text-xs text-slc-muted ml-auto">
+                  Tu API key de Mailchimp
+                </span>
               </div>
               <div className="flex items-center gap-3 p-3 bg-slc-dark rounded-lg">
-                <code className="text-sm text-primary font-mono">MAILCHIMP_SERVER_PREFIX</code>
-                <span className="text-xs text-slc-muted ml-auto">Ej: us1, us14, etc.</span>
+                <code className="text-sm text-primary font-mono">
+                  MAILCHIMP_SERVER_PREFIX
+                </code>
+                <span className="text-xs text-slc-muted ml-auto">
+                  Ej: us1, us14, etc.
+                </span>
               </div>
               <div className="flex items-center gap-3 p-3 bg-slc-dark rounded-lg">
-                <code className="text-sm text-primary font-mono">MAILCHIMP_AUDIENCE_ID</code>
-                <span className="text-xs text-slc-muted ml-auto">ID de tu lista/audiencia</span>
+                <code className="text-sm text-primary font-mono">
+                  MAILCHIMP_AUDIENCE_ID
+                </code>
+                <span className="text-xs text-slc-muted ml-auto">
+                  ID de tu lista/audiencia
+                </span>
               </div>
             </div>
             <div className="pt-4 border-t border-slc-border">
-              <h4 className="font-medium text-sm mb-2">Donde encontrar tus credenciales:</h4>
+              <h4 className="font-medium text-sm mb-2">
+                Donde encontrar tus credenciales:
+              </h4>
               <ol className="text-sm text-slc-muted space-y-2 list-decimal list-inside">
-                <li>Ve a <a href="https://mailchimp.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mailchimp.com</a> e inicia sesion</li>
-                <li>Haz clic en tu perfil (esquina superior derecha) &rarr; Profile &rarr; Extras &rarr; API keys</li>
+                <li>
+                  Ve a{" "}
+                  <a
+                    href="https://mailchimp.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    mailchimp.com
+                  </a>{" "}
+                  e inicia sesion
+                </li>
+                <li>
+                  Haz clic en tu perfil (esquina superior derecha) &rarr;
+                  Profile &rarr; Extras &rarr; API keys
+                </li>
                 <li>Crea una nueva API key y copiala</li>
-                <li>El server prefix esta en tu URL de Mailchimp (ej: us14.admin.mailchimp.com = us14)</li>
-                <li>Ve a Audience &rarr; Settings &rarr; Audience name and defaults para encontrar el Audience ID</li>
+                <li>
+                  El server prefix esta en tu URL de Mailchimp (ej:
+                  us14.admin.mailchimp.com = us14)
+                </li>
+                <li>
+                  Ve a Audience &rarr; Settings &rarr; Audience name and
+                  defaults para encontrar el Audience ID
+                </li>
               </ol>
             </div>
           </div>
@@ -868,7 +1029,9 @@ export function MailchimpCampaignStudio() {
           {audience && (
             <div className="flex items-center gap-2 px-4 py-2 bg-slc-card rounded-lg border border-slc-border">
               <Users className="w-4 h-4 text-primary" />
-              <span className="font-medium">{audience.stats.member_count.toLocaleString()}</span>
+              <span className="font-medium">
+                {audience.stats.member_count.toLocaleString()}
+              </span>
               <span className="text-xs text-slc-muted">suscriptores</span>
             </div>
           )}
@@ -886,10 +1049,15 @@ export function MailchimpCampaignStudio() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => { fetchDashboard(); fetchCampaigns(campaignFilter); }}
+            onClick={() => {
+              fetchDashboard();
+              fetchCampaigns(campaignFilter);
+            }}
             disabled={isLoading}
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+            />
           </Button>
         </div>
       </div>
@@ -922,7 +1090,9 @@ export function MailchimpCampaignStudio() {
       {isLoading && (
         <div className="flex items-center justify-center py-20">
           <RefreshCw className="w-8 h-8 text-primary animate-spin" />
-          <span className="ml-3 text-slc-muted">Cargando datos de Mailchimp...</span>
+          <span className="ml-3 text-slc-muted">
+            Cargando datos de Mailchimp...
+          </span>
         </div>
       )}
 
@@ -936,7 +1106,9 @@ export function MailchimpCampaignStudio() {
                 <Users className="w-5 h-5 text-primary" />
                 <span className="text-xs text-slc-muted">Suscriptores</span>
               </div>
-              <p className="text-3xl font-oswald">{audience.stats.member_count.toLocaleString()}</p>
+              <p className="text-3xl font-oswald">
+                {audience.stats.member_count.toLocaleString()}
+              </p>
               {growthHistory.length >= 2 && (
                 <div className="flex items-center gap-1 mt-1">
                   {growthHistory[0].optins >= growthHistory[1]?.optins ? (
@@ -971,9 +1143,13 @@ export function MailchimpCampaignStudio() {
             <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
               <div className="flex items-center gap-2 mb-3">
                 <Send className="w-5 h-5 text-green-500" />
-                <span className="text-xs text-slc-muted">Campanas Enviadas</span>
+                <span className="text-xs text-slc-muted">
+                  Campanas Enviadas
+                </span>
               </div>
-              <p className="text-3xl font-oswald">{campaigns.filter(c => c.status === "sent").length}</p>
+              <p className="text-3xl font-oswald">
+                {campaigns.filter((c) => c.status === "sent").length}
+              </p>
               <span className="text-xs text-slc-muted">Total de campanas</span>
             </div>
 
@@ -1056,7 +1232,9 @@ export function MailchimpCampaignStudio() {
               </button>
             </div>
             {campaigns.length === 0 ? (
-              <p className="text-slc-muted text-sm text-center py-8">No hay campanas todavia. Crea tu primera campana!</p>
+              <p className="text-slc-muted text-sm text-center py-8">
+                No hay campanas todavia. Crea tu primera campana!
+              </p>
             ) : (
               <div className="space-y-3">
                 {campaigns.slice(0, 5).map((campaign) => {
@@ -1070,9 +1248,12 @@ export function MailchimpCampaignStudio() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm truncate">
-                            {campaign.settings.title || campaign.settings.subject_line}
+                            {campaign.settings.title ||
+                              campaign.settings.subject_line}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${badge.color} flex items-center gap-1`}>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs ${badge.color} flex items-center gap-1`}
+                          >
                             <badge.icon className="w-3 h-3" />
                             {badge.label}
                           </span>
@@ -1083,14 +1264,19 @@ export function MailchimpCampaignStudio() {
                       </div>
                       <div className="text-right ml-4">
                         {campaign.emails_sent > 0 && (
-                          <p className="text-sm font-medium">{campaign.emails_sent.toLocaleString()} enviados</p>
+                          <p className="text-sm font-medium">
+                            {campaign.emails_sent.toLocaleString()} enviados
+                          </p>
                         )}
                         {campaign.report_summary && (
                           <p className="text-xs text-slc-muted">
-                            {formatRate(campaign.report_summary.open_rate)} apertura
+                            {formatRate(campaign.report_summary.open_rate)}{" "}
+                            apertura
                           </p>
                         )}
-                        <p className="text-xs text-slc-muted">{formatDate(campaign.send_time)}</p>
+                        <p className="text-xs text-slc-muted">
+                          {formatDate(campaign.send_time)}
+                        </p>
                       </div>
                     </div>
                   );
@@ -1113,7 +1299,9 @@ export function MailchimpCampaignStudio() {
                     className="px-3 py-1.5 bg-slc-dark rounded-full border border-slc-border text-sm flex items-center gap-2"
                   >
                     {tag.name}
-                    <span className="text-xs text-primary font-medium">{tag.count}</span>
+                    <span className="text-xs text-primary font-medium">
+                      {tag.count}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -1154,11 +1342,13 @@ export function MailchimpCampaignStudio() {
 
           {/* Send result notification */}
           {sendResult && (
-            <div className={`p-4 rounded-lg border flex items-center gap-3 ${
-              sendResult.success
-                ? "bg-green-500/10 border-green-500/20 text-green-500"
-                : "bg-red-500/10 border-red-500/20 text-red-500"
-            }`}>
+            <div
+              className={`p-4 rounded-lg border flex items-center gap-3 ${
+                sendResult.success
+                  ? "bg-green-500/10 border-green-500/20 text-green-500"
+                  : "bg-red-500/10 border-red-500/20 text-red-500"
+              }`}
+            >
               {sendResult.success ? (
                 <CheckCircle className="w-5 h-5 flex-shrink-0" />
               ) : (
@@ -1190,16 +1380,26 @@ export function MailchimpCampaignStudio() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded flex items-center justify-center ${
-                        selectedTemplate.id === template.id ? "bg-primary/20" : "bg-slc-dark"
-                      }`}>
-                        <template.icon className={`w-4 h-4 ${
-                          selectedTemplate.id === template.id ? "text-primary" : "text-slc-muted"
-                        }`} />
+                      <div
+                        className={`w-8 h-8 rounded flex items-center justify-center ${
+                          selectedTemplate.id === template.id
+                            ? "bg-primary/20"
+                            : "bg-slc-dark"
+                        }`}
+                      >
+                        <template.icon
+                          className={`w-4 h-4 ${
+                            selectedTemplate.id === template.id
+                              ? "text-primary"
+                              : "text-slc-muted"
+                          }`}
+                        />
                       </div>
                       <div>
                         <p className="font-medium text-sm">{template.name}</p>
-                        <p className="text-xs text-slc-muted">{template.description}</p>
+                        <p className="text-xs text-slc-muted">
+                          {template.description}
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -1209,8 +1409,12 @@ export function MailchimpCampaignStudio() {
               {/* Info: Campaign-specific emails */}
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
                 <p className="text-xs text-slc-muted">
-                  Para enviar emails de una campaña específica (presave, smartlink, etc.), ve a{" "}
-                  <a href="/admin/campaigns" className="text-primary hover:underline font-medium">
+                  Para enviar emails de una campaña específica (presave,
+                  smartlink, etc.), ve a{" "}
+                  <a
+                    href="/admin/campaigns"
+                    className="text-primary hover:underline font-medium"
+                  >
                     Campañas
                   </a>{" "}
                   → editar → Enviar Email
@@ -1243,7 +1447,9 @@ export function MailchimpCampaignStudio() {
               <div className="space-y-4 p-6 bg-slc-card rounded-xl border border-slc-border">
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nombre de la Campana</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Nombre de la Campana
+                  </label>
                   <input
                     type="text"
                     value={formTitle}
@@ -1255,7 +1461,9 @@ export function MailchimpCampaignStudio() {
 
                 {/* Subject */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Asunto *</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Asunto *
+                  </label>
                   <input
                     type="text"
                     value={formSubject}
@@ -1267,7 +1475,9 @@ export function MailchimpCampaignStudio() {
 
                 {/* Preview text */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Texto de Preview</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Texto de Preview
+                  </label>
                   <input
                     type="text"
                     value={formPreviewText}
@@ -1279,7 +1489,9 @@ export function MailchimpCampaignStudio() {
 
                 {/* Body */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Contenido *</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Contenido *
+                  </label>
                   <textarea
                     value={formBody}
                     onChange={(e) => setFormBody(e.target.value)}
@@ -1323,7 +1535,8 @@ export function MailchimpCampaignStudio() {
                 {/* Cover Image */}
                 <div>
                   <label className="block text-sm font-medium mb-1 flex items-center gap-1">
-                    <ImageIcon className="w-3 h-3" /> URL de Imagen de Portada (opcional)
+                    <ImageIcon className="w-3 h-3" /> URL de Imagen de Portada
+                    (opcional)
                   </label>
                   <input
                     type="url"
@@ -1342,29 +1555,115 @@ export function MailchimpCampaignStudio() {
                     className="w-full flex items-center justify-between text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                   >
                     <span className="flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" x="0" y="0" width="3" height="3" rx="1.5"/><circle cx="17.5" cy="10.5" width="3" height="3" rx="1.5"/><circle cx="8.5" cy="7.5" width="3" height="3" rx="1.5"/><circle cx="6.5" cy="12.5" width="3" height="3" rx="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle
+                          cx="13.5"
+                          cy="6.5"
+                          x="0"
+                          y="0"
+                          width="3"
+                          height="3"
+                          rx="1.5"
+                        />
+                        <circle
+                          cx="17.5"
+                          cy="10.5"
+                          width="3"
+                          height="3"
+                          rx="1.5"
+                        />
+                        <circle
+                          cx="8.5"
+                          cy="7.5"
+                          width="3"
+                          height="3"
+                          rx="1.5"
+                        />
+                        <circle
+                          cx="6.5"
+                          cy="12.5"
+                          width="3"
+                          height="3"
+                          rx="1.5"
+                        />
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+                      </svg>
                       Personalizar Diseño y Colores
                     </span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showStylePanel ? "rotate-180" : ""}`} />
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${showStylePanel ? "rotate-180" : ""}`}
+                    />
                   </button>
 
                   {showStylePanel && (
                     <div className="mt-4 space-y-4">
                       {/* Color Presets */}
                       <div>
-                        <label className="block text-xs text-slc-muted mb-2">Presets de Color</label>
+                        <label className="block text-xs text-slc-muted mb-2">
+                          Presets de Color
+                        </label>
                         <div className="flex flex-wrap gap-2">
                           {[
-                            { label: "Naranja (SLC)", primary: "#f97316", secondary: "#ea580c" },
-                            { label: "Dorado", primary: "#eab308", secondary: "#ca8a04" },
-                            { label: "Rojo", primary: "#ef4444", secondary: "#dc2626" },
-                            { label: "Rosa", primary: "#ec4899", secondary: "#db2777" },
-                            { label: "Morado", primary: "#a855f7", secondary: "#9333ea" },
-                            { label: "Azul", primary: "#3b82f6", secondary: "#2563eb" },
-                            { label: "Verde", primary: "#22c55e", secondary: "#16a34a" },
-                            { label: "Spotify", primary: "#1db954", secondary: "#1ed760" },
-                            { label: "Blanco", primary: "#ffffff", secondary: "#e5e7eb" },
-                            { label: "Neón", primary: "#00ff88", secondary: "#00ffcc" },
+                            {
+                              label: "Naranja (SLC)",
+                              primary: "#f97316",
+                              secondary: "#ea580c",
+                            },
+                            {
+                              label: "Dorado",
+                              primary: "#eab308",
+                              secondary: "#ca8a04",
+                            },
+                            {
+                              label: "Rojo",
+                              primary: "#ef4444",
+                              secondary: "#dc2626",
+                            },
+                            {
+                              label: "Rosa",
+                              primary: "#ec4899",
+                              secondary: "#db2777",
+                            },
+                            {
+                              label: "Morado",
+                              primary: "#a855f7",
+                              secondary: "#9333ea",
+                            },
+                            {
+                              label: "Azul",
+                              primary: "#3b82f6",
+                              secondary: "#2563eb",
+                            },
+                            {
+                              label: "Verde",
+                              primary: "#22c55e",
+                              secondary: "#16a34a",
+                            },
+                            {
+                              label: "Spotify",
+                              primary: "#1db954",
+                              secondary: "#1ed760",
+                            },
+                            {
+                              label: "Blanco",
+                              primary: "#ffffff",
+                              secondary: "#e5e7eb",
+                            },
+                            {
+                              label: "Neón",
+                              primary: "#00ff88",
+                              secondary: "#00ffcc",
+                            },
                           ].map((preset) => (
                             <button
                               key={preset.label}
@@ -1379,8 +1678,15 @@ export function MailchimpCampaignStudio() {
                                   : "border-slc-border bg-slc-dark hover:border-primary/50"
                               }`}
                             >
-                              <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
-                              <span className="text-slc-muted">{preset.label}</span>
+                              <span
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{
+                                  background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})`,
+                                }}
+                              />
+                              <span className="text-slc-muted">
+                                {preset.label}
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -1389,35 +1695,47 @@ export function MailchimpCampaignStudio() {
                       {/* Custom Colors */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs text-slc-muted mb-1">Color Principal</label>
+                          <label className="block text-xs text-slc-muted mb-1">
+                            Color Principal
+                          </label>
                           <div className="flex items-center gap-2">
                             <input
                               type="color"
                               value={formStylePrimaryColor}
-                              onChange={(e) => setFormStylePrimaryColor(e.target.value)}
+                              onChange={(e) =>
+                                setFormStylePrimaryColor(e.target.value)
+                              }
                               className="w-8 h-8 rounded border border-slc-border cursor-pointer"
                             />
                             <input
                               type="text"
                               value={formStylePrimaryColor}
-                              onChange={(e) => setFormStylePrimaryColor(e.target.value)}
+                              onChange={(e) =>
+                                setFormStylePrimaryColor(e.target.value)
+                              }
                               className="flex-1 px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs text-slc-muted mb-1">Color Secundario</label>
+                          <label className="block text-xs text-slc-muted mb-1">
+                            Color Secundario
+                          </label>
                           <div className="flex items-center gap-2">
                             <input
                               type="color"
                               value={formStyleSecondaryColor}
-                              onChange={(e) => setFormStyleSecondaryColor(e.target.value)}
+                              onChange={(e) =>
+                                setFormStyleSecondaryColor(e.target.value)
+                              }
                               className="w-8 h-8 rounded border border-slc-border cursor-pointer"
                             />
                             <input
                               type="text"
                               value={formStyleSecondaryColor}
-                              onChange={(e) => setFormStyleSecondaryColor(e.target.value)}
+                              onChange={(e) =>
+                                setFormStyleSecondaryColor(e.target.value)
+                              }
                               className="flex-1 px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
                             />
                           </div>
@@ -1432,7 +1750,9 @@ export function MailchimpCampaignStudio() {
                             type="button"
                             onClick={() => setFormStyleDarkMode(true)}
                             className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                              formStyleDarkMode ? "bg-primary text-white" : "text-slc-muted hover:text-white"
+                              formStyleDarkMode
+                                ? "bg-primary text-white"
+                                : "text-slc-muted hover:text-white"
                             }`}
                           >
                             Oscuro
@@ -1441,7 +1761,9 @@ export function MailchimpCampaignStudio() {
                             type="button"
                             onClick={() => setFormStyleDarkMode(false)}
                             className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                              !formStyleDarkMode ? "bg-primary text-white" : "text-slc-muted hover:text-white"
+                              !formStyleDarkMode
+                                ? "bg-primary text-white"
+                                : "text-slc-muted hover:text-white"
                             }`}
                           >
                             Claro
@@ -1452,10 +1774,14 @@ export function MailchimpCampaignStudio() {
                       {/* Fonts */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs text-slc-muted mb-1">Fuente de Títulos</label>
+                          <label className="block text-xs text-slc-muted mb-1">
+                            Fuente de Títulos
+                          </label>
                           <select
                             value={formStyleTitleFont}
-                            onChange={(e) => setFormStyleTitleFont(e.target.value)}
+                            onChange={(e) =>
+                              setFormStyleTitleFont(e.target.value)
+                            }
                             className="w-full px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
                           >
                             <option value="oswald">Oswald</option>
@@ -1464,7 +1790,9 @@ export function MailchimpCampaignStudio() {
                             <option value="archivo-black">Archivo Black</option>
                             <option value="righteous">Righteous</option>
                             <option value="bangers">Bangers</option>
-                            <option value="permanent-marker">Permanent Marker</option>
+                            <option value="permanent-marker">
+                              Permanent Marker
+                            </option>
                             <option value="montserrat">Montserrat</option>
                             <option value="poppins">Poppins</option>
                             <option value="inter">Inter</option>
@@ -1474,10 +1802,14 @@ export function MailchimpCampaignStudio() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs text-slc-muted mb-1">Fuente del Cuerpo</label>
+                          <label className="block text-xs text-slc-muted mb-1">
+                            Fuente del Cuerpo
+                          </label>
                           <select
                             value={formStyleBodyFont}
-                            onChange={(e) => setFormStyleBodyFont(e.target.value)}
+                            onChange={(e) =>
+                              setFormStyleBodyFont(e.target.value)
+                            }
                             className="w-full px-2 py-1.5 bg-slc-dark border border-slc-border rounded text-xs focus:border-primary focus:outline-none"
                           >
                             <option value="inter">Inter</option>
@@ -1497,7 +1829,9 @@ export function MailchimpCampaignStudio() {
 
                       {/* Button Style */}
                       <div>
-                        <label className="block text-xs text-slc-muted mb-2">Estilo del Botón</label>
+                        <label className="block text-xs text-slc-muted mb-2">
+                          Estilo del Botón
+                        </label>
                         <div className="flex gap-2 flex-wrap">
                           {[
                             { value: "gradient" as const, label: "Gradiente" },
@@ -1523,7 +1857,9 @@ export function MailchimpCampaignStudio() {
 
                       {/* Button Rounded */}
                       <div>
-                        <label className="block text-xs text-slc-muted mb-2">Bordes del Botón</label>
+                        <label className="block text-xs text-slc-muted mb-2">
+                          Bordes del Botón
+                        </label>
                         <div className="flex gap-2">
                           {[
                             { value: "none" as const, label: "Cuadrado" },
@@ -1535,7 +1871,9 @@ export function MailchimpCampaignStudio() {
                             <button
                               key={opt.value}
                               type="button"
-                              onClick={() => setFormStyleButtonRounded(opt.value)}
+                              onClick={() =>
+                                setFormStyleButtonRounded(opt.value)
+                              }
                               className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                                 formStyleButtonRounded === opt.value
                                   ? "border-primary bg-primary/10 text-primary"
@@ -1550,34 +1888,54 @@ export function MailchimpCampaignStudio() {
 
                       {/* Preview swatch */}
                       <div className="p-3 bg-slc-dark rounded-lg border border-slc-border">
-                        <p className="text-xs text-slc-muted mb-2">Vista previa</p>
+                        <p className="text-xs text-slc-muted mb-2">
+                          Vista previa
+                        </p>
                         <div className="flex items-center gap-3">
                           <div
                             className="w-24 h-16 rounded-lg overflow-hidden flex-shrink-0"
-                            style={{ backgroundColor: formStyleDarkMode ? "#1a1a1a" : "#ffffff" }}
+                            style={{
+                              backgroundColor: formStyleDarkMode
+                                ? "#1a1a1a"
+                                : "#ffffff",
+                            }}
                           >
                             <div
                               className="h-5"
-                              style={{ background: `linear-gradient(135deg, ${formStylePrimaryColor}, ${formStyleSecondaryColor})` }}
+                              style={{
+                                background: `linear-gradient(135deg, ${formStylePrimaryColor}, ${formStyleSecondaryColor})`,
+                              }}
                             />
                             <div className="flex items-center justify-center h-11">
                               <div
                                 className="px-3 py-1 text-[10px] text-white font-bold"
                                 style={{
-                                  background: formStyleButtonStyle === "gradient"
-                                    ? `linear-gradient(135deg, ${formStylePrimaryColor}, ${formStyleSecondaryColor})`
-                                    : formStyleButtonStyle === "solid"
-                                    ? formStylePrimaryColor
-                                    : formStyleButtonStyle === "outline"
-                                    ? "transparent"
-                                    : "rgba(255,255,255,0.1)",
-                                  border: formStyleButtonStyle === "outline" ? `2px solid ${formStylePrimaryColor}` : "none",
+                                  background:
+                                    formStyleButtonStyle === "gradient"
+                                      ? `linear-gradient(135deg, ${formStylePrimaryColor}, ${formStyleSecondaryColor})`
+                                      : formStyleButtonStyle === "solid"
+                                        ? formStylePrimaryColor
+                                        : formStyleButtonStyle === "outline"
+                                          ? "transparent"
+                                          : "rgba(255,255,255,0.1)",
+                                  border:
+                                    formStyleButtonStyle === "outline"
+                                      ? `2px solid ${formStylePrimaryColor}`
+                                      : "none",
                                   borderRadius:
-                                    formStyleButtonRounded === "full" ? "50px" :
-                                    formStyleButtonRounded === "lg" ? "8px" :
-                                    formStyleButtonRounded === "md" ? "6px" :
-                                    formStyleButtonRounded === "sm" ? "4px" : "0px",
-                                  color: formStyleButtonStyle === "outline" ? formStylePrimaryColor : "#ffffff",
+                                    formStyleButtonRounded === "full"
+                                      ? "50px"
+                                      : formStyleButtonRounded === "lg"
+                                        ? "8px"
+                                        : formStyleButtonRounded === "md"
+                                          ? "6px"
+                                          : formStyleButtonRounded === "sm"
+                                            ? "4px"
+                                            : "0px",
+                                  color:
+                                    formStyleButtonStyle === "outline"
+                                      ? formStylePrimaryColor
+                                      : "#ffffff",
                                 }}
                               >
                                 BOTÓN
@@ -1585,10 +1943,28 @@ export function MailchimpCampaignStudio() {
                             </div>
                           </div>
                           <div className="text-xs space-y-1">
-                            <p style={{ color: formStyleDarkMode ? "#fff" : "#333" }}>
-                              <span style={{ color: formStylePrimaryColor, fontWeight: "bold" }}>Título</span> de ejemplo
+                            <p
+                              style={{
+                                color: formStyleDarkMode ? "#fff" : "#333",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  color: formStylePrimaryColor,
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                Título
+                              </span>{" "}
+                              de ejemplo
                             </p>
-                            <p style={{ color: formStyleDarkMode ? "#999" : "#666" }}>Cuerpo del email</p>
+                            <p
+                              style={{
+                                color: formStyleDarkMode ? "#999" : "#666",
+                              }}
+                            >
+                              Cuerpo del email
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1617,9 +1993,11 @@ export function MailchimpCampaignStudio() {
               <div className="flex items-center gap-3">
                 <Button
                   onClick={() => {
-                    const confirmed = confirm(formScheduleTime
-                      ? "Programar esta campana para envio?"
-                      : "Enviar esta campana ahora? Esta accion no se puede deshacer.");
+                    const confirmed = confirm(
+                      formScheduleTime
+                        ? "Programar esta campana para envio?"
+                        : "Enviar esta campana ahora? Esta accion no se puede deshacer.",
+                    );
                     if (confirmed) handleCreateCampaign(true);
                   }}
                   disabled={isSending || !formSubject || !formBody}
@@ -1635,9 +2013,8 @@ export function MailchimpCampaignStudio() {
                   {isSending
                     ? "Enviando..."
                     : formScheduleTime
-                    ? "Programar Campana"
-                    : "Enviar Ahora"
-                  }
+                      ? "Programar Campana"
+                      : "Enviar Ahora"}
                 </Button>
                 <Button
                   variant="outline"
@@ -1645,7 +2022,9 @@ export function MailchimpCampaignStudio() {
                   disabled={isSending || !formSubject || !formBody}
                 >
                   <FileEdit className="w-4 h-4 mr-2" />
-                  {editingCampaignId ? "Guardar Cambios" : "Guardar como Borrador"}
+                  {editingCampaignId
+                    ? "Guardar Cambios"
+                    : "Guardar como Borrador"}
                 </Button>
                 <Button
                   variant="outline"
@@ -1711,11 +2090,15 @@ export function MailchimpCampaignStudio() {
                     : "bg-slc-card border-slc-border text-slc-muted hover:border-primary/50"
                 }`}
               >
-                {filter === "all" ? "Todas" :
-                 filter === "sent" ? "Enviadas" :
-                 filter === "schedule" ? "Programadas" :
-                 filter === "draft" ? "Borradores" :
-                 "Enviando"}
+                {filter === "all"
+                  ? "Todas"
+                  : filter === "sent"
+                    ? "Enviadas"
+                    : filter === "schedule"
+                      ? "Programadas"
+                      : filter === "draft"
+                        ? "Borradores"
+                        : "Enviando"}
               </button>
             ))}
           </div>
@@ -1725,12 +2108,17 @@ export function MailchimpCampaignStudio() {
             {campaignsLoading ? (
               <div className="flex items-center justify-center py-16">
                 <RefreshCw className="w-8 h-8 text-primary animate-spin" />
-                <span className="ml-3 text-slc-muted">Cargando campañas...</span>
+                <span className="ml-3 text-slc-muted">
+                  Cargando campañas...
+                </span>
               </div>
             ) : campaigns.length === 0 ? (
               <div className="text-center py-16">
                 <Send className="w-12 h-12 text-slc-muted mx-auto mb-4" />
-                <p className="text-slc-muted">No hay campanas {campaignFilter !== "all" ? "con este filtro" : "todavia"}</p>
+                <p className="text-slc-muted">
+                  No hay campanas{" "}
+                  {campaignFilter !== "all" ? "con este filtro" : "todavia"}
+                </p>
                 <Button
                   variant="outline"
                   className="mt-4"
@@ -1757,9 +2145,12 @@ export function MailchimpCampaignStudio() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-medium truncate">
-                            {campaign.settings.title || campaign.settings.subject_line}
+                            {campaign.settings.title ||
+                              campaign.settings.subject_line}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${badge.color}`}>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${badge.color}`}
+                          >
                             <badge.icon className="w-3 h-3" />
                             {badge.label}
                           </span>
@@ -1775,25 +2166,32 @@ export function MailchimpCampaignStudio() {
                       </div>
                       <div className="text-right shrink-0">
                         {campaign.emails_sent > 0 && (
-                          <p className="text-sm font-medium">{campaign.emails_sent.toLocaleString()}</p>
+                          <p className="text-sm font-medium">
+                            {campaign.emails_sent.toLocaleString()}
+                          </p>
                         )}
                         {campaign.report_summary && (
                           <div className="flex items-center gap-3 mt-1">
                             <span className="text-xs text-green-500 flex items-center gap-1">
-                              <Eye className="w-3 h-3" /> {formatRate(campaign.report_summary.open_rate)}
+                              <Eye className="w-3 h-3" />{" "}
+                              {formatRate(campaign.report_summary.open_rate)}
                             </span>
                             <span className="text-xs text-blue-500 flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" /> {formatRate(campaign.report_summary.click_rate)}
+                              <TrendingUp className="w-3 h-3" />{" "}
+                              {formatRate(campaign.report_summary.click_rate)}
                             </span>
                           </div>
                         )}
-                        <p className="text-xs text-slc-muted mt-1">{formatDate(campaign.send_time)}</p>
+                        <p className="text-xs text-slc-muted mt-1">
+                          {formatDate(campaign.send_time)}
+                        </p>
                       </div>
                     </div>
 
                     {/* Campaign Actions */}
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slc-border flex-wrap">
-                      {(campaign.status === "draft" || campaign.status === "save") && (
+                      {(campaign.status === "draft" ||
+                        campaign.status === "save") && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -1806,7 +2204,9 @@ export function MailchimpCampaignStudio() {
                           Editar
                         </Button>
                       )}
-                      {(campaign.status === "draft" || campaign.status === "save" || campaign.status === "schedule") && (
+                      {(campaign.status === "draft" ||
+                        campaign.status === "save" ||
+                        campaign.status === "schedule") && (
                         <Button
                           size="sm"
                           onClick={(e) => {
@@ -1833,14 +2233,21 @@ export function MailchimpCampaignStudio() {
                           Cancelar Envio
                         </Button>
                       )}
-                      {(campaign.status === "draft" || campaign.status === "save") && (
+                      {(campaign.status === "draft" ||
+                        campaign.status === "save") && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const time = prompt("Fecha y hora de envio (ISO):", new Date(Date.now() + 3600000).toISOString());
-                            if (time) handleCampaignAction(campaign.id, "schedule", { scheduleTime: time });
+                            const time = prompt(
+                              "Fecha y hora de envio (ISO):",
+                              new Date(Date.now() + 3600000).toISOString(),
+                            );
+                            if (time)
+                              handleCampaignAction(campaign.id, "schedule", {
+                                scheduleTime: time,
+                              });
                           }}
                         >
                           <Calendar className="w-3 h-3 mr-1" />
@@ -1871,7 +2278,9 @@ export function MailchimpCampaignStudio() {
                         <Copy className="w-3 h-3 mr-1" />
                         Duplicar
                       </Button>
-                      {(campaign.status === "draft" || campaign.status === "save" || campaign.status === "schedule") && (
+                      {(campaign.status === "draft" ||
+                        campaign.status === "save" ||
+                        campaign.status === "schedule") && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -1908,7 +2317,8 @@ export function MailchimpCampaignStudio() {
                 <div className="flex items-center justify-between p-6 border-b border-slc-border">
                   <div>
                     <h3 className="font-oswald text-xl uppercase">
-                      {selectedCampaign.settings.title || selectedCampaign.settings.subject_line}
+                      {selectedCampaign.settings.title ||
+                        selectedCampaign.settings.subject_line}
                     </h3>
                     <p className="text-sm text-slc-muted mt-1">
                       {selectedCampaign.settings.subject_line}
@@ -1927,58 +2337,115 @@ export function MailchimpCampaignStudio() {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
                           <p className="text-2xl font-oswald">
-                            {(campaignReport as Record<string, unknown>).emails_sent as number || 0}
+                            {((campaignReport as Record<string, unknown>)
+                              .emails_sent as number) || 0}
                           </p>
                           <p className="text-xs text-slc-muted">Enviados</p>
                         </div>
                         <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
                           <p className="text-2xl font-oswald text-green-500">
-                            {((campaignReport as Record<string, Record<string, number>>).opens?.unique_opens || 0)}
+                            {(
+                              campaignReport as Record<
+                                string,
+                                Record<string, number>
+                              >
+                            ).opens?.unique_opens || 0}
                           </p>
-                          <p className="text-xs text-slc-muted">Aperturas Unicas</p>
+                          <p className="text-xs text-slc-muted">
+                            Aperturas Unicas
+                          </p>
                         </div>
                         <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
                           <p className="text-2xl font-oswald text-blue-500">
-                            {((campaignReport as Record<string, Record<string, number>>).clicks?.unique_clicks || 0)}
+                            {(
+                              campaignReport as Record<
+                                string,
+                                Record<string, number>
+                              >
+                            ).clicks?.unique_clicks || 0}
                           </p>
-                          <p className="text-xs text-slc-muted">Clicks Unicos</p>
+                          <p className="text-xs text-slc-muted">
+                            Clicks Unicos
+                          </p>
                         </div>
                         <div className="p-4 bg-slc-card rounded-lg border border-slc-border text-center">
                           <p className="text-2xl font-oswald text-red-500">
-                            {(campaignReport as Record<string, Record<string, number>>).bounces?.hard_bounces || 0}
+                            {(
+                              campaignReport as Record<
+                                string,
+                                Record<string, number>
+                              >
+                            ).bounces?.hard_bounces || 0}
                           </p>
-                          <p className="text-xs text-slc-muted">Rebotes Duros</p>
+                          <p className="text-xs text-slc-muted">
+                            Rebotes Duros
+                          </p>
                         </div>
                       </div>
                       {/* Rates & Additional Metrics */}
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                         <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
                           <p className="text-xl font-oswald text-green-500">
-                            {(((campaignReport as Record<string, Record<string, number>>).opens?.open_rate || 0) * 100).toFixed(1)}%
+                            {(
+                              ((
+                                campaignReport as Record<
+                                  string,
+                                  Record<string, number>
+                                >
+                              ).opens?.open_rate || 0) * 100
+                            ).toFixed(1)}
+                            %
                           </p>
-                          <p className="text-xs text-green-400">Tasa de Apertura</p>
+                          <p className="text-xs text-green-400">
+                            Tasa de Apertura
+                          </p>
                         </div>
                         <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
                           <p className="text-xl font-oswald text-blue-500">
-                            {(((campaignReport as Record<string, Record<string, number>>).clicks?.click_rate || 0) * 100).toFixed(1)}%
+                            {(
+                              ((
+                                campaignReport as Record<
+                                  string,
+                                  Record<string, number>
+                                >
+                              ).clicks?.click_rate || 0) * 100
+                            ).toFixed(1)}
+                            %
                           </p>
-                          <p className="text-xs text-blue-400">Tasa de Clicks</p>
+                          <p className="text-xs text-blue-400">
+                            Tasa de Clicks
+                          </p>
                         </div>
                         <div className="p-3 bg-slc-card rounded-lg border border-slc-border text-center">
                           <p className="text-xl font-oswald">
-                            {((campaignReport as Record<string, Record<string, number>>).opens?.total_opens || 0)}
+                            {(
+                              campaignReport as Record<
+                                string,
+                                Record<string, number>
+                              >
+                            ).opens?.total_opens || 0}
                           </p>
-                          <p className="text-xs text-slc-muted">Aperturas Totales</p>
+                          <p className="text-xs text-slc-muted">
+                            Aperturas Totales
+                          </p>
                         </div>
                         <div className="p-3 bg-slc-card rounded-lg border border-slc-border text-center">
                           <p className="text-xl font-oswald">
-                            {(campaignReport as Record<string, Record<string, number>>).bounces?.soft_bounces || 0}
+                            {(
+                              campaignReport as Record<
+                                string,
+                                Record<string, number>
+                              >
+                            ).bounces?.soft_bounces || 0}
                           </p>
-                          <p className="text-xs text-slc-muted">Rebotes Suaves</p>
+                          <p className="text-xs text-slc-muted">
+                            Rebotes Suaves
+                          </p>
                         </div>
                         <div className="p-3 bg-slc-card rounded-lg border border-slc-border text-center">
                           <p className="text-xl font-oswald">
-                            {((campaignReport as Record<string, unknown>).unsubscribed as number) || 0}
+                            {((campaignReport as Record<string, unknown>)
+                              .unsubscribed as number) || 0}
                           </p>
                           <p className="text-xs text-slc-muted">Bajas</p>
                         </div>
@@ -2012,7 +2479,11 @@ export function MailchimpCampaignStudio() {
                     </div>
                     <div>
                       <span className="text-slc-muted">Estado:</span>{" "}
-                      <span className={getStatusBadge(selectedCampaign.status).color}>
+                      <span
+                        className={
+                          getStatusBadge(selectedCampaign.status).color
+                        }
+                      >
                         {getStatusBadge(selectedCampaign.status).label}
                       </span>
                     </div>
@@ -2039,7 +2510,8 @@ export function MailchimpCampaignStudio() {
                   </div>
 
                   {/* Edit button for drafts */}
-                  {(selectedCampaign.status === "draft" || selectedCampaign.status === "save") && (
+                  {(selectedCampaign.status === "draft" ||
+                    selectedCampaign.status === "save") && (
                     <div className="flex items-center gap-3 pt-2">
                       <Button
                         onClick={() => {
@@ -2067,36 +2539,48 @@ export function MailchimpCampaignStudio() {
             <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-5 h-5 text-primary" />
-                <span className="text-xs text-slc-muted">Total Suscriptores</span>
+                <span className="text-xs text-slc-muted">
+                  Total Suscriptores
+                </span>
               </div>
-              <p className="text-3xl font-oswald">{audience.stats.member_count.toLocaleString()}</p>
+              <p className="text-3xl font-oswald">
+                {audience.stats.member_count.toLocaleString()}
+              </p>
             </div>
             <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
               <div className="flex items-center gap-2 mb-3">
                 <XCircle className="w-5 h-5 text-red-500" />
                 <span className="text-xs text-slc-muted">Desuscritos</span>
               </div>
-              <p className="text-3xl font-oswald">{audience.stats.unsubscribe_count.toLocaleString()}</p>
+              <p className="text-3xl font-oswald">
+                {audience.stats.unsubscribe_count.toLocaleString()}
+              </p>
             </div>
             <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
               <div className="flex items-center gap-2 mb-3">
                 <Eye className="w-5 h-5 text-blue-500" />
                 <span className="text-xs text-slc-muted">Tasa de Apertura</span>
               </div>
-              <p className="text-3xl font-oswald">{formatRate(audience.stats.open_rate)}</p>
+              <p className="text-3xl font-oswald">
+                {formatRate(audience.stats.open_rate)}
+              </p>
             </div>
             <div className="p-5 bg-slc-card rounded-xl border border-slc-border">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-5 h-5 text-green-500" />
                 <span className="text-xs text-slc-muted">Tasa de Clicks</span>
               </div>
-              <p className="text-3xl font-oswald">{formatRate(audience.stats.click_rate)}</p>
+              <p className="text-3xl font-oswald">
+                {formatRate(audience.stats.click_rate)}
+              </p>
             </div>
           </div>
 
           {/* Audience Info */}
           <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
-            <h3 className="font-oswald text-lg uppercase mb-4">Informacion de la Audiencia</h3>
+            <h3 className="font-oswald text-lg uppercase mb-4">
+              Informacion de la Audiencia
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-slc-muted">Nombre:</span>{" "}
@@ -2108,11 +2592,15 @@ export function MailchimpCampaignStudio() {
               </div>
               <div>
                 <span className="text-slc-muted">Suscriptores Activos:</span>{" "}
-                <span className="font-medium">{audience.stats.member_count.toLocaleString()}</span>
+                <span className="font-medium">
+                  {audience.stats.member_count.toLocaleString()}
+                </span>
               </div>
               <div>
                 <span className="text-slc-muted">Limpiados:</span>{" "}
-                <span className="font-medium">{audience.stats.cleaned_count.toLocaleString()}</span>
+                <span className="font-medium">
+                  {audience.stats.cleaned_count.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -2125,27 +2613,30 @@ export function MailchimpCampaignStudio() {
                 Historial de Crecimiento
               </h3>
               <div className="space-y-2">
-                {growthHistory.slice().reverse().map((item) => (
-                  <div
-                    key={item.month}
-                    className="flex items-center justify-between p-3 bg-slc-dark rounded-lg"
-                  >
-                    <span className="text-sm font-medium">{item.month}</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-slc-muted">
-                        {item.existing.toLocaleString()} suscriptores
-                      </span>
-                      <span className="text-sm text-green-500">
-                        +{item.optins} opt-ins
-                      </span>
-                      {item.imports > 0 && (
-                        <span className="text-sm text-blue-500">
-                          +{item.imports} importados
+                {growthHistory
+                  .slice()
+                  .reverse()
+                  .map((item) => (
+                    <div
+                      key={item.month}
+                      className="flex items-center justify-between p-3 bg-slc-dark rounded-lg"
+                    >
+                      <span className="text-sm font-medium">{item.month}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-slc-muted">
+                          {item.existing.toLocaleString()} suscriptores
                         </span>
-                      )}
+                        <span className="text-sm text-green-500">
+                          +{item.optins} opt-ins
+                        </span>
+                        {item.imports > 0 && (
+                          <span className="text-sm text-blue-500">
+                            +{item.imports} importados
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}
@@ -2164,7 +2655,9 @@ export function MailchimpCampaignStudio() {
                     className="p-4 bg-slc-dark rounded-lg border border-slc-border"
                   >
                     <p className="font-medium text-sm truncate">{tag.name}</p>
-                    <p className="text-xs text-slc-muted mt-1">{tag.count} contactos</p>
+                    <p className="text-xs text-slc-muted mt-1">
+                      {tag.count} contactos
+                    </p>
                   </div>
                 ))}
               </div>
@@ -2206,15 +2699,20 @@ export function MailchimpCampaignStudio() {
               </div>
               <div className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
                 <span className="text-sm">Suscriptores</span>
-                <span className="text-sm font-medium">{audience.stats.member_count.toLocaleString()}</span>
+                <span className="text-sm font-medium">
+                  {audience.stats.member_count.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
-            <h3 className="font-oswald text-lg uppercase mb-4">Abrir en Mailchimp</h3>
+            <h3 className="font-oswald text-lg uppercase mb-4">
+              Abrir en Mailchimp
+            </h3>
             <p className="text-sm text-slc-muted mb-4">
-              Para opciones avanzadas como A/B testing, automaciones, y editar plantillas visuales, usa el dashboard de Mailchimp directamente.
+              Para opciones avanzadas como A/B testing, automaciones, y editar
+              plantillas visuales, usa el dashboard de Mailchimp directamente.
             </p>
             <a
               href="https://admin.mailchimp.com"
@@ -2229,18 +2727,32 @@ export function MailchimpCampaignStudio() {
           </div>
 
           <div className="p-6 bg-slc-card rounded-xl border border-slc-border">
-            <h3 className="font-oswald text-lg uppercase mb-4">Variables de Entorno</h3>
+            <h3 className="font-oswald text-lg uppercase mb-4">
+              Variables de Entorno
+            </h3>
             <p className="text-sm text-slc-muted mb-4">
-              Estas son las variables de entorno necesarias. Se configuran en el dashboard de Netlify.
+              Estas son las variables de entorno necesarias. Se configuran en el
+              dashboard de Netlify.
             </p>
             <div className="space-y-2">
               {[
                 { key: "MAILCHIMP_API_KEY", desc: "Tu API key de Mailchimp" },
-                { key: "MAILCHIMP_SERVER_PREFIX", desc: "Servidor de la API (ej: us14)" },
-                { key: "MAILCHIMP_AUDIENCE_ID", desc: "ID de tu lista/audiencia" },
+                {
+                  key: "MAILCHIMP_SERVER_PREFIX",
+                  desc: "Servidor de la API (ej: us14)",
+                },
+                {
+                  key: "MAILCHIMP_AUDIENCE_ID",
+                  desc: "ID de tu lista/audiencia",
+                },
               ].map((env) => (
-                <div key={env.key} className="flex items-center justify-between p-3 bg-slc-dark rounded-lg">
-                  <code className="text-sm text-primary font-mono">{env.key}</code>
+                <div
+                  key={env.key}
+                  className="flex items-center justify-between p-3 bg-slc-dark rounded-lg"
+                >
+                  <code className="text-sm text-primary font-mono">
+                    {env.key}
+                  </code>
                   <span className="text-xs text-slc-muted">{env.desc}</span>
                 </div>
               ))}

@@ -1,26 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Mail,
-  Search,
-  Trash2,
-  RefreshCw,
+  AlertTriangle,
+  Calendar,
+  CheckCircle,
   Download,
-  Users,
+  Globe,
+  Mail,
+  MoreVertical,
+  RefreshCw,
+  Search,
+  Shield,
+  Trash2,
+  User,
   UserCheck,
   UserX,
-  Calendar,
-  Globe,
-  User,
-  MoreVertical,
-  CheckCircle,
+  Users,
   XCircle,
-  Shield,
-  AlertTriangle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface Subscriber {
   id: string;
@@ -41,11 +41,19 @@ interface SubscribersMeta {
 
 export default function AdminSubscribersPage() {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
-  const [meta, setMeta] = useState<SubscribersMeta>({ total: 0, active: 0, inactive: 0 });
+  const [meta, setMeta] = useState<SubscribersMeta>({
+    total: 0,
+    active: 0,
+    inactive: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "suspicious">("all");
-  const [selectedSubscribers, setSelectedSubscribers] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive" | "suspicious"
+  >("all");
+  const [selectedSubscribers, setSelectedSubscribers] = useState<Set<string>>(
+    new Set(),
+  );
 
   useEffect(() => {
     fetchSubscribers();
@@ -123,7 +131,8 @@ export default function AdminSubscribersPage() {
 
   const handleBulkUnsubscribe = async () => {
     if (selectedSubscribers.size === 0) return;
-    if (!confirm(`¿Dar de baja a ${selectedSubscribers.size} suscriptores?`)) return;
+    if (!confirm(`¿Dar de baja a ${selectedSubscribers.size} suscriptores?`))
+      return;
 
     let done = 0;
     for (const id of selectedSubscribers) {
@@ -145,7 +154,12 @@ export default function AdminSubscribersPage() {
 
   const handleBulkDelete = async () => {
     if (selectedSubscribers.size === 0) return;
-    if (!confirm(`¿ELIMINAR PERMANENTEMENTE a ${selectedSubscribers.size} suscriptores? Esta acción no se puede deshacer.`)) return;
+    if (
+      !confirm(
+        `¿ELIMINAR PERMANENTEMENTE a ${selectedSubscribers.size} suscriptores? Esta acción no se puede deshacer.`,
+      )
+    )
+      return;
 
     let done = 0;
     for (const id of selectedSubscribers) {
@@ -175,7 +189,7 @@ export default function AdminSubscribersPage() {
           s.name || "",
           s.source || "website",
           new Date(s.subscribedAt).toISOString(),
-        ].join(",")
+        ].join(","),
       ),
     ].join("\n");
 
@@ -190,16 +204,31 @@ export default function AdminSubscribersPage() {
 
   // Known spam domains
   const SPAM_DOMAINS = [
-    "chameleongroup.co", "a7g.ru", "mailinator.com", "guerrillamail.com",
-    "sharklasers.com", "guerrillamailblock.com", "grr.la", "dispostable.com",
-    "trashmail.com", "tempmail.com", "throwaway.email",
+    "chameleongroup.co",
+    "a7g.ru",
+    "mailinator.com",
+    "guerrillamail.com",
+    "sharklasers.com",
+    "guerrillamailblock.com",
+    "grr.la",
+    "dispostable.com",
+    "trashmail.com",
+    "tempmail.com",
+    "throwaway.email",
   ];
 
   // Valid subscription sources on the public site
   const VALID_SOURCES = [
-    "website", "newsletter-form", "homepage",
-    "popup_time", "popup_scroll", "popup_exit-intent",
-    "download-gate", "musica", "contacto", "footer",
+    "website",
+    "newsletter-form",
+    "homepage",
+    "popup_time",
+    "popup_scroll",
+    "popup_exit-intent",
+    "download-gate",
+    "musica",
+    "contacto",
+    "footer",
   ];
 
   // Human-readable source labels
@@ -240,7 +269,11 @@ export default function AdminSubscribersPage() {
     }
 
     // Invalid source (doesn't exist on public site)
-    if (!VALID_SOURCES.includes(source) && !source.startsWith("download-gate:") && !source.startsWith("popup_")) {
+    if (
+      !VALID_SOURCES.includes(source) &&
+      !source.startsWith("download-gate:") &&
+      !source.startsWith("popup_")
+    ) {
       return true;
     }
 
@@ -252,10 +285,12 @@ export default function AdminSubscribersPage() {
   const filteredSubscribers = subscribers.filter((subscriber) => {
     const matchesSearch =
       subscriber.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (subscriber.name && subscriber.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      subscriber.name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "active" && subscriber.isActive && !isLikelyBot(subscriber)) ||
+      (statusFilter === "active" &&
+        subscriber.isActive &&
+        !isLikelyBot(subscriber)) ||
       (statusFilter === "inactive" && !subscriber.isActive) ||
       (statusFilter === "suspicious" && isLikelyBot(subscriber));
     return matchesSearch && matchesStatus;
@@ -290,7 +325,12 @@ export default function AdminSubscribersPage() {
   const handleCleanBots = async () => {
     const bots = subscribers.filter(isLikelyBot);
     if (bots.length === 0) return;
-    if (!confirm(`Se eliminarán ${bots.length} suscriptores sospechosos de ser bots. ¿Continuar?`)) return;
+    if (
+      !confirm(
+        `Se eliminarán ${bots.length} suscriptores sospechosos de ser bots. ¿Continuar?`,
+      )
+    )
+      return;
 
     let deleted = 0;
     for (const bot of bots) {
@@ -330,7 +370,9 @@ export default function AdminSubscribersPage() {
     const label = SOURCE_LABELS[src] || src;
 
     return (
-      <span className={`px-2 py-0.5 rounded-full text-xs ${isBot ? "bg-red-500/10 text-red-500" : (colors[src] || "bg-yellow-500/10 text-yellow-500")}`}>
+      <span
+        className={`px-2 py-0.5 rounded-full text-xs ${isBot ? "bg-red-500/10 text-red-500" : colors[src] || "bg-yellow-500/10 text-yellow-500"}`}
+      >
         {isBot && <AlertTriangle className="w-3 h-3 inline mr-0.5" />}
         {isBot ? `⚠ ${src}` : label}
       </span>
@@ -349,13 +391,23 @@ export default function AdminSubscribersPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {suspiciousCount > 0 && (
-            <Button variant="outline" onClick={handleCleanBots} className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+            <Button
+              variant="outline"
+              onClick={handleCleanBots}
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+            >
               <Shield className="w-4 h-4 mr-2" />
               Eliminar {suspiciousCount} bots
             </Button>
           )}
-          <Button variant="outline" onClick={fetchSubscribers} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          <Button
+            variant="outline"
+            onClick={fetchSubscribers}
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
             Actualizar
           </Button>
           <Button variant="outline" onClick={exportSubscribers}>
@@ -378,21 +430,27 @@ export default function AdminSubscribersPage() {
           <div className="flex items-center justify-center gap-2 mb-2">
             <UserCheck className="w-5 h-5 text-green-500" />
           </div>
-          <div className="font-oswald text-2xl text-green-500">{meta.active}</div>
+          <div className="font-oswald text-2xl text-green-500">
+            {meta.active}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Activos</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <UserX className="w-5 h-5 text-red-500" />
           </div>
-          <div className="font-oswald text-2xl text-red-500">{meta.inactive}</div>
+          <div className="font-oswald text-2xl text-red-500">
+            {meta.inactive}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Inactivos</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Shield className="w-5 h-5 text-yellow-500" />
           </div>
-          <div className="font-oswald text-2xl text-yellow-500">{suspiciousCount}</div>
+          <div className="font-oswald text-2xl text-yellow-500">
+            {suspiciousCount}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Sospechosos</div>
         </div>
       </div>
@@ -411,7 +469,11 @@ export default function AdminSubscribersPage() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive" | "suspicious")}
+          onChange={(e) =>
+            setStatusFilter(
+              e.target.value as "all" | "active" | "inactive" | "suspicious",
+            )
+          }
           className="px-4 py-2 bg-slc-card border border-slc-border rounded-lg"
         >
           <option value="all">Todos</option>
@@ -425,7 +487,9 @@ export default function AdminSubscribersPage() {
       {selectedSubscribers.size > 0 && (
         <div className="flex items-center gap-4 mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
           <span className="text-sm font-medium">
-            {selectedSubscribers.size} suscriptor{selectedSubscribers.size !== 1 ? "es" : ""} seleccionado{selectedSubscribers.size !== 1 ? "s" : ""}
+            {selectedSubscribers.size} suscriptor
+            {selectedSubscribers.size !== 1 ? "es" : ""} seleccionado
+            {selectedSubscribers.size !== 1 ? "s" : ""}
           </span>
           <div className="flex-1" />
           <Button size="sm" variant="outline" onClick={handleBulkUnsubscribe}>
@@ -436,7 +500,11 @@ export default function AdminSubscribersPage() {
             <Trash2 className="w-4 h-4 mr-1" />
             Eliminar
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setSelectedSubscribers(new Set())}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedSubscribers(new Set())}
+          >
             Cancelar
           </Button>
         </div>
@@ -452,7 +520,9 @@ export default function AdminSubscribersPage() {
         ) : filteredSubscribers.length === 0 ? (
           <div className="p-8 text-center">
             <Mail className="w-12 h-12 text-slc-muted mx-auto mb-4" />
-            <p className="text-slc-muted">No hay suscriptores {searchQuery ? "que coincidan" : "todavía"}</p>
+            <p className="text-slc-muted">
+              No hay suscriptores {searchQuery ? "que coincidan" : "todavía"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -462,7 +532,11 @@ export default function AdminSubscribersPage() {
                   <th className="text-left px-6 py-4 w-8">
                     <input
                       type="checkbox"
-                      checked={selectedSubscribers.size === filteredSubscribers.length && filteredSubscribers.length > 0}
+                      checked={
+                        selectedSubscribers.size ===
+                          filteredSubscribers.length &&
+                        filteredSubscribers.length > 0
+                      }
                       onChange={toggleSelectAll}
                       className="w-4 h-4 rounded border-slc-border"
                     />

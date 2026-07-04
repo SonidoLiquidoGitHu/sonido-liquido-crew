@@ -1,10 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { getDirectDropboxUrl } from "@/lib/video-utils";
 import {
   Dialog,
   DialogContent,
@@ -13,31 +9,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getDirectDropboxUrl } from "@/lib/video-utils";
 import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  ExternalLink,
-  Newspaper,
+  AlertTriangle,
+  BarChart3,
   Calendar,
+  CheckSquare,
+  Download,
+  Edit,
+  ExternalLink,
   Eye,
   EyeOff,
-  Star,
-  Download,
-  Package,
+  FileDown,
+  Filter,
   Loader2,
-  CheckSquare,
+  Newspaper,
+  Package,
+  Plus,
+  Search,
   Square,
+  Star,
   ToggleLeft,
   ToggleRight,
-  AlertTriangle,
-  FileDown,
-  User,
-  Filter,
-  BarChart3,
+  Trash2,
   TrendingUp,
+  User,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface MediaRelease {
   id: string;
@@ -103,7 +103,9 @@ export default function AdminMediaReleasesPage() {
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [releaseToDelete, setReleaseToDelete] = useState<MediaRelease | null>(null);
+  const [releaseToDelete, setReleaseToDelete] = useState<MediaRelease | null>(
+    null,
+  );
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Toggle loading state
@@ -154,14 +156,18 @@ export default function AdminMediaReleasesPage() {
   };
 
   const filteredReleases = mediaReleases.filter((release) => {
-    const matchesSearch = release.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = release.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     const matchesPublished =
       publishedFilter === "" ||
       (publishedFilter === "published" && release.isPublished) ||
       (publishedFilter === "draft" && !release.isPublished);
     const matchesArtist =
       artistFilter === "" ||
-      artistFilter === "none" && !release.mainArtistId && !release.mainArtistName ||
+      (artistFilter === "none" &&
+        !release.mainArtistId &&
+        !release.mainArtistName) ||
       release.mainArtistId === artistFilter;
     return matchesSearch && matchesPublished && matchesArtist;
   });
@@ -169,10 +175,8 @@ export default function AdminMediaReleasesPage() {
   // Get unique artists from media releases for filter dropdown
   const artistsInReleases = Array.from(
     new Set(
-      mediaReleases
-        .filter((r) => r.mainArtistId)
-        .map((r) => r.mainArtistId)
-    )
+      mediaReleases.filter((r) => r.mainArtistId).map((r) => r.mainArtistId),
+    ),
   ).filter(Boolean) as string[];
 
   const formatDate = (dateStr: string) => {
@@ -200,8 +204,8 @@ export default function AdminMediaReleasesPage() {
       if (data.success) {
         setMediaReleases((prev) =>
           prev.map((r) =>
-            r.id === release.id ? { ...r, isPublished: !r.isPublished } : r
-          )
+            r.id === release.id ? { ...r, isPublished: !r.isPublished } : r,
+          ),
         );
       }
     } catch (error) {
@@ -217,12 +221,17 @@ export default function AdminMediaReleasesPage() {
 
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/admin/media-releases?id=${releaseToDelete.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/admin/media-releases?id=${releaseToDelete.id}`,
+        {
+          method: "DELETE",
+        },
+      );
       const data = await res.json();
       if (data.success) {
-        setMediaReleases((prev) => prev.filter((r) => r.id !== releaseToDelete.id));
+        setMediaReleases((prev) =>
+          prev.filter((r) => r.id !== releaseToDelete.id),
+        );
         setSelectedIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(releaseToDelete.id);
@@ -284,8 +293,8 @@ export default function AdminMediaReleasesPage() {
 
       setMediaReleases((prev) =>
         prev.map((r) =>
-          selectedIds.has(r.id) ? { ...r, isPublished: publish } : r
-        )
+          selectedIds.has(r.id) ? { ...r, isPublished: publish } : r,
+        ),
       );
       setSelectedIds(new Set());
     } catch (error) {
@@ -301,7 +310,7 @@ export default function AdminMediaReleasesPage() {
     setBulkActionLoading(true);
     try {
       const promises = Array.from(selectedIds).map((id) =>
-        fetch(`/api/admin/media-releases?id=${id}`, { method: "DELETE" })
+        fetch(`/api/admin/media-releases?id=${id}`, { method: "DELETE" }),
       );
 
       await Promise.all(promises);
@@ -315,7 +324,8 @@ export default function AdminMediaReleasesPage() {
     }
   };
 
-  const isAllSelected = filteredReleases.length > 0 && selectedIds.size === filteredReleases.length;
+  const isAllSelected =
+    filteredReleases.length > 0 && selectedIds.size === filteredReleases.length;
   const hasSelection = selectedIds.size > 0;
 
   // Generate Press Kit PDF
@@ -439,7 +449,8 @@ export default function AdminMediaReleasesPage() {
           <div className="flex items-center gap-2">
             <CheckSquare className="w-5 h-5 text-primary" />
             <span className="font-medium">
-              {selectedIds.size} {selectedIds.size === 1 ? "seleccionado" : "seleccionados"}
+              {selectedIds.size}{" "}
+              {selectedIds.size === 1 ? "seleccionado" : "seleccionados"}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -498,7 +509,9 @@ export default function AdminMediaReleasesPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-primary">{mediaReleases.length}</div>
+          <div className="font-oswald text-2xl text-primary">
+            {mediaReleases.length}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Total</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
@@ -517,7 +530,9 @@ export default function AdminMediaReleasesPage() {
           <div className="flex items-center justify-center gap-1">
             <Eye className="w-4 h-4 text-blue-500" />
             <span className="font-oswald text-2xl text-blue-500">
-              {mediaReleases.reduce((sum, r) => sum + (r.viewCount || 0), 0).toLocaleString()}
+              {mediaReleases
+                .reduce((sum, r) => sum + (r.viewCount || 0), 0)
+                .toLocaleString()}
             </span>
           </div>
           <div className="text-xs text-slc-muted uppercase">Vistas</div>
@@ -526,7 +541,9 @@ export default function AdminMediaReleasesPage() {
           <div className="flex items-center justify-center gap-1">
             <Download className="w-4 h-4 text-purple-500" />
             <span className="font-oswald text-2xl text-purple-500">
-              {mediaReleases.reduce((sum, r) => sum + (r.downloadCount || 0), 0).toLocaleString()}
+              {mediaReleases
+                .reduce((sum, r) => sum + (r.downloadCount || 0), 0)
+                .toLocaleString()}
             </span>
           </div>
           <div className="text-xs text-slc-muted uppercase">Descargas</div>
@@ -536,7 +553,9 @@ export default function AdminMediaReleasesPage() {
       {/* Media Releases List */}
       <div className="bg-slc-dark border border-slc-border rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slc-muted">Cargando media releases...</div>
+          <div className="p-8 text-center text-slc-muted">
+            Cargando media releases...
+          </div>
         ) : filteredReleases.length === 0 ? (
           <div className="p-8 text-center">
             <Newspaper className="w-12 h-12 text-slc-muted mx-auto mb-4" />
@@ -557,7 +576,11 @@ export default function AdminMediaReleasesPage() {
                     <button
                       onClick={handleSelectAll}
                       className="p-1 hover:bg-slc-card rounded transition-colors"
-                      title={isAllSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+                      title={
+                        isAllSelected
+                          ? "Deseleccionar todos"
+                          : "Seleccionar todos"
+                      }
                     >
                       {isAllSelected ? (
                         <CheckSquare className="w-5 h-5 text-primary" />
@@ -576,10 +599,14 @@ export default function AdminMediaReleasesPage() {
                     Fecha
                   </th>
                   <th className="text-center px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    <span className="inline-flex items-center gap-1"><Eye className="w-3 h-3" /> Vistas</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Eye className="w-3 h-3" /> Vistas
+                    </span>
                   </th>
                   <th className="text-center px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
-                    <span className="inline-flex items-center gap-1"><Download className="w-3 h-3" /> Descargas</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Download className="w-3 h-3" /> Descargas
+                    </span>
                   </th>
                   <th className="text-left px-6 py-4 text-xs font-medium text-slc-muted uppercase tracking-wider">
                     Estado
@@ -645,7 +672,9 @@ export default function AdminMediaReleasesPage() {
                       {getArtistName(release) ? (
                         <div className="flex items-center gap-1 text-sm">
                           <User className="w-3 h-3 text-primary" />
-                          <span className="text-white">{getArtistName(release)}</span>
+                          <span className="text-white">
+                            {getArtistName(release)}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-xs text-slc-muted">—</span>
@@ -660,7 +689,9 @@ export default function AdminMediaReleasesPage() {
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <Eye className="w-3.5 h-3.5 text-blue-500" />
-                        <span className={`text-sm font-medium ${(release.viewCount || 0) > 0 ? "text-blue-400" : "text-slc-muted"}`}>
+                        <span
+                          className={`text-sm font-medium ${(release.viewCount || 0) > 0 ? "text-blue-400" : "text-slc-muted"}`}
+                        >
                           {(release.viewCount || 0).toLocaleString()}
                         </span>
                       </div>
@@ -668,7 +699,9 @@ export default function AdminMediaReleasesPage() {
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <Download className="w-3.5 h-3.5 text-purple-500" />
-                        <span className={`text-sm font-medium ${(release.downloadCount || 0) > 0 ? "text-purple-400" : "text-slc-muted"}`}>
+                        <span
+                          className={`text-sm font-medium ${(release.downloadCount || 0) > 0 ? "text-purple-400" : "text-slc-muted"}`}
+                        >
                           {(release.downloadCount || 0).toLocaleString()}
                         </span>
                       </div>
@@ -678,7 +711,11 @@ export default function AdminMediaReleasesPage() {
                         onClick={() => handleTogglePublish(release)}
                         disabled={togglingId === release.id}
                         className="group flex items-center gap-2 transition-colors"
-                        title={release.isPublished ? "Click para despublicar" : "Click para publicar"}
+                        title={
+                          release.isPublished
+                            ? "Click para despublicar"
+                            : "Click para publicar"
+                        }
                       >
                         {togglingId === release.id ? (
                           <Loader2 className="w-4 h-4 animate-spin text-slc-muted" />
@@ -701,19 +738,31 @@ export default function AdminMediaReleasesPage() {
                           asChild
                           variant="ghost"
                           size="icon"
-                          title={release.isPublished ? "Ver página pública" : "Vista previa (borrador)"}
+                          title={
+                            release.isPublished
+                              ? "Ver página pública"
+                              : "Vista previa (borrador)"
+                          }
                         >
                           <Link
-                            href={release.isPublished
-                              ? `/prensa/comunicados/${release.slug}`
-                              : `/prensa/comunicados/${release.slug}?preview=true`
+                            href={
+                              release.isPublished
+                                ? `/prensa/comunicados/${release.slug}`
+                                : `/prensa/comunicados/${release.slug}?preview=true`
                             }
                             target="_blank"
                           >
-                            <Eye className={`w-4 h-4 ${release.isPublished ? "text-green-500" : "text-slc-muted"}`} />
+                            <Eye
+                              className={`w-4 h-4 ${release.isPublished ? "text-green-500" : "text-slc-muted"}`}
+                            />
                           </Link>
                         </Button>
-                        <Button asChild variant="ghost" size="icon" title="Editar">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          title="Editar"
+                        >
                           <Link href={`/admin/media-releases/${release.id}`}>
                             <Edit className="w-4 h-4" />
                           </Link>
@@ -750,7 +799,10 @@ export default function AdminMediaReleasesPage() {
             </DialogTitle>
             <DialogDescription className="text-slc-muted">
               ¿Estás seguro de que quieres eliminar{" "}
-              <span className="text-white font-medium">"{releaseToDelete?.title}"</span>?
+              <span className="text-white font-medium">
+                "{releaseToDelete?.title}"
+              </span>
+              ?
               <br />
               Esta acción no se puede deshacer.
             </DialogDescription>

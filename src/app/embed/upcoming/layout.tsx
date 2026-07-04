@@ -14,9 +14,7 @@ export default function EmbedLayout({
 }) {
   return (
     <html lang="es">
-      <body className="bg-transparent">
-        {children}
-      </body>
+      <body className="bg-transparent">{children}</body>
     </html>
   );
 }

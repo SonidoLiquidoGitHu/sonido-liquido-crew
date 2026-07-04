@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import {
-  X,
-  Download,
-  Share2,
-  Loader2,
-  CheckCircle,
-  Copy,
-  Check,
-  AlertCircle,
-  ExternalLink,
-  ClipboardCopy,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { proxyImageUrl } from "@/hooks/use-proxied-image";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  ClipboardCopy,
+  Copy,
+  Download,
+  ExternalLink,
+  Loader2,
+  Share2,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ===========================================
 // TYPES
@@ -38,7 +38,10 @@ interface PlaylistStoryCardProps {
 
 type FormatTab = "story" | "post" | "reel";
 
-const FORMAT_LABELS: Record<FormatTab, { label: string; w: number; h: number }> = {
+const FORMAT_LABELS: Record<
+  FormatTab,
+  { label: string; w: number; h: number }
+> = {
   story: { label: "Story", w: 1080, h: 1920 },
   post: { label: "Post", w: 1080, h: 1080 },
   reel: { label: "Reel", w: 1080, h: 1920 },
@@ -78,7 +81,7 @@ function drawSpotifyGlyph(
   cx: number,
   cy: number,
   size: number,
-  color: string
+  color: string,
 ) {
   ctx.save();
   ctx.fillStyle = color;
@@ -109,7 +112,7 @@ function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
-  maxLines: number
+  maxLines: number,
 ): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
@@ -132,15 +135,15 @@ function wrapText(
 
   if (lines.length === maxLines && line) {
     const lastLine = lines[maxLines - 1];
-    if (ctx.measureText(lastLine + "...").width > maxWidth) {
+    if (ctx.measureText(`${lastLine}...`).width > maxWidth) {
       let truncated = lastLine;
       while (
-        ctx.measureText(truncated + "...").width > maxWidth &&
+        ctx.measureText(`${truncated}...`).width > maxWidth &&
         truncated.length > 0
       ) {
         truncated = truncated.slice(0, -1);
       }
-      lines[maxLines - 1] = truncated + "...";
+      lines[maxLines - 1] = `${truncated}...`;
     }
   }
 
@@ -160,7 +163,9 @@ async function loadOswaldFont(): Promise<void> {
   }
 }
 
-async function loadCoverImage(coverImageUrl: string | null | undefined): Promise<HTMLImageElement | null> {
+async function loadCoverImage(
+  coverImageUrl: string | null | undefined,
+): Promise<HTMLImageElement | null> {
   if (!coverImageUrl) return null;
   try {
     const { src: proxiedUrl } = proxyImageUrl(coverImageUrl);
@@ -187,7 +192,7 @@ function drawRoundedRect(
   y: number,
   w: number,
   h: number,
-  r: number
+  r: number,
 ) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -216,7 +221,7 @@ function drawPlaylistCover(
   coverY: number,
   coverSize: number,
   radius: number,
-  fallbackColor: string
+  fallbackColor: string,
 ) {
   ctx.save();
   drawRoundedRect(ctx, coverX, coverY, coverSize, coverSize, radius);
@@ -231,10 +236,21 @@ function drawPlaylistCover(
     } else {
       drawH = coverSize / imgAspect;
     }
-    ctx.drawImage(coverImg, coverX + (coverSize - drawW) / 2, coverY + (coverSize - drawH) / 2, drawW, drawH);
+    ctx.drawImage(
+      coverImg,
+      coverX + (coverSize - drawW) / 2,
+      coverY + (coverSize - drawH) / 2,
+      drawW,
+      drawH,
+    );
   } else {
     const c = fallbackColor || "#1DB954";
-    const grad = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+    const grad = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize,
+    );
     grad.addColorStop(0, `${c}33`);
     grad.addColorStop(1, "#0a0a0a");
     ctx.fillStyle = grad;
@@ -260,7 +276,7 @@ function drawPlaylistCover(
 // --- STORY: 1080x1920 ---
 async function generateStoryCard(
   canvas: HTMLCanvasElement,
-  playlist: PlaylistShareData
+  playlist: PlaylistShareData,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -333,7 +349,15 @@ async function generateStoryCard(
   const coverSize = 560;
   const coverX = (W - coverSize) / 2;
   const coverY = 260;
-  drawPlaylistCover(ctx, coverImg, coverX, coverY, coverSize, 24, playlist.coverColor || SPOTIFY_GREEN);
+  drawPlaylistCover(
+    ctx,
+    coverImg,
+    coverX,
+    coverY,
+    coverSize,
+    24,
+    playlist.coverColor || SPOTIFY_GREEN,
+  );
 
   // Playlist name
   ctx.fillStyle = "#ffffff";
@@ -408,7 +432,11 @@ async function generateStoryCard(
   // URL
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.font = "20px 'Oswald', sans-serif";
-  ctx.fillText("sonidoliquido.com/playlists/curada", W / 2, ctaY + ctaHeight + 60);
+  ctx.fillText(
+    "sonidoliquido.com/playlists/curada",
+    W / 2,
+    ctaY + ctaHeight + 60,
+  );
 
   // Bottom branding
   ctx.fillStyle = "rgba(255,255,255,0.3)";
@@ -419,7 +447,7 @@ async function generateStoryCard(
 // --- POST: 1080x1080 ---
 async function generatePostCard(
   canvas: HTMLCanvasElement,
-  playlist: PlaylistShareData
+  playlist: PlaylistShareData,
 ): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
@@ -473,7 +501,15 @@ async function generatePostCard(
   const coverSize = 480;
   const coverX = 80;
   const coverY = (H - coverSize) / 2;
-  drawPlaylistCover(ctx, coverImg, coverX, coverY, coverSize, 24, playlist.coverColor || SPOTIFY_GREEN);
+  drawPlaylistCover(
+    ctx,
+    coverImg,
+    coverX,
+    coverY,
+    coverSize,
+    24,
+    playlist.coverColor || SPOTIFY_GREEN,
+  );
 
   // Right column
   const colX = coverX + coverSize + 60;
@@ -528,7 +564,11 @@ async function generatePostCard(
   ctx.fillStyle = "#000000";
   ctx.font = "bold 22px 'Oswald', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("ESCUCHA EN SPOTIFY", ctaX + ctaWidth / 2 + 15, ctaY + ctaHeight / 2 + 8);
+  ctx.fillText(
+    "ESCUCHA EN SPOTIFY",
+    ctaX + ctaWidth / 2 + 15,
+    ctaY + ctaHeight / 2 + 8,
+  );
 
   // URL
   ctx.fillStyle = "rgba(255,255,255,0.55)";
@@ -540,7 +580,7 @@ async function generatePostCard(
 // --- REEL: same as story (1080x1920) ---
 async function generateReelCard(
   canvas: HTMLCanvasElement,
-  playlist: PlaylistShareData
+  playlist: PlaylistShareData,
 ): Promise<void> {
   // Reel uses the same layout as Story for now
   return generateStoryCard(canvas, playlist);
@@ -550,7 +590,10 @@ async function generateReelCard(
 // MAIN COMPONENT
 // ===========================================
 
-export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps) {
+export function PlaylistStoryCard({
+  playlist,
+  onClose,
+}: PlaylistStoryCardProps) {
   const [selectedFormat, setSelectedFormat] = useState<FormatTab>("story");
   const [generating, setGenerating] = useState(false);
   const [cardGenerated, setCardGenerated] = useState(false);
@@ -564,14 +607,19 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
   const fullResCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    setIsMobile(
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      ),
+    );
   }, []);
 
   // Prefer the on-site detail page so shared links land on a branded,
   // trackable SLC page that itself hosts the Spotify embed + share CTAs.
   // Fall back to the Spotify URL, then to the playlists index.
   const playlistShareUrl =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/playlists/curated/")
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/playlists/curated/")
       ? window.location.href
       : `https://sonidoliquido.com/playlists/curated/${playlist.id}`;
 
@@ -602,8 +650,10 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
         if (ctx) {
           ctx.scale(0.5, 0.5);
         }
-        if (selectedFormat === "story") await generateStoryCard(canvas, playlist);
-        else if (selectedFormat === "post") await generatePostCard(canvas, playlist);
+        if (selectedFormat === "story")
+          await generateStoryCard(canvas, playlist);
+        else if (selectedFormat === "post")
+          await generatePostCard(canvas, playlist);
         else await generateReelCard(canvas, playlist);
         if (!cancelled) setCardGenerated(true);
       } catch (err) {
@@ -618,18 +668,22 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
     };
   }, [selectedFormat, playlist]);
 
-  const getCanvasBlob = useCallback(async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), "image/png", 0.95);
-    });
-  }, []);
+  const getCanvasBlob = useCallback(
+    async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), "image/png", 0.95);
+      });
+    },
+    [],
+  );
 
   const generateFullRes = useCallback(async (): Promise<Blob | null> => {
     const canvas = fullResCanvasRef.current;
     if (!canvas) return null;
     try {
       if (selectedFormat === "story") await generateStoryCard(canvas, playlist);
-      else if (selectedFormat === "post") await generatePostCard(canvas, playlist);
+      else if (selectedFormat === "post")
+        await generatePostCard(canvas, playlist);
       else await generateReelCard(canvas, playlist);
       return await getCanvasBlob(canvas);
     } catch (err) {
@@ -669,7 +723,9 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
         return;
       }
       if (!navigator.clipboard || !window.ClipboardItem) {
-        setShareError("Tu navegador no soporta copiar imágenes. Descarga la imagen.");
+        setShareError(
+          "Tu navegador no soporta copiar imágenes. Descarga la imagen.",
+        );
         return;
       }
       const item = new ClipboardItem({ "image/png": blob });
@@ -690,9 +746,13 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
         setShareError("No se pudo generar la imagen.");
         return;
       }
-      const file = new File([blob], `playlist-${playlist.id}-${selectedFormat}.png`, {
-        type: "image/png",
-      });
+      const file = new File(
+        [blob],
+        `playlist-${playlist.id}-${selectedFormat}.png`,
+        {
+          type: "image/png",
+        },
+      );
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         try {
@@ -705,8 +765,8 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return;
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === "AbortError") return;
         }
       }
 
@@ -720,8 +780,8 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return;
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === "AbortError") return;
         }
       }
 
@@ -730,7 +790,14 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
       console.error("Share failed:", err);
       setShareError("No se pudo compartir. Intenta descargar la imagen.");
     }
-  }, [generateFullRes, playlist, selectedFormat, shareText, playlistShareUrl, downloadCard]);
+  }, [
+    generateFullRes,
+    playlist,
+    selectedFormat,
+    shareText,
+    playlistShareUrl,
+    downloadCard,
+  ]);
 
   const downloadAndOpenInstagram = useCallback(async () => {
     setShareError(null);
@@ -739,7 +806,12 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
       if (!blob) return;
 
       if (isMobile) {
-        if (navigator.share && navigator.canShare?.({ files: [new File([blob], "playlist.png", { type: "image/png" })] })) {
+        if (
+          navigator.share &&
+          navigator.canShare?.({
+            files: [new File([blob], "playlist.png", { type: "image/png" })],
+          })
+        ) {
           try {
             await navigator.share({
               text: shareText,
@@ -748,8 +820,8 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
             setShareSuccess(true);
             setTimeout(() => setShareSuccess(false), 2000);
             return;
-          } catch (err: any) {
-            if (err?.name === "AbortError") return;
+          } catch (err: unknown) {
+            if (err instanceof Error && err.name === "AbortError") return;
           }
         }
 
@@ -768,7 +840,9 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
 
             setTimeout(() => {
               if (document.visibilityState === "visible") {
-                setShareError("No se pudo abrir Instagram. Descarga la imagen y compártela manualmente.");
+                setShareError(
+                  "No se pudo abrir Instagram. Descarga la imagen y compártela manualmente.",
+                );
               }
             }, 2000);
             return;
@@ -778,14 +852,18 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
         }
 
         await downloadCard();
-        setShareError("Descarga la imagen y ábrela en Instagram para subirla a tu Story.");
+        setShareError(
+          "Descarga la imagen y ábrela en Instagram para subirla a tu Story.",
+        );
       } else {
         await downloadCard();
         window.open("https://www.instagram.com/", "_blank");
       }
     } catch (err) {
       console.error("Instagram share failed:", err);
-      setShareError("No se pudo compartir en Instagram. Intenta descargar la imagen.");
+      setShareError(
+        "No se pudo compartir en Instagram. Intenta descargar la imagen.",
+      );
     }
   }, [generateFullRes, isMobile, downloadCard, shareText]);
 
@@ -802,11 +880,17 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
   const encodedUrl = encodeURIComponent(playlistShareUrl);
   const encodedTitle = encodeURIComponent(shareText);
 
-  const aspectStyle = selectedFormat === "post"
-    ? { aspectRatio: "1/1", maxHeight: "50vh" }
-    : { aspectRatio: "9/16", maxHeight: "60vh" };
+  const aspectStyle =
+    selectedFormat === "post"
+      ? { aspectRatio: "1/1", maxHeight: "50vh" }
+      : { aspectRatio: "9/16", maxHeight: "60vh" };
 
-  const formatLabel = selectedFormat === "post" ? "publicación" : selectedFormat === "reel" ? "reel" : "historia";
+  const formatLabel =
+    selectedFormat === "post"
+      ? "publicación"
+      : selectedFormat === "reel"
+        ? "reel"
+        : "historia";
 
   // Close on Escape
   useEffect(() => {
@@ -861,7 +945,10 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
         {/* Preview canvas */}
         <div
           className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 mx-auto"
-          style={{ ...aspectStyle, boxShadow: `0 25px 50px -12px rgba(29, 185, 84, 0.25)` }}
+          style={{
+            ...aspectStyle,
+            boxShadow: "0 25px 50px -12px rgba(29, 185, 84, 0.25)",
+          }}
         >
           <canvas
             ref={previewCanvasRef}
@@ -870,7 +957,10 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
           />
           {generating && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-              <Loader2 className="w-10 h-10 animate-spin" style={{ color: SPOTIFY_GREEN }} />
+              <Loader2
+                className="w-10 h-10 animate-spin"
+                style={{ color: SPOTIFY_GREEN }}
+              />
             </div>
           )}
         </div>
@@ -942,21 +1032,38 @@ export function PlaylistStoryCard({ playlist, onClose }: PlaylistStoryCardProps)
             </Button>
 
             <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-1.5">
-              <p className="text-xs text-white/60 font-oswald uppercase tracking-wide">Como compartir en {formatLabel}:</p>
+              <p className="text-xs text-white/60 font-oswald uppercase tracking-wide">
+                Como compartir en {formatLabel}:
+              </p>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-[#1DB954]/30 text-[#1ed760] rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">1</span>
-                <span>Da clic en <strong className="text-white/70">Descargar y Abrir Instagram</strong></span>
+                <span className="bg-[#1DB954]/30 text-[#1ed760] rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  1
+                </span>
+                <span>
+                  Da clic en{" "}
+                  <strong className="text-white/70">
+                    Descargar y Abrir Instagram
+                  </strong>
+                </span>
               </div>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-[#1DB954]/30 text-[#1ed760] rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">2</span>
-                <span>En Instagram, crea una nueva {formatLabel} (icono +)</span>
+                <span className="bg-[#1DB954]/30 text-[#1ed760] rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  2
+                </span>
+                <span>
+                  En Instagram, crea una nueva {formatLabel} (icono +)
+                </span>
               </div>
               <div className="flex items-start gap-2 text-xs text-white/50">
-                <span className="bg-[#1DB954]/30 text-[#1ed760] rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">3</span>
+                <span className="bg-[#1DB954]/30 text-[#1ed760] rounded-full w-5 h-5 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                  3
+                </span>
                 <span>Selecciona la imagen descargada y publicala</span>
               </div>
               <p className="text-[10px] text-white/30 pt-1 border-t border-white/5">
-                Tip: Tambien puedes usar <strong className="text-white/50">Copiar Imagen</strong> y pegar directamente con Ctrl+V
+                Tip: Tambien puedes usar{" "}
+                <strong className="text-white/50">Copiar Imagen</strong> y pegar
+                directamente con Ctrl+V
               </p>
             </div>
           </div>

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Check, Loader2, Mail } from "lucide-react";
+import { useState } from "react";
 
 export function NewsletterSection() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [message, setMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +79,9 @@ export function NewsletterSection() {
               />
               <Button
                 type="submit"
-                disabled={status === "loading" || status === "success" || !email}
+                disabled={
+                  status === "loading" || status === "success" || !email
+                }
                 className="h-12 px-6 bg-slc-black hover:bg-slc-dark text-white"
               >
                 {status === "loading" ? (

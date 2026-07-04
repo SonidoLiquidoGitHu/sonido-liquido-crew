@@ -1,29 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { DropboxUploader } from "@/components/admin/DropboxUploader";
 import {
-  BulkDropboxUploader,
+  ALL_TYPES,
   AUDIO_TYPES,
+  BulkDropboxUploader,
   IMAGE_TYPES,
   VIDEO_TYPES,
-  ALL_TYPES
 } from "@/components/admin/BulkDropboxUploader";
+import { DropboxUploader } from "@/components/admin/DropboxUploader";
+import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft,
-  Cloud,
-  Music,
-  Image as ImageIcon,
-  Video,
-  FileText,
   Archive,
+  ArrowLeft,
   CheckCircle,
-  ExternalLink,
+  Cloud,
   Copy,
+  ExternalLink,
+  FileText,
+  Image as ImageIcon,
+  Music,
   Trash2,
+  Video,
 } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
 interface UploadedFile {
   id: string;
@@ -39,19 +39,28 @@ export default function UploadsTestPage() {
   const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
-  const handleSingleUpload = (url: string, filename: string, fileSize: number) => {
-    setUploadedFiles(prev => [{
-      id: Math.random().toString(36).substring(7),
-      url,
-      filename,
-      fileSize,
-      timestamp: new Date(),
-      type: "single",
-    }, ...prev]);
+  const handleSingleUpload = (
+    url: string,
+    filename: string,
+    fileSize: number,
+  ) => {
+    setUploadedFiles((prev) => [
+      {
+        id: Math.random().toString(36).substring(7),
+        url,
+        filename,
+        fileSize,
+        timestamp: new Date(),
+        type: "single",
+      },
+      ...prev,
+    ]);
   };
 
-  const handleBulkUploadComplete = (files: { url: string; filename: string; fileSize: number }[]) => {
-    const newFiles = files.map(f => ({
+  const handleBulkUploadComplete = (
+    files: { url: string; filename: string; fileSize: number }[],
+  ) => {
+    const newFiles = files.map((f) => ({
       id: Math.random().toString(36).substring(7),
       url: f.url,
       filename: f.filename,
@@ -59,10 +68,14 @@ export default function UploadsTestPage() {
       timestamp: new Date(),
       type: "bulk" as const,
     }));
-    setUploadedFiles(prev => [...newFiles, ...prev]);
+    setUploadedFiles((prev) => [...newFiles, ...prev]);
   };
 
-  const handleFileUploaded = (url: string, filename: string, fileSize: number) => {
+  const handleFileUploaded = (
+    url: string,
+    filename: string,
+    fileSize: number,
+  ) => {
     // Individual file callback for bulk uploads - already handled in handleBulkUploadComplete
     console.log(`[Uploads Test] File uploaded: ${filename} -> ${url}`);
   };
@@ -74,7 +87,7 @@ export default function UploadsTestPage() {
   };
 
   const removeFile = (id: string) => {
-    setUploadedFiles(prev => prev.filter(f => f.id !== id));
+    setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   const clearAll = () => {
@@ -86,7 +99,7 @@ export default function UploadsTestPage() {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   return (
@@ -104,7 +117,8 @@ export default function UploadsTestPage() {
             Test de Uploads a Dropbox
           </h1>
           <p className="text-slc-muted mt-1">
-            Prueba la subida de archivos y revisa los logs en la consola del servidor
+            Prueba la subida de archivos y revisa los logs en la consola del
+            servidor
           </p>
         </div>
       </div>
@@ -221,7 +235,8 @@ export default function UploadsTestPage() {
                 Bulk Upload
               </h2>
               <p className="text-sm text-slc-muted mb-4">
-                Sube múltiples archivos a la vez. Soporta todos los tipos de archivo.
+                Sube múltiples archivos a la vez. Soporta todos los tipos de
+                archivo.
               </p>
               <BulkDropboxUploader
                 onUploadComplete={handleBulkUploadComplete}
@@ -237,19 +252,27 @@ export default function UploadsTestPage() {
 
           {/* Supported formats info */}
           <div className="bg-slc-card/50 border border-slc-border rounded-xl p-6">
-            <h3 className="font-oswald text-lg uppercase mb-4">Formatos Soportados</h3>
+            <h3 className="font-oswald text-lg uppercase mb-4">
+              Formatos Soportados
+            </h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-slc-muted mb-1">Audio:</p>
-                <p className="text-green-500">MP3, WAV, FLAC, AAC, M4A, OGG, WMA, AIFF, OPUS</p>
+                <p className="text-green-500">
+                  MP3, WAV, FLAC, AAC, M4A, OGG, WMA, AIFF, OPUS
+                </p>
               </div>
               <div>
                 <p className="text-slc-muted mb-1">Imágenes:</p>
-                <p className="text-purple-500">JPG, PNG, GIF, WebP, SVG, BMP, TIFF</p>
+                <p className="text-purple-500">
+                  JPG, PNG, GIF, WebP, SVG, BMP, TIFF
+                </p>
               </div>
               <div>
                 <p className="text-slc-muted mb-1">Video:</p>
-                <p className="text-red-500">MP4, MOV, AVI, MKV, WMV, FLV, WebM</p>
+                <p className="text-red-500">
+                  MP4, MOV, AVI, MKV, WMV, FLV, WebM
+                </p>
               </div>
               <div>
                 <p className="text-slc-muted mb-1">Otros:</p>
@@ -281,13 +304,17 @@ export default function UploadsTestPage() {
                   Los archivos subidos aparecerán aquí
                 </p>
                 <p className="text-sm text-slc-muted mt-2">
-                  Revisa los logs en la consola del servidor para ver el progreso
+                  Revisa los logs en la consola del servidor para ver el
+                  progreso
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-slc-border max-h-[600px] overflow-y-auto">
                 {uploadedFiles.map((file) => (
-                  <div key={file.id} className="p-4 hover:bg-slc-card/50 transition-colors">
+                  <div
+                    key={file.id}
+                    className="p-4 hover:bg-slc-card/50 transition-colors"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
                         <CheckCircle className="w-5 h-5 text-green-500" />
@@ -296,11 +323,13 @@ export default function UploadsTestPage() {
                         <p className="font-medium truncate">{file.filename}</p>
                         <div className="flex items-center gap-3 mt-1 text-sm text-slc-muted">
                           <span>{formatFileSize(file.fileSize)}</span>
-                          <span className={`px-1.5 py-0.5 rounded text-xs ${
-                            file.type === "bulk"
-                              ? "bg-blue-500/20 text-blue-500"
-                              : "bg-green-500/20 text-green-500"
-                          }`}>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-xs ${
+                              file.type === "bulk"
+                                ? "bg-blue-500/20 text-blue-500"
+                                : "bg-green-500/20 text-green-500"
+                            }`}
+                          >
                             {file.type === "bulk" ? "Bulk" : "Single"}
                           </span>
                           <span>{file.timestamp.toLocaleTimeString()}</span>
@@ -328,7 +357,11 @@ export default function UploadsTestPage() {
                             asChild
                             className="h-7"
                           >
-                            <a href={file.url} target="_blank" rel="noopener noreferrer">
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               <ExternalLink className="w-3 h-3 mr-1" />
                               Abrir
                             </a>
@@ -356,8 +389,9 @@ export default function UploadsTestPage() {
               Ver Logs del Servidor
             </h3>
             <p className="text-sm text-blue-300">
-              Para ver los logs detallados de cada upload, abre la terminal donde
-              está corriendo el servidor de desarrollo. Verás información como:
+              Para ver los logs detallados de cada upload, abre la terminal
+              donde está corriendo el servidor de desarrollo. Verás información
+              como:
             </p>
             <ul className="mt-3 space-y-1 text-sm text-blue-300">
               <li>• Nombre y tamaño del archivo</li>

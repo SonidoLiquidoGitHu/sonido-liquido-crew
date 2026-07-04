@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { ChevronDown, Volume2 } from "lucide-react";
-import { AudioVisualizer, FloatingParticles, ShimmerText, RevealText, useSoundEffects } from "../effects";
 import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
+import { ChevronDown, Volume2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  AudioVisualizer,
+  FloatingParticles,
+  RevealText,
+  ShimmerText,
+  useSoundEffects,
+} from "../effects";
 
 interface Stats {
   artists: number;
@@ -49,7 +55,8 @@ export function HeroSection() {
           setStats({
             artists: data.data.artists || defaultStats.artists,
             releases: data.data.releases || defaultStats.releases,
-            yearsOfHistory: data.data.yearsOfHistory || defaultStats.yearsOfHistory,
+            yearsOfHistory:
+              data.data.yearsOfHistory || defaultStats.yearsOfHistory,
           });
         }
       } catch (error) {
@@ -123,7 +130,8 @@ export function HeroSection() {
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
-            backgroundImage: `linear-gradient(rgba(249,115,22,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(249,115,22,0.3) 1px, transparent 1px)`,
+            backgroundImage:
+              "linear-gradient(rgba(249,115,22,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(249,115,22,0.3) 1px, transparent 1px)",
             backgroundSize: "60px 60px",
           }}
         />
@@ -176,7 +184,8 @@ export function HeroSection() {
           El colectivo de Hip Hop más representativo de{" "}
           <span className="text-primary font-medium">México</span>.
           <br className="hidden sm:block" />
-          Fundado en <span className="text-white font-medium">1999</span> en la Ciudad de México.
+          Fundado en <span className="text-white font-medium">1999</span> en la
+          Ciudad de México.
         </p>
 
         {/* Stats with Glow Effect */}
@@ -259,7 +268,10 @@ export function HeroSection() {
         </span>
         <div className="relative">
           <ChevronDown className="w-6 h-6 animate-bounce" />
-          <ChevronDown className="w-6 h-6 absolute top-2 left-0 animate-bounce opacity-50" style={{ animationDelay: "0.1s" }} />
+          <ChevronDown
+            className="w-6 h-6 absolute top-2 left-0 animate-bounce opacity-50"
+            style={{ animationDelay: "0.1s" }}
+          />
         </div>
       </button>
 

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Oswald, Barlow } from "next/font/google";
+import { Barlow, Oswald } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 
@@ -71,7 +71,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="dark dark-mode" style={{"--slc-background": "#0a0a0a", "--slc-card": "#1a1a1a", "--slc-border": "#2a2a2a", "--slc-text": "#ffffff", "--slc-muted": "#888888"} as React.CSSProperties}>
+    <html
+      lang="es"
+      className="dark dark-mode"
+      style={
+        {
+          "--slc-background": "#0a0a0a",
+          "--slc-card": "#1a1a1a",
+          "--slc-border": "#2a2a2a",
+          "--slc-text": "#ffffff",
+          "--slc-muted": "#888888",
+        } as React.CSSProperties
+      }
+    >
       <head>
         {/* DNS Prefetch for external resources */}
         <link rel="dns-prefetch" href="https://i.scdn.co" />
@@ -84,8 +96,16 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 
         {/* Preconnect for critical resources */}
-        <link rel="preconnect" href="https://i.scdn.co" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://i.scdn.co"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link rel="preconnect" href="https://www.dropbox.com" />
         <link rel="preconnect" href="https://open.spotify.com" />
       </head>

@@ -1,7 +1,7 @@
-import { dropboxClient, DropboxClient } from "@/lib/clients";
-import { syncJobsRepository } from "@/lib/repositories";
 import { db } from "@/db/client";
-import { fileAssets, type NewFileAsset } from "@/db/schema";
+import { type NewFileAsset, fileAssets } from "@/db/schema";
+import { DropboxClient, dropboxClient } from "@/lib/clients";
+import { syncJobsRepository } from "@/lib/repositories";
 import { generateUUID } from "@/lib/utils";
 import { eq } from "drizzle-orm";
 
@@ -26,7 +26,9 @@ export interface DropboxSyncResult {
 /**
  * Sync files from Dropbox
  */
-export async function syncDropbox(options: DropboxSyncOptions = {}): Promise<DropboxSyncResult> {
+export async function syncDropbox(
+  options: DropboxSyncOptions = {},
+): Promise<DropboxSyncResult> {
   const result: DropboxSyncResult = {
     success: true,
     filesProcessed: 0,
@@ -50,7 +52,11 @@ export async function syncDropbox(options: DropboxSyncOptions = {}): Promise<Dro
   });
 
   try {
-    await syncJobsRepository.addLog(syncJob.id, "info", "Starting Dropbox sync");
+    await syncJobsRepository.addLog(
+      syncJob.id,
+      "info",
+      "Starting Dropbox sync",
+    );
 
     // Default paths to sync
     const pathsToSync = options.paths || [
@@ -62,7 +68,11 @@ export async function syncDropbox(options: DropboxSyncOptions = {}): Promise<Dro
 
     for (const path of pathsToSync) {
       try {
-        await syncJobsRepository.addLog(syncJob.id, "info", `Syncing path: ${path}`);
+        await syncJobsRepository.addLog(
+          syncJob.id,
+          "info",
+          `Syncing path: ${path}`,
+        );
 
         // Get files from Dropbox
         const files = options.recursive
@@ -94,7 +104,9 @@ export async function syncDropbox(options: DropboxSyncOptions = {}): Promise<Dro
                 publicUrl = await dropboxClient.getSharedLink(file.path_lower);
               } catch (error) {
                 // Shared link creation might fail, continue without it
-                console.warn(`Failed to get shared link for ${file.path_lower}`);
+                console.warn(
+                  `Failed to get shared link for ${file.path_lower}`,
+                );
               }
 
               // Create new file asset record
@@ -115,25 +127,37 @@ export async function syncDropbox(options: DropboxSyncOptions = {}): Promise<Dro
             result.totalSize += file.size;
           } catch (error) {
             result.filesFailed++;
-            result.errors.push(`Failed to sync file ${file.name}: ${(error as Error).message}`);
+            result.errors.push(
+              `Failed to sync file ${file.name}: ${(error as Error).message}`,
+            );
           }
         }
       } catch (error) {
         // Path might not exist, log and continue
-        await syncJobsRepository.addLog(syncJob.id, "warning", `Failed to sync path: ${path}`, {
-          error: (error as Error).message,
-        });
+        await syncJobsRepository.addLog(
+          syncJob.id,
+          "warning",
+          `Failed to sync path: ${path}`,
+          {
+            error: (error as Error).message,
+          },
+        );
       }
     }
 
     // Get storage usage
     try {
       const usage = await dropboxClient.getSpaceUsage();
-      await syncJobsRepository.addLog(syncJob.id, "info", "Storage usage retrieved", {
-        used: formatBytes(usage.used),
-        allocated: formatBytes(usage.allocated),
-        percentUsed: ((usage.used / usage.allocated) * 100).toFixed(2) + "%",
-      });
+      await syncJobsRepository.addLog(
+        syncJob.id,
+        "info",
+        "Storage usage retrieved",
+        {
+          used: formatBytes(usage.used),
+          allocated: formatBytes(usage.allocated),
+          percentUsed: `${((usage.used / usage.allocated) * 100).toFixed(2)}%`,
+        },
+      );
     } catch (error) {
       // Non-critical error
       console.warn("Failed to get Dropbox storage usage");
@@ -152,9 +176,8 @@ export async function syncDropbox(options: DropboxSyncOptions = {}): Promise<Dro
       syncJob.id,
       result.errors.length === 0 ? "info" : "warning",
       `Dropbox sync completed: ${result.filesProcessed} files (${formatBytes(result.totalSize)})`,
-      { errors: result.errors }
+      { errors: result.errors },
     );
-
   } catch (error) {
     result.success = false;
     result.errors.push(`Sync failed: ${(error as Error).message}`);
@@ -165,9 +188,14 @@ export async function syncDropbox(options: DropboxSyncOptions = {}): Promise<Dro
       errorMessage: (error as Error).message,
     });
 
-    await syncJobsRepository.addLog(syncJob.id, "error", "Dropbox sync failed", {
-      error: (error as Error).message,
-    });
+    await syncJobsRepository.addLog(
+      syncJob.id,
+      "error",
+      "Dropbox sync failed",
+      {
+        error: (error as Error).message,
+      },
+    );
   }
 
   return result;
@@ -195,7 +223,7 @@ function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
 /**
@@ -286,14 +314,18 @@ export async function syncDropboxFile(path: string): Promise<boolean> {
 /**
  * Get file assets from database
  */
-export async function getFileAssets(options: {
-  mimeType?: string;
-  limit?: number;
-} = {}) {
+export async function getFileAssets(
+  options: {
+    mimeType?: string;
+    limit?: number;
+  } = {},
+) {
   let query = db.select().from(fileAssets);
 
   if (options.mimeType) {
-    query = query.where(eq(fileAssets.mimeType, options.mimeType)) as typeof query;
+    query = query.where(
+      eq(fileAssets.mimeType, options.mimeType),
+    ) as typeof query;
   }
 
   if (options.limit) {

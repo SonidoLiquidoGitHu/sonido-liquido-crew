@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { notificationHistory } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - Get notification history
 export async function GET(request: NextRequest) {
@@ -9,13 +9,13 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const limit = Number.parseInt(searchParams.get("limit") || "50", 10);
+    const offset = Number.parseInt(searchParams.get("offset") || "0", 10);
 
     // Get history entries
     const history = await db
@@ -55,9 +55,12 @@ export async function GET(request: NextRequest) {
           totalSent: stats?.totalSent || 0,
           totalFailed: stats?.totalFailed || 0,
           totalNotifications: stats?.totalNotifications || 0,
-          successRate: stats?.totalSent && (stats?.totalSent + (stats?.totalFailed || 0)) > 0
-            ? (stats.totalSent / (stats.totalSent + (stats?.totalFailed || 0))) * 100
-            : 100,
+          successRate:
+            stats?.totalSent && stats?.totalSent + (stats?.totalFailed || 0) > 0
+              ? (stats.totalSent /
+                  (stats.totalSent + (stats?.totalFailed || 0))) *
+                100
+              : 100,
         },
       },
     });
@@ -65,7 +68,7 @@ export async function GET(request: NextRequest) {
     console.error("[Notification History] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch history" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

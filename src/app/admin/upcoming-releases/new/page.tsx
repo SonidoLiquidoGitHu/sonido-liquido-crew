@@ -1,30 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { SafeImage } from "@/components/ui/safe-image";
-import { Button } from "@/components/ui/button";
 import { DropboxUploadButton } from "@/components/admin/DropboxUploadButton";
 import { ImageAnalyzer } from "@/components/admin/ImageAnalyzer";
-import { YouTubePreview } from "@/components/admin/YouTubePreview";
 import { VideoUploader } from "@/components/admin/VideoUploader";
+import { YouTubePreview } from "@/components/admin/YouTubePreview";
+import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   ArrowLeft,
+  Calendar,
+  Download,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Monitor,
+  Music,
+  Palette,
+  Play,
   Rocket,
   Save,
-  Image as ImageIcon,
-  Music,
-  Link as LinkIcon,
-  Calendar,
+  Smartphone,
   Sparkles,
   Video,
-  Palette,
-  Smartphone,
-  Monitor,
-  Play,
-  Download,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function NewUpcomingReleasePage() {
   const router = useRouter();
@@ -36,7 +36,13 @@ export default function NewUpcomingReleasePage() {
     title: "",
     artistName: "",
     featuredArtists: "",
-    releaseType: "single" as "single" | "maxi-single" | "ep" | "album" | "compilation" | "mixtape",
+    releaseType: "single" as
+      | "single"
+      | "maxi-single"
+      | "ep"
+      | "album"
+      | "compilation"
+      | "mixtape",
     description: "",
     coverImageUrl: "",
     bannerImageUrl: "",
@@ -52,7 +58,13 @@ export default function NewUpcomingReleasePage() {
     youtubeMusicPresaveUrl: "",
     distrokidHyperfollowUrl: "",
     downloadGateEnabled: false,
-    downloadGateFiles: [] as Array<{name: string; type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other"; url: string; fileName: string; fileSize?: string}>,
+    downloadGateFiles: [] as Array<{
+      name: string;
+      type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
+      url: string;
+      fileName: string;
+      fileSize?: string;
+    }>,
     requirePresaveForDownload: true,
     requireHyperfollowForDownload: false,
     requireEmailForDownload: true,
@@ -65,7 +77,9 @@ export default function NewUpcomingReleasePage() {
   });
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
@@ -369,7 +383,6 @@ export default function NewUpcomingReleasePage() {
                 />
               </div>
             </div>
-
           </div>
         </section>
 
@@ -380,7 +393,8 @@ export default function NewUpcomingReleasePage() {
             Videos de Pre-save
           </h2>
           <p className="text-sm text-slc-muted mb-6">
-            Agrega videos para promocionar el lanzamiento. Puedes usar YouTube, Instagram, TikTok o subir directamente.
+            Agrega videos para promocionar el lanzamiento. Puedes usar YouTube,
+            Instagram, TikTok o subir directamente.
           </p>
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -388,29 +402,39 @@ export default function NewUpcomingReleasePage() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <Monitor className="w-5 h-5 text-blue-500" />
-                <h3 className="font-oswald text-lg uppercase">Video Horizontal</h3>
+                <h3 className="font-oswald text-lg uppercase">
+                  Video Horizontal
+                </h3>
               </div>
               <p className="text-xs text-slc-muted">
                 Para YouTube y sitio web. Formato 16:9 recomendado.
               </p>
 
               <VideoUploader
-                value={formData.teaserVideoUrl ? {
-                  source: "youtube",
-                  url: formData.teaserVideoUrl,
-                  orientation: "horizontal",
-                  thumbnailUrl: formData.teaserVideoUrl.includes("youtube") || formData.teaserVideoUrl.match(/^[a-zA-Z0-9_-]{11}$/)
-                    ? `https://img.youtube.com/vi/${formData.teaserVideoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|^)([a-zA-Z0-9_-]{11})/)?.[1] || formData.teaserVideoUrl}/hqdefault.jpg`
-                    : undefined,
-                  platform: "YouTube",
-                  embedUrl: formData.teaserVideoUrl.includes("youtube") || formData.teaserVideoUrl.match(/^[a-zA-Z0-9_-]{11}$/)
-                    ? `https://www.youtube.com/embed/${formData.teaserVideoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|^)([a-zA-Z0-9_-]{11})/)?.[1] || formData.teaserVideoUrl}`
-                    : undefined,
-                } : null}
+                value={
+                  formData.teaserVideoUrl
+                    ? {
+                        source: "youtube",
+                        url: formData.teaserVideoUrl,
+                        orientation: "horizontal",
+                        thumbnailUrl:
+                          formData.teaserVideoUrl.includes("youtube") ||
+                          formData.teaserVideoUrl.match(/^[a-zA-Z0-9_-]{11}$/)
+                            ? `https://img.youtube.com/vi/${formData.teaserVideoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|^)([a-zA-Z0-9_-]{11})/)?.[1] || formData.teaserVideoUrl}/hqdefault.jpg`
+                            : undefined,
+                        platform: "YouTube",
+                        embedUrl:
+                          formData.teaserVideoUrl.includes("youtube") ||
+                          formData.teaserVideoUrl.match(/^[a-zA-Z0-9_-]{11}$/)
+                            ? `https://www.youtube.com/embed/${formData.teaserVideoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|^)([a-zA-Z0-9_-]{11})/)?.[1] || formData.teaserVideoUrl}`
+                            : undefined,
+                      }
+                    : null
+                }
                 onChange={(video) => {
-                  setFormData(prev => ({
+                  setFormData((prev) => ({
                     ...prev,
-                    teaserVideoUrl: video?.url || ""
+                    teaserVideoUrl: video?.url || "",
                   }));
                 }}
                 label="Video Teaser Horizontal"
@@ -424,25 +448,40 @@ export default function NewUpcomingReleasePage() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <Smartphone className="w-5 h-5 text-pink-500" />
-                <h3 className="font-oswald text-lg uppercase">Video Vertical</h3>
+                <h3 className="font-oswald text-lg uppercase">
+                  Video Vertical
+                </h3>
               </div>
               <p className="text-xs text-slc-muted">
-                Para Instagram Reels, TikTok y Stories. Formato 9:16 recomendado.
+                Para Instagram Reels, TikTok y Stories. Formato 9:16
+                recomendado.
               </p>
 
               <VideoUploader
-                value={formData.verticalVideoUrl ? {
-                  source: formData.verticalVideoUrl.includes("instagram") ? "social" :
-                          formData.verticalVideoUrl.includes("tiktok") ? "social" : "upload",
-                  url: formData.verticalVideoUrl,
-                  orientation: "vertical",
-                  platform: formData.verticalVideoUrl.includes("instagram") ? "Instagram" :
-                            formData.verticalVideoUrl.includes("tiktok") ? "TikTok" : "Video",
-                } : null}
+                value={
+                  formData.verticalVideoUrl
+                    ? {
+                        source: formData.verticalVideoUrl.includes("instagram")
+                          ? "social"
+                          : formData.verticalVideoUrl.includes("tiktok")
+                            ? "social"
+                            : "upload",
+                        url: formData.verticalVideoUrl,
+                        orientation: "vertical",
+                        platform: formData.verticalVideoUrl.includes(
+                          "instagram",
+                        )
+                          ? "Instagram"
+                          : formData.verticalVideoUrl.includes("tiktok")
+                            ? "TikTok"
+                            : "Video",
+                      }
+                    : null
+                }
                 onChange={(video) => {
-                  setFormData(prev => ({
+                  setFormData((prev) => ({
                     ...prev,
-                    verticalVideoUrl: video?.url || ""
+                    verticalVideoUrl: video?.url || "",
                   }));
                 }}
                 label="Video Vertical (Reels/TikTok)"
@@ -460,10 +499,22 @@ export default function NewUpcomingReleasePage() {
               Tips para videos de pre-save
             </h4>
             <ul className="text-xs text-slc-muted space-y-1">
-              <li>• <strong>Duración ideal:</strong> 15-30 segundos para máximo engagement</li>
-              <li>• <strong>Incluye:</strong> Fecha de lanzamiento, nombre del artista, call-to-action de pre-save</li>
-              <li>• <strong>Vertical:</strong> Graba directo en tu celular para mejor calidad en Stories</li>
-              <li>• <strong>Horizontal:</strong> Usa el arte de portada como fondo si no tienes video</li>
+              <li>
+                • <strong>Duración ideal:</strong> 15-30 segundos para máximo
+                engagement
+              </li>
+              <li>
+                • <strong>Incluye:</strong> Fecha de lanzamiento, nombre del
+                artista, call-to-action de pre-save
+              </li>
+              <li>
+                • <strong>Vertical:</strong> Graba directo en tu celular para
+                mejor calidad en Stories
+              </li>
+              <li>
+                • <strong>Horizontal:</strong> Usa el arte de portada como fondo
+                si no tienes video
+              </li>
             </ul>
           </div>
         </section>
@@ -506,7 +557,8 @@ export default function NewUpcomingReleasePage() {
                 className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
               />
               <p className="text-xs text-slc-muted mt-1">
-                Link de DistroKid HyperFollow para pre-save automático en todas las plataformas
+                Link de DistroKid HyperFollow para pre-save automático en todas
+                las plataformas
               </p>
             </div>
 
@@ -603,7 +655,8 @@ export default function NewUpcomingReleasePage() {
             Download Gate
           </h2>
           <p className="text-sm text-slc-muted mb-6">
-            Ofrece contenido exclusivo (remixes, wallpapers, acapellas) a cambio de presaves y hyperfollows.
+            Ofrece contenido exclusivo (remixes, wallpapers, acapellas) a cambio
+            de presaves y hyperfollows.
           </p>
 
           <div className="space-y-6">
@@ -619,7 +672,8 @@ export default function NewUpcomingReleasePage() {
               <div>
                 <span className="font-medium">Activar Download Gate</span>
                 <p className="text-sm text-slc-muted">
-                  Los fans deben completar acciones antes de descargar contenido exclusivo
+                  Los fans deben completar acciones antes de descargar contenido
+                  exclusivo
                 </p>
               </div>
             </label>
@@ -628,7 +682,9 @@ export default function NewUpcomingReleasePage() {
               <>
                 {/* Required Actions */}
                 <div className="bg-slc-dark rounded-lg p-4 space-y-3">
-                  <h3 className="font-medium text-sm mb-3">Acciones requeridas para desbloquear</h3>
+                  <h3 className="font-medium text-sm mb-3">
+                    Acciones requeridas para desbloquear
+                  </h3>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -647,7 +703,9 @@ export default function NewUpcomingReleasePage() {
                       onChange={handleChange}
                       className="w-4 h-4 rounded border-slc-border bg-slc-dark text-primary focus:ring-primary"
                     />
-                    <span className="text-sm">Requerir HyperFollow (DistroKid)</span>
+                    <span className="text-sm">
+                      Requerir HyperFollow (DistroKid)
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -663,17 +721,29 @@ export default function NewUpcomingReleasePage() {
 
                 {/* Download Files */}
                 <div>
-                  <h3 className="font-medium text-sm mb-3">Archivos de descarga</h3>
+                  <h3 className="font-medium text-sm mb-3">
+                    Archivos de descarga
+                  </h3>
                   {(formData.downloadGateFiles || []).map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 mb-2 bg-slc-dark rounded-lg p-3">
-                      <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded-full">{file.type}</span>
-                      <span className="text-sm flex-1 truncate">{file.name}</span>
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 mb-2 bg-slc-dark rounded-lg p-3"
+                    >
+                      <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded-full">
+                        {file.type}
+                      </span>
+                      <span className="text-sm flex-1 truncate">
+                        {file.name}
+                      </span>
                       <button
                         type="button"
                         onClick={() => {
                           const files = [...(formData.downloadGateFiles || [])];
                           files.splice(index, 1);
-                          setFormData(prev => ({ ...prev, downloadGateFiles: files }));
+                          setFormData((prev) => ({
+                            ...prev,
+                            downloadGateFiles: files,
+                          }));
                         }}
                         className="text-red-400 hover:text-red-300 text-xs"
                       >
@@ -708,13 +778,17 @@ export default function NewUpcomingReleasePage() {
                       />
                       <DropboxUploadButton
                         onUploadComplete={(url, filename) => {
-                          const urlInput = document.getElementById('dg-file-url') as HTMLInputElement | null;
+                          const urlInput = document.getElementById(
+                            "dg-file-url",
+                          ) as HTMLInputElement | null;
                           if (urlInput) urlInput.value = url;
                           // Auto-fill name if empty — saves the admin a step
-                          const nameInput = document.getElementById('dg-file-name') as HTMLInputElement | null;
+                          const nameInput = document.getElementById(
+                            "dg-file-name",
+                          ) as HTMLInputElement | null;
                           if (nameInput && !nameInput.value && filename) {
                             // Strip extension for a cleaner default name
-                            nameInput.value = filename.replace(/\.[^.]+$/, '');
+                            nameInput.value = filename.replace(/\.[^.]+$/, "");
                           }
                         }}
                         accept="*/*"
@@ -726,16 +800,45 @@ export default function NewUpcomingReleasePage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const name = (document.getElementById('dg-file-name') as HTMLInputElement).value;
-                          const type = (document.getElementById('dg-file-type') as HTMLSelectElement).value as "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
-                          const url = (document.getElementById('dg-file-url') as HTMLInputElement).value;
+                          const name = (
+                            document.getElementById(
+                              "dg-file-name",
+                            ) as HTMLInputElement
+                          ).value;
+                          const type = (
+                            document.getElementById(
+                              "dg-file-type",
+                            ) as HTMLSelectElement
+                          ).value as
+                            | "remix"
+                            | "wallpaper"
+                            | "acapella"
+                            | "beat"
+                            | "stems"
+                            | "other";
+                          const url = (
+                            document.getElementById(
+                              "dg-file-url",
+                            ) as HTMLInputElement
+                          ).value;
                           if (name && url) {
-                            setFormData(prev => ({
+                            setFormData((prev) => ({
                               ...prev,
-                              downloadGateFiles: [...(prev.downloadGateFiles || []), { name, type, url, fileName: name }]
+                              downloadGateFiles: [
+                                ...(prev.downloadGateFiles || []),
+                                { name, type, url, fileName: name },
+                              ],
                             }));
-                            (document.getElementById('dg-file-name') as HTMLInputElement).value = '';
-                            (document.getElementById('dg-file-url') as HTMLInputElement).value = '';
+                            (
+                              document.getElementById(
+                                "dg-file-name",
+                              ) as HTMLInputElement
+                            ).value = "";
+                            (
+                              document.getElementById(
+                                "dg-file-url",
+                              ) as HTMLInputElement
+                            ).value = "";
                           }
                         }}
                         className="px-4 py-2 bg-primary/20 text-primary rounded-lg text-sm hover:bg-primary/30 transition-colors whitespace-nowrap"

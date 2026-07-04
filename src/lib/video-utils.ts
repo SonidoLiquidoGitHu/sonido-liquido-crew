@@ -36,7 +36,7 @@ export interface VideoLike {
  */
 export function getYouTubeId(video: VideoLike): string | null {
   const urls = [video.embedUrl, video.platformUrl, video.videoUrl].filter(
-    Boolean
+    Boolean,
   ) as string[];
 
   for (const url of urls) {
@@ -47,9 +47,7 @@ export function getYouTubeId(video: VideoLike): string | null {
     if (embedMatch) return embedMatch[1];
 
     // shorts/VIDEO_ID or watch?v=VIDEO_ID
-    const watchMatch = url.match(
-      /(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/
-    );
+    const watchMatch = url.match(/(?:shorts\/|watch\?v=)([a-zA-Z0-9_-]+)/);
     if (watchMatch) return watchMatch[1];
 
     // youtu.be/VIDEO_ID
@@ -122,7 +120,7 @@ export function getVideoThumbnail(video: VideoLike): string | null {
  */
 export function getYouTubeThumbnailFallback(
   ytId: string,
-  currentUrl: string
+  currentUrl: string,
 ): string | null {
   // Find which tier the current URL is using
   for (let i = 0; i < YT_THUMB_TIERS.length; i++) {
@@ -150,7 +148,9 @@ export function isYouTubeThumbnailUrl(url: string): boolean {
  * Build an inline SVG data-URI placeholder suitable for video thumbnails.
  * This avoids external file dependencies and prevents cascade failures.
  */
-export function getVideoPlaceholderSvg(aspectRatio: "9/16" | "16/9" = "9/16"): string {
+export function getVideoPlaceholderSvg(
+  aspectRatio: "9/16" | "16/9" = "9/16",
+): string {
   const isVertical = aspectRatio === "9/16";
   const width = isVertical ? 360 : 640;
   const height = isVertical ? 640 : 360;
@@ -159,7 +159,7 @@ export function getVideoPlaceholderSvg(aspectRatio: "9/16" | "16/9" = "9/16"): s
     `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
       <rect width="${width}" height="${height}" fill="#1a1a1a"/>
       <polygon points="${width / 2 - 20},${height / 2 - 30} ${width / 2 - 20},${height / 2 + 30} ${width / 2 + 30},${height / 2}" fill="#333"/>
-    </svg>`
+    </svg>`,
   )}`;
 }
 
@@ -201,7 +201,7 @@ export function getDirectDropboxUrl(url: string): string {
       .replace("?raw=1", "?raw=1") // keep if already present
       .replace("&raw=1", "&raw=1"); // keep if already present
     if (fixed.includes("raw=1")) return fixed;
-    return fixed + (fixed.includes("?") ? "&" : "?") + "raw=1";
+    return `${fixed + (fixed.includes("?") ? "&" : "?")}raw=1`;
   }
 
   // 2. New-format shared links with ?raw=1 already present — use as-is
@@ -216,9 +216,9 @@ export function getDirectDropboxUrl(url: string): string {
 
   // 4. Dropbox shared links without any download parameter — add raw=1
   if (url.includes("?")) {
-    return url + "&raw=1";
+    return `${url}&raw=1`;
   }
-  return url + "?raw=1";
+  return `${url}?raw=1`;
 }
 
 /**

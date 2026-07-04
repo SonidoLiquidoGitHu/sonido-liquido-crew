@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { Users, Disc3, Play, Calendar, TrendingUp } from "lucide-react";
+import { Calendar, Disc3, Play, TrendingUp, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollReveal } from "../effects/ScrollReveal";
 
 interface StatItem {
@@ -29,10 +29,34 @@ const defaultApiStats: ApiStats = {
 
 function createStatsFromApi(apiStats: ApiStats): StatItem[] {
   return [
-    { icon: <Users className="w-8 h-8" />, value: apiStats.artists, suffix: "+", label: "Artistas", color: "#f97316" },
-    { icon: <Disc3 className="w-8 h-8" />, value: apiStats.releases, suffix: "+", label: "Lanzamientos", color: "#22c55e" },
-    { icon: <Play className="w-8 h-8" />, value: apiStats.videos, suffix: "+", label: "Videos", color: "#ef4444" },
-    { icon: <Calendar className="w-8 h-8" />, value: apiStats.yearsOfHistory, suffix: "+", label: "Años de Historia", color: "#3b82f6" },
+    {
+      icon: <Users className="w-8 h-8" />,
+      value: apiStats.artists,
+      suffix: "+",
+      label: "Artistas",
+      color: "#f97316",
+    },
+    {
+      icon: <Disc3 className="w-8 h-8" />,
+      value: apiStats.releases,
+      suffix: "+",
+      label: "Lanzamientos",
+      color: "#22c55e",
+    },
+    {
+      icon: <Play className="w-8 h-8" />,
+      value: apiStats.videos,
+      suffix: "+",
+      label: "Videos",
+      color: "#ef4444",
+    },
+    {
+      icon: <Calendar className="w-8 h-8" />,
+      value: apiStats.yearsOfHistory,
+      suffix: "+",
+      label: "Años de Historia",
+      color: "#3b82f6",
+    },
   ];
 }
 
@@ -52,10 +76,12 @@ function isLimitedBrowser(): boolean {
 
 export function StatsSection() {
   const [isVisible, setIsVisible] = useState(false);
-  const [stats, setStats] = useState<StatItem[]>(createStatsFromApi(defaultApiStats));
+  const [stats, setStats] = useState<StatItem[]>(
+    createStatsFromApi(defaultApiStats),
+  );
   // Initialize counts with actual values for limited browsers
   const [counts, setCounts] = useState<number[]>(() =>
-    createStatsFromApi(defaultApiStats).map(s => s.value)
+    createStatsFromApi(defaultApiStats).map((s) => s.value),
   );
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isLimited, setIsLimited] = useState(false);
@@ -91,14 +117,15 @@ export function StatsSection() {
             artists: data.data.artists || defaultApiStats.artists,
             releases: data.data.releases || defaultApiStats.releases,
             videos: data.data.videos || defaultApiStats.videos,
-            yearsOfHistory: data.data.yearsOfHistory || defaultApiStats.yearsOfHistory,
+            yearsOfHistory:
+              data.data.yearsOfHistory || defaultApiStats.yearsOfHistory,
           });
           setStats(newStats);
 
           // For limited browsers, update counts directly
           // For normal browsers, reset counts to 0 for animation
           if (isLimited || hasAnimated) {
-            setCounts(newStats.map(s => s.value));
+            setCounts(newStats.map((s) => s.value));
           } else {
             setCounts(newStats.map(() => 0));
           }
@@ -141,7 +168,7 @@ export function StatsSection() {
           }
         });
       },
-      { threshold: 0.1 } // Lower threshold for better detection
+      { threshold: 0.1 }, // Lower threshold for better detection
     );
 
     if (sectionRef.current) {
@@ -171,7 +198,7 @@ export function StatsSection() {
         step++;
         const progress = step / steps;
         // Cubic ease out for smoother animation
-        const easeOut = 1 - Math.pow(1 - progress, 4);
+        const easeOut = 1 - (1 - progress) ** 4;
         const currentValue = Math.round(stat.value * easeOut);
 
         setCounts((prev) => {
@@ -190,24 +217,25 @@ export function StatsSection() {
   }, [isVisible, stats, hasAnimated, isLimited]);
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative py-20 overflow-hidden"
-    >
+    <section ref={sectionRef} className="relative py-20 overflow-hidden">
       {/* Animated background */}
       <div className="absolute inset-0 bg-gradient-to-b from-slc-black via-slc-card to-slc-black" />
 
       {/* Decorative elements */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-0 left-1/4 w-64 h-64 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-green-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "1s" }} />
+        <div
+          className="absolute bottom-0 right-1/4 w-64 h-64 bg-green-500/10 rounded-full blur-[100px] animate-pulse"
+          style={{ animationDelay: "1s" }}
+        />
       </div>
 
       {/* Grid pattern */}
       <div
         className="absolute inset-0 opacity-[0.02]"
         style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
           backgroundSize: "40px 40px",
         }}
       />
@@ -240,9 +268,7 @@ export function StatsSection() {
               delay={index * 100}
               duration={600}
             >
-              <div
-                className="relative group text-center p-6 rounded-2xl bg-slc-card/50 backdrop-blur-sm border border-slc-border/50 transition-all duration-500 hover:border-primary/50 hover:bg-slc-card/80 opacity-100"
-              >
+              <div className="relative group text-center p-6 rounded-2xl bg-slc-card/50 backdrop-blur-sm border border-slc-border/50 transition-all duration-500 hover:border-primary/50 hover:bg-slc-card/80 opacity-100">
                 {/* Glow effect on hover */}
                 <div
                   className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"

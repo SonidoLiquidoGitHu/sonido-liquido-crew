@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { productsService } from "@/lib/services";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const options = {
       category: searchParams.get("category") || undefined,
       isActive: searchParams.get("isActive") !== "false",
-      limit: parseInt(searchParams.get("limit") || "20"),
+      limit: Number.parseInt(searchParams.get("limit") || "20"),
     };
 
     const products = await productsService.getAll(options);
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching products:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch products" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

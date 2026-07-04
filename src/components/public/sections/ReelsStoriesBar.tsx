@@ -1,32 +1,26 @@
 "use client";
 
-import {
-  useRef,
-  useState,
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
-import Link from "next/link";
-import {
-  Smartphone,
-  Play,
-  ArrowRight,
-  Youtube,
-  Instagram,
-  Music2,
-  Film,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { cn } from "@/lib/utils";
 import {
   getProxiedThumbnailUrl as getProxiedThumb,
-  getYouTubeId,
-  isYouTubeThumbnailUrl,
-  getYouTubeThumbnailFallback,
   getVideoPlaceholderSvg,
+  getYouTubeId,
+  getYouTubeThumbnailFallback,
+  isYouTubeThumbnailUrl,
 } from "@/lib/video-utils";
+import {
+  ArrowRight,
+  Film,
+  Instagram,
+  Music2,
+  Play,
+  Smartphone,
+  Youtube,
+} from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // ===========================================
 // TYPES
@@ -64,7 +58,10 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS; // ≈ 295.3
 // PLATFORM ICON HELPER
 // ===========================================
 
-function PlatformIcon({ platform, className }: { platform: string | null; className?: string }) {
+function PlatformIcon({
+  platform,
+  className,
+}: { platform: string | null; className?: string }) {
   switch (platform) {
     case "youtube":
       return <Youtube className={className} />;
@@ -135,7 +132,7 @@ function StoryCircle({
       className={cn(
         "group flex flex-col items-center gap-1.5 shrink-0 w-[86px] sm:w-[96px]",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg",
-        "snap-center scroll-mx-3 sm:scroll-mx-4"
+        "snap-center scroll-mx-3 sm:scroll-mx-4",
       )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -150,7 +147,7 @@ function StoryCircle({
         className={cn(
           "relative rounded-full p-[3px] bg-gradient-to-br transition-all duration-300 group-hover:scale-105",
           ringGradient,
-          !isSeen && isNew && "animate-story-pulse"
+          !isSeen && isNew && "animate-story-pulse",
         )}
       >
         {/* Progress ring on hover — always in DOM, toggled via opacity + animation */}
@@ -158,7 +155,7 @@ function StoryCircle({
           className={cn(
             "absolute inset-0 z-10 pointer-events-none",
             "transition-opacity duration-150",
-            hovered ? "opacity-100" : "opacity-0"
+            hovered ? "opacity-100" : "opacity-0",
           )}
         >
           <svg
@@ -187,7 +184,7 @@ function StoryCircle({
           <div
             className={cn(
               "relative rounded-full overflow-hidden",
-              "w-[72px] h-[72px] sm:w-[86px] sm:h-[86px]"
+              "w-[72px] h-[72px] sm:w-[86px] sm:h-[86px]",
             )}
           >
             {getProxiedThumb(video) ? (
@@ -197,14 +194,17 @@ function StoryCircle({
                 fill
                 className={cn(
                   "object-cover transition-opacity duration-300",
-                  isSeen && "opacity-70 group-hover:opacity-100"
+                  isSeen && "opacity-70 group-hover:opacity-100",
                 )}
                 sizes="86px"
                 fallbackSrc={(() => {
                   const thumb = getProxiedThumb(video)!;
                   const ytId = getYouTubeId(video);
                   if (ytId && isYouTubeThumbnailUrl(thumb)) {
-                    return getYouTubeThumbnailFallback(ytId, thumb) || getVideoPlaceholderSvg("9/16");
+                    return (
+                      getYouTubeThumbnailFallback(ytId, thumb) ||
+                      getVideoPlaceholderSvg("9/16")
+                    );
                   }
                   return getVideoPlaceholderSvg("9/16");
                 })()}
@@ -214,7 +214,8 @@ function StoryCircle({
                 className={cn(
                   "w-full h-full flex items-center justify-center bg-gradient-to-br",
                   getPlaceholderGradient(video.platform),
-                  isSeen && "opacity-60 group-hover:opacity-100 transition-opacity duration-300"
+                  isSeen &&
+                    "opacity-60 group-hover:opacity-100 transition-opacity duration-300",
                 )}
               >
                 <PlatformIcon
@@ -237,7 +238,9 @@ function StoryCircle({
         {/* Featured star indicator */}
         {video.isFeatured && (
           <div className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg shadow-yellow-400/30 z-20">
-            <span className="text-[8px] sm:text-[9px] text-black font-bold">★</span>
+            <span className="text-[8px] sm:text-[9px] text-black font-bold">
+              ★
+            </span>
           </div>
         )}
       </div>
@@ -250,7 +253,7 @@ function StoryCircle({
             ? "text-yellow-300 font-medium"
             : isSeen
               ? "text-slc-muted/60 group-hover:text-slc-muted transition-colors"
-              : "text-slc-muted group-hover:text-white transition-colors"
+              : "text-slc-muted group-hover:text-white transition-colors",
         )}
       >
         {video.artistName || video.title || "Reel"}
@@ -280,9 +283,9 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
         videos
           .filter((v) => v.isFeatured)
           .slice(0, 3)
-          .map((v) => v.id)
+          .map((v) => v.id),
       ),
-    [videos]
+    [videos],
   );
 
   // ===========================================
@@ -329,7 +332,7 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
           observer.disconnect();
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.15 },
     );
 
     observer.observe(el);
@@ -366,15 +369,12 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
   // DRAG SCROLL HANDLERS
   // ===========================================
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (!scrollRef.current) return;
-      setIsDragging(true);
-      setStartX(e.pageX - scrollRef.current.offsetLeft);
-      setScrollLeft(scrollRef.current.scrollLeft);
-    },
-    []
-  );
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeft(scrollRef.current.scrollLeft);
+  }, []);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
@@ -384,7 +384,7 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
       const walk = (x - startX) * 1.5;
       scrollRef.current.scrollLeft = scrollLeft - walk;
     },
-    [isDragging, startX, scrollLeft]
+    [isDragging, startX, scrollLeft],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -450,7 +450,7 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
           className={cn(
             "flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide pb-2",
             "select-none snap-x snap-mandatory",
-            isDragging ? "cursor-grabbing" : "cursor-grab"
+            isDragging ? "cursor-grabbing" : "cursor-grab",
           )}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -476,7 +476,7 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
             href="/reels"
             className={cn(
               "group flex flex-col items-center justify-center shrink-0 w-[86px] sm:w-[96px] gap-2",
-              "snap-center scroll-mx-3 sm:scroll-mx-4"
+              "snap-center scroll-mx-3 sm:scroll-mx-4",
             )}
             style={{
               opacity: isVisible ? 1 : 0,
@@ -490,7 +490,7 @@ export function ReelsStoriesBar({ videos }: ReelsStoriesBarProps) {
                 "bg-gradient-to-br from-primary/30 via-purple-500/20 to-pink-500/30",
                 "group-hover:from-primary/50 group-hover:via-purple-500/40 group-hover:to-pink-500/50",
                 "transition-all duration-300 group-hover:scale-105",
-                "animate-story-pulse"
+                "animate-story-pulse",
               )}
             >
               {/* Inner dashed ring */}

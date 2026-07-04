@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
 import {
-  getSpotifyUserAccessToken,
   getClientCredentialsToken,
   getSpotifyCredentials,
+  getSpotifyUserAccessToken,
   readSetting,
   validateAccessToken,
 } from "@/lib/clients/spotify-tokens";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export async function GET() {
     diagnosis.steps.push({
       step: "credentials",
       status: clientId && clientSecret ? "ok" : "missing",
-      detail: `Client ID: ${clientId ? clientId.slice(0, 8) + '...' : 'NOT SET'}, Secret: ${clientSecret ? 'set' : 'NOT SET'}`,
+      detail: `Client ID: ${clientId ? `${clientId.slice(0, 8)}...` : "NOT SET"}, Secret: ${clientSecret ? "set" : "NOT SET"}`,
     });
 
     // Step 2: Check refresh token in DB
@@ -42,13 +42,15 @@ export async function GET() {
     diagnosis.steps.push({
       step: "refresh_token_in_db",
       status: refreshToken ? "found" : "missing",
-      detail: refreshToken ? `${refreshToken.slice(0, 8)}...` : "No refresh token stored in database",
+      detail: refreshToken
+        ? `${refreshToken.slice(0, 8)}...`
+        : "No refresh token stored in database",
     });
 
     // Step 3: Check access token in DB
     const accessToken = await readSetting("spotify_access_token");
     const expiryStr = await readSetting("spotify_access_token_expiry");
-    const expiry = parseInt(expiryStr || "0", 10);
+    const expiry = Number.parseInt(expiryStr || "0", 10);
     const isExpired = accessToken ? Date.now() >= expiry : true;
 
     diagnosis.steps.push({
@@ -64,7 +66,9 @@ export async function GET() {
     diagnosis.steps.push({
       step: "get_user_token",
       status: userToken ? "success" : "failed",
-      detail: userToken ? `${userToken.slice(0, 8)}...` : "Could not obtain user access token (refresh may have failed)",
+      detail: userToken
+        ? `${userToken.slice(0, 8)}...`
+        : "Could not obtain user access token (refresh may have failed)",
     });
 
     // Step 5: Validate the user token by calling /me
@@ -82,33 +86,44 @@ export async function GET() {
     // Step 5b: Check scopes by refreshing the token (the refresh response includes scope)
     if (refreshToken) {
       try {
-        const { getSpotifyAuthHeader } = await import("@/lib/clients/spotify-tokens");
-        const scopeCheckResponse = await fetch("https://accounts.spotify.com/api/token", {
-          method: "POST",
-          headers: {
-            Authorization: getSpotifyAuthHeader(),
-            "Content-Type": "application/x-www-form-urlencoded",
+        const { getSpotifyAuthHeader } = await import(
+          "@/lib/clients/spotify-tokens"
+        );
+        const scopeCheckResponse = await fetch(
+          "https://accounts.spotify.com/api/token",
+          {
+            method: "POST",
+            headers: {
+              Authorization: getSpotifyAuthHeader(),
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              grant_type: "refresh_token",
+              refresh_token: refreshToken,
+            }).toString(),
+            signal: AbortSignal.timeout(10_000),
           },
-          body: new URLSearchParams({
-            grant_type: "refresh_token",
-            refresh_token: refreshToken,
-          }).toString(),
-          signal: AbortSignal.timeout(10_000),
-        });
+        );
 
         if (scopeCheckResponse.ok) {
           const scopeData = await scopeCheckResponse.json();
           const scopes = scopeData.scope || "";
           const scopeList = scopes.split(" ");
-          const requiredScopes = ["playlist-read-private", "playlist-read-collaborative"];
-          const missingScopes = requiredScopes.filter(s => !scopeList.includes(s));
+          const requiredScopes = [
+            "playlist-read-private",
+            "playlist-read-collaborative",
+          ];
+          const missingScopes = requiredScopes.filter(
+            (s) => !scopeList.includes(s),
+          );
 
           diagnosis.steps.push({
             step: "scope_check_via_refresh",
             status: missingScopes.length === 0 ? "ok" : "missing_scopes",
-            detail: missingScopes.length === 0
-              ? `All required scopes present. Granted: ${scopes}`
-              : `Missing: ${missingScopes.join(', ')}. Granted: ${scopes}`,
+            detail:
+              missingScopes.length === 0
+                ? `All required scopes present. Granted: ${scopes}`
+                : `Missing: ${missingScopes.join(", ")}. Granted: ${scopes}`,
           });
         } else {
           const errorBody = await scopeCheckResponse.text().catch(() => "");
@@ -132,7 +147,9 @@ export async function GET() {
     diagnosis.steps.push({
       step: "client_credentials",
       status: ccToken ? "success" : "failed",
-      detail: ccToken ? `${ccToken.slice(0, 8)}...` : "Could not obtain client credentials token",
+      detail: ccToken
+        ? `${ccToken.slice(0, 8)}...`
+        : "Could not obtain client credentials token",
     });
 
     // Step 7: Test actual playlist access with user token
@@ -143,7 +160,7 @@ export async function GET() {
           {
             headers: { Authorization: `Bearer ${userToken}` },
             signal: AbortSignal.timeout(10_000),
-          }
+          },
         );
         const testBody = await testResponse.text().catch(() => "");
         diagnosis.steps.push({
@@ -166,7 +183,10 @@ export async function GET() {
       try {
         const userPlaylistsRes = await fetch(
           "https://api.spotify.com/v1/me/playlists?limit=1",
-          { headers: { Authorization: `Bearer ${userToken}` }, signal: AbortSignal.timeout(10_000) }
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+            signal: AbortSignal.timeout(10_000),
+          },
         );
         if (userPlaylistsRes.ok) {
           const userPlaylistsData = await userPlaylistsRes.json();
@@ -175,12 +195,19 @@ export async function GET() {
             // Test the NEW /items endpoint
             const itemsTestResponse = await fetch(
               `https://api.spotify.com/v1/playlists/${testPlaylistId}/items?limit=1&fields=items(item(id,name)),total`,
-              { headers: { Authorization: `Bearer ${userToken}` }, signal: AbortSignal.timeout(10_000) }
+              {
+                headers: { Authorization: `Bearer ${userToken}` },
+                signal: AbortSignal.timeout(10_000),
+              },
             );
-            const itemsTestBody = await itemsTestResponse.text().catch(() => "");
+            const itemsTestBody = await itemsTestResponse
+              .text()
+              .catch(() => "");
             diagnosis.steps.push({
               step: "test_playlist_items_user_token",
-              status: itemsTestResponse.ok ? "success" : `failed_${itemsTestResponse.status}`,
+              status: itemsTestResponse.ok
+                ? "success"
+                : `failed_${itemsTestResponse.status}`,
               detail: itemsTestResponse.ok
                 ? `Can read playlist items (${JSON.parse(itemsTestBody).total} tracks found, playlist: ${testPlaylistId})`
                 : `Status ${itemsTestResponse.status}: ${itemsTestBody.slice(0, 500)}`,
@@ -189,14 +216,21 @@ export async function GET() {
             // Also test the old /tracks endpoint to confirm it's deprecated
             const oldTracksResponse = await fetch(
               `https://api.spotify.com/v1/playlists/${testPlaylistId}/tracks?limit=1&fields=total`,
-              { headers: { Authorization: `Bearer ${userToken}` }, signal: AbortSignal.timeout(10_000) }
+              {
+                headers: { Authorization: `Bearer ${userToken}` },
+                signal: AbortSignal.timeout(10_000),
+              },
             );
-            const oldTracksBody = await oldTracksResponse.text().catch(() => "");
+            const oldTracksBody = await oldTracksResponse
+              .text()
+              .catch(() => "");
             diagnosis.steps.push({
               step: "test_playlist_tracks_deprecated",
-              status: oldTracksResponse.ok ? "still_works" : `deprecated_${oldTracksResponse.status}`,
+              status: oldTracksResponse.ok
+                ? "still_works"
+                : `deprecated_${oldTracksResponse.status}`,
               detail: oldTracksResponse.ok
-                ? `Old /tracks endpoint still works (unexpected)`
+                ? "Old /tracks endpoint still works (unexpected)"
                 : `Old /tracks endpoint returns ${oldTracksResponse.status} (expected - deprecated)`,
             });
           }
@@ -216,7 +250,10 @@ export async function GET() {
         // Get a public playlist ID first
         const searchRes = await fetch(
           "https://api.spotify.com/v1/search?q=top%20hits&type=playlist&limit=1",
-          { headers: { Authorization: `Bearer ${ccToken}` }, signal: AbortSignal.timeout(10_000) }
+          {
+            headers: { Authorization: `Bearer ${ccToken}` },
+            signal: AbortSignal.timeout(10_000),
+          },
         );
         if (searchRes.ok) {
           const searchData = await searchRes.json();
@@ -224,14 +261,19 @@ export async function GET() {
           if (publicPlaylistId) {
             const ccItemsResponse = await fetch(
               `https://api.spotify.com/v1/playlists/${publicPlaylistId}/items?limit=1&fields=total`,
-              { headers: { Authorization: `Bearer ${ccToken}` }, signal: AbortSignal.timeout(10_000) }
+              {
+                headers: { Authorization: `Bearer ${ccToken}` },
+                signal: AbortSignal.timeout(10_000),
+              },
             );
             const ccItemsBody = await ccItemsResponse.text().catch(() => "");
             diagnosis.steps.push({
               step: "test_playlist_items_client_credentials",
-              status: ccItemsResponse.ok ? "success" : `failed_${ccItemsResponse.status}`,
+              status: ccItemsResponse.ok
+                ? "success"
+                : `failed_${ccItemsResponse.status}`,
               detail: ccItemsResponse.ok
-                ? `Client credentials CAN access /items endpoint`
+                ? "Client credentials CAN access /items endpoint"
                 : `Status ${ccItemsResponse.status}: ${ccItemsBody.slice(0, 300)}`,
             });
           }

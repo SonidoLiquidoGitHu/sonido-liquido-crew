@@ -2,8 +2,8 @@
 // A/B TEST TRACKING API (PUBLIC)
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { abTestingService } from "@/lib/services/ab-testing";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Get active test and assigned variant
 export async function GET() {
@@ -33,7 +33,7 @@ export async function GET() {
     console.error("[AB Track] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -42,20 +42,30 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { testId, variantId, eventType, sessionId, engagementTime, metadata } = body;
+    const {
+      testId,
+      variantId,
+      eventType,
+      sessionId,
+      engagementTime,
+      metadata,
+    } = body;
 
     if (!testId || !variantId || !eventType) {
       return NextResponse.json(
         { success: false, error: "testId, variantId, and eventType required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const validEvents = ["impression", "click", "conversion", "engagement"];
     if (!validEvents.includes(eventType)) {
       return NextResponse.json(
-        { success: false, error: `eventType must be one of: ${validEvents.join(", ")}` },
-        { status: 400 }
+        {
+          success: false,
+          error: `eventType must be one of: ${validEvents.join(", ")}`,
+        },
+        { status: 400 },
       );
     }
 
@@ -71,7 +81,7 @@ export async function POST(request: NextRequest) {
     console.error("[AB Track] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

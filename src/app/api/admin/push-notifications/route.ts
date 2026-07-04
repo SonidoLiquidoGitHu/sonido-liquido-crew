@@ -2,8 +2,8 @@
 // PUSH NOTIFICATIONS ADMIN API
 // ===========================================
 
-import { NextRequest, NextResponse } from "next/server";
 import { pushNotificationService } from "@/lib/services/push-notifications";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Send push notification
 export async function POST(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (!title || !notificationBody) {
       return NextResponse.json(
         { success: false, error: "Title and body are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,9 +31,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Push notifications not configured. Set VAPID keys in environment variables.",
+          error:
+            "Push notifications not configured. Set VAPID keys in environment variables.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -43,20 +44,22 @@ export async function POST(request: NextRequest) {
       if (scheduledFor <= new Date()) {
         return NextResponse.json(
           { success: false, error: "Schedule time must be in the future" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
-      const notificationId = await pushNotificationService.scheduleNotification({
-        title,
-        body: notificationBody,
-        icon,
-        url,
-        scheduledFor,
-        releaseId,
-        eventId,
-        notificationType,
-      });
+      const notificationId = await pushNotificationService.scheduleNotification(
+        {
+          title,
+          body: notificationBody,
+          icon,
+          url,
+          scheduledFor,
+          releaseId,
+          eventId,
+          notificationType,
+        },
+      );
 
       return NextResponse.json({
         success: true,
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
         icon: icon || "/icons/icon-192x192.png",
         url: url || "/",
       },
-      { notificationType }
+      { notificationType },
     );
 
     return NextResponse.json({
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
     console.error("[Push Admin] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -99,7 +102,8 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const subscriberCount = await pushNotificationService.getSubscriberCount();
-    const scheduledNotifications = await pushNotificationService.getScheduledNotifications();
+    const scheduledNotifications =
+      await pushNotificationService.getScheduledNotifications();
     const isConfigured = pushNotificationService.isConfigured();
 
     return NextResponse.json({
@@ -114,7 +118,7 @@ export async function GET() {
     console.error("[Push Admin] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -122,7 +126,8 @@ export async function GET() {
 // Process scheduled notifications (called by cron job)
 export async function PUT() {
   try {
-    const processed = await pushNotificationService.processScheduledNotifications();
+    const processed =
+      await pushNotificationService.processScheduledNotifications();
 
     return NextResponse.json({
       success: true,
@@ -132,7 +137,7 @@ export async function PUT() {
     console.error("[Push Admin] Error:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

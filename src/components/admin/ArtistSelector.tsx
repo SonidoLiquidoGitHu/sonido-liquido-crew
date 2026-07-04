@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
-  User,
-  ChevronDown,
-  X,
   Check,
-  Search,
+  ChevronDown,
   Loader2,
   Music,
+  Search,
+  User,
+  X,
 } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 export interface Artist {
   id: string;
@@ -73,7 +73,9 @@ export function ArtistSelector({
   useEffect(() => {
     // If we have initial artists from props, use them but still allow refresh
     if (initialArtists && initialArtists.length > 0) {
-      console.log(`[ArtistSelector] Using ${initialArtists.length} initial artists from props`);
+      console.log(
+        `[ArtistSelector] Using ${initialArtists.length} initial artists from props`,
+      );
       setArtists(initialArtists);
       setLoading(false);
       return;
@@ -96,7 +98,9 @@ export function ArtistSelector({
             console.log(`[ArtistSelector] Trying ${endpoint}...`);
             const res = await fetch(endpoint);
             if (!res.ok) {
-              console.warn(`[ArtistSelector] ${endpoint} returned ${res.status}`);
+              console.warn(
+                `[ArtistSelector] ${endpoint} returned ${res.status}`,
+              );
               continue;
             }
 
@@ -104,7 +108,11 @@ export function ArtistSelector({
 
             // Handle different response formats
             let artistList: Artist[] = [];
-            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+            if (
+              data.success &&
+              Array.isArray(data.data) &&
+              data.data.length > 0
+            ) {
               artistList = data.data;
             } else if (Array.isArray(data) && data.length > 0) {
               artistList = data;
@@ -112,7 +120,9 @@ export function ArtistSelector({
 
             if (artistList.length > 0) {
               setArtists(artistList);
-              console.log(`[ArtistSelector] Loaded ${artistList.length} artists from ${endpoint}`);
+              console.log(
+                `[ArtistSelector] Loaded ${artistList.length} artists from ${endpoint}`,
+              );
               return; // Success, stop trying
             }
 
@@ -135,7 +145,10 @@ export function ArtistSelector({
   // Close dropdown when clicking/tapping outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -149,7 +162,9 @@ export function ArtistSelector({
 
   // Filter artists by search and role
   const filteredArtists = artists.filter((artist) => {
-    const matchesSearch = artist.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = artist.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     const matchesRole = !filterRole || artist.role === filterRole;
     return matchesSearch && matchesRole;
   });
@@ -195,7 +210,7 @@ export function ArtistSelector({
           "w-full flex items-center justify-between px-3 py-2 bg-slc-card border border-slc-border rounded-lg transition-colors text-left min-h-[42px]",
           isOpen && "border-primary",
           disabled && "opacity-50 cursor-not-allowed",
-          !disabled && "hover:border-slc-muted"
+          !disabled && "hover:border-slc-muted",
         )}
       >
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
@@ -252,20 +267,26 @@ export function ArtistSelector({
               )}
               <span>{selectedArtists[0]?.name}</span>
               {showRole && selectedArtists[0]?.role && (
-                <span className={cn(
-                  "px-1.5 py-0.5 rounded text-[10px] uppercase",
-                  roleColors[selectedArtists[0].role] || "bg-slc-border text-slc-muted"
-                )}>
-                  {roleLabels[selectedArtists[0].role] || selectedArtists[0].role}
+                <span
+                  className={cn(
+                    "px-1.5 py-0.5 rounded text-[10px] uppercase",
+                    roleColors[selectedArtists[0].role] ||
+                      "bg-slc-border text-slc-muted",
+                  )}
+                >
+                  {roleLabels[selectedArtists[0].role] ||
+                    selectedArtists[0].role}
                 </span>
               )}
             </div>
           )}
         </div>
-        <ChevronDown className={cn(
-          "w-4 h-4 text-slc-muted transition-transform flex-shrink-0 ml-2",
-          isOpen && "rotate-180"
-        )} />
+        <ChevronDown
+          className={cn(
+            "w-4 h-4 text-slc-muted transition-transform flex-shrink-0 ml-2",
+            isOpen && "rotate-180",
+          )}
+        />
       </button>
 
       {/* Dropdown */}
@@ -290,7 +311,9 @@ export function ArtistSelector({
           <div className="max-h-64 overflow-y-auto">
             {filteredArtists.length === 0 ? (
               <div className="p-4 text-center text-slc-muted text-sm">
-                {searchQuery ? "No se encontraron artistas" : "No hay artistas disponibles"}
+                {searchQuery
+                  ? "No se encontraron artistas"
+                  : "No hay artistas disponibles"}
               </div>
             ) : (
               filteredArtists.map((artist) => {
@@ -304,7 +327,7 @@ export function ArtistSelector({
                       "w-full flex items-center gap-3 px-3 py-2 text-left transition-colors",
                       isSelected
                         ? "bg-primary/10 text-primary"
-                        : "hover:bg-slc-card"
+                        : "hover:bg-slc-card",
                     )}
                   >
                     {/* Artist Image */}
@@ -334,12 +357,17 @@ export function ArtistSelector({
                     {/* Artist Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{artist.name}</span>
+                        <span className="font-medium truncate">
+                          {artist.name}
+                        </span>
                         {showRole && artist.role && (
-                          <span className={cn(
-                            "px-1.5 py-0.5 rounded text-[10px] uppercase flex-shrink-0",
-                            roleColors[artist.role] || "bg-slc-border text-slc-muted"
-                          )}>
+                          <span
+                            className={cn(
+                              "px-1.5 py-0.5 rounded text-[10px] uppercase flex-shrink-0",
+                              roleColors[artist.role] ||
+                                "bg-slc-border text-slc-muted",
+                            )}
+                          >
                             {roleLabels[artist.role] || artist.role}
                           </span>
                         )}
@@ -358,8 +386,10 @@ export function ArtistSelector({
 
           {/* Footer with count */}
           <div className="px-3 py-2 border-t border-slc-border bg-slc-card/50 text-xs text-slc-muted">
-            {filteredArtists.length} artista{filteredArtists.length !== 1 ? "s" : ""}
-            {selectedIds.length > 0 && ` • ${selectedIds.length} seleccionado${selectedIds.length !== 1 ? "s" : ""}`}
+            {filteredArtists.length} artista
+            {filteredArtists.length !== 1 ? "s" : ""}
+            {selectedIds.length > 0 &&
+              ` • ${selectedIds.length} seleccionado${selectedIds.length !== 1 ? "s" : ""}`}
           </div>
         </div>
       )}

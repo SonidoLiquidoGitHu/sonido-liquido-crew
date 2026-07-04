@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 interface MarqueeItem {
   text: string;
@@ -19,7 +19,8 @@ interface MarqueeBannerProps {
 
 export function MarqueeBanner({ speed = 40 }: MarqueeBannerProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const [marqueeItems, setMarqueeItems] = useState<MarqueeItem[]>(FALLBACK_ITEMS);
+  const [marqueeItems, setMarqueeItems] =
+    useState<MarqueeItem[]>(FALLBACK_ITEMS);
 
   // Fetch roster data from API
   useEffect(() => {
@@ -30,11 +31,15 @@ export function MarqueeBanner({ speed = 40 }: MarqueeBannerProps) {
           const data = await res.json();
           if (data.success && data.data?.length > 0) {
             const items: MarqueeItem[] = data.data.map(
-              (artist: { name: string; slug: string; isFeatured: boolean }) => ({
+              (artist: {
+                name: string;
+                slug: string;
+                isFeatured: boolean;
+              }) => ({
                 text: artist.name.toUpperCase(),
                 slug: artist.slug,
                 highlight: artist.isFeatured,
-              })
+              }),
             );
             setMarqueeItems(items);
           }

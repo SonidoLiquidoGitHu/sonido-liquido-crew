@@ -1,51 +1,51 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  type TouchEvent as ReactTouchEvent,
-} from "react";
-import Link from "next/link";
-import {
-  Play,
-  Share2,
-  Eye,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  CheckCircle,
-  Smartphone,
-  Loader2,
-  Heart,
-  Keyboard,
-  Calendar,
-  MapPin,
-  FolderOpen,
-  ArrowRight,
-  Video,
-  Instagram,
-  Download,
-} from "lucide-react";
+import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
 import { Button } from "@/components/ui/button";
 import { SafeImage } from "@/components/ui/safe-image";
 import { VideoThumbnail } from "@/components/ui/video-thumbnail";
 import { cn } from "@/lib/utils";
-import { YouTubeEmbed } from "@/components/public/embeds/YouTubeEmbed";
-import { EventStoryCard } from "./EventStoryCard";
 import {
-  getYouTubeId,
-  getProxiedThumbnailUrl,
-  isYouTubeThumbnailUrl,
-  getYouTubeThumbnailFallback,
-  getVideoPlaceholderSvg,
-  isDirectVideo as isDirectVideoUtil,
-  getVideoSrc,
-  getProxiedVideoSrc,
   type VideoLike,
+  getProxiedThumbnailUrl,
+  getProxiedVideoSrc,
+  getVideoPlaceholderSvg,
+  getVideoSrc,
+  getYouTubeId,
+  getYouTubeThumbnailFallback,
+  isDirectVideo as isDirectVideoUtil,
+  isYouTubeThumbnailUrl,
 } from "@/lib/video-utils";
+import {
+  ArrowRight,
+  Calendar,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  Eye,
+  FolderOpen,
+  Heart,
+  Instagram,
+  Keyboard,
+  Loader2,
+  MapPin,
+  Play,
+  Share2,
+  Smartphone,
+  Video,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import {
+  type TouchEvent as ReactTouchEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { EventStoryCard } from "./EventStoryCard";
 
 // ===========================================
 // TYPES
@@ -197,13 +197,19 @@ function KeyboardTooltip({ onClose }: { onClose: () => void }) {
         <Keyboard className="w-4 h-4 text-white/60 shrink-0" />
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">&larr;</kbd>
-            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">&rarr;</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">
+              &larr;
+            </kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">
+              &rarr;
+            </kbd>
             <span className="text-white/60">Navegar</span>
           </span>
           <span className="w-px h-3 bg-white/20" />
           <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">Esc</kbd>
+            <kbd className="px-1.5 py-0.5 bg-white/15 rounded text-[10px] font-mono">
+              Esc
+            </kbd>
             <span className="text-white/60">Cerrar</span>
           </span>
         </div>
@@ -337,7 +343,7 @@ function EventCard({
         "flex-shrink-0 w-56 rounded-xl overflow-hidden border-2 transition-all",
         isActive
           ? "border-primary shadow-lg shadow-primary/20"
-          : "border-slc-border hover:border-primary/50"
+          : "border-slc-border hover:border-primary/50",
       )}
     >
       {/* Cover image section */}
@@ -373,7 +379,10 @@ function EventCard({
           {event.eventDate && (
             <span className="flex items-center gap-0.5">
               <Calendar className="w-3 h-3" />
-              {new Date(event.eventDate).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}
+              {new Date(event.eventDate).toLocaleDateString("es-MX", {
+                month: "short",
+                day: "numeric",
+              })}
             </span>
           )}
           {event.location && (
@@ -385,7 +394,10 @@ function EventCard({
         {/* Share to Stories button */}
         {onShareStory && (
           <button
-            onClick={(e) => { e.stopPropagation(); onShareStory(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onShareStory();
+            }}
             className="mt-2 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
           >
             <Instagram className="w-3 h-3" />
@@ -408,7 +420,9 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
   // Feature #1: Fade-in + slide transition state
   const [viewerVisible, setViewerVisible] = useState(false);
-  const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(null);
+  const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(
+    null,
+  );
   const [slideKey, setSlideKey] = useState(0);
   const slideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -422,7 +436,9 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
   // Feature #4: Double-tap to like
   const [isLiked, setIsLiked] = useState(false);
-  const [heartBursts, setHeartBursts] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [heartBursts, setHeartBursts] = useState<
+    { id: number; x: number; y: number }[]
+  >([]);
   const lastTapRef = useRef<number>(0);
   const burstIdRef = useRef(0);
   const viewerContentRef = useRef<HTMLDivElement>(null);
@@ -456,7 +472,9 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
     return (
       <div className="text-center py-20">
         <Smartphone className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-        <h3 className="text-xl font-oswald uppercase mb-2">No hay Reels todavía</h3>
+        <h3 className="text-xl font-oswald uppercase mb-2">
+          No hay Reels todavía
+        </h3>
         <p className="text-slc-muted">Pronto subiremos videos verticales</p>
       </div>
     );
@@ -482,43 +500,47 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
     }
   };
 
-  const closeReel = () => {
+  const closeReel = useCallback(() => {
     setViewerVisible(false);
     setTimeout(() => {
       setActiveIndex(null);
       setSlideDirection(null);
       setShowTooltip(false);
     }, 300);
-  };
+  }, []);
 
-  const navigateReel = (newIndex: number, direction: "left" | "right") => {
-    if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
+  const navigateReel = useCallback(
+    (newIndex: number, direction: "left" | "right") => {
+      if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
 
-    setSlideDirection(direction);
-    setSlideKey((k) => k + 1);
-    setIsLiked(false);
-    setVideoProgress(0);
+      setSlideDirection(direction);
+      setSlideKey((k) => k + 1);
+      setIsLiked(false);
+      setVideoProgress(0);
 
-    // Brief delay for exit animation, then swap
-    slideTimerRef.current = setTimeout(() => {
-      setActiveIndex(newIndex);
-      setSlideDirection(null);
-    }, 150);
-  };
+      // Brief delay for exit animation, then swap
+      slideTimerRef.current = setTimeout(() => {
+        setActiveIndex(newIndex);
+        setSlideDirection(null);
+      }, 150);
+    },
+    [],
+  );
 
-  const nextReel = () => {
+  const nextReel = useCallback(() => {
     if (activeIndex !== null) {
       const nextIdx = (activeIndex + 1) % displayVideos.length;
       navigateReel(nextIdx, "right");
     }
-  };
+  }, [activeIndex, displayVideos.length, navigateReel]);
 
-  const prevReel = () => {
+  const prevReel = useCallback(() => {
     if (activeIndex !== null) {
-      const prevIdx = (activeIndex - 1 + displayVideos.length) % displayVideos.length;
+      const prevIdx =
+        (activeIndex - 1 + displayVideos.length) % displayVideos.length;
       navigateReel(prevIdx, "left");
     }
-  };
+  }, [activeIndex, displayVideos.length, navigateReel]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -530,9 +552,10 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeIndex]);
+  }, [activeIndex, closeReel, nextReel, prevReel]);
 
   // Feature #2: Track progress for direct video in fullscreen
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeIndex and slideKey trigger re-attachment when the video element changes
   useEffect(() => {
     const el = fullscreenVideoRef.current;
     if (!el) return;
@@ -548,6 +571,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
   }, [activeIndex, slideKey]);
 
   // Reset progress when video changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeIndex intentionally triggers reset on video change
   useEffect(() => {
     setVideoProgress(0);
   }, [activeIndex]);
@@ -588,7 +612,10 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
       try {
         await navigator.share({
           title: video.title || "Sonido Líquido Crew",
-          text: video.description || video.title || "Mira este video de Sonido Líquido Crew",
+          text:
+            video.description ||
+            video.title ||
+            "Mira este video de Sonido Líquido Crew",
           url,
         });
         trackShare(video.id, "native");
@@ -632,7 +659,9 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
   const handleTouchEnd = (e: ReactTouchEvent<HTMLDivElement>) => {
     const deltaY = touchStartYRef.current - e.changedTouches[0].clientY;
-    const deltaX = Math.abs(touchStartXRef.current - e.changedTouches[0].clientX);
+    const deltaX = Math.abs(
+      touchStartXRef.current - e.changedTouches[0].clientX,
+    );
     // Only trigger if vertical swipe is dominant and > 50px
     if (Math.abs(deltaY) > 50 && Math.abs(deltaY) > deltaX) {
       if (deltaY > 0) {
@@ -650,7 +679,8 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
       const now = Date.now();
       const rect = viewerContentRef.current.getBoundingClientRect();
-      let clientX: number, clientY: number;
+      let clientX: number;
+      let clientY: number;
 
       if ("touches" in e) {
         const touch = e.changedTouches?.[0];
@@ -681,7 +711,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
       }
       lastTapRef.current = now;
     },
-    []
+    [],
   );
 
   // Compute slide animation class for video content swap
@@ -718,7 +748,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                 isActive={selectedEventId === event.id}
                 onClick={() =>
                   setSelectedEventId(
-                    event.id === selectedEventId ? null : event.id
+                    event.id === selectedEventId ? null : event.id,
                   )
                 }
                 onShareStory={() => setStoryCardEvent(event)}
@@ -765,20 +795,25 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                       {selectedEvent.eventDate && (
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(selectedEvent.eventDate).toLocaleDateString("es-MX", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
+                          {new Date(selectedEvent.eventDate).toLocaleDateString(
+                            "es-MX",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            },
+                          )}
                         </span>
                       )}
                       {selectedEvent.location && (
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {selectedEvent.location}
+                          <MapPin className="w-3 h-3" />{" "}
+                          {selectedEvent.location}
                         </span>
                       )}
                       <span className="flex items-center gap-1">
-                        <Smartphone className="w-3 h-3" /> {selectedEvent.videoCount} videos
+                        <Smartphone className="w-3 h-3" />{" "}
+                        {selectedEvent.videoCount} videos
                       </span>
                     </div>
                   </div>
@@ -819,7 +854,9 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
               ) : (
                 <div className="text-center py-12">
                   <FolderOpen className="w-12 h-12 text-slc-muted mx-auto mb-3" />
-                  <p className="text-slc-muted">No hay videos en este evento aún.</p>
+                  <p className="text-slc-muted">
+                    No hay videos en este evento aún.
+                  </p>
                 </div>
               )}
             </div>
@@ -835,7 +872,9 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
             <h2 className="font-oswald text-2xl uppercase tracking-wide text-white">
               {events.length > 0 ? "Videos" : "Todos los Reels"}
             </h2>
-            <span className="text-sm text-slc-muted">({standaloneVideos.length})</span>
+            <span className="text-sm text-slc-muted">
+              ({standaloneVideos.length})
+            </span>
             <div className="flex-1 h-px bg-slc-border" />
           </div>
 
@@ -860,7 +899,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
         <div
           className={cn(
             "fixed inset-0 bg-black/95 z-50 flex items-center justify-center transition-opacity duration-300",
-            viewerVisible ? "opacity-100" : "opacity-0"
+            viewerVisible ? "opacity-100" : "opacity-0",
           )}
           onClick={closeReel}
         >
@@ -885,13 +924,19 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
           {/* Navigation arrows */}
           <button
-            onClick={(e) => { e.stopPropagation(); prevReel(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              prevReel();
+            }}
             className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <ChevronLeft className="w-6 h-6 text-white" />
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); nextReel(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              nextReel();
+            }}
             className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <ChevronRight className="w-6 h-6 text-white" />
@@ -903,7 +948,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
             key={slideKey}
             className={cn(
               "relative max-h-[90vh] max-w-[90vw] transition-all duration-150 ease-out",
-              getSlideClass()
+              getSlideClass(),
             )}
             onClick={(e) => e.stopPropagation()}
             onTouchStart={handleTouchStart}
@@ -927,16 +972,24 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
 
               if (ytId) {
                 return (
-                  <div className="rounded-xl overflow-hidden" style={{ maxHeight: "90vh" }}>
+                  <div
+                    className="rounded-xl overflow-hidden"
+                    style={{ maxHeight: "90vh" }}
+                  >
                     <YouTubeEmbed videoId={ytId} autoplay />
                   </div>
                 );
               }
               if (direct) {
-                const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
-                const posterUrl = getProxiedThumbnailUrl(video as unknown as VideoLike);
+                const videoSrc = getProxiedVideoSrc(
+                  video as unknown as VideoLike,
+                );
+                const posterUrl = getProxiedThumbnailUrl(
+                  video as unknown as VideoLike,
+                );
                 return (
                   <div className="relative rounded-xl overflow-hidden bg-black">
+                    {/* biome-ignore lint/a11y/useMediaCaption: decorative video */}
                     <video
                       ref={fullscreenVideoRef}
                       src={videoSrc}
@@ -960,9 +1013,18 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
               }
               // Fallback: show thumbnail with play link
               return (
-                <div className="relative rounded-xl overflow-hidden bg-black flex items-center justify-center" style={{ maxHeight: "90vh" }}>
+                <div
+                  className="relative rounded-xl overflow-hidden bg-black flex items-center justify-center"
+                  style={{ maxHeight: "90vh" }}
+                >
                   {getProxiedThumbnailUrl(video) && (
-                    <SafeImage src={getProxiedThumbnailUrl(video)!} alt={video.title || "Video"} fill className="object-cover" fallbackSrc={getVideoPlaceholderSvg("9/16")} />
+                    <SafeImage
+                      src={getProxiedThumbnailUrl(video) as string}
+                      alt={video.title || "Video"}
+                      fill
+                      className="object-cover"
+                      fallbackSrc={getVideoPlaceholderSvg("9/16")}
+                    />
                   )}
                   <a
                     href={video.platformUrl || video.videoUrl}
@@ -986,8 +1048,14 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
               onClick={(e) => {
                 e.stopPropagation();
                 setIsLiked((prev) => !prev);
-                if (!isLiked && typeof navigator !== "undefined" && "vibrate" in navigator) {
-                  try { navigator.vibrate(10); } catch {}
+                if (
+                  !isLiked &&
+                  typeof navigator !== "undefined" &&
+                  "vibrate" in navigator
+                ) {
+                  try {
+                    navigator.vibrate(10);
+                  } catch {}
                 }
               }}
               className="absolute bottom-28 right-3 z-20 flex flex-col items-center gap-1"
@@ -996,7 +1064,9 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
               <div
                 className={cn(
                   "w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center transition-all duration-200",
-                  isLiked ? "text-red-500 scale-110" : "text-white hover:bg-black/60"
+                  isLiked
+                    ? "text-red-500 scale-110"
+                    : "text-white hover:bg-black/60",
                 )}
               >
                 <Heart
@@ -1052,7 +1122,10 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
       {shareModalIndex !== null && displayVideos[shareModalIndex] && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => { setShareModalIndex(null); setCopiedLink(false); }}
+          onClick={() => {
+            setShareModalIndex(null);
+            setCopiedLink(false);
+          }}
         >
           <div
             className="bg-slc-dark border border-slc-border rounded-xl w-full max-w-sm"
@@ -1063,24 +1136,37 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                 <Share2 className="w-5 h-5 text-primary" />
                 Compartir
               </h2>
-              <button onClick={() => { setShareModalIndex(null); setCopiedLink(false); }}>
+              <button
+                onClick={() => {
+                  setShareModalIndex(null);
+                  setCopiedLink(false);
+                }}
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-5 space-y-3">
-              <p className="text-sm text-slc-muted">{displayVideos[shareModalIndex].title || "Video"}</p>
+              <p className="text-sm text-slc-muted">
+                {displayVideos[shareModalIndex].title || "Video"}
+              </p>
 
               {/* Copy link */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 p-2.5 bg-slc-card border border-slc-border rounded-lg text-xs truncate">
-                  {typeof window !== "undefined" ? `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}` : `/reels/${displayVideos[shareModalIndex].id}`}
+                  {typeof window !== "undefined"
+                    ? `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}`
+                    : `/reels/${displayVideos[shareModalIndex].id}`}
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => copyLink(displayVideos[shareModalIndex].id)}
                 >
-                  {copiedLink ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  {copiedLink ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
 
@@ -1091,16 +1177,28 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                   className="w-full text-sm"
                   onClick={async () => {
                     const url = `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}`;
-                    const text = displayVideos[shareModalIndex].title || "Mira este video de Sonido Líquido Crew";
+                    const text =
+                      displayVideos[shareModalIndex].title ||
+                      "Mira este video de Sonido Líquido Crew";
                     if (navigator.share) {
-                      try { await navigator.share({ title: text, url }); } catch {}
+                      try {
+                        await navigator.share({ title: text, url });
+                      } catch {}
                     } else {
-                      window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`);
+                      window.open(
+                        `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`,
+                      );
                     }
                     trackShare(displayVideos[shareModalIndex].id, "whatsapp");
                   }}
                 >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
                   WhatsApp
                 </Button>
                 <Button
@@ -1108,12 +1206,21 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                   className="w-full text-sm"
                   onClick={() => {
                     const url = `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}`;
-                    const text = displayVideos[shareModalIndex].title || "Mira este video";
-                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
+                    const text =
+                      displayVideos[shareModalIndex].title || "Mira este video";
+                    window.open(
+                      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+                    );
                     trackShare(displayVideos[shareModalIndex].id, "twitter");
                   }}
                 >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
                   X / Twitter
                 </Button>
                 <Button
@@ -1121,11 +1228,19 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                   className="w-full text-sm"
                   onClick={() => {
                     const url = `${window.location.origin}/reels/${displayVideos[shareModalIndex].id}`;
-                    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+                    window.open(
+                      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+                    );
                     trackShare(displayVideos[shareModalIndex].id, "facebook");
                   }}
                 >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
                   Facebook
                 </Button>
                 <Button

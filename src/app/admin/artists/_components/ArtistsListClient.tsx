@@ -1,26 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ARTIST_ROLES, getRolesFromString, type RoleConfig } from "@/lib/roles";
+import { ARTIST_ROLES, type RoleConfig, getRolesFromString } from "@/lib/roles";
 import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  ExternalLink,
   AlertTriangle,
+  Check,
   CheckCircle,
   Clock,
-  User,
+  Edit,
+  ExternalLink,
   Loader2,
-  Check,
-  X,
+  Plus,
+  Search,
   Tags,
+  Trash2,
+  User,
+  X,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 interface Artist {
   id: string;
@@ -38,12 +38,18 @@ interface ArtistsListClientProps {
 }
 
 const statusColors = {
-  verified: { bg: "bg-green-500/10", text: "text-green-500", icon: CheckCircle },
+  verified: {
+    bg: "bg-green-500/10",
+    text: "text-green-500",
+    icon: CheckCircle,
+  },
   pending: { bg: "bg-yellow-500/10", text: "text-yellow-500", icon: Clock },
   rejected: { bg: "bg-red-500/10", text: "text-red-500", icon: AlertTriangle },
 };
 
-export default function ArtistsListClient({ artists: initialArtists }: ArtistsListClientProps) {
+export default function ArtistsListClient({
+  artists: initialArtists,
+}: ArtistsListClientProps) {
   const router = useRouter();
   const [artists, setArtists] = useState(initialArtists);
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,17 +63,20 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
 
   // Filter artists
   const filteredArtists = artists.filter((artist) => {
-    const matchesSearch = artist.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = artist.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     const artistRoles = artist.role?.split(",").filter(Boolean) || [];
     const matchesRole = !roleFilter || artistRoles.includes(roleFilter);
-    const matchesStatus = !statusFilter || artist.verificationStatus === statusFilter;
+    const matchesStatus =
+      !statusFilter || artist.verificationStatus === statusFilter;
     return matchesSearch && matchesRole && matchesStatus;
   });
 
   // Toggle artist selection
   const toggleSelection = (id: string) => {
     setSelectedArtists((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
     );
   };
 
@@ -85,7 +94,7 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
     setBulkRoles((prev) =>
       prev.includes(roleValue)
         ? prev.filter((r) => r !== roleValue)
-        : [...prev, roleValue]
+        : [...prev, roleValue],
     );
   };
 
@@ -112,8 +121,8 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
         prev.map((artist) =>
           selectedArtists.includes(artist.id)
             ? { ...artist, role: bulkRoles.join(",") }
-            : artist
-        )
+            : artist,
+        ),
       );
 
       // Reset selection
@@ -194,12 +203,14 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
                 if (!isBulkEditing) {
                   // Pre-populate with common roles from selection
                   const selectedArtistsData = artists.filter((a) =>
-                    selectedArtists.includes(a.id)
+                    selectedArtists.includes(a.id),
                   );
                   const allRoles = new Set<string>();
-                  selectedArtistsData.forEach((a) => {
-                    a.role?.split(",").forEach((r) => r && allRoles.add(r));
-                  });
+                  for (const a of selectedArtistsData) {
+                    for (const r of a.role?.split(",") ?? []) {
+                      if (r) allRoles.add(r);
+                    }
+                  }
                   setBulkRoles(Array.from(allRoles));
                 }
               }}
@@ -236,7 +247,8 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
           </div>
 
           <p className="text-sm text-slc-muted mb-4">
-            Selecciona los roles que se aplicarán a todos los artistas seleccionados:
+            Selecciona los roles que se aplicarán a todos los artistas
+            seleccionados:
           </p>
 
           <div className="flex flex-wrap gap-2 mb-4">
@@ -365,7 +377,9 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
             <tbody className="divide-y divide-slc-border">
               {filteredArtists.map((artist) => {
                 const status =
-                  statusColors[artist.verificationStatus as keyof typeof statusColors];
+                  statusColors[
+                    artist.verificationStatus as keyof typeof statusColors
+                  ];
                 const StatusIcon = status?.icon || Clock;
                 const isSelected = selectedArtists.includes(artist.id);
 
@@ -408,7 +422,9 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
                           >
                             {artist.name}
                           </Link>
-                          <p className="text-xs text-slc-muted">/{artist.slug}</p>
+                          <p className="text-xs text-slc-muted">
+                            /{artist.slug}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -442,7 +458,10 @@ export default function ArtistsListClient({ artists: initialArtists }: ArtistsLi
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button asChild variant="ghost" size="icon">
-                          <Link href={`/artistas/${artist.slug}`} target="_blank">
+                          <Link
+                            href={`/artistas/${artist.slug}`}
+                            target="_blank"
+                          >
                             <ExternalLink className="w-4 h-4" />
                           </Link>
                         </Button>

@@ -1,13 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Img } from "@/components/ui/img";
-import Link from "next/link";
-import { Bell, Rocket, Music, Calendar, Clock, ChevronRight, Star, ExternalLink, Share2 } from "lucide-react";
+import {
+  type UpcomingReleaseShareData,
+  UpcomingReleaseStoryCard,
+} from "@/app/(public)/proximos/[slug]/UpcomingReleaseStoryCard";
 import { Button } from "@/components/ui/button";
-import { cn, getReleaseTypeDisplay } from "@/lib/utils";
+import { Img } from "@/components/ui/img";
 import type { UpcomingRelease } from "@/db/schema/upcoming";
-import { UpcomingReleaseStoryCard, type UpcomingReleaseShareData } from "@/app/(public)/proximos/[slug]/UpcomingReleaseStoryCard";
+import { cn, getReleaseTypeDisplay } from "@/lib/utils";
+import {
+  Bell,
+  Calendar,
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  Music,
+  Rocket,
+  Share2,
+  Star,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface UpcomingReleasesHeroProps {
   releases: UpcomingRelease[];
@@ -90,7 +103,10 @@ export function UpcomingReleasesHeroSkeleton() {
         {/* Cards skeleton */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="bg-slc-card border border-slc-border rounded-xl overflow-hidden">
+            <div
+              key={i}
+              className="bg-slc-card border border-slc-border rounded-xl overflow-hidden"
+            >
               <div className="aspect-square bg-slc-dark animate-pulse relative">
                 {/* Shimmer effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
@@ -111,7 +127,10 @@ export function UpcomingReleasesHeroSkeleton() {
 // =============================================
 // MAIN COMPONENT
 // =============================================
-export function UpcomingReleasesHero({ releases, isLoading }: UpcomingReleasesHeroProps) {
+export function UpcomingReleasesHero({
+  releases,
+  isLoading,
+}: UpcomingReleasesHeroProps) {
   if (isLoading) {
     return <UpcomingReleasesHeroSkeleton />;
   }
@@ -156,7 +175,11 @@ export function UpcomingReleasesHero({ releases, isLoading }: UpcomingReleasesHe
         {/* 4 Column Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {displayReleases.map((release, index) => (
-            <CompactReleaseCard key={release.id} release={release} index={index} />
+            <CompactReleaseCard
+              key={release.id}
+              release={release}
+              index={index}
+            />
           ))}
         </div>
       </div>
@@ -175,7 +198,7 @@ function CompactReleaseCard({
   index: number;
 }) {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>(() =>
-    getTimeRemaining(release.releaseDate)
+    getTimeRemaining(release.releaseDate),
   );
   const [isHovered, setIsHovered] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -194,12 +217,16 @@ function CompactReleaseCard({
   useEffect(() => {
     setIsTouchDevice(
       typeof window !== "undefined" &&
-      ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+        ("ontouchstart" in window || navigator.maxTouchPoints > 0),
     );
   }, []);
 
   const bgColor = release.backgroundColor || "#1a1a1a";
-  const hasPresave = Boolean(release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl);
+  const hasPresave = Boolean(
+    release.rpmPresaveUrl ||
+      release.spotifyPresaveUrl ||
+      release.appleMusicPresaveUrl,
+  );
 
   return (
     <div
@@ -209,11 +236,13 @@ function CompactReleaseCard({
       onTouchStart={() => setIsHovered(true)}
       onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
     >
-      <div className={cn(
-        "bg-slc-card border border-slc-border rounded-xl overflow-hidden transition-all duration-300",
-        "hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10",
-        isHovered && "transform scale-[1.02]"
-      )}>
+      <div
+        className={cn(
+          "bg-slc-card border border-slc-border rounded-xl overflow-hidden transition-all duration-300",
+          "hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10",
+          isHovered && "transform scale-[1.02]",
+        )}
+      >
         {/* Cover Image */}
         <div className="aspect-square relative overflow-hidden">
           {release.coverImageUrl ? (
@@ -223,7 +252,7 @@ function CompactReleaseCard({
               fill
               className={cn(
                 "object-cover transition-all duration-500",
-                isHovered ? "scale-110 brightness-50" : "scale-100"
+                isHovered ? "scale-110 brightness-50" : "scale-100",
               )}
               unoptimized
               priority={index < 2}
@@ -232,7 +261,7 @@ function CompactReleaseCard({
             <div
               className={cn(
                 "w-full h-full flex items-center justify-center transition-all duration-300",
-                isHovered && "brightness-50"
+                isHovered && "brightness-50",
               )}
               style={{ backgroundColor: bgColor }}
             >
@@ -242,21 +271,27 @@ function CompactReleaseCard({
 
           {/* Featured badge */}
           {release.isFeatured && (
-            <div className={cn(
-              "absolute top-2 left-2 px-2 py-0.5 bg-yellow-500/90 rounded-full flex items-center gap-1 transition-opacity duration-300",
-              isHovered && "opacity-0"
-            )}>
+            <div
+              className={cn(
+                "absolute top-2 left-2 px-2 py-0.5 bg-yellow-500/90 rounded-full flex items-center gap-1 transition-opacity duration-300",
+                isHovered && "opacity-0",
+              )}
+            >
               <Star className="w-3 h-3 text-black fill-black" />
-              <span className="text-[10px] font-bold text-black uppercase">Destacado</span>
+              <span className="text-[10px] font-bold text-black uppercase">
+                Destacado
+              </span>
             </div>
           )}
 
           {/* Countdown Badge - Real-time */}
           {timeRemaining.total > 0 && (
-            <div className={cn(
-              "absolute top-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-sm rounded-full flex items-center gap-1 text-xs transition-all duration-300",
-              isHovered && "opacity-0 translate-y-[-10px]"
-            )}>
+            <div
+              className={cn(
+                "absolute top-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-sm rounded-full flex items-center gap-1 text-xs transition-all duration-300",
+                isHovered && "opacity-0 translate-y-[-10px]",
+              )}
+            >
               <Clock className="w-3 h-3 text-primary animate-pulse" />
               <span className="text-white font-medium font-mono">
                 {formatTimeShort(timeRemaining)}
@@ -265,10 +300,12 @@ function CompactReleaseCard({
           )}
 
           {/* Type badge */}
-          <div className={cn(
-            "absolute bottom-2 left-2 transition-all duration-300",
-            isHovered && "opacity-0 translate-y-[10px]"
-          )}>
+          <div
+            className={cn(
+              "absolute bottom-2 left-2 transition-all duration-300",
+              isHovered && "opacity-0 translate-y-[10px]",
+            )}
+          >
             <span className="px-2 py-0.5 bg-primary/90 text-white text-[10px] font-bold uppercase tracking-wider rounded">
               {getReleaseTypeDisplay(release.releaseType)}
             </span>
@@ -276,10 +313,12 @@ function CompactReleaseCard({
 
           {/* Pre-save indicator - hides on hover */}
           {hasPresave && (
-            <div className={cn(
-              "absolute bottom-2 right-2 transition-all duration-300",
-              isHovered && "opacity-0 translate-y-[10px]"
-            )}>
+            <div
+              className={cn(
+                "absolute bottom-2 right-2 transition-all duration-300",
+                isHovered && "opacity-0 translate-y-[10px]",
+              )}
+            >
               <div className="w-6 h-6 rounded-full bg-primary/90 flex items-center justify-center">
                 <Bell className="w-3 h-3 text-white" />
               </div>
@@ -291,10 +330,12 @@ function CompactReleaseCard({
               On touch devices, show pre-save button below the card image
               instead of as an overlay to avoid covering the countdown
               ============================================= */}
-          <div className={cn(
-            "absolute inset-0 flex flex-col items-center justify-center gap-3 transition-all duration-300",
-            isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}>
+          <div
+            className={cn(
+              "absolute inset-0 flex flex-col items-center justify-center gap-3 transition-all duration-300",
+              isHovered ? "opacity-100" : "opacity-0 pointer-events-none",
+            )}
+          >
             {/* Share button — top-right of the overlay, always available on hover/tap */}
             <button
               onClick={(e) => {
@@ -319,21 +360,37 @@ function CompactReleaseCard({
                 <div className="flex gap-1.5 text-center">
                   {timeRemaining.days > 0 && (
                     <div className="bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                      <div className="font-oswald text-lg text-white leading-none">{timeRemaining.days}</div>
-                      <div className="text-[8px] text-white/60 uppercase">días</div>
+                      <div className="font-oswald text-lg text-white leading-none">
+                        {timeRemaining.days}
+                      </div>
+                      <div className="text-[8px] text-white/60 uppercase">
+                        días
+                      </div>
                     </div>
                   )}
                   <div className="bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                    <div className="font-oswald text-lg text-white leading-none">{String(timeRemaining.hours).padStart(2, '0')}</div>
-                    <div className="text-[8px] text-white/60 uppercase">hrs</div>
+                    <div className="font-oswald text-lg text-white leading-none">
+                      {String(timeRemaining.hours).padStart(2, "0")}
+                    </div>
+                    <div className="text-[8px] text-white/60 uppercase">
+                      hrs
+                    </div>
                   </div>
                   <div className="bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                    <div className="font-oswald text-lg text-white leading-none">{String(timeRemaining.minutes).padStart(2, '0')}</div>
-                    <div className="text-[8px] text-white/60 uppercase">min</div>
+                    <div className="font-oswald text-lg text-white leading-none">
+                      {String(timeRemaining.minutes).padStart(2, "0")}
+                    </div>
+                    <div className="text-[8px] text-white/60 uppercase">
+                      min
+                    </div>
                   </div>
                   <div className="bg-black/60 backdrop-blur-sm rounded px-2 py-1">
-                    <div className="font-oswald text-lg text-primary leading-none">{String(timeRemaining.seconds).padStart(2, '0')}</div>
-                    <div className="text-[8px] text-white/60 uppercase">seg</div>
+                    <div className="font-oswald text-lg text-primary leading-none">
+                      {String(timeRemaining.seconds).padStart(2, "0")}
+                    </div>
+                    <div className="text-[8px] text-white/60 uppercase">
+                      seg
+                    </div>
                   </div>
                 </div>
               </div>
@@ -342,7 +399,12 @@ function CompactReleaseCard({
             {/* Presave Button */}
             {hasPresave ? (
               <Link
-                href={release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl || "#"}
+                href={
+                  release.rpmPresaveUrl ||
+                  release.spotifyPresaveUrl ||
+                  release.appleMusicPresaveUrl ||
+                  "#"
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="transform hover:scale-105 transition-transform"
@@ -383,8 +445,12 @@ function CompactReleaseCard({
                     className="w-8 h-8 rounded-full bg-[#1DB954]/20 hover:bg-[#1DB954]/40 flex items-center justify-center transition-colors"
                     title="Spotify"
                   >
-                    <svg className="w-4 h-4 text-[#1DB954]" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                    <svg
+                      className="w-4 h-4 text-[#1DB954]"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
                     </svg>
                   </Link>
                 )}
@@ -396,8 +462,12 @@ function CompactReleaseCard({
                     className="w-8 h-8 rounded-full bg-[#FC3C44]/20 hover:bg-[#FC3C44]/40 flex items-center justify-center transition-colors"
                     title="Apple Music"
                   >
-                    <svg className="w-4 h-4 text-[#FC3C44]" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.4-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.802.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.295-.81a5.046 5.046 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.042-1.8-.335-2.22-1.078-.263-.467-.323-.974-.238-1.498.12-.753.507-1.332 1.172-1.72.322-.188.673-.306 1.032-.396.51-.127 1.026-.234 1.538-.36.29-.07.564-.164.79-.347.263-.212.39-.5.396-.84.005-.268.002-.535.002-.804V7.593c0-.238-.047-.328-.28-.29-.623.1-1.244.203-1.866.306-.997.163-1.994.325-2.99.49-.14.024-.232.1-.26.24-.013.064-.02.13-.02.196v7.645c0 .347-.03.69-.14 1.025-.193.586-.55 1.043-1.092 1.362-.424.25-.89.372-1.378.41-.53.04-1.05-.005-1.544-.217-.773-.33-1.22-.912-1.34-1.74-.093-.64.02-1.25.386-1.8.365-.55.883-.87 1.503-1.032.393-.1.793-.166 1.19-.24.377-.07.755-.136 1.127-.222.252-.06.49-.16.686-.332.22-.194.328-.44.335-.727.002-.054.002-.11.002-.163V5.606c0-.12.013-.24.043-.357.062-.236.195-.402.436-.46.138-.035.28-.057.42-.08.93-.152 1.86-.306 2.79-.457l2.067-.34c.618-.1 1.235-.203 1.853-.302.2-.033.4-.06.603-.07.14-.007.27.038.368.15.085.097.12.216.12.34v5.084z"/>
+                    <svg
+                      className="w-4 h-4 text-[#FC3C44]"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.4-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.802.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.295-.81a5.046 5.046 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.042-1.8-.335-2.22-1.078-.263-.467-.323-.974-.238-1.498.12-.753.507-1.332 1.172-1.72.322-.188.673-.306 1.032-.396.51-.127 1.026-.234 1.538-.36.29-.07.564-.164.79-.347.263-.212.39-.5.396-.84.005-.268.002-.535.002-.804V7.593c0-.238-.047-.328-.28-.29-.623.1-1.244.203-1.866.306-.997.163-1.994.325-2.99.49-.14.024-.232.1-.26.24-.013.064-.02.13-.02.196v7.645c0 .347-.03.69-.14 1.025-.193.586-.55 1.043-1.092 1.362-.424.25-.89.372-1.378.41-.53.04-1.05-.005-1.544-.217-.773-.33-1.22-.912-1.34-1.74-.093-.64.02-1.25.386-1.8.365-.55.883-.87 1.503-1.032.393-.1.793-.166 1.19-.24.377-.07.755-.136 1.127-.222.252-.06.49-.16.686-.332.22-.194.328-.44.335-.727.002-.054.002-.11.002-.163V5.606c0-.12.013-.24.043-.357.062-.236.195-.402.436-.46.138-.035.28-.057.42-.08.93-.152 1.86-.306 2.79-.457l2.067-.34c.618-.1 1.235-.203 1.853-.302.2-.033.4-.06.603-.07.14-.007.27.038.368.15.085.097.12.216.12.34v5.084z" />
                     </svg>
                   </Link>
                 )}
@@ -426,7 +496,10 @@ function CompactReleaseCard({
           <p className="text-xs text-slc-muted mb-2 line-clamp-1">
             {release.artistName}
             {release.featuredArtists && (
-              <span className="text-slc-muted"> ft. {release.featuredArtists}</span>
+              <span className="text-slc-muted">
+                {" "}
+                ft. {release.featuredArtists}
+              </span>
             )}
           </p>
 
@@ -439,7 +512,12 @@ function CompactReleaseCard({
             {/* Mobile: always-visible pre-save button below card */}
             {isTouchDevice && hasPresave && (
               <Link
-                href={release.rpmPresaveUrl || release.spotifyPresaveUrl || release.appleMusicPresaveUrl || "#"}
+                href={
+                  release.rpmPresaveUrl ||
+                  release.spotifyPresaveUrl ||
+                  release.appleMusicPresaveUrl ||
+                  "#"
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-2 py-1 bg-primary/20 hover:bg-primary/30 rounded-full text-[10px] text-primary font-bold uppercase transition-colors"
@@ -456,19 +534,21 @@ function CompactReleaseCard({
       {/* Story Card Share Modal — same component as the proximos detail page */}
       {showShareCard && (
         <UpcomingReleaseStoryCard
-          release={{
-            id: release.id,
-            title: release.title,
-            slug: release.slug,
-            description: release.description,
-            artistName: release.artistName,
-            featuredArtists: release.featuredArtists,
-            releaseDate: release.releaseDate.toString(),
-            coverImageUrl: release.coverImageUrl,
-            releaseType: release.releaseType,
-            rpmPresaveUrl: release.rpmPresaveUrl,
-            spotifyPresaveUrl: release.spotifyPresaveUrl,
-          } satisfies UpcomingReleaseShareData}
+          release={
+            {
+              id: release.id,
+              title: release.title,
+              slug: release.slug,
+              description: release.description,
+              artistName: release.artistName,
+              featuredArtists: release.featuredArtists,
+              releaseDate: release.releaseDate.toString(),
+              coverImageUrl: release.coverImageUrl,
+              releaseType: release.releaseType,
+              rpmPresaveUrl: release.rpmPresaveUrl,
+              spotifyPresaveUrl: release.spotifyPresaveUrl,
+            } satisfies UpcomingReleaseShareData
+          }
           onClose={() => setShowShareCard(false)}
         />
       )}
@@ -508,7 +588,7 @@ export function UpcomingReleasesStrip({ releases }: UpcomingReleasesHeroProps) {
 
 function MiniReleaseCard({ release }: { release: UpcomingRelease }) {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>(() =>
-    getTimeRemaining(release.releaseDate)
+    getTimeRemaining(release.releaseDate),
   );
 
   useEffect(() => {
@@ -546,7 +626,9 @@ function MiniReleaseCard({ release }: { release: UpcomingRelease }) {
           </div>
         )}
       </div>
-      <p className="text-[10px] text-slc-muted truncate">{release.artistName}</p>
+      <p className="text-[10px] text-slc-muted truncate">
+        {release.artistName}
+      </p>
       <h3 className="font-oswald text-xs uppercase text-white truncate group-hover:text-primary transition-colors">
         {release.title}
       </h3>

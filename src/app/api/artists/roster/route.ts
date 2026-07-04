@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { artistsService } from "@/lib/services";
+import { NextResponse } from "next/server";
 
 export const revalidate = 300; // Cache for 5 minutes
 
@@ -55,7 +55,7 @@ export async function GET() {
     console.error("[API /artists/roster] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch roster" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

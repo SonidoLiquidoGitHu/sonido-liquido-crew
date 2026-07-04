@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle, Copy, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 interface DedupResult {
   kept: string;
@@ -15,7 +15,11 @@ export function DeduplicateButton() {
   const [error, setError] = useState<string | null>(null);
 
   const handleDedup = async () => {
-    if (!confirm("¿Deduplicar lanzamientos? Esto buscará y eliminará entradas duplicadas (ej: 'y' vs '&'), manteniendo la versión con Spotify ID.")) {
+    if (
+      !confirm(
+        "¿Deduplicar lanzamientos? Esto buscará y eliminará entradas duplicadas (ej: 'y' vs '&'), manteniendo la versión con Spotify ID.",
+      )
+    ) {
       return;
     }
 
@@ -69,7 +73,9 @@ export function DeduplicateButton() {
         <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-sm max-w-sm">
           <div className="flex items-center gap-2 text-green-500 mb-2">
             <CheckCircle className="w-4 h-4" />
-            <span className="font-medium">{results.length} duplicado(s) eliminado(s)</span>
+            <span className="font-medium">
+              {results.length} duplicado(s) eliminado(s)
+            </span>
           </div>
           {results.map((r, i) => (
             <div key={i} className="text-xs text-slc-muted ml-6">
@@ -80,11 +86,13 @@ export function DeduplicateButton() {
       )}
 
       {error && (
-        <div className={`flex items-center gap-2 text-xs rounded-lg p-2 max-w-sm ${
-          error === "No se encontraron duplicados."
-            ? "bg-blue-500/10 border border-blue-500/20 text-blue-400"
-            : "bg-red-500/10 border border-red-500/20 text-red-400"
-        }`}>
+        <div
+          className={`flex items-center gap-2 text-xs rounded-lg p-2 max-w-sm ${
+            error === "No se encontraron duplicados."
+              ? "bg-blue-500/10 border border-blue-500/20 text-blue-400"
+              : "bg-red-500/10 border border-red-500/20 text-red-400"
+          }`}
+        >
           <AlertTriangle className="w-3 h-3 flex-shrink-0" />
           {error}
         </div>

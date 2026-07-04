@@ -1,6 +1,6 @@
-import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
-import * as schema from "./schema";
+import { type LibSQLDatabase, drizzle } from "drizzle-orm/libsql";
 import * as relations from "./relations";
+import * as schema from "./schema";
 
 // ===========================================
 // DYNAMIC CLIENT IMPORT
@@ -21,9 +21,12 @@ let _createClientFn: ((config: ClientConfig) => Client) | null = null;
 function initClientFactory(): void {
   if (_createClientFn) return; // Already initialized
 
-  const url = (process.env.DATABASE_URL ||
-              process.env.TURSO_DATABASE_URL ||
-              process.env.LIBSQL_URL || "").trim();
+  const url = (
+    process.env.DATABASE_URL ||
+    process.env.TURSO_DATABASE_URL ||
+    process.env.LIBSQL_URL ||
+    ""
+  ).trim();
 
   const isLocalSQLite = url.startsWith("file:");
 
@@ -45,7 +48,10 @@ function initClientFactory(): void {
       console.log("[DB] Using @libsql/client/web for remote Turso");
     } catch (err) {
       // Fallback to Node.js client if /web is not available
-      console.warn("[DB] @libsql/client/web not available, falling back to @libsql/client:", err);
+      console.warn(
+        "[DB] @libsql/client/web not available, falling back to @libsql/client:",
+        err,
+      );
       try {
         const nodeModule = require("@libsql/client");
         _createClientFn = nodeModule.createClient;
@@ -70,12 +76,18 @@ let _db: LibSQLDatabase<typeof schema & typeof relations> | null = null;
  * Check if database is configured
  */
 export function isDatabaseConfigured(): boolean {
-  const url = (process.env.DATABASE_URL ||
-              process.env.TURSO_DATABASE_URL ||
-              process.env.LIBSQL_URL || "").trim();
-  const token = (process.env.DATABASE_AUTH_TOKEN ||
-                process.env.TURSO_AUTH_TOKEN ||
-                process.env.LIBSQL_AUTH_TOKEN || "").trim();
+  const url = (
+    process.env.DATABASE_URL ||
+    process.env.TURSO_DATABASE_URL ||
+    process.env.LIBSQL_URL ||
+    ""
+  ).trim();
+  const token = (
+    process.env.DATABASE_AUTH_TOKEN ||
+    process.env.TURSO_AUTH_TOKEN ||
+    process.env.LIBSQL_AUTH_TOKEN ||
+    ""
+  ).trim();
 
   // For local SQLite (file: URLs), no auth token is needed
   const isLocalSQLite = url.startsWith("file:");
@@ -100,13 +112,20 @@ export function isDatabaseConfigured(): boolean {
  * Get database URL from environment
  */
 function getDatabaseUrl(): string {
-  const url = (process.env.DATABASE_URL ||
-              process.env.TURSO_DATABASE_URL ||
-              process.env.LIBSQL_URL || "").trim();
+  const url = (
+    process.env.DATABASE_URL ||
+    process.env.TURSO_DATABASE_URL ||
+    process.env.LIBSQL_URL ||
+    ""
+  ).trim();
 
   if (!url) {
-    console.error("[DB] Database URL not configured. Set DATABASE_URL environment variable.");
-    throw new Error("Database URL not configured. Set DATABASE_URL environment variable.");
+    console.error(
+      "[DB] Database URL not configured. Set DATABASE_URL environment variable.",
+    );
+    throw new Error(
+      "Database URL not configured. Set DATABASE_URL environment variable.",
+    );
   }
   return url;
 }
@@ -115,9 +134,12 @@ function getDatabaseUrl(): string {
  * Get auth token for Turso
  */
 function getAuthToken(): string | undefined {
-  const token = (process.env.DATABASE_AUTH_TOKEN ||
-         process.env.TURSO_AUTH_TOKEN ||
-         process.env.LIBSQL_AUTH_TOKEN || "").trim();
+  const token = (
+    process.env.DATABASE_AUTH_TOKEN ||
+    process.env.TURSO_AUTH_TOKEN ||
+    process.env.LIBSQL_AUTH_TOKEN ||
+    ""
+  ).trim();
   return token || undefined;
 }
 
@@ -137,12 +159,16 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
   try {
     // Check social_post_queue
     const queueSchema = await client.execute(
-      "SELECT sql FROM sqlite_master WHERE type='table' AND name='social_post_queue'"
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='social_post_queue'",
     );
     const queueSql = queueSchema.rows[0]?.sql as string | undefined;
     if (queueSql && !queueSql.includes("curated_track")) {
-      console.log("[DB] Migrating social_post_queue: adding curated_track + vertical_video to CHECK constraint...");
-      await client.execute("ALTER TABLE social_post_queue RENAME TO social_post_queue_old");
+      console.log(
+        "[DB] Migrating social_post_queue: adding curated_track + vertical_video to CHECK constraint...",
+      );
+      await client.execute(
+        "ALTER TABLE social_post_queue RENAME TO social_post_queue_old",
+      );
       await client.execute(`
         CREATE TABLE social_post_queue (
           id TEXT PRIMARY KEY NOT NULL,
@@ -175,12 +201,19 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
 
     // Check social_posts_log
     const logSchema = await client.execute(
-      "SELECT sql FROM sqlite_master WHERE type='table' AND name='social_posts_log'"
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='social_posts_log'",
     );
     const logSql = logSchema.rows[0]?.sql as string | undefined;
-    if (logSql && (!logSql.includes("curated_track") || !logSql.includes("tiktok"))) {
-      console.log("[DB] Migrating social_posts_log: adding curated_track, vertical_video, tiktok to CHECK constraints...");
-      await client.execute("ALTER TABLE social_posts_log RENAME TO social_posts_log_old");
+    if (
+      logSql &&
+      (!logSql.includes("curated_track") || !logSql.includes("tiktok"))
+    ) {
+      console.log(
+        "[DB] Migrating social_posts_log: adding curated_track, vertical_video, tiktok to CHECK constraints...",
+      );
+      await client.execute(
+        "ALTER TABLE social_posts_log RENAME TO social_posts_log_old",
+      );
       await client.execute(`
         CREATE TABLE social_posts_log (
           id TEXT PRIMARY KEY NOT NULL,
@@ -215,12 +248,16 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
     }
     // Check social_credentials
     const credSchema = await client.execute(
-      "SELECT sql FROM sqlite_master WHERE type='table' AND name='social_credentials'"
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='social_credentials'",
     );
     const credSql = credSchema.rows[0]?.sql as string | undefined;
     if (credSql && !credSql.includes("tiktok")) {
-      console.log("[DB] Migrating social_credentials: adding tiktok to CHECK constraint...");
-      await client.execute("ALTER TABLE social_credentials RENAME TO social_credentials_old");
+      console.log(
+        "[DB] Migrating social_credentials: adding tiktok to CHECK constraint...",
+      );
+      await client.execute(
+        "ALTER TABLE social_credentials RENAME TO social_credentials_old",
+      );
       await client.execute(`
         CREATE TABLE social_credentials (
           id TEXT PRIMARY KEY NOT NULL,
@@ -241,9 +278,16 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
     }
 
     // Also check social_post_queue for youtube_video + processing status
-    if (queueSql && (!queueSql.includes("youtube_video") || !queueSql.includes("processing"))) {
-      console.log("[DB] Migrating social_post_queue: adding youtube_video + processing to CHECK constraints...");
-      await client.execute("ALTER TABLE social_post_queue RENAME TO social_post_queue_old");
+    if (
+      queueSql &&
+      (!queueSql.includes("youtube_video") || !queueSql.includes("processing"))
+    ) {
+      console.log(
+        "[DB] Migrating social_post_queue: adding youtube_video + processing to CHECK constraints...",
+      );
+      await client.execute(
+        "ALTER TABLE social_post_queue RENAME TO social_post_queue_old",
+      );
       await client.execute(`
         CREATE TABLE social_post_queue (
           id TEXT PRIMARY KEY NOT NULL,
@@ -271,7 +315,9 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
           SELECT * FROM social_post_queue_old
       `);
       await client.execute("DROP TABLE social_post_queue_old");
-      console.log("[DB] social_post_queue migrated successfully (youtube_video + processing)");
+      console.log(
+        "[DB] social_post_queue migrated successfully (youtube_video + processing)",
+      );
     }
 
     // Also check social_posts_log for youtube_video + instagram_reel + facebook_reel + instagram_story
@@ -281,9 +327,18 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
     //   - today-counts story query returned 0 (cap never triggered)
     //   - dedup set was always empty (same story reposted forever)
     // Adding instagram_story here is the actual root-cause fix.
-    if (logSql && (!logSql.includes("youtube_video") || !logSql.includes("instagram_reel") || !logSql.includes("instagram_story"))) {
-      console.log("[DB] Migrating social_posts_log: adding youtube_video, instagram_reel, facebook_reel, instagram_story to CHECK constraints...");
-      await client.execute("ALTER TABLE social_posts_log RENAME TO social_posts_log_old");
+    if (
+      logSql &&
+      (!logSql.includes("youtube_video") ||
+        !logSql.includes("instagram_reel") ||
+        !logSql.includes("instagram_story"))
+    ) {
+      console.log(
+        "[DB] Migrating social_posts_log: adding youtube_video, instagram_reel, facebook_reel, instagram_story to CHECK constraints...",
+      );
+      await client.execute(
+        "ALTER TABLE social_posts_log RENAME TO social_posts_log_old",
+      );
       await client.execute(`
         CREATE TABLE social_posts_log (
           id TEXT PRIMARY KEY NOT NULL,
@@ -314,10 +369,15 @@ async function migrateStaleCheckConstraints(client: Client): Promise<void> {
           SELECT * FROM social_posts_log_old
       `);
       await client.execute("DROP TABLE social_posts_log_old");
-      console.log("[DB] social_posts_log migrated successfully (youtube_video + reels + instagram_story)");
+      console.log(
+        "[DB] social_posts_log migrated successfully (youtube_video + reels + instagram_story)",
+      );
     }
   } catch (err) {
-    console.error("[DB] Stale CHECK constraint migration failed (non-fatal):", err);
+    console.error(
+      "[DB] Stale CHECK constraint migration failed (non-fatal):",
+      err,
+    );
     // Non-fatal: the app will still work for existing content types,
     // but new types will fail until this migration succeeds.
   }
@@ -342,15 +402,29 @@ async function migrateArtistColumns(client: Client): Promise<void> {
   try {
     // Check which columns the artists table actually has
     const tableInfo = await client.execute("PRAGMA table_info(artists)");
-    const existingColumns = new Set(tableInfo.rows.map(r => r.name as string));
+    const existingColumns = new Set(
+      tableInfo.rows.map((r) => r.name as string),
+    );
 
-    const migrations: { oldCol: string; newCol: string; type: 'text' | 'integer' }[] = [
+    const migrations: {
+      oldCol: string;
+      newCol: string;
+      type: "text" | "integer";
+    }[] = [
       { oldCol: "header_image_url", newCol: "banner_image_url", type: "text" },
       { oldCol: "origin", newCol: "country", type: "text" },
       { oldCol: "active_since", newCol: "year_started", type: "integer" },
       { oldCol: "booking_contact", newCol: "booking_email", type: "text" },
-      { oldCol: "management_contact", newCol: "management_email", type: "text" },
-      { oldCol: "spotify_monthly_listeners", newCol: "monthly_listeners", type: "integer" },
+      {
+        oldCol: "management_contact",
+        newCol: "management_email",
+        type: "text",
+      },
+      {
+        oldCol: "spotify_monthly_listeners",
+        newCol: "monthly_listeners",
+        type: "integer",
+      },
       { oldCol: "spotify_followers", newCol: "followers", type: "integer" },
     ];
 
@@ -360,17 +434,22 @@ async function migrateArtistColumns(client: Client): Promise<void> {
       if (existingColumns.has(oldCol) && existingColumns.has(newCol)) {
         try {
           await client.execute(
-            `UPDATE artists SET ${newCol} = ${oldCol} WHERE ${newCol} IS NULL AND ${oldCol} IS NOT NULL`
+            `UPDATE artists SET ${newCol} = ${oldCol} WHERE ${newCol} IS NULL AND ${oldCol} IS NOT NULL`,
           );
           migrated++;
         } catch (err) {
-          console.warn(`[DB] Artist column migration ${oldCol} → ${newCol} failed:`, err);
+          console.warn(
+            `[DB] Artist column migration ${oldCol} → ${newCol} failed:`,
+            err,
+          );
         }
       }
     }
 
     if (migrated > 0) {
-      console.log(`[DB] Migrated ${migrated} artist columns from old names to new names`);
+      console.log(
+        `[DB] Migrated ${migrated} artist columns from old names to new names`,
+      );
     }
   } catch (err) {
     console.error("[DB] Artist column migration failed (non-fatal):", err);
@@ -391,18 +470,20 @@ async function migrateArtistColumns(client: Client): Promise<void> {
 async function migrateGalleryColumns(client: Client): Promise<void> {
   try {
     // === gallery_photos ===
-    const photosInfo = await client.execute("PRAGMA table_info(gallery_photos)");
-    const photoColumns = new Set(photosInfo.rows.map(r => r.name as string));
+    const photosInfo = await client.execute(
+      "PRAGMA table_info(gallery_photos)",
+    );
+    const photoColumns = new Set(photosInfo.rows.map((r) => r.name as string));
 
     // is_public → is_published
     if (photoColumns.has("is_public") && photoColumns.has("is_published")) {
       try {
         await client.execute(
-          `UPDATE gallery_photos SET is_published = is_public WHERE is_published IS NULL OR is_published = 1`
+          "UPDATE gallery_photos SET is_published = is_public WHERE is_published IS NULL OR is_published = 1",
         );
         // Actually set is_published = is_public for all rows (is_public may be 0)
         await client.execute(
-          `UPDATE gallery_photos SET is_published = is_public`
+          "UPDATE gallery_photos SET is_published = is_public",
         );
         console.log("[DB] gallery_photos: migrated is_public → is_published");
       } catch (err) {
@@ -420,12 +501,12 @@ async function migrateGalleryColumns(client: Client): Promise<void> {
             THEN json_extract(artist_ids, '$[0]')
             ELSE NULL
           END
-          WHERE artist_id IS NULL AND artist_ids IS NOT NULL`
+          WHERE artist_id IS NULL AND artist_ids IS NOT NULL`,
         );
         // Fallback for non-JSON format (just a plain ID string)
         await client.execute(
           `UPDATE gallery_photos SET artist_id = artist_ids
-          WHERE artist_id IS NULL AND artist_ids IS NOT NULL AND artist_ids NOT LIKE '[%'`
+          WHERE artist_id IS NULL AND artist_ids IS NOT NULL AND artist_ids NOT LIKE '[%'`,
         );
         console.log("[DB] gallery_photos: migrated artist_ids → artist_id");
       } catch (err) {
@@ -434,14 +515,16 @@ async function migrateGalleryColumns(client: Client): Promise<void> {
     }
 
     // === gallery_albums ===
-    const albumsInfo = await client.execute("PRAGMA table_info(gallery_albums)");
-    const albumColumns = new Set(albumsInfo.rows.map(r => r.name as string));
+    const albumsInfo = await client.execute(
+      "PRAGMA table_info(gallery_albums)",
+    );
+    const albumColumns = new Set(albumsInfo.rows.map((r) => r.name as string));
 
     // is_public → is_published
     if (albumColumns.has("is_public") && albumColumns.has("is_published")) {
       try {
         await client.execute(
-          `UPDATE gallery_albums SET is_published = is_public`
+          "UPDATE gallery_albums SET is_published = is_public",
         );
         console.log("[DB] gallery_albums: migrated is_public → is_published");
       } catch (err) {
@@ -548,7 +631,7 @@ async function runAutoMigration(client: Client): Promise<void> {
         expires_at INTEGER NOT NULL,
         created_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
-      `CREATE INDEX IF NOT EXISTS idx_dropbox_link_cache_expires ON dropbox_link_cache(expires_at)`,
+      "CREATE INDEX IF NOT EXISTS idx_dropbox_link_cache_expires ON dropbox_link_cache(expires_at)",
       `CREATE TABLE IF NOT EXISTS curated_playlists (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
@@ -630,7 +713,7 @@ async function runAutoMigration(client: Client): Promise<void> {
         created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
         updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
-      `CREATE UNIQUE INDEX IF NOT EXISTS idx_social_credentials_platform_key ON social_credentials(platform, key)`,
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_social_credentials_platform_key ON social_credentials(platform, key)",
       // Vertical Video Events (Albums/Groupings)
       `CREATE TABLE IF NOT EXISTS vertical_video_events (
         id TEXT PRIMARY KEY NOT NULL,
@@ -678,10 +761,10 @@ async function runAutoMigration(client: Client): Promise<void> {
         tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
         created_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
-      `CREATE INDEX IF NOT EXISTS idx_vertical_videos_published ON vertical_videos(is_published, display_order)`,
-      `CREATE INDEX IF NOT EXISTS idx_vertical_videos_featured ON vertical_videos(is_featured)`,
-      `CREATE INDEX IF NOT EXISTS idx_vertical_videos_artist ON vertical_videos(artist_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_vertical_video_tags_video ON vertical_video_tags(video_id)`,
+      "CREATE INDEX IF NOT EXISTS idx_vertical_videos_published ON vertical_videos(is_published, display_order)",
+      "CREATE INDEX IF NOT EXISTS idx_vertical_videos_featured ON vertical_videos(is_featured)",
+      "CREATE INDEX IF NOT EXISTS idx_vertical_videos_artist ON vertical_videos(artist_id)",
+      "CREATE INDEX IF NOT EXISTS idx_vertical_video_tags_video ON vertical_video_tags(video_id)",
       // Analytics table (visitor tracking)
       `CREATE TABLE IF NOT EXISTS analytics (
         id TEXT PRIMARY KEY NOT NULL,
@@ -695,10 +778,10 @@ async function runAutoMigration(client: Client): Promise<void> {
         referrer TEXT,
         created_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
-      `CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type)`,
-      `CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON analytics(session_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at)`,
-      `CREATE INDEX IF NOT EXISTS idx_analytics_entity_id ON analytics(entity_id)`,
+      "CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type)",
+      "CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON analytics(session_id)",
+      "CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at)",
+      "CREATE INDEX IF NOT EXISTS idx_analytics_entity_id ON analytics(entity_id)",
       // Subscribers table (newsletter subscribers with source tracking)
       `CREATE TABLE IF NOT EXISTS subscribers (
         id TEXT PRIMARY KEY NOT NULL,
@@ -739,59 +822,59 @@ async function runAutoMigration(client: Client): Promise<void> {
         created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
         updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
       )`,
-      `CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email)`,
-      `CREATE INDEX IF NOT EXISTS idx_subscribers_source ON subscribers(source)`,
+      "CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email)",
+      "CREATE INDEX IF NOT EXISTS idx_subscribers_source ON subscribers(source)",
     ];
 
     // Add missing columns (safe - ignores "duplicate column" errors)
     const addColumns = [
-      `ALTER TABLE curated_playlists ADD COLUMN cover_color TEXT`,
-      `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_id TEXT`,
-      `ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_url TEXT`,
-      `ALTER TABLE curated_playlists ADD COLUMN track_count INTEGER DEFAULT 0`,
-      `ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT`,
-      `ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT`,
+      "ALTER TABLE curated_playlists ADD COLUMN cover_color TEXT",
+      "ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_id TEXT",
+      "ALTER TABLE curated_playlists ADD COLUMN spotify_playlist_url TEXT",
+      "ALTER TABLE curated_playlists ADD COLUMN track_count INTEGER DEFAULT 0",
+      "ALTER TABLE playlist_tracks ADD COLUMN curated_track_id TEXT",
+      "ALTER TABLE playlist_tracks ADD COLUMN added_by TEXT",
 
       // === ARTISTS TABLE - columns expected by Drizzle schema but missing from old migrations ===
       // Migration 0002 used different column names (header_image_url, origin, active_since, etc.)
       // These are the correct column names that match the Drizzle schema
-      `ALTER TABLE artists ADD COLUMN real_name TEXT`,
-      `ALTER TABLE artists ADD COLUMN banner_image_url TEXT`,
-      `ALTER TABLE artists ADD COLUMN country TEXT`,
-      `ALTER TABLE artists ADD COLUMN year_started INTEGER`,
-      `ALTER TABLE artists ADD COLUMN booking_email TEXT`,
-      `ALTER TABLE artists ADD COLUMN management_email TEXT`,
-      `ALTER TABLE artists ADD COLUMN website_url TEXT`,
-      `ALTER TABLE artists ADD COLUMN monthly_listeners INTEGER`,
-      `ALTER TABLE artists ADD COLUMN followers INTEGER`,
-      `ALTER TABLE artists ADD COLUMN location TEXT`,
-      `ALTER TABLE artists ADD COLUMN labels TEXT`,
+      "ALTER TABLE artists ADD COLUMN real_name TEXT",
+      "ALTER TABLE artists ADD COLUMN banner_image_url TEXT",
+      "ALTER TABLE artists ADD COLUMN country TEXT",
+      "ALTER TABLE artists ADD COLUMN year_started INTEGER",
+      "ALTER TABLE artists ADD COLUMN booking_email TEXT",
+      "ALTER TABLE artists ADD COLUMN management_email TEXT",
+      "ALTER TABLE artists ADD COLUMN website_url TEXT",
+      "ALTER TABLE artists ADD COLUMN monthly_listeners INTEGER",
+      "ALTER TABLE artists ADD COLUMN followers INTEGER",
+      "ALTER TABLE artists ADD COLUMN location TEXT",
+      "ALTER TABLE artists ADD COLUMN labels TEXT",
 
       // === GALLERY PHOTOS - columns expected by Drizzle schema but missing from migration 0003 ===
       // Migration 0003 used: is_public (not is_published), artist_ids (not artist_id), etc.
-      `ALTER TABLE gallery_photos ADD COLUMN is_published INTEGER DEFAULT 1 NOT NULL`,
-      `ALTER TABLE gallery_photos ADD COLUMN artist_id TEXT`,
-      `ALTER TABLE gallery_photos ADD COLUMN description TEXT`,
-      `ALTER TABLE gallery_photos ADD COLUMN is_featured INTEGER DEFAULT 0 NOT NULL`,
-      `ALTER TABLE gallery_photos ADD COLUMN mime_type TEXT`,
-      `ALTER TABLE gallery_photos ADD COLUMN file_size INTEGER`,
-      `ALTER TABLE gallery_photos ADD COLUMN alt_text TEXT`,
-      `ALTER TABLE gallery_photos ADD COLUMN album_id TEXT`,
+      "ALTER TABLE gallery_photos ADD COLUMN is_published INTEGER DEFAULT 1 NOT NULL",
+      "ALTER TABLE gallery_photos ADD COLUMN artist_id TEXT",
+      "ALTER TABLE gallery_photos ADD COLUMN description TEXT",
+      "ALTER TABLE gallery_photos ADD COLUMN is_featured INTEGER DEFAULT 0 NOT NULL",
+      "ALTER TABLE gallery_photos ADD COLUMN mime_type TEXT",
+      "ALTER TABLE gallery_photos ADD COLUMN file_size INTEGER",
+      "ALTER TABLE gallery_photos ADD COLUMN alt_text TEXT",
+      "ALTER TABLE gallery_photos ADD COLUMN album_id TEXT",
 
       // === GALLERY ALBUMS - columns expected by Drizzle schema ===
-      `ALTER TABLE gallery_albums ADD COLUMN is_published INTEGER DEFAULT 1 NOT NULL`,
-      `ALTER TABLE gallery_albums ADD COLUMN cover_photo_id TEXT`,
-      `ALTER TABLE gallery_albums ADD COLUMN sort_order INTEGER DEFAULT 0 NOT NULL`,
+      "ALTER TABLE gallery_albums ADD COLUMN is_published INTEGER DEFAULT 1 NOT NULL",
+      "ALTER TABLE gallery_albums ADD COLUMN cover_photo_id TEXT",
+      "ALTER TABLE gallery_albums ADD COLUMN sort_order INTEGER DEFAULT 0 NOT NULL",
 
       // === VIDEOS TABLE - missing display_order column ===
-      `ALTER TABLE videos ADD COLUMN display_order INTEGER DEFAULT 0 NOT NULL`,
+      "ALTER TABLE videos ADD COLUMN display_order INTEGER DEFAULT 0 NOT NULL",
 
       // === VERTICAL VIDEOS - event_id column for event grouping ===
-      `ALTER TABLE vertical_videos ADD COLUMN event_id TEXT`,
+      "ALTER TABLE vertical_videos ADD COLUMN event_id TEXT",
 
       // === SUBSCRIBERS - source column for tracking subscription origin ===
-      `ALTER TABLE subscribers ADD COLUMN source TEXT`,
-      `ALTER TABLE subscribers ADD COLUMN mailchimp_id TEXT`,
+      "ALTER TABLE subscribers ADD COLUMN source TEXT",
+      "ALTER TABLE subscribers ADD COLUMN mailchimp_id TEXT",
     ];
 
     for (const sql of criticalTables) {
@@ -849,10 +932,14 @@ function getClient(): Client {
     console.log("[DB] Initializing database client...");
     try {
       initClientFactory();
-      _client = _createClientFn!({
+      const client = _createClientFn?.({
         url: getDatabaseUrl(),
         authToken: getAuthToken(),
       });
+      if (!client) {
+        throw new Error("[DB] Failed to create database client — createClientFn returned undefined");
+      }
+      _client = client;
       console.log("[DB] Database client initialized successfully");
 
       // Run auto-migration asynchronously (don't block client creation)
@@ -898,36 +985,49 @@ function createChainableStub(): any {
 
 // Create a proxy that lazily initializes the database on first access
 // This prevents build-time failures when DATABASE_URL is not available
-export const db = new Proxy({} as LibSQLDatabase<typeof schema & typeof relations>, {
-  get(target, prop) {
-    // If DB is not configured (build time OR runtime), return safe defaults
-    if (!isDatabaseConfigured()) {
-      console.warn(`[DB] Database not configured - returning stub for ${String(prop)}`);
+export const db = new Proxy(
+  {} as LibSQLDatabase<typeof schema & typeof relations>,
+  {
+    get(target, prop) {
+      // If DB is not configured (build time OR runtime), return safe defaults
+      if (!isDatabaseConfigured()) {
+        console.warn(
+          `[DB] Database not configured - returning stub for ${String(prop)}`,
+        );
 
-      // Return a no-op function for common methods to prevent crashes
-      if (prop === "select" || prop === "insert" || prop === "update" || prop === "delete") {
-        return () => createChainableStub();
+        // Return a no-op function for common methods to prevent crashes
+        if (
+          prop === "select" ||
+          prop === "insert" ||
+          prop === "update" ||
+          prop === "delete"
+        ) {
+          return () => createChainableStub();
+        }
+        if (prop === "query") {
+          return new Proxy(
+            {},
+            {
+              get: () => ({
+                findMany: () => Promise.resolve([]),
+                findFirst: () => Promise.resolve(null),
+              }),
+            },
+          );
+        }
+        // For any other property, return undefined
+        return undefined;
       }
-      if (prop === "query") {
-        return new Proxy({}, {
-          get: () => ({
-            findMany: () => Promise.resolve([]),
-            findFirst: () => Promise.resolve(null)
-          })
-        });
-      }
-      // For any other property, return undefined
-      return undefined;
-    }
 
-    const realDb = getDb();
-    const value = realDb[prop as keyof typeof realDb];
-    if (typeof value === "function") {
-      return value.bind(realDb);
-    }
-    return value;
-  }
-});
+      const realDb = getDb();
+      const value = realDb[prop as keyof typeof realDb];
+      if (typeof value === "function") {
+        return value.bind(realDb);
+      }
+      return value;
+    },
+  },
+);
 
 // ===========================================
 // DATABASE UTILITIES

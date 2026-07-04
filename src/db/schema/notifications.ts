@@ -3,7 +3,7 @@
 // ===========================================
 
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // PUSH NOTIFICATIONS
@@ -21,7 +21,9 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
 
 export const notificationPreferences = sqliteTable("notification_preferences", {
   id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
-  subscriptionId: text("subscription_id").notNull().references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+  subscriptionId: text("subscription_id")
+    .notNull()
+    .references(() => pushSubscriptions.id, { onDelete: "cascade" }),
   releaseAlerts: integer("release_alerts").default(1),
   presaveReminders: integer("presave_reminders").default(1),
   eventAlerts: integer("event_alerts").default(1),
@@ -64,7 +66,9 @@ export const abTests = sqliteTable("ab_tests", {
 
 export const abTestVariants = sqliteTable("ab_test_variants", {
   id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
-  testId: text("test_id").notNull().references(() => abTests.id, { onDelete: "cascade" }),
+  testId: text("test_id")
+    .notNull()
+    .references(() => abTests.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   variantKey: text("variant_key").notNull(), // e.g., 'countdown', 'vinyl-spin', 'glitch'
   weight: integer("weight").default(50), // percentage weight for random distribution
@@ -73,8 +77,12 @@ export const abTestVariants = sqliteTable("ab_test_variants", {
 
 export const abTestEvents = sqliteTable("ab_test_events", {
   id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
-  testId: text("test_id").notNull().references(() => abTests.id, { onDelete: "cascade" }),
-  variantId: text("variant_id").notNull().references(() => abTestVariants.id, { onDelete: "cascade" }),
+  testId: text("test_id")
+    .notNull()
+    .references(() => abTests.id, { onDelete: "cascade" }),
+  variantId: text("variant_id")
+    .notNull()
+    .references(() => abTestVariants.id, { onDelete: "cascade" }),
   eventType: text("event_type").notNull(), // impression, click, conversion, engagement
   sessionId: text("session_id"),
   userAgent: text("user_agent"),
@@ -86,24 +94,27 @@ export const abTestEvents = sqliteTable("ab_test_events", {
 // EMAIL MARKETING CAMPAIGNS
 // ===========================================
 
-export const emailMarketingCampaigns = sqliteTable("email_marketing_campaigns", {
-  id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
-  name: text("name").notNull(),
-  subject: text("subject").notNull(),
-  preheader: text("preheader"),
-  body: text("body").notNull(),
-  templateType: text("template_type").notNull(), // announcement, reminder, countdown, release, thankyou
-  releaseId: text("release_id"),
-  mailchimpCampaignId: text("mailchimp_campaign_id"),
-  status: text("status").default("draft"), // draft, scheduled, sending, sent, failed
-  scheduledFor: text("scheduled_for"),
-  sentAt: text("sent_at"),
-  recipientCount: integer("recipient_count").default(0),
-  openCount: integer("open_count").default(0),
-  clickCount: integer("click_count").default(0),
-  createdAt: text("created_at").default(sql`(datetime('now'))`),
-  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
-});
+export const emailMarketingCampaigns = sqliteTable(
+  "email_marketing_campaigns",
+  {
+    id: text("id").primaryKey().default(sql`(lower(hex(randomblob(16))))`),
+    name: text("name").notNull(),
+    subject: text("subject").notNull(),
+    preheader: text("preheader"),
+    body: text("body").notNull(),
+    templateType: text("template_type").notNull(), // announcement, reminder, countdown, release, thankyou
+    releaseId: text("release_id"),
+    mailchimpCampaignId: text("mailchimp_campaign_id"),
+    status: text("status").default("draft"), // draft, scheduled, sending, sent, failed
+    scheduledFor: text("scheduled_for"),
+    sentAt: text("sent_at"),
+    recipientCount: integer("recipient_count").default(0),
+    openCount: integer("open_count").default(0),
+    clickCount: integer("click_count").default(0),
+    createdAt: text("created_at").default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+  },
+);
 
 // ===========================================
 // RELEASE NOTIFICATION TRACKING
@@ -147,9 +158,11 @@ export type ReleaseNotification = typeof releaseNotifications.$inferSelect;
 export type NotificationHistoryEntry = typeof notificationHistory.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
-export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type NotificationPreference =
+  typeof notificationPreferences.$inferSelect;
 export type ScheduledNotification = typeof scheduledNotifications.$inferSelect;
 export type ABTest = typeof abTests.$inferSelect;
 export type ABTestVariant = typeof abTestVariants.$inferSelect;
 export type ABTestEvent = typeof abTestEvents.$inferSelect;
-export type EmailMarketingCampaign = typeof emailMarketingCampaigns.$inferSelect;
+export type EmailMarketingCampaign =
+  typeof emailMarketingCampaigns.$inferSelect;

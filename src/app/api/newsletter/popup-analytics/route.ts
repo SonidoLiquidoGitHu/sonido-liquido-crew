@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface PopupAnalyticsEvent {
   event: "shown" | "closed" | "converted";
@@ -48,17 +48,25 @@ export async function GET() {
       where: (s, { eq }) => eq(s.key, "newsletter_popup_analytics"),
     });
 
-    if (setting && setting.value) {
+    if (setting?.value) {
       try {
         const analytics = JSON.parse(setting.value) as PopupAnalytics;
 
         // Calculate conversion rates
-        const variantARate = analytics.variantA.shown > 0
-          ? ((analytics.variantA.converted / analytics.variantA.shown) * 100).toFixed(2)
-          : "0.00";
-        const variantBRate = analytics.variantB.shown > 0
-          ? ((analytics.variantB.converted / analytics.variantB.shown) * 100).toFixed(2)
-          : "0.00";
+        const variantARate =
+          analytics.variantA.shown > 0
+            ? (
+                (analytics.variantA.converted / analytics.variantA.shown) *
+                100
+              ).toFixed(2)
+            : "0.00";
+        const variantBRate =
+          analytics.variantB.shown > 0
+            ? (
+                (analytics.variantB.converted / analytics.variantB.shown) *
+                100
+              ).toFixed(2)
+            : "0.00";
 
         return NextResponse.json({
           success: true,
@@ -92,7 +100,7 @@ export async function GET() {
     console.error("Failed to fetch popup analytics:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch analytics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -100,7 +108,7 @@ export async function GET() {
 // POST - Track analytics event
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as PopupAnalyticsEvent;
+    const body = (await request.json()) as PopupAnalyticsEvent;
 
     // Get current analytics
     const setting = await db.query.siteSettings.findFirst({
@@ -109,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     let analytics: PopupAnalytics = defaultAnalytics;
 
-    if (setting && setting.value) {
+    if (setting?.value) {
       try {
         analytics = JSON.parse(setting.value);
       } catch {
@@ -123,7 +131,12 @@ export async function POST(request: NextRequest) {
     switch (body.event) {
       case "shown":
         analytics[variantKey].shown++;
-        if (body.source && (body.source === "time" || body.source === "scroll" || body.source === "exit-intent")) {
+        if (
+          body.source &&
+          (body.source === "time" ||
+            body.source === "scroll" ||
+            body.source === "exit-intent")
+        ) {
           analytics.bySource[body.source].shown++;
         }
         break;
@@ -132,7 +145,12 @@ export async function POST(request: NextRequest) {
         break;
       case "converted":
         analytics[variantKey].converted++;
-        if (body.source && (body.source === "time" || body.source === "scroll" || body.source === "exit-intent")) {
+        if (
+          body.source &&
+          (body.source === "time" ||
+            body.source === "scroll" ||
+            body.source === "exit-intent")
+        ) {
           analytics.bySource[body.source].converted++;
         }
         break;
@@ -142,7 +160,8 @@ export async function POST(request: NextRequest) {
 
     // Save analytics
     if (setting) {
-      await db.update(siteSettings)
+      await db
+        .update(siteSettings)
         .set({
           value: JSON.stringify(analytics),
           updatedAt: new Date(),
@@ -163,7 +182,7 @@ export async function POST(request: NextRequest) {
     console.error("Failed to track popup event:", error);
     return NextResponse.json(
       { success: false, error: "Failed to track event" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -176,7 +195,8 @@ export async function DELETE() {
     });
 
     if (existing) {
-      await db.update(siteSettings)
+      await db
+        .update(siteSettings)
         .set({
           value: JSON.stringify(defaultAnalytics),
           updatedAt: new Date(),
@@ -184,12 +204,15 @@ export async function DELETE() {
         .where(eq(siteSettings.key, "newsletter_popup_analytics"));
     }
 
-    return NextResponse.json({ success: true, message: "Analytics reset successfully" });
+    return NextResponse.json({
+      success: true,
+      message: "Analytics reset successfully",
+    });
   } catch (error) {
     console.error("Failed to reset analytics:", error);
     return NextResponse.json(
       { success: false, error: "Failed to reset analytics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

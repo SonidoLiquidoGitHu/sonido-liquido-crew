@@ -1,32 +1,32 @@
-import Link from "next/link";
+import { CalendarDashboard } from "@/components/admin/CalendarDashboard";
+import { EnsureTablesButton } from "@/components/admin/EnsureTablesButton";
+import { SpotifySyncButton } from "@/components/admin/SpotifySyncButton";
+import { VisitorMetrics } from "@/components/admin/VisitorMetrics";
+import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/ui/safe-image";
+import { checkConnection, isDatabaseConfigured } from "@/db/client";
 import { dashboardService } from "@/lib/services";
 import { getSyncHealth } from "@/lib/sync";
 import { formatDate, formatRelativeTime } from "@/lib/utils";
-import { checkConnection, isDatabaseConfigured } from "@/db/client";
 import {
-  Users,
-  Disc3,
-  Video,
-  ShoppingBag,
-  Mail,
-  Download,
-  TrendingUp,
   AlertTriangle,
+  ArrowRight,
+  Bell,
+  Calendar,
   CheckCircle,
   Clock,
-  RefreshCw,
-  ArrowRight,
-  Rocket,
-  Bell,
+  Disc3,
+  Download,
   Eye,
-  Calendar,
+  Mail,
+  RefreshCw,
+  Rocket,
+  ShoppingBag,
+  TrendingUp,
+  Users,
+  Video,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SafeImage } from "@/components/ui/safe-image";
-import { CalendarDashboard } from "@/components/admin/CalendarDashboard";
-import { SpotifySyncButton } from "@/components/admin/SpotifySyncButton";
-import { EnsureTablesButton } from "@/components/admin/EnsureTablesButton";
-import { VisitorMetrics } from "@/components/admin/VisitorMetrics";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +50,14 @@ function MetricCard({ title, value, icon, href, trend }: MetricCardProps) {
           <p className="text-slc-muted text-sm">{title}</p>
           <p className="font-oswald text-3xl mt-1">{value}</p>
           {trend && (
-            <p className={`text-xs mt-2 flex items-center gap-1 ${trend.isPositive ? "text-green-500" : "text-red-500"}`}>
-              <TrendingUp className={`w-3 h-3 ${!trend.isPositive && "rotate-180"}`} />
-              {trend.isPositive ? "+" : ""}{trend.value}% vs mes anterior
+            <p
+              className={`text-xs mt-2 flex items-center gap-1 ${trend.isPositive ? "text-green-500" : "text-red-500"}`}
+            >
+              <TrendingUp
+                className={`w-3 h-3 ${!trend.isPositive && "rotate-180"}`}
+              />
+              {trend.isPositive ? "+" : ""}
+              {trend.value}% vs mes anterior
             </p>
           )}
         </div>
@@ -81,27 +86,41 @@ function SyncStatusCard({
   itemsProcessed: number;
 }) {
   const statusConfig = {
-    healthy: { color: "text-green-500", bg: "bg-green-500/10", icon: CheckCircle },
-    running: { color: "text-yellow-500", bg: "bg-yellow-500/10", icon: RefreshCw },
+    healthy: {
+      color: "text-green-500",
+      bg: "bg-green-500/10",
+      icon: CheckCircle,
+    },
+    running: {
+      color: "text-yellow-500",
+      bg: "bg-yellow-500/10",
+      icon: RefreshCw,
+    },
     error: { color: "text-red-500", bg: "bg-red-500/10", icon: AlertTriangle },
     stale: { color: "text-orange-500", bg: "bg-orange-500/10", icon: Clock },
     never: { color: "text-slc-muted", bg: "bg-slc-card", icon: Clock },
   };
 
-  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.never;
+  const config =
+    statusConfig[status as keyof typeof statusConfig] || statusConfig.never;
   const StatusIcon = config.icon;
 
   return (
     <div className="flex items-center gap-4 p-4 bg-slc-card border border-slc-border rounded-lg">
-      <div className={`w-10 h-10 rounded-full ${config.bg} ${config.color} flex items-center justify-center`}>
-        <StatusIcon className={`w-5 h-5 ${status === "running" ? "animate-spin" : ""}`} />
+      <div
+        className={`w-10 h-10 rounded-full ${config.bg} ${config.color} flex items-center justify-center`}
+      >
+        <StatusIcon
+          className={`w-5 h-5 ${status === "running" ? "animate-spin" : ""}`}
+        />
       </div>
       <div className="flex-1">
         <h4 className="font-medium">{name}</h4>
         <p className="text-xs text-slc-muted">
           {lastSync ? (
             <>
-              Último sync: {formatRelativeTime(lastSync)} • {itemsProcessed} items
+              Último sync: {formatRelativeTime(lastSync)} • {itemsProcessed}{" "}
+              items
             </>
           ) : (
             "Nunca sincronizado"
@@ -109,7 +128,15 @@ function SyncStatusCard({
         </p>
       </div>
       <div className={`text-xs uppercase tracking-wider ${config.color}`}>
-        {status === "healthy" ? "OK" : status === "running" ? "Sync..." : status === "error" ? "Error" : status === "stale" ? "Pendiente" : "N/A"}
+        {status === "healthy"
+          ? "OK"
+          : status === "running"
+            ? "Sync..."
+            : status === "error"
+              ? "Error"
+              : status === "stale"
+                ? "Pendiente"
+                : "N/A"}
       </div>
     </div>
   );
@@ -137,12 +164,22 @@ const defaultSummary = {
   totalReleases: 0,
   totalVideos: 0,
   totalSubscribers: 0,
-  latestReleases: [] as Array<{ id: string; title: string; releaseDate: Date; releaseType: string; coverImageUrl: string | null }>,
+  latestReleases: [] as Array<{
+    id: string;
+    title: string;
+    releaseDate: Date;
+    releaseType: string;
+    coverImageUrl: string | null;
+  }>,
   releasesPerYear: [] as Array<{ year: number; count: number }>,
   upcomingStats: {
     activeReleases: 0,
     totalPresaves: 0,
-    topRelease: null as { title: string; artistName: string; presaveCount: number } | null,
+    topRelease: null as {
+      title: string;
+      artistName: string;
+      presaveCount: number;
+    } | null,
   },
 };
 
@@ -200,7 +237,8 @@ export default async function AdminDashboardPage() {
           <div>
             <p className="text-yellow-500 font-medium">Conexión limitada</p>
             <p className="text-sm text-yellow-500/80">
-              Algunos datos no están disponibles. Verifica la configuración de la base de datos.
+              Algunos datos no están disponibles. Verifica la configuración de
+              la base de datos.
             </p>
           </div>
         </div>
@@ -216,9 +254,23 @@ export default async function AdminDashboardPage() {
         </div>
         {/* Database Status Indicator */}
         <div className="flex items-center gap-2 text-sm">
-          <span className={`w-2 h-2 rounded-full ${dbConnected ? "bg-green-500" : dbConfigured ? "bg-yellow-500" : "bg-red-500"}`} />
-          <span className={dbConnected ? "text-green-500" : dbConfigured ? "text-yellow-500" : "text-red-500"}>
-            {dbConnected ? "Base de datos conectada" : dbConfigured ? "Conectando..." : "Base de datos no configurada"}
+          <span
+            className={`w-2 h-2 rounded-full ${dbConnected ? "bg-green-500" : dbConfigured ? "bg-yellow-500" : "bg-red-500"}`}
+          />
+          <span
+            className={
+              dbConnected
+                ? "text-green-500"
+                : dbConfigured
+                  ? "text-yellow-500"
+                  : "text-red-500"
+            }
+          >
+            {dbConnected
+              ? "Base de datos conectada"
+              : dbConfigured
+                ? "Conectando..."
+                : "Base de datos no configurada"}
           </span>
         </div>
       </div>
@@ -257,7 +309,8 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Upcoming Releases / Presave Stats */}
-      {(summary.upcomingStats?.activeReleases > 0 || summary.upcomingStats?.totalPresaves > 0) && (
+      {(summary.upcomingStats?.activeReleases > 0 ||
+        summary.upcomingStats?.totalPresaves > 0) && (
         <div className="bg-gradient-to-r from-primary/10 via-orange-500/5 to-primary/10 border border-primary/20 rounded-xl p-6 mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -265,10 +318,16 @@ export default async function AdminDashboardPage() {
                 <Rocket className="w-7 h-7 text-primary" />
               </div>
               <div>
-                <h3 className="font-oswald text-xl uppercase">Próximos Lanzamientos</h3>
+                <h3 className="font-oswald text-xl uppercase">
+                  Próximos Lanzamientos
+                </h3>
                 <p className="text-slc-muted text-sm">
-                  {summary.upcomingStats.activeReleases} activo{summary.upcomingStats.activeReleases !== 1 ? "s" : ""} •{" "}
-                  <span className="text-primary font-bold">{summary.upcomingStats.totalPresaves}</span> presaves totales
+                  {summary.upcomingStats.activeReleases} activo
+                  {summary.upcomingStats.activeReleases !== 1 ? "s" : ""} •{" "}
+                  <span className="text-primary font-bold">
+                    {summary.upcomingStats.totalPresaves}
+                  </span>{" "}
+                  presaves totales
                 </p>
               </div>
             </div>
@@ -276,11 +335,17 @@ export default async function AdminDashboardPage() {
             <div className="flex items-center gap-6">
               {summary.upcomingStats.topRelease && (
                 <div className="hidden sm:block text-right">
-                  <p className="text-xs text-slc-muted uppercase">Top Release</p>
-                  <p className="font-medium">{summary.upcomingStats.topRelease.title}</p>
+                  <p className="text-xs text-slc-muted uppercase">
+                    Top Release
+                  </p>
+                  <p className="font-medium">
+                    {summary.upcomingStats.topRelease.title}
+                  </p>
                   <p className="text-sm text-slc-muted">
                     {summary.upcomingStats.topRelease.artistName} •
-                    <span className="text-primary ml-1">{summary.upcomingStats.topRelease.presaveCount} presaves</span>
+                    <span className="text-primary ml-1">
+                      {summary.upcomingStats.topRelease.presaveCount} presaves
+                    </span>
                   </p>
                 </div>
               )}
@@ -330,7 +395,9 @@ export default async function AdminDashboardPage() {
 
           {/* Spotify Quick Sync */}
           <div className="mt-4 pt-4 border-t border-slc-border">
-            <p className="text-sm text-slc-muted mb-2">Sync Rápido de Spotify</p>
+            <p className="text-sm text-slc-muted mb-2">
+              Sync Rápido de Spotify
+            </p>
             <SpotifySyncButton />
           </div>
         </div>
@@ -338,7 +405,9 @@ export default async function AdminDashboardPage() {
         {/* Latest Releases */}
         <div className="bg-slc-dark border border-slc-border rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-oswald text-xl uppercase">Últimos Lanzamientos</h2>
+            <h2 className="font-oswald text-xl uppercase">
+              Últimos Lanzamientos
+            </h2>
             <Button asChild variant="outline" size="sm">
               <Link href="/admin/releases">
                 Ver todos
@@ -368,8 +437,15 @@ export default async function AdminDashboardPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium truncate">{release.title}</h4>
-                  <p className="text-xs text-slc-muted" suppressHydrationWarning>
-                    {formatDate(release.releaseDate, { year: "numeric", month: "short", day: "numeric" })}
+                  <p
+                    className="text-xs text-slc-muted"
+                    suppressHydrationWarning
+                  >
+                    {formatDate(release.releaseDate, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </p>
                 </div>
                 <span className="text-xs text-primary uppercase">
@@ -385,18 +461,27 @@ export default async function AdminDashboardPage() {
       <div className="mt-8">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-6 h-6 text-primary" />
-          <h2 className="font-oswald text-xl uppercase">Calendario de Actividades</h2>
+          <h2 className="font-oswald text-xl uppercase">
+            Calendario de Actividades
+          </h2>
         </div>
         <CalendarDashboard />
       </div>
 
       {/* Releases by Year Chart Placeholder */}
       <div className="mt-8 bg-slc-dark border border-slc-border rounded-xl p-6">
-        <h2 className="font-oswald text-xl uppercase mb-4">Lanzamientos por Año</h2>
+        <h2 className="font-oswald text-xl uppercase mb-4">
+          Lanzamientos por Año
+        </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
           {summary.releasesPerYear.slice(0, 8).map((item) => (
-            <div key={item.year} className="text-center p-4 bg-slc-card rounded-lg">
-              <div className="font-oswald text-2xl text-primary">{item.count}</div>
+            <div
+              key={item.year}
+              className="text-center p-4 bg-slc-card rounded-lg"
+            >
+              <div className="font-oswald text-2xl text-primary">
+                {item.count}
+              </div>
               <div className="text-xs text-slc-muted mt-1">{item.year}</div>
             </div>
           ))}
@@ -440,12 +525,15 @@ export default async function AdminDashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Eye className="w-5 h-5 text-primary" />
-            <h2 className="font-oswald text-xl uppercase">Mantenimiento de Base de Datos</h2>
+            <h2 className="font-oswald text-xl uppercase">
+              Mantenimiento de Base de Datos
+            </h2>
           </div>
           <EnsureTablesButton connected={dbConnected} />
         </div>
         <p className="text-sm text-slc-muted">
-          Si alguna función no funciona (playlists, galería, etc.), ejecuta "Asegurar Tablas" para crear las tablas faltantes.
+          Si alguna función no funciona (playlists, galería, etc.), ejecuta
+          "Asegurar Tablas" para crear las tablas faltantes.
         </p>
       </div>
     </div>

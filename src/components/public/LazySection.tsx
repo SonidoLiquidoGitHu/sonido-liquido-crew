@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, ReactNode, Suspense } from "react";
+import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 
 interface LazySectionProps {
   children: ReactNode;
@@ -120,7 +120,7 @@ export function LazySection({
       {
         rootMargin: effectiveRootMargin,
         threshold,
-      }
+      },
     );
 
     observer.observe(element);
@@ -144,7 +144,9 @@ export function LazySection({
   return (
     <div ref={ref} className={className}>
       {isVisible ? (
-        <Suspense fallback={fallback || <DefaultSkeleton minHeight={minHeight} />}>
+        <Suspense
+          fallback={fallback || <DefaultSkeleton minHeight={minHeight} />}
+        >
           <div
             className={`transition-opacity duration-500 ${hasLoaded ? "opacity-100" : "opacity-0"}`}
           >
@@ -167,7 +169,10 @@ export function ArtistsSkeleton() {
           <div className="w-48 h-8 bg-slc-border/30 rounded mb-8" />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-xl bg-slc-border/20" />
+              <div
+                key={i}
+                className="aspect-square rounded-xl bg-slc-border/20"
+              />
             ))}
           </div>
         </div>
@@ -205,7 +210,10 @@ export function VideosSkeleton() {
           <div className="w-48 h-8 bg-slc-border/30 rounded mb-8" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="aspect-video rounded-xl bg-slc-border/20" />
+              <div
+                key={i}
+                className="aspect-video rounded-xl bg-slc-border/20"
+              />
             ))}
           </div>
         </div>
@@ -239,7 +247,10 @@ export function GallerySkeleton() {
           <div className="w-48 h-8 bg-slc-border/30 rounded mb-8" />
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-lg bg-slc-border/20" />
+              <div
+                key={i}
+                className="aspect-square rounded-lg bg-slc-border/20"
+              />
             ))}
           </div>
         </div>

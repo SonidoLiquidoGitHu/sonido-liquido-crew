@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { artists } from "./artists";
 
 // ===========================================
@@ -9,7 +9,10 @@ import { artists } from "./artists";
 
 export const artistEpk = sqliteTable("artist_epk", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().unique().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .unique()
+    .references(() => artists.id, { onDelete: "cascade" }),
 
   // ============ IDENTITY & POSITIONING ============
   tagline: text("tagline"), // One-line hook (e.g., "Mexico City-based melodic trap artist...")
@@ -112,7 +115,9 @@ export const artistEpk = sqliteTable("artist_epk", {
   customSlug: text("custom_slug"), // Custom URL for EPK
   theme: text("theme").default("dark"), // dark, light, custom
   customCss: text("custom_css"), // Custom styling
-  showContactForm: integer("show_contact_form", { mode: "boolean" }).notNull().default(true),
+  showContactForm: integer("show_contact_form", { mode: "boolean" })
+    .notNull()
+    .default(true),
   password: text("password"), // Optional password protection
 
   // ============ ANALYTICS ============
@@ -121,8 +126,12 @@ export const artistEpk = sqliteTable("artist_epk", {
   lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
 
   // ============ TIMESTAMPS ============
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -132,15 +141,26 @@ export const artistEpk = sqliteTable("artist_epk", {
 
 export const epkPressPhotos = sqliteTable("epk_press_photos", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
 
   imageUrl: text("image_url").notNull(),
   thumbnailUrl: text("thumbnail_url"),
   hiResUrl: text("hi_res_url"), // 300 DPI version
 
   photoType: text("photo_type", {
-    enum: ["portrait", "performance", "styled", "candid", "album_artwork", "promo"]
-  }).notNull().default("portrait"),
+    enum: [
+      "portrait",
+      "performance",
+      "styled",
+      "candid",
+      "album_artwork",
+      "promo",
+    ],
+  })
+    .notNull()
+    .default("portrait"),
 
   title: text("title"),
   description: text("description"),
@@ -152,12 +172,20 @@ export const epkPressPhotos = sqliteTable("epk_press_photos", {
   height: integer("height"),
   fileSize: integer("file_size"),
 
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
-  isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false), // Main press photo
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isPrimary: integer("is_primary", { mode: "boolean" })
+    .notNull()
+    .default(false), // Main press photo
   sortOrder: integer("sort_order").notNull().default(0),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -167,7 +195,9 @@ export const epkPressPhotos = sqliteTable("epk_press_photos", {
 
 export const epkTracks = sqliteTable("epk_tracks", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
 
   title: text("title").notNull(),
   releaseDate: integer("release_date", { mode: "timestamp" }),
@@ -183,11 +213,17 @@ export const epkTracks = sqliteTable("epk_tracks", {
   streamCount: integer("stream_count"),
   description: text("description"),
 
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -197,16 +233,29 @@ export const epkTracks = sqliteTable("epk_tracks", {
 
 export const epkVideos = sqliteTable("epk_videos", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
 
   title: text("title").notNull(),
   videoType: text("video_type", {
-    enum: ["music_video", "live_performance", "interview", "behind_the_scenes", "visualizer", "lyric_video"]
-  }).notNull().default("music_video"),
+    enum: [
+      "music_video",
+      "live_performance",
+      "interview",
+      "behind_the_scenes",
+      "visualizer",
+      "lyric_video",
+    ],
+  })
+    .notNull()
+    .default("music_video"),
 
   platform: text("platform", {
-    enum: ["youtube", "vimeo", "facebook", "instagram", "tiktok", "other"]
-  }).notNull().default("youtube"),
+    enum: ["youtube", "vimeo", "facebook", "instagram", "tiktok", "other"],
+  })
+    .notNull()
+    .default("youtube"),
 
   videoUrl: text("video_url").notNull(),
   embedCode: text("embed_code"),
@@ -219,12 +268,20 @@ export const epkVideos = sqliteTable("epk_videos", {
   description: text("description"),
   venue: text("venue"), // For live performances
 
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
-  isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false), // Main showcase video
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isPrimary: integer("is_primary", { mode: "boolean" })
+    .notNull()
+    .default(false), // Main showcase video
   sortOrder: integer("sort_order").notNull().default(0),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -234,13 +291,17 @@ export const epkVideos = sqliteTable("epk_videos", {
 
 export const epkViews = sqliteTable("epk_views", {
   id: text("id").primaryKey(),
-  artistId: text("artist_id").notNull().references(() => artists.id, { onDelete: "cascade" }),
+  artistId: text("artist_id")
+    .notNull()
+    .references(() => artists.id, { onDelete: "cascade" }),
 
   viewerIp: text("viewer_ip"),
   viewerUserAgent: text("viewer_user_agent"),
   referrer: text("referrer"),
 
-  viewedAt: integer("viewed_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  viewedAt: integer("viewed_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

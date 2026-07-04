@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Youtube, Play, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ExternalLink, Loader2, Play, Youtube } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface Video {
   id: string;
@@ -37,7 +37,9 @@ export function ArtistYouTubeSection({
     async function fetchVideos() {
       try {
         // Fetch videos associated with this artist from the database
-        const response = await fetch(`/api/videos?artistSlug=${artistSlug}&limit=${maxVideos}`);
+        const response = await fetch(
+          `/api/videos?artistSlug=${artistSlug}&limit=${maxVideos}`,
+        );
         if (response.ok) {
           const data = await response.json();
           if (data.data && data.data.length > 0) {
@@ -93,7 +95,9 @@ export function ArtistYouTubeSection({
               <h3 className="font-oswald text-lg uppercase text-white group-hover:text-red-400 transition-colors">
                 Canal de YouTube
               </h3>
-              <p className="text-sm text-gray-400">{channelHandle || artistName}</p>
+              <p className="text-sm text-gray-400">
+                {channelHandle || artistName}
+              </p>
             </div>
           </div>
           <Button
@@ -122,7 +126,12 @@ export function ArtistYouTubeSection({
           Videos
         </h2>
         {channelUrl && (
-          <Button asChild variant="ghost" size="sm" className="text-red-500 hover:text-red-400">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="text-red-500 hover:text-red-400"
+          >
             <a href={channelUrl} target="_blank" rel="noopener noreferrer">
               Ver todos en YouTube
               <ExternalLink className="w-4 h-4 ml-2" />

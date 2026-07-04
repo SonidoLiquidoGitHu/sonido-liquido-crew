@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles } from "@/db/schema";
+import { artistExternalProfiles, artists } from "@/db/schema";
 import { generateUUID, slugify } from "@/lib/utils";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // SLC ROSTER - 15 ARTISTS WITH DETAILED BIOS
@@ -14,7 +14,8 @@ const slcArtists = [
     slug: "zaque",
     role: "mc" as const,
     bio: "Fundador y líder de Sonido Líquido Crew desde 1999. Con más de 25 años de trayectoria, Zaque es una de las figuras más importantes del Hip Hop mexicano. Su estilo lírico combina consciencia social con técnica depurada. Ha colaborado con artistas de toda Latinoamérica y es reconocido como pionero del movimiento Hip Hop en la Ciudad de México. Su legado incluye la formación de nuevas generaciones de MCs y la consolidación de SLC como el colectivo más representativo del género en México.",
-    shortBio: "Fundador de Sonido Líquido Crew. Pionero del Hip Hop mexicano desde 1999.",
+    shortBio:
+      "Fundador de Sonido Líquido Crew. Pionero del Hip Hop mexicano desde 1999.",
     isActive: true,
     isFeatured: true,
     sortOrder: 1,
@@ -323,12 +324,14 @@ const slcArtists = [
 // Fetch Spotify profile image using oEmbed
 // ===========================================
 
-async function getSpotifyProfileImage(spotifyUrl: string): Promise<string | null> {
+async function getSpotifyProfileImage(
+  spotifyUrl: string,
+): Promise<string | null> {
   try {
     const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`;
     const response = await fetch(oembedUrl, {
       headers: { "User-Agent": "Mozilla/5.0" },
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 },
     });
 
     if (!response.ok) return null;
@@ -350,7 +353,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -373,7 +376,9 @@ export async function POST(request: NextRequest) {
           .limit(1);
 
         // Get Spotify profile image
-        const profileImageUrl = await getSpotifyProfileImage(artistData.spotify.url);
+        const profileImageUrl = await getSpotifyProfileImage(
+          artistData.spotify.url,
+        );
 
         let artistId: string;
 
@@ -386,7 +391,8 @@ export async function POST(request: NextRequest) {
               name: artistData.name,
               bio: artistData.bio,
               role: artistData.role,
-              profileImageUrl: profileImageUrl || existingArtist.profileImageUrl,
+              profileImageUrl:
+                profileImageUrl || existingArtist.profileImageUrl,
               isActive: artistData.isActive,
               isFeatured: artistData.isFeatured,
               sortOrder: artistData.sortOrder,
@@ -453,7 +459,6 @@ export async function POST(request: NextRequest) {
           isVerified: true,
         });
         results.profiles++;
-
       } catch (error) {
         const errMsg = `Failed to seed ${artistData.name}: ${(error as Error).message}`;
         console.error(`[Seed Artists] ${errMsg}`);
@@ -461,7 +466,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[Seed Artists] Complete: ${results.created} created, ${results.updated} updated, ${results.profiles} profiles`);
+    console.log(
+      `[Seed Artists] Complete: ${results.created} created, ${results.updated} updated, ${results.profiles} profiles`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -472,7 +479,7 @@ export async function POST(request: NextRequest) {
     console.error("[Seed Artists] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to seed artists" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -481,6 +488,10 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     message: "POST to this endpoint to seed 15 SLC artists",
-    artists: slcArtists.map(a => ({ name: a.name, slug: a.slug, role: a.role })),
+    artists: slcArtists.map((a) => ({
+      name: a.name,
+      slug: a.slug,
+      role: a.role,
+    })),
   });
 }

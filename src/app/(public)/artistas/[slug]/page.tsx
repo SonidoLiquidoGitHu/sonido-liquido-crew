@@ -1,27 +1,27 @@
-import { notFound } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
-import { artistsService, upcomingReleasesService } from "@/lib/services";
-import { getArtistBySlug, getArtistByName } from "@/lib/data/artists-roster";
-import { getArtistRoleDisplay } from "@/lib/utils";
-import { ReleaseCard } from "@/components/public/cards/ReleaseCard";
-import { SpotifyEmbed } from "@/components/public/embeds/SpotifyEmbed";
-import { InstagramEmbed } from "@/components/public/embeds/InstagramEmbed";
-import { ArtistYouTubeSection } from "@/components/public/ArtistYouTubeSection";
 import { ArtistUpcomingReleases } from "@/components/public/ArtistUpcomingReleases";
+import { ArtistYouTubeSection } from "@/components/public/ArtistYouTubeSection";
+import { ReleaseCard } from "@/components/public/cards/ReleaseCard";
+import { InstagramEmbed } from "@/components/public/embeds/InstagramEmbed";
+import { SpotifyEmbed } from "@/components/public/embeds/SpotifyEmbed";
 import { ArtistGallerySection } from "@/components/public/sections/ArtistGallerySection";
 import { ArtistReelsSection } from "@/components/public/sections/ArtistReelsSection";
 import { Button } from "@/components/ui/button";
+import { getArtistByName, getArtistBySlug } from "@/lib/data/artists-roster";
+import { artistsService, upcomingReleasesService } from "@/lib/services";
+import { getArtistRoleDisplay } from "@/lib/utils";
 import {
   ArrowLeft,
   ArrowRight,
-  ExternalLink,
   Disc3,
+  ExternalLink,
   Instagram,
-  Youtube,
   Music2,
-  Play
+  Play,
+  Youtube,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,9 @@ export async function generateMetadata({ params }: ArtistPageProps) {
     // DB error — fall through to roster lookup
   }
 
-  const rosterArtist = getArtistBySlug(slug) || (artist ? getArtistByName(artist.name) : undefined);
+  const rosterArtist =
+    getArtistBySlug(slug) ||
+    (artist ? getArtistByName(artist.name) : undefined);
 
   const name = artist?.name || rosterArtist?.name;
 
@@ -49,7 +51,10 @@ export async function generateMetadata({ params }: ArtistPageProps) {
 
   return {
     title: `${name} | Sonido Líquido Crew`,
-    description: artist?.bio || rosterArtist?.bio || `Perfil de ${name}, artista de Sonido Líquido Crew.`,
+    description:
+      artist?.bio ||
+      rosterArtist?.bio ||
+      `Perfil de ${name}, artista de Sonido Líquido Crew.`,
   };
 }
 
@@ -62,10 +67,15 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
     artist = await artistsService.getBySlug(slug);
   } catch (error) {
     // DB error — fall through to roster lookup
-    console.warn(`[Artista] DB lookup failed for slug "${slug}", using roster fallback:`, error instanceof Error ? error.message : error);
+    console.warn(
+      `[Artista] DB lookup failed for slug "${slug}", using roster fallback:`,
+      error instanceof Error ? error.message : error,
+    );
   }
 
-  const rosterArtist = getArtistBySlug(slug) || (artist ? getArtistByName(artist.name) : undefined);
+  const rosterArtist =
+    getArtistBySlug(slug) ||
+    (artist ? getArtistByName(artist.name) : undefined);
 
   if (!artist && !rosterArtist) {
     notFound();
@@ -75,22 +85,33 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
   const artistName = artist?.name || rosterArtist?.name || "";
 
   // Fetch upcoming releases for this artist
-  const upcomingReleases = await upcomingReleasesService.getByArtistName(artistName, 4);
+  const upcomingReleases = await upcomingReleasesService.getByArtistName(
+    artistName,
+    4,
+  );
   const artistBio = artist?.bio || rosterArtist?.bio;
   const artistRole = artist?.role || rosterArtist?.role;
   const profileImage = artist?.profileImageUrl;
   const tintColor = artist?.tintColor || "primary";
 
   // Get external profiles
-  const spotifyProfile = artist?.externalProfiles?.find((p) => p.platform === "spotify");
+  const spotifyProfile = artist?.externalProfiles?.find(
+    (p) => p.platform === "spotify",
+  );
   const spotifyId = spotifyProfile?.externalId || rosterArtist?.spotifyId;
   const spotifyUrl = spotifyProfile?.externalUrl || rosterArtist?.spotifyUrl;
 
-  const instagramProfile = artist?.externalProfiles?.find((p) => p.platform === "instagram");
-  const instagramHandle = instagramProfile?.handle || rosterArtist?.instagramHandle;
-  const instagramUrl = instagramProfile?.externalUrl || rosterArtist?.instagramUrl;
+  const instagramProfile = artist?.externalProfiles?.find(
+    (p) => p.platform === "instagram",
+  );
+  const instagramHandle =
+    instagramProfile?.handle || rosterArtist?.instagramHandle;
+  const instagramUrl =
+    instagramProfile?.externalUrl || rosterArtist?.instagramUrl;
 
-  const youtubeProfile = artist?.externalProfiles?.find((p) => p.platform === "youtube");
+  const youtubeProfile = artist?.externalProfiles?.find(
+    (p) => p.platform === "youtube",
+  );
   const youtubeUrl = youtubeProfile?.externalUrl || rosterArtist?.youtubeUrl;
   const youtubeHandle = youtubeProfile?.handle || rosterArtist?.youtubeHandle;
 
@@ -100,8 +121,16 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
 
   // Combine YouTube channels into an array for easier rendering
   const youtubeChannels = [
-    youtubeUrl ? { url: youtubeUrl, handle: youtubeHandle, name: artistName } : null,
-    youtubeUrl2 ? { url: youtubeUrl2, handle: youtubeHandle2, name: youtubeHandle2?.replace('@', '') || "Canal Secundario" } : null,
+    youtubeUrl
+      ? { url: youtubeUrl, handle: youtubeHandle, name: artistName }
+      : null,
+    youtubeUrl2
+      ? {
+          url: youtubeUrl2,
+          handle: youtubeHandle2,
+          name: youtubeHandle2?.replace("@", "") || "Canal Secundario",
+        }
+      : null,
   ].filter(Boolean) as { url: string; handle?: string; name: string }[];
 
   return (
@@ -176,7 +205,10 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-spotify hover:bg-spotify/90 text-white rounded-full transition-colors"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                      <path
+                        fill="currentColor"
+                        d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"
+                      />
                     </svg>
                     Spotify
                   </a>
@@ -201,7 +233,9 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
                   >
                     <Youtube className="w-5 h-5" />
-                    {youtubeChannels.length > 1 ? (channel.handle || `YouTube ${index + 1}`) : "YouTube"}
+                    {youtubeChannels.length > 1
+                      ? channel.handle || `YouTube ${index + 1}`
+                      : "YouTube"}
                   </a>
                 ))}
               </div>
@@ -217,7 +251,11 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
                 </Button>
                 {spotifyId && (
                   <Button asChild variant="outline" size="lg">
-                    <a href={`https://open.spotify.com/artist/${spotifyId}`} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={`https://open.spotify.com/artist/${spotifyId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Play className="w-5 h-5 mr-2" fill="currentColor" />
                       Escuchar Ahora
                     </a>
@@ -332,7 +370,8 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
             ¿Quieres más de {artistName}?
           </h3>
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            Explora la discografía completa, sigue en redes sociales y no te pierdas ningún lanzamiento.
+            Explora la discografía completa, sigue en redes sociales y no te
+            pierdas ningún lanzamiento.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button asChild size="lg">
@@ -342,10 +381,18 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
               </Link>
             </Button>
             {spotifyUrl && (
-              <Button asChild variant="outline" size="lg" className="border-spotify text-spotify hover:bg-spotify/20">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="border-spotify text-spotify hover:bg-spotify/20"
+              >
                 <a href={spotifyUrl} target="_blank" rel="noopener noreferrer">
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                    <path
+                      fill="currentColor"
+                      d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"
+                    />
                   </svg>
                   Seguir en Spotify
                 </a>

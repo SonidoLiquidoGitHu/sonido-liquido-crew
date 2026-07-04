@@ -1,29 +1,29 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  User,
-  Music,
-  Instagram,
-  Youtube,
-  Mail,
+  Calendar,
+  Check,
+  ChevronLeft,
+  Copy,
+  Disc3,
   Download,
   ExternalLink,
-  ChevronLeft,
-  Play,
-  Quote,
-  Copy,
-  Check,
-  Calendar,
-  Disc3,
-  Video,
   Eye,
   FileText,
+  Instagram,
+  Mail,
+  Music,
+  Play,
+  Quote,
   Share2,
+  User,
+  Video,
+  Youtube,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { use, useEffect, useState } from "react";
 
 interface PressQuote {
   quote: string;
@@ -88,33 +88,36 @@ function extractYouTubeId(url: string): string | null {
   return null;
 }
 
-export default function ArtistPressKitPage({ params }: { params: Promise<{ slug: string }> }) {
+export default function ArtistPressKitPage({
+  params,
+}: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [artist, setArtist] = useState<ArtistPressKitData | null>(null);
   const [general, setGeneral] = useState<GeneralPressKitData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<FeaturedVideo | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<FeaturedVideo | null>(
+    null,
+  );
 
   useEffect(() => {
+    async function fetchArtistPressKit() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/press-kit?artist=${slug}`);
+        const data = await res.json();
+        if (data.success && data.data) {
+          setArtist(data.data.artist);
+          setGeneral(data.data.general);
+        }
+      } catch (error) {
+        console.error("Error fetching artist press kit:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
     fetchArtistPressKit();
   }, [slug]);
-
-  const fetchArtistPressKit = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/press-kit?artist=${slug}`);
-      const data = await res.json();
-      if (data.success && data.data) {
-        setArtist(data.data.artist);
-        setGeneral(data.data.general);
-      }
-    } catch (error) {
-      console.error("Error fetching artist press kit:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const copyToClipboard = async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
@@ -167,13 +170,17 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
       instagram: "bg-pink-500/10 text-pink-500 hover:bg-pink-500/20",
       youtube: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
     };
-    return colors[platform] || "bg-slc-card text-slc-muted hover:bg-slc-card/80";
+    return (
+      colors[platform] || "bg-slc-card text-slc-muted hover:bg-slc-card/80"
+    );
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slc-black flex items-center justify-center">
-        <div className="animate-pulse text-slc-muted">Cargando press kit...</div>
+        <div className="animate-pulse text-slc-muted">
+          Cargando press kit...
+        </div>
       </div>
     );
   }
@@ -256,7 +263,9 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                 {artist.name}
               </h1>
 
-              <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium border ${getRoleBadgeColor(artist.role)} mb-6`}>
+              <span
+                className={`inline-block px-4 py-2 rounded-full text-sm font-medium border ${getRoleBadgeColor(artist.role)} mb-6`}
+              >
                 {getRoleLabel(artist.role)}
               </span>
 
@@ -269,25 +278,39 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
               {/* Quick Stats */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-6 mb-8">
                 <div className="text-center">
-                  <div className="font-oswald text-3xl text-primary">{artist.stats.totalReleases}</div>
-                  <div className="text-xs text-slc-muted uppercase tracking-wider">Lanzamientos</div>
+                  <div className="font-oswald text-3xl text-primary">
+                    {artist.stats.totalReleases}
+                  </div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider">
+                    Lanzamientos
+                  </div>
                 </div>
                 <div className="text-center">
-                  <div className="font-oswald text-3xl text-primary">{artist.stats.totalVideos}</div>
-                  <div className="text-xs text-slc-muted uppercase tracking-wider">Videos</div>
+                  <div className="font-oswald text-3xl text-primary">
+                    {artist.stats.totalVideos}
+                  </div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider">
+                    Videos
+                  </div>
                 </div>
                 {artist.stats.monthlyListeners && (
                   <div className="text-center">
                     <div className="font-oswald text-3xl text-primary">
                       {(artist.stats.monthlyListeners / 1000).toFixed(0)}K
                     </div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Oyentes/Mes</div>
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Oyentes/Mes
+                    </div>
                   </div>
                 )}
                 {artist.yearStarted && (
                   <div className="text-center">
-                    <div className="font-oswald text-3xl text-primary">{artist.yearStarted}</div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Inicio</div>
+                    <div className="font-oswald text-3xl text-primary">
+                      {artist.yearStarted}
+                    </div>
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Inicio
+                    </div>
                   </div>
                 )}
               </div>
@@ -305,7 +328,9 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                     {getPlatformIcon(profile.platform)}
                     <span className="capitalize">{profile.platform}</span>
                     {profile.handle && (
-                      <span className="text-xs opacity-70">{profile.handle}</span>
+                      <span className="text-xs opacity-70">
+                        {profile.handle}
+                      </span>
                     )}
                   </a>
                 ))}
@@ -313,17 +338,26 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
 
               {/* Download Buttons */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-3">
-                <Button asChild className="bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90">
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90"
+                >
                   <Link href={`/epk/${slug}`}>
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Ver EPK Completo
                   </Link>
                 </Button>
-                <Button onClick={() => downloadPressKit("markdown")} variant="outline">
+                <Button
+                  onClick={() => downloadPressKit("markdown")}
+                  variant="outline"
+                >
                   <Download className="w-4 h-4 mr-2" />
                   Descargar (Markdown)
                 </Button>
-                <Button onClick={() => downloadPressKit("txt")} variant="outline">
+                <Button
+                  onClick={() => downloadPressKit("txt")}
+                  variant="outline"
+                >
                   <FileText className="w-4 h-4 mr-2" />
                   Descargar (TXT)
                 </Button>
@@ -355,7 +389,9 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
               </h2>
               <div className="prose prose-invert prose-lg max-w-none">
                 {artist.bio.split("\n\n").map((paragraph, i) => (
-                  <p key={i} className="text-slc-muted mb-4">{paragraph}</p>
+                  <p key={i} className="text-slc-muted mb-4">
+                    {paragraph}
+                  </p>
                 ))}
               </div>
             </div>
@@ -384,7 +420,9 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                       "{quote.quote}"
                     </p>
                     <footer className="pl-10 flex items-center justify-between flex-wrap gap-2">
-                      <span className="text-primary font-medium">— {quote.source}</span>
+                      <span className="text-primary font-medium">
+                        — {quote.source}
+                      </span>
                       {quote.sourceUrl && (
                         <a
                           href={quote.sourceUrl}
@@ -442,7 +480,9 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium text-lg">{selectedVideo.title}</h3>
+                      <h3 className="font-medium text-lg">
+                        {selectedVideo.title}
+                      </h3>
                       {selectedVideo.views > 0 && (
                         <p className="text-sm text-slc-muted flex items-center gap-1">
                           <Eye className="w-4 h-4" />
@@ -465,14 +505,20 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {artist.featuredVideos.map((video, index) => {
                   const videoId = extractYouTubeId(video.videoUrl);
-                  const thumbnailUrl = video.thumbnailUrl || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null);
+                  const thumbnailUrl =
+                    video.thumbnailUrl ||
+                    (videoId
+                      ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+                      : null);
 
                   return (
                     <button
                       key={index}
                       onClick={() => setSelectedVideo(video)}
                       className={`group bg-slc-card border rounded-lg overflow-hidden text-left hover:border-primary/50 transition-all ${
-                        selectedVideo === video ? "border-primary" : "border-slc-border"
+                        selectedVideo === video
+                          ? "border-primary"
+                          : "border-slc-border"
                       }`}
                     >
                       <div className="aspect-video relative bg-slc-border">
@@ -527,9 +573,13 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                   href={`mailto:${artist.bookingEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
-                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Booking</div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">
+                    Booking
+                  </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline">{artist.bookingEmail}</span>
+                    <span className="text-primary group-hover:underline">
+                      {artist.bookingEmail}
+                    </span>
                     <Mail className="w-4 h-4 text-slc-muted" />
                   </div>
                 </a>
@@ -540,9 +590,13 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                   href={`mailto:${artist.pressEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
-                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Prensa</div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">
+                    Prensa
+                  </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline">{artist.pressEmail}</span>
+                    <span className="text-primary group-hover:underline">
+                      {artist.pressEmail}
+                    </span>
                     <Mail className="w-4 h-4 text-slc-muted" />
                   </div>
                 </a>
@@ -554,9 +608,13 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                   href={`mailto:${general.contact.email}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
-                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Sonido Líquido (General)</div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">
+                    Sonido Líquido (General)
+                  </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline">{general.contact.email}</span>
+                    <span className="text-primary group-hover:underline">
+                      {general.contact.email}
+                    </span>
                     <Mail className="w-4 h-4 text-slc-muted" />
                   </div>
                 </a>
@@ -565,7 +623,9 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
 
             {/* Social profiles with copy buttons */}
             <div className="mt-8 bg-slc-card border border-slc-border rounded-xl p-6">
-              <h3 className="font-medium mb-4">Enlaces para Incluir en Artículos</h3>
+              <h3 className="font-medium mb-4">
+                Enlaces para Incluir en Artículos
+              </h3>
               <div className="space-y-3">
                 {artist.socialProfiles.map((profile) => (
                   <div
@@ -575,9 +635,13 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                     <div className="flex items-center gap-3">
                       {getPlatformIcon(profile.platform)}
                       <div>
-                        <span className="capitalize font-medium">{profile.platform}</span>
+                        <span className="capitalize font-medium">
+                          {profile.platform}
+                        </span>
                         {profile.handle && (
-                          <span className="text-slc-muted ml-2 text-sm">{profile.handle}</span>
+                          <span className="text-slc-muted ml-2 text-sm">
+                            {profile.handle}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -594,7 +658,9 @@ export default function ArtistPressKitPage({ params }: { params: Promise<{ slug:
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 flex-shrink-0"
-                        onClick={() => copyToClipboard(profile.url, profile.platform)}
+                        onClick={() =>
+                          copyToClipboard(profile.url, profile.platform)
+                        }
                       >
                         {copiedField === profile.platform ? (
                           <Check className="w-4 h-4 text-green-500" />

@@ -1,27 +1,30 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Upload,
-  Youtube,
-  Instagram,
-  Video,
-  Play,
-  Pause,
-  X,
-  ExternalLink,
-  Loader2,
-  CheckCircle,
+  type DropboxUploadProgress,
+  uploadToDropboxDirect,
+} from "@/lib/clients/dropbox-browser";
+import {
   AlertTriangle,
-  Smartphone,
-  Monitor,
-  Link as LinkIcon,
+  CheckCircle,
   Cloud,
+  ExternalLink,
+  Instagram,
+  Link as LinkIcon,
+  Loader2,
+  Monitor,
   Music,
+  Pause,
+  Play,
+  Smartphone,
   Sparkles,
+  Upload,
+  Video,
+  X,
+  Youtube,
 } from "lucide-react";
-import { uploadToDropboxDirect, type DropboxUploadProgress } from "@/lib/clients/dropbox-browser";
+import { useCallback, useRef, useState } from "react";
 
 // Extract a thumbnail frame from a video file using canvas.
 // Uses requestVideoFrameCallback for guaranteed frame-ready detection,
@@ -34,29 +37,41 @@ import { uploadToDropboxDirect, type DropboxUploadProgress } from "@/lib/clients
 //   5. Desperate mode: accept ANY frame (even dim) — better than no thumbnail
 async function extractVideoThumbnail(
   file: File,
-  initialSeekTime: number = 1.0
+  initialSeekTime = 1.0,
 ): Promise<Blob | null> {
   // Pass 1: Strict seek-based extraction
   const seekResult = await extractViaSeek(file, initialSeekTime, "strict");
   if (seekResult) return seekResult;
 
   // Pass 2: Strict playback-based extraction
-  console.log("[VideoUploader Thumbnail] Strict seek failed, trying strict playback...");
+  console.log(
+    "[VideoUploader Thumbnail] Strict seek failed, trying strict playback...",
+  );
   const playbackResult = await extractViaPlayback(file, "strict");
   if (playbackResult) return playbackResult;
 
   // Pass 3: Relaxed seek-based extraction (allows dim frames)
-  console.log("[VideoUploader Thumbnail] Strict extraction failed, trying relaxed seek...");
-  const relaxedSeekResult = await extractViaSeek(file, initialSeekTime, "relaxed");
+  console.log(
+    "[VideoUploader Thumbnail] Strict extraction failed, trying relaxed seek...",
+  );
+  const relaxedSeekResult = await extractViaSeek(
+    file,
+    initialSeekTime,
+    "relaxed",
+  );
   if (relaxedSeekResult) return relaxedSeekResult;
 
   // Pass 4: Relaxed playback-based extraction
-  console.log("[VideoUploader Thumbnail] Relaxed seek failed, trying relaxed playback...");
+  console.log(
+    "[VideoUploader Thumbnail] Relaxed seek failed, trying relaxed playback...",
+  );
   const relaxedPlaybackResult = await extractViaPlayback(file, "relaxed");
   if (relaxedPlaybackResult) return relaxedPlaybackResult;
 
   // Pass 5: Desperate mode — accept ANY frame that has video dimensions
-  console.log("[VideoUploader Thumbnail] All previous passes failed, trying DESPERATE mode...");
+  console.log(
+    "[VideoUploader Thumbnail] All previous passes failed, trying DESPERATE mode...",
+  );
   const desperateResult = await extractViaPlayback(file, "desperate");
   if (desperateResult) return desperateResult;
 
@@ -74,7 +89,7 @@ function isCanvasMostlyBlack(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  mode: BlackDetectionMode = "strict"
+  mode: BlackDetectionMode = "strict",
 ): boolean {
   if (mode === "desperate") return false; // Accept anything
   try {
@@ -108,8 +123,8 @@ function isCanvasMostlyBlack(
 // Seek-based extraction: seeks to multiple positions and tries to capture a non-black frame.
 function extractViaSeek(
   file: File,
-  initialSeekTime: number = 1.0,
-  blackDetectionMode: BlackDetectionMode = "strict"
+  initialSeekTime = 1.0,
+  blackDetectionMode: BlackDetectionMode = "strict",
 ): Promise<Blob | null> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
@@ -141,7 +156,7 @@ function extractViaSeek(
         const startTime = Date.now();
 
         // Method 1: requestVideoFrameCallback (Chrome 83+, Edge 83+)
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+        if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
           const onFrame = () => {
             requestAnimationFrame(() => {
               if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -183,7 +198,11 @@ function extractViaSeek(
             frameResolve();
             return;
           }
-          if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+          if (
+            video.readyState >= 2 &&
+            video.videoWidth > 0 &&
+            video.videoHeight > 0
+          ) {
             // 1500ms delay for mobile — the decoder needs time to actually
             // produce a composited frame after reporting readyState >= 2.
             setTimeout(() => frameResolve(), 1500);
@@ -196,7 +215,17 @@ function extractViaSeek(
     };
 
     // More seek positions for better coverage, especially for short mobile clips
-    const seekPositions = [initialSeekTime, 0.3, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0];
+    const seekPositions = [
+      initialSeekTime,
+      0.3,
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+    ];
     let currentSeekIndex = 0;
 
     const tryNextSeek = () => {
@@ -204,12 +233,18 @@ function extractViaSeek(
       if (currentSeekIndex < seekPositions.length) {
         const nextTime = seekPositions[currentSeekIndex];
         const duration = video.duration;
-        if (isFinite(nextTime) && isFinite(duration) && nextTime < duration) {
+        if (
+          Number.isFinite(nextTime) &&
+          Number.isFinite(duration) &&
+          nextTime < duration
+        ) {
           video.currentTime = nextTime;
           return;
         }
       }
-      console.warn(`[VideoUploader Thumbnail] All seek positions produced black frames (${blackDetectionMode} mode)`);
+      console.warn(
+        `[VideoUploader Thumbnail] All seek positions produced black frames (${blackDetectionMode} mode)`,
+      );
       cleanup();
       resolve(null);
     };
@@ -217,35 +252,52 @@ function extractViaSeek(
     // KEY FIX: Wait for 'loadeddata' instead of 'loadedmetadata'.
     // 'loadedmetadata' fires when we know duration/dimensions but NO frames are decoded.
     // 'loadeddata' fires when the first frame is actually decoded and available.
-    video.addEventListener("loadeddata", () => {
-      const duration = video.duration;
-      if (isFinite(duration) && duration > 0) {
-        // More percentage-based positions for better coverage
-        seekPositions.push(
-          duration * 0.05, duration * 0.1, duration * 0.15,
-          duration * 0.25, duration * 0.35, duration * 0.5
-        );
-      }
-      const targetTime = Math.min(seekPositions[0], duration * 0.8);
-      video.currentTime = targetTime;
-    }, { once: true });
+    video.addEventListener(
+      "loadeddata",
+      () => {
+        const duration = video.duration;
+        if (Number.isFinite(duration) && duration > 0) {
+          // More percentage-based positions for better coverage
+          seekPositions.push(
+            duration * 0.05,
+            duration * 0.1,
+            duration * 0.15,
+            duration * 0.25,
+            duration * 0.35,
+            duration * 0.5,
+          );
+        }
+        const targetTime = Math.min(seekPositions[0], duration * 0.8);
+        video.currentTime = targetTime;
+      },
+      { once: true },
+    );
 
     // Safety net: if loadeddata never fires (happens on some mobile browsers),
     // fall back to loadedmetadata with a longer delay
-    video.addEventListener("loadedmetadata", () => {
-      if (video.readyState >= 2) return; // loadeddata already fired
-      const duration = video.duration;
-      if (isFinite(duration) && duration > 0) {
-        seekPositions.push(
-          duration * 0.05, duration * 0.1, duration * 0.15,
-          duration * 0.25, duration * 0.35, duration * 0.5
-        );
-      }
-      // Longer delay for mobile — the decoder hasn't produced any frames yet
-      setTimeout(() => {
-        if (!resolved) video.currentTime = Math.min(seekPositions[0], duration * 0.8);
-      }, 800);
-    }, { once: true });
+    video.addEventListener(
+      "loadedmetadata",
+      () => {
+        if (video.readyState >= 2) return; // loadeddata already fired
+        const duration = video.duration;
+        if (Number.isFinite(duration) && duration > 0) {
+          seekPositions.push(
+            duration * 0.05,
+            duration * 0.1,
+            duration * 0.15,
+            duration * 0.25,
+            duration * 0.35,
+            duration * 0.5,
+          );
+        }
+        // Longer delay for mobile — the decoder hasn't produced any frames yet
+        setTimeout(() => {
+          if (!resolved)
+            video.currentTime = Math.min(seekPositions[0], duration * 0.8);
+        }, 800);
+      },
+      { once: true },
+    );
 
     video.onseeked = async () => {
       if (resolved) return;
@@ -259,7 +311,11 @@ function extractViaSeek(
 
         const canvas = document.createElement("canvas");
         const maxDim = 720;
-        const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+        const scale = Math.min(
+          maxDim / video.videoWidth,
+          maxDim / video.videoHeight,
+          1,
+        );
         canvas.width = Math.round(video.videoWidth * scale);
         canvas.height = Math.round(video.videoHeight * scale);
 
@@ -272,7 +328,14 @@ function extractViaSeek(
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackDetectionMode)) {
+        if (
+          isCanvasMostlyBlack(
+            ctx,
+            canvas.width,
+            canvas.height,
+            blackDetectionMode,
+          )
+        ) {
           canvas.remove();
           tryNextSeek();
           return;
@@ -285,7 +348,7 @@ function extractViaSeek(
             resolve(blob);
           },
           "image/jpeg",
-          0.85
+          0.85,
         );
       } catch {
         tryNextSeek();
@@ -310,7 +373,7 @@ function extractViaSeek(
 // Used as a fallback when seek-based extraction produces only black frames.
 function extractViaPlayback(
   file: File,
-  blackDetectionMode: BlackDetectionMode = "strict"
+  blackDetectionMode: BlackDetectionMode = "strict",
 ): Promise<Blob | null> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
@@ -334,21 +397,36 @@ function extractViaPlayback(
 
     let captureAttempts = 0;
     // More attempts for relaxed/desperate modes — mobile needs more time
-    const MAX_CAPTURE_ATTEMPTS = blackDetectionMode === "desperate" ? 50 :
-                                   blackDetectionMode === "relaxed" ? 40 : 30;
+    const MAX_CAPTURE_ATTEMPTS =
+      blackDetectionMode === "desperate"
+        ? 50
+        : blackDetectionMode === "relaxed"
+          ? 40
+          : 30;
 
     const tryCapture = (): Blob | null => {
       try {
         if (video.videoWidth === 0 || video.videoHeight === 0) return null;
         const canvas = document.createElement("canvas");
         const maxDim = 720;
-        const scale = Math.min(maxDim / video.videoWidth, maxDim / video.videoHeight, 1);
+        const scale = Math.min(
+          maxDim / video.videoWidth,
+          maxDim / video.videoHeight,
+          1,
+        );
         canvas.width = Math.round(video.videoWidth * scale);
         canvas.height = Math.round(video.videoHeight * scale);
         const ctx = canvas.getContext("2d");
         if (!ctx) return null;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        if (isCanvasMostlyBlack(ctx, canvas.width, canvas.height, blackDetectionMode)) {
+        if (
+          isCanvasMostlyBlack(
+            ctx,
+            canvas.width,
+            canvas.height,
+            blackDetectionMode,
+          )
+        ) {
           canvas.remove();
           return null;
         }
@@ -368,51 +446,67 @@ function extractViaPlayback(
       }
     };
 
-    video.addEventListener("playing", () => {
-      // Start capturing after a delay to let the first few real frames render
-      // Longer initial delay for mobile — the H.264 decoder needs time
-      const initialDelay = blackDetectionMode === "desperate" ? 800 :
-                           blackDetectionMode === "relaxed" ? 500 : 400;
-      const attemptCapture = () => {
-        if (resolved) return;
-        captureAttempts++;
-        const blob = tryCapture();
-        if (blob) {
-          cleanup();
-          resolve(blob);
-          return;
-        }
-        if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
-          // Longer interval for mobile — more time for decoder to produce frames
-          const interval = blackDetectionMode === "desperate" ? 400 : 250;
-          setTimeout(attemptCapture, interval);
-        } else {
-          cleanup();
-          resolve(null);
-        }
-      };
-      setTimeout(attemptCapture, initialDelay);
-    }, { once: true });
-
-    video.addEventListener("loadeddata", () => {
-      video.play().catch(() => {
-        cleanup();
-        resolve(null);
-      });
-    }, { once: true });
-
-    // Safety net for mobile browsers where loadeddata may not fire
-    video.addEventListener("loadedmetadata", () => {
-      if (video.readyState >= 2) return; // loadeddata already fired
-      setTimeout(() => {
-        if (!resolved) {
-          video.play().catch(() => {
+    video.addEventListener(
+      "playing",
+      () => {
+        // Start capturing after a delay to let the first few real frames render
+        // Longer initial delay for mobile — the H.264 decoder needs time
+        const initialDelay =
+          blackDetectionMode === "desperate"
+            ? 800
+            : blackDetectionMode === "relaxed"
+              ? 500
+              : 400;
+        const attemptCapture = () => {
+          if (resolved) return;
+          captureAttempts++;
+          const blob = tryCapture();
+          if (blob) {
+            cleanup();
+            resolve(blob);
+            return;
+          }
+          if (captureAttempts < MAX_CAPTURE_ATTEMPTS) {
+            // Longer interval for mobile — more time for decoder to produce frames
+            const interval = blackDetectionMode === "desperate" ? 400 : 250;
+            setTimeout(attemptCapture, interval);
+          } else {
             cleanup();
             resolve(null);
-          });
-        }
-      }, 1000);
-    }, { once: true });
+          }
+        };
+        setTimeout(attemptCapture, initialDelay);
+      },
+      { once: true },
+    );
+
+    video.addEventListener(
+      "loadeddata",
+      () => {
+        video.play().catch(() => {
+          cleanup();
+          resolve(null);
+        });
+      },
+      { once: true },
+    );
+
+    // Safety net for mobile browsers where loadeddata may not fire
+    video.addEventListener(
+      "loadedmetadata",
+      () => {
+        if (video.readyState >= 2) return; // loadeddata already fired
+        setTimeout(() => {
+          if (!resolved) {
+            video.play().catch(() => {
+              cleanup();
+              resolve(null);
+            });
+          }
+        }, 1000);
+      },
+      { once: true },
+    );
 
     video.onerror = () => {
       cleanup();
@@ -431,7 +525,7 @@ function extractViaPlayback(
 function TikTokIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
     </svg>
   );
 }
@@ -530,8 +624,10 @@ function parseVideoUrl(url: string): Partial<VideoInfo> | null {
   }
 
   // Dropbox/direct video URLs
-  if (trimmedUrl.includes("dropbox") ||
-      trimmedUrl.match(/\.(mp4|webm|mov|avi|mkv)(\?|$)/i)) {
+  if (
+    trimmedUrl.includes("dropbox") ||
+    trimmedUrl.match(/\.(mp4|webm|mov|avi|mkv)(\?|$)/i)
+  ) {
     return {
       source: "upload",
       url: trimmedUrl,
@@ -550,7 +646,10 @@ function parseVideoUrl(url: string): Partial<VideoInfo> | null {
 }
 
 // Get platform icon
-function PlatformIcon({ platform, className }: { platform?: string; className?: string }) {
+function PlatformIcon({
+  platform,
+  className,
+}: { platform?: string; className?: string }) {
   switch (platform?.toLowerCase()) {
     case "youtube":
       return <Youtube className={className} />;
@@ -564,7 +663,10 @@ function PlatformIcon({ platform, className }: { platform?: string; className?: 
 }
 
 // Get orientation icon
-function OrientationIcon({ orientation, className }: { orientation: VideoOrientation; className?: string }) {
+function OrientationIcon({
+  orientation,
+  className,
+}: { orientation: VideoOrientation; className?: string }) {
   switch (orientation) {
     case "vertical":
       return <Smartphone className={className} />;
@@ -604,14 +706,23 @@ export function VideoUploader({
     const parsed = parseVideoUrl(urlInput);
 
     if (!parsed) {
-      setError("URL no reconocida. Prueba con YouTube, Instagram, TikTok o un enlace directo.");
+      setError(
+        "URL no reconocida. Prueba con YouTube, Instagram, TikTok o un enlace directo.",
+      );
       return;
     }
 
     // Check orientation if required
-    if (orientation !== "any" && parsed.orientation !== "unknown" && parsed.orientation !== orientation) {
-      const expected = orientation === "horizontal" ? "horizontal (16:9)" : "vertical (9:16)";
-      setError(`Este video parece ser ${parsed.orientation}. Se esperaba un video ${expected}.`);
+    if (
+      orientation !== "any" &&
+      parsed.orientation !== "unknown" &&
+      parsed.orientation !== orientation
+    ) {
+      const expected =
+        orientation === "horizontal" ? "horizontal (16:9)" : "vertical (9:16)";
+      setError(
+        `Este video parece ser ${parsed.orientation}. Se esperaba un video ${expected}.`,
+      );
       // Still allow it but show warning
     }
 
@@ -686,7 +797,10 @@ export function VideoUploader({
         detectedOrientation = orientationInfo;
         thumbnailBlob = thumbBlob;
       } catch (e) {
-        console.error("Error detecting video orientation / extracting thumbnail:", e);
+        console.error(
+          "Error detecting video orientation / extracting thumbnail:",
+          e,
+        );
       }
 
       // Format file size for display
@@ -708,7 +822,7 @@ export function VideoUploader({
           } else if (progress.percent < 100) {
             setUploadStatus("Creando enlace compartido...");
           }
-        }
+        },
       );
 
       // Upload thumbnail in parallel if we captured one
@@ -716,9 +830,12 @@ export function VideoUploader({
         ? uploadToDropboxDirect(
             new File([thumbnailBlob], "thumbnail.jpg", { type: "image/jpeg" }),
             `${folder}/thumbnails`,
-            undefined
+            undefined,
           ).catch((err) => {
-            console.warn("Thumbnail upload failed, continuing without it:", err);
+            console.warn(
+              "Thumbnail upload failed, continuing without it:",
+              err,
+            );
             return null;
           })
         : Promise.resolve(null);
@@ -737,7 +854,9 @@ export function VideoUploader({
         throw new Error("No se pudo obtener el enlace del video");
       }
 
-      const thumbnailUrl = thumbnailResult?.success ? thumbnailResult.url : undefined;
+      const thumbnailUrl = thumbnailResult?.success
+        ? thumbnailResult.url
+        : undefined;
 
       setUploadProgress(100);
       setUploadStatus("¡Video subido exitosamente!");
@@ -750,15 +869,23 @@ export function VideoUploader({
         orientation: detectedOrientation,
         title: file.name.replace(/\.[^/.]+$/, ""),
       });
-
     } catch (err) {
       console.error("Video upload error:", err);
       const errorMessage = (err as Error).message;
 
       // Provide helpful error messages
-      if (errorMessage.includes("401") || errorMessage.includes("expired") || errorMessage.includes("token")) {
-        setError("Token de Dropbox expirado. Ve a Sincronización > Dropbox y reconecta tu cuenta.");
-      } else if (errorMessage.includes("timeout") || errorMessage.includes("network")) {
+      if (
+        errorMessage.includes("401") ||
+        errorMessage.includes("expired") ||
+        errorMessage.includes("token")
+      ) {
+        setError(
+          "Token de Dropbox expirado. Ve a Sincronización > Dropbox y reconecta tu cuenta.",
+        );
+      } else if (
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("network")
+      ) {
         setError("Error de conexión. Verifica tu internet e intenta de nuevo.");
       } else {
         setError(errorMessage);
@@ -805,11 +932,12 @@ export function VideoUploader({
   };
 
   // Orientation hint
-  const orientationHint = orientation === "horizontal"
-    ? "Se recomienda video horizontal (16:9) para YouTube y web"
-    : orientation === "vertical"
-    ? "Se recomienda video vertical (9:16) para Reels, TikTok y Stories"
-    : "Cualquier orientación es válida";
+  const orientationHint =
+    orientation === "horizontal"
+      ? "Se recomienda video horizontal (16:9) para YouTube y web"
+      : orientation === "vertical"
+        ? "Se recomienda video vertical (9:16) para Reels, TikTok y Stories"
+        : "Cualquier orientación es válida";
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -819,9 +947,7 @@ export function VideoUploader({
           <Video className="w-4 h-4 text-primary" />
           {label}
         </label>
-        {description && (
-          <p className="text-xs text-slc-muted">{description}</p>
-        )}
+        {description && <p className="text-xs text-slc-muted">{description}</p>}
         <p className="text-xs text-slc-muted mt-1 flex items-center gap-1">
           {orientation === "vertical" ? (
             <Smartphone className="w-3 h-3" />
@@ -838,7 +964,9 @@ export function VideoUploader({
       {value && (
         <div className="relative bg-slc-dark border border-slc-border rounded-xl overflow-hidden">
           {/* Video preview */}
-          <div className={`relative ${value.orientation === "vertical" ? "aspect-[9/16] max-h-[400px] mx-auto" : "aspect-video"} bg-black`}>
+          <div
+            className={`relative ${value.orientation === "vertical" ? "aspect-[9/16] max-h-[400px] mx-auto" : "aspect-video"} bg-black`}
+          >
             {value.source === "youtube" && value.embedUrl ? (
               <iframe
                 src={`${value.embedUrl}?rel=0`}
@@ -886,7 +1014,10 @@ export function VideoUploader({
               </>
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <PlatformIcon platform={value.platform} className="w-16 h-16 text-slc-muted" />
+                <PlatformIcon
+                  platform={value.platform}
+                  className="w-16 h-16 text-slc-muted"
+                />
               </div>
             )}
 
@@ -905,15 +1036,27 @@ export function VideoUploader({
           {/* Video info */}
           <div className="p-3 flex items-center justify-between border-t border-slc-border">
             <div className="flex items-center gap-3">
-              <PlatformIcon platform={value.platform} className="w-5 h-5 text-slc-muted" />
+              <PlatformIcon
+                platform={value.platform}
+                className="w-5 h-5 text-slc-muted"
+              />
               <div>
-                <p className="text-sm font-medium">{value.platform || "Video"}</p>
+                <p className="text-sm font-medium">
+                  {value.platform || "Video"}
+                </p>
                 <div className="flex items-center gap-2 text-xs text-slc-muted">
-                  <OrientationIcon orientation={value.orientation} className="w-3 h-3" />
+                  <OrientationIcon
+                    orientation={value.orientation}
+                    className="w-3 h-3"
+                  />
                   <span>
-                    {value.orientation === "horizontal" ? "Horizontal (16:9)" :
-                     value.orientation === "vertical" ? "Vertical (9:16)" :
-                     value.orientation === "square" ? "Cuadrado (1:1)" : "Desconocido"}
+                    {value.orientation === "horizontal"
+                      ? "Horizontal (16:9)"
+                      : value.orientation === "vertical"
+                        ? "Vertical (9:16)"
+                        : value.orientation === "square"
+                          ? "Cuadrado (1:1)"
+                          : "Desconocido"}
                   </span>
                 </div>
               </div>
@@ -976,7 +1119,11 @@ export function VideoUploader({
                   />
                   <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
                 </div>
-                <Button type="button" onClick={handleUrlSubmit} disabled={!urlInput.trim()}>
+                <Button
+                  type="button"
+                  onClick={handleUrlSubmit}
+                  disabled={!urlInput.trim()}
+                >
                   Agregar
                 </Button>
               </div>
@@ -1001,7 +1148,10 @@ export function VideoUploader({
           {activeTab === "upload" && (
             <div
               onDrop={handleDrop}
-              onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
               onDragLeave={() => setIsDragOver(false)}
               className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
                 isDragOver
@@ -1021,14 +1171,18 @@ export function VideoUploader({
               {isUploading ? (
                 <>
                   <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
-                  <p className="text-sm font-medium mb-2">{uploadStatus || "Subiendo video..."}</p>
+                  <p className="text-sm font-medium mb-2">
+                    {uploadStatus || "Subiendo video..."}
+                  </p>
                   <div className="w-full max-w-xs mx-auto bg-slc-border rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
-                  <p className="text-xs text-slc-muted mt-2">{uploadProgress}%</p>
+                  <p className="text-xs text-slc-muted mt-2">
+                    {uploadProgress}%
+                  </p>
                   <p className="text-xs text-slc-muted mt-2">
                     Los videos se suben directamente a Dropbox
                   </p>
@@ -1089,13 +1243,16 @@ export function VideoUrlInput({
           className="w-full pl-10 pr-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
         />
         {parsed ? (
-          <PlatformIcon platform={parsed.platform} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
+          <PlatformIcon
+            platform={parsed.platform}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted"
+          />
         ) : (
           <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slc-muted" />
         )}
       </div>
 
-      {parsed && parsed.thumbnailUrl && (
+      {parsed?.thumbnailUrl && (
         <div className="relative aspect-video rounded-lg overflow-hidden bg-black max-w-sm">
           <img
             src={parsed.thumbnailUrl}

@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
-  Music,
   ArrowLeft,
-  Loader2,
-  ExternalLink,
+  Check,
   Clock,
   Disc3,
-  Play,
+  ExternalLink,
+  Loader2,
+  Music,
   Pause,
-  Check,
-  Star,
+  Play,
   Search,
+  Star,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import { use, useEffect, useState } from "react";
 
 interface CuratedChannel {
   id: string;
@@ -125,26 +125,36 @@ export default function CuratedChannelDetailPage({
 
     try {
       // First try the fast "recent tracks" method (~3-5 seconds)
-      const topRes = await fetch(`/api/admin/curated-channels/${id}/top-tracks`, {
-        method: "POST",
-      });
+      const topRes = await fetch(
+        `/api/admin/curated-channels/${id}/top-tracks`,
+        {
+          method: "POST",
+        },
+      );
 
       if (topRes.ok) {
         const topData = await topRes.json();
         if (topData.success) {
           if (topData.data.tracksAdded > 0 || topData.data.tracksSkipped > 0) {
-            alert(topData.message || `${topData.data.tracksAdded} tracks sincronizados`);
+            alert(
+              topData.message ||
+                `${topData.data.tracksAdded} tracks sincronizados`,
+            );
             fetchChannel();
             return;
           }
           // Top-tracks worked but found nothing new — try full sync
         } else {
           // Top-tracks returned an error — show it and stop
-          alert(`Error en tracks recientes: ${topData.error || "Error desconocido"}`);
+          alert(
+            `Error en tracks recientes: ${topData.error || "Error desconocido"}`,
+          );
           return;
         }
       } else if (topRes.status === 504 || topRes.status === 502) {
-        alert("El servidor tardó en responder. Intenta usar el botón ★ (Tracks Recientes) primero.");
+        alert(
+          "El servidor tardó en responder. Intenta usar el botón ★ (Tracks Recientes) primero.",
+        );
         return;
       }
 
@@ -156,9 +166,12 @@ export default function CuratedChannelDetailPage({
       let totalAlbums = 0;
 
       while (true) {
-        const res = await fetch(`/api/admin/curated-channels/${id}/sync?offset=${offset}`, {
-          method: "POST",
-        });
+        const res = await fetch(
+          `/api/admin/curated-channels/${id}/sync?offset=${offset}`,
+          {
+            method: "POST",
+          },
+        );
 
         if (!res.ok) {
           let errorMsg = `Error al sincronizar (HTTP ${res.status})`;
@@ -185,19 +198,22 @@ export default function CuratedChannelDetailPage({
 
         if (data.data.hasMore) {
           offset = data.data.nextOffset;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
         } else {
           break;
         }
       }
 
-      const msg = totalErrors > 0
-        ? `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes (${totalErrors} errores)`
-        : `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes`;
+      const msg =
+        totalErrors > 0
+          ? `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes (${totalErrors} errores)`
+          : `Sincronizado: ${totalAdded} tracks nuevos de ${totalAlbums} álbumes`;
       alert(msg);
       fetchChannel();
     } catch (error) {
-      alert("Error de conexión - la sincronización tarda. Intenta usar ★ (Tracks Recientes) primero.");
+      alert(
+        "Error de conexión - la sincronización tarda. Intenta usar ★ (Tracks Recientes) primero.",
+      );
     } finally {
       setSyncing(false);
     }
@@ -265,7 +281,9 @@ export default function CuratedChannelDetailPage({
       const res = await fetch(`/api/admin/curated-tracks/${track.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isAvailableForPlaylist: !track.isAvailableForPlaylist }),
+        body: JSON.stringify({
+          isAvailableForPlaylist: !track.isAvailableForPlaylist,
+        }),
       });
       if (res.ok) {
         fetchChannel();
@@ -275,11 +293,14 @@ export default function CuratedChannelDetailPage({
     }
   };
 
-  const filteredTracks = channel?.tracks.filter((track) =>
-    track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    track.artistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (track.albumName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
-  ) || [];
+  const filteredTracks =
+    channel?.tracks.filter(
+      (track) =>
+        track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        track.artistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (track.albumName?.toLowerCase().includes(searchQuery.toLowerCase()) ??
+          false),
+    ) || [];
 
   if (loading) {
     return (
@@ -293,13 +314,18 @@ export default function CuratedChannelDetailPage({
     return (
       <div className="min-h-screen bg-slc-black p-6">
         <div className="max-w-7xl mx-auto">
-          <Link href="/admin/curated-channels" className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-4">
+          <Link
+            href="/admin/curated-channels"
+            className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-4"
+          >
             <ArrowLeft className="w-4 h-4" />
             Volver a Canales
           </Link>
           <div className="text-center py-20">
             <Music className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-            <h3 className="text-xl font-oswald uppercase mb-2">Canal no encontrado</h3>
+            <h3 className="text-xl font-oswald uppercase mb-2">
+              Canal no encontrado
+            </h3>
           </div>
         </div>
       </div>
@@ -310,7 +336,10 @@ export default function CuratedChannelDetailPage({
     <div className="min-h-screen bg-slc-black p-6">
       <div className="max-w-7xl mx-auto">
         {/* Back Link */}
-        <Link href="/admin/curated-channels" className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-6">
+        <Link
+          href="/admin/curated-channels"
+          className="inline-flex items-center gap-2 text-slc-muted hover:text-white mb-6"
+        >
           <ArrowLeft className="w-4 h-4" />
           Volver a Canales Curados
         </Link>
@@ -338,10 +367,12 @@ export default function CuratedChannelDetailPage({
             {/* Info */}
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <span className={cn(
-                  "text-xs px-2 py-0.5 rounded-full border",
-                  categoryColors[channel.category]
-                )}>
+                <span
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full border",
+                    categoryColors[channel.category],
+                  )}
+                >
                   {categoryLabels[channel.category]}
                 </span>
                 {!channel.isActive && (
@@ -351,7 +382,9 @@ export default function CuratedChannelDetailPage({
                 )}
               </div>
 
-              <h1 className="font-oswald text-3xl uppercase mb-2">{channel.name}</h1>
+              <h1 className="font-oswald text-3xl uppercase mb-2">
+                {channel.name}
+              </h1>
 
               {channel.description && (
                 <p className="text-slc-muted mb-4">{channel.description}</p>
@@ -364,10 +397,14 @@ export default function CuratedChannelDetailPage({
                   <p className="font-oswald text-xl">{channel.trackCount}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slc-muted">Última Sincronización</p>
+                  <p className="text-xs text-slc-muted">
+                    Última Sincronización
+                  </p>
                   <p className="font-oswald text-sm">
                     {channel.lastSyncedAt
-                      ? new Date(channel.lastSyncedAt).toLocaleDateString("es-MX")
+                      ? new Date(channel.lastSyncedAt).toLocaleDateString(
+                          "es-MX",
+                        )
                       : "Nunca"}
                   </p>
                 </div>
@@ -375,7 +412,11 @@ export default function CuratedChannelDetailPage({
 
               {/* Actions */}
               <div className="flex flex-wrap gap-3">
-                <Button onClick={handleFetchTopTracks} disabled={fetchingTop} variant="outline">
+                <Button
+                  onClick={handleFetchTopTracks}
+                  disabled={fetchingTop}
+                  variant="outline"
+                >
                   {fetchingTop ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
@@ -431,7 +472,7 @@ export default function CuratedChannelDetailPage({
               <Disc3 className="w-12 h-12 text-slc-muted mx-auto mb-3" />
               <p className="text-slc-muted">
                 {channel.trackCount === 0
-                  ? "No hay tracks sincronizados. Haz clic en \"Sincronizar Tracks\" para obtener música."
+                  ? 'No hay tracks sincronizados. Haz clic en "Sincronizar Tracks" para obtener música.'
                   : "No se encontraron tracks con esa búsqueda"}
               </p>
             </div>
@@ -442,7 +483,7 @@ export default function CuratedChannelDetailPage({
                   key={track.id}
                   className={cn(
                     "flex items-center gap-4 p-4 hover:bg-slc-dark/50 transition-colors",
-                    !track.isAvailableForPlaylist && "opacity-50"
+                    !track.isAvailableForPlaylist && "opacity-50",
                   )}
                 >
                   {/* Track Number */}
@@ -506,7 +547,6 @@ export default function CuratedChannelDetailPage({
                     {formatDuration(track.durationMs)}
                   </div>
 
-
                   {/* Actions */}
                   <div className="flex items-center gap-2">
                     <button
@@ -515,11 +555,18 @@ export default function CuratedChannelDetailPage({
                         "p-2 rounded-lg transition-colors",
                         track.isFeatured
                           ? "bg-yellow-500/10 text-yellow-500"
-                          : "text-slc-muted hover:text-yellow-500 hover:bg-slc-dark"
+                          : "text-slc-muted hover:text-yellow-500 hover:bg-slc-dark",
                       )}
-                      title={track.isFeatured ? "Quitar de destacados" : "Marcar como destacado"}
+                      title={
+                        track.isFeatured
+                          ? "Quitar de destacados"
+                          : "Marcar como destacado"
+                      }
                     >
-                      <Star className="w-4 h-4" fill={track.isFeatured ? "currentColor" : "none"} />
+                      <Star
+                        className="w-4 h-4"
+                        fill={track.isFeatured ? "currentColor" : "none"}
+                      />
                     </button>
                     <button
                       onClick={() => handleToggleAvailable(track)}
@@ -527,9 +574,13 @@ export default function CuratedChannelDetailPage({
                         "p-2 rounded-lg transition-colors",
                         track.isAvailableForPlaylist
                           ? "bg-green-500/10 text-green-500"
-                          : "text-slc-muted hover:text-green-500 hover:bg-slc-dark"
+                          : "text-slc-muted hover:text-green-500 hover:bg-slc-dark",
                       )}
-                      title={track.isAvailableForPlaylist ? "Quitar de disponibles" : "Hacer disponible para playlists"}
+                      title={
+                        track.isAvailableForPlaylist
+                          ? "Quitar de disponibles"
+                          : "Hacer disponible para playlists"
+                      }
                     >
                       <Check className="w-4 h-4" />
                     </button>

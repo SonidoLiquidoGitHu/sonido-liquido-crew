@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import { ReleaseCard } from "@/components/public/cards/ReleaseCard";
-import { Disc3, Search, SlidersHorizontal, X, Users } from "lucide-react";
 import type { Release, ReleaseType } from "@/types";
+import { Disc3, Search, SlidersHorizontal, Users, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 // ===========================================
 // RELEASE TYPE LABELS
@@ -47,10 +47,15 @@ interface DiscografiaClientProps {
   artistOptions: ArtistOption[];
 }
 
-export function DiscografiaClient({ releases, artistOptions }: DiscografiaClientProps) {
+export function DiscografiaClient({
+  releases,
+  artistOptions,
+}: DiscografiaClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<ReleaseType | "all">("all");
-  const [selectedArtistId, setSelectedArtistId] = useState<string | "all">("all");
+  const [selectedArtistId, setSelectedArtistId] = useState<string | "all">(
+    "all",
+  );
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [showFilters, setShowFilters] = useState(false);
 
@@ -74,9 +79,10 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter((r) =>
-        r.title.toLowerCase().includes(query) ||
-        (r.artistName && r.artistName.toLowerCase().includes(query))
+      result = result.filter(
+        (r) =>
+          r.title.toLowerCase().includes(query) ||
+          r.artistName?.toLowerCase().includes(query),
       );
     }
 
@@ -93,7 +99,9 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
     // Year filter
     if (selectedYear !== "all") {
       result = result.filter(
-        (r) => r.releaseDate && new Date(r.releaseDate).getFullYear() === selectedYear
+        (r) =>
+          r.releaseDate &&
+          new Date(r.releaseDate).getFullYear() === selectedYear,
       );
     }
 
@@ -102,13 +110,15 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
       case "newest":
         result.sort(
           (a, b) =>
-            new Date(b.releaseDate || 0).getTime() - new Date(a.releaseDate || 0).getTime()
+            new Date(b.releaseDate || 0).getTime() -
+            new Date(a.releaseDate || 0).getTime(),
         );
         break;
       case "oldest":
         result.sort(
           (a, b) =>
-            new Date(a.releaseDate || 0).getTime() - new Date(b.releaseDate || 0).getTime()
+            new Date(a.releaseDate || 0).getTime() -
+            new Date(b.releaseDate || 0).getTime(),
         );
         break;
       case "title":
@@ -117,7 +127,14 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
     }
 
     return result;
-  }, [releases, searchQuery, selectedType, selectedArtistId, selectedYear, sortBy]);
+  }, [
+    releases,
+    searchQuery,
+    selectedType,
+    selectedArtistId,
+    selectedYear,
+    sortBy,
+  ]);
 
   // Count releases per type for badges
   const typeCounts = useMemo(() => {
@@ -128,7 +145,11 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
     return counts;
   }, [releases]);
 
-  const hasActiveFilters = selectedType !== "all" || selectedYear !== "all" || selectedArtistId !== "all" || searchQuery.trim() !== "";
+  const hasActiveFilters =
+    selectedType !== "all" ||
+    selectedYear !== "all" ||
+    selectedArtistId !== "all" ||
+    searchQuery.trim() !== "";
 
   const clearFilters = () => {
     setSelectedType("all");
@@ -198,9 +219,7 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
 
         {/* Type Filter Chips + Sort - always visible on desktop, toggleable on mobile */}
         <div
-          className={`space-y-4 ${
-            showFilters ? "block" : "hidden lg:block"
-          }`}
+          className={`space-y-4 ${showFilters ? "block" : "hidden lg:block"}`}
         >
           {/* Release Type Chips */}
           <div className="flex flex-wrap gap-2">
@@ -218,7 +237,9 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
                   }`}
                 >
                   {type.label}
-                  <span className="ml-1.5 text-[10px] opacity-70">({count})</span>
+                  <span className="ml-1.5 text-[10px] opacity-70">
+                    ({count})
+                  </span>
                 </button>
               );
             })}
@@ -250,7 +271,9 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
               value={selectedYear}
               onChange={(e) =>
                 setSelectedYear(
-                  e.target.value === "all" ? "all" : parseInt(e.target.value)
+                  e.target.value === "all"
+                    ? "all"
+                    : Number.parseInt(e.target.value),
                 )
               }
               className="px-3 py-1.5 bg-slc-card border border-slc-border rounded-lg text-xs text-slc-muted focus:outline-none focus:border-primary transition-colors"
@@ -309,9 +332,7 @@ export function DiscografiaClient({ releases, artistOptions }: DiscografiaClient
       ) : (
         <div className="text-center py-16">
           <Disc3 className="w-12 h-12 text-slc-muted mx-auto mb-4" />
-          <h3 className="font-oswald text-lg uppercase mb-2">
-            Sin resultados
-          </h3>
+          <h3 className="font-oswald text-lg uppercase mb-2">Sin resultados</h3>
           <p className="text-slc-muted text-sm mb-4">
             No se encontraron lanzamientos con estos filtros.
           </p>

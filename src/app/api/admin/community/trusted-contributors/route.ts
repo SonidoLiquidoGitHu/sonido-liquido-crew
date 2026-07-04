@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { trustedContributors } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - List all trusted contributors
 export async function GET(request: NextRequest) {
@@ -17,17 +17,21 @@ export async function GET(request: NextRequest) {
     let query = db.select().from(trustedContributors);
 
     if (activeOnly) {
-      query = query.where(eq(trustedContributors.isActive, true)) as typeof query;
+      query = query.where(
+        eq(trustedContributors.isActive, true),
+      ) as typeof query;
     }
 
-    const contributors = await query.orderBy(desc(trustedContributors.createdAt));
+    const contributors = await query.orderBy(
+      desc(trustedContributors.createdAt),
+    );
 
     return NextResponse.json({ success: true, data: contributors });
   } catch (error) {
     console.error("[Trusted Contributors] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error al cargar contribuidores" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
     if (!identifierType || !identifierValue) {
       return NextResponse.json(
         { success: false, error: "Tipo e identificador son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,8 +73,11 @@ export async function POST(request: NextRequest) {
       .where(
         and(
           eq(trustedContributors.identifierType, identifierType),
-          eq(trustedContributors.identifierValue, identifierValue.toLowerCase().trim())
-        )
+          eq(
+            trustedContributors.identifierValue,
+            identifierValue.toLowerCase().trim(),
+          ),
+        ),
       )
       .limit(1);
 
@@ -115,7 +122,9 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    console.log(`[Trusted Contributors] Added: ${identifierType}:${identifierValue}`);
+    console.log(
+      `[Trusted Contributors] Added: ${identifierType}:${identifierValue}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -125,7 +134,7 @@ export async function POST(request: NextRequest) {
     console.error("[Trusted Contributors] Error creating:", error);
     return NextResponse.json(
       { success: false, error: "Error al agregar contribuidor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -136,7 +145,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -146,7 +155,7 @@ export async function PUT(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "ID es requerido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -162,7 +171,7 @@ export async function PUT(request: NextRequest) {
     if (!updated) {
       return NextResponse.json(
         { success: false, error: "Contribuidor no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -174,7 +183,7 @@ export async function PUT(request: NextRequest) {
     console.error("[Trusted Contributors] Error updating:", error);
     return NextResponse.json(
       { success: false, error: "Error al actualizar contribuidor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -185,7 +194,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Base de datos no configurada" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -195,7 +204,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "ID es requerido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -208,7 +217,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Trusted Contributors] Error deleting:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar contribuidor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

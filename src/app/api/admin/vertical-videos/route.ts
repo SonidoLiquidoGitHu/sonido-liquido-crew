@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { verticalVideos, verticalVideoTags, tags } from "@/db/schema";
+import { tags, verticalVideoTags, verticalVideos } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
-import { eq, desc, sql, like, and } from "drizzle-orm";
+import { and, desc, eq, like, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // GET - List all vertical videos (admin)
@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const publishedOnly = searchParams.get("published") === "true";
 
-    let query = db.select().from(verticalVideos).orderBy(desc(verticalVideos.createdAt));
+    const query = db
+      .select()
+      .from(verticalVideos)
+      .orderBy(desc(verticalVideos.createdAt));
 
     // Apply filters
     const conditions = [];
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
           ...video,
           tags: videoTagRows.map((row) => row.tag),
         };
-      })
+      }),
     );
 
     return NextResponse.json({ success: true, data: videosWithTags });
@@ -57,7 +60,7 @@ export async function GET(request: NextRequest) {
     console.error("Failed to fetch vertical videos:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch vertical videos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
     if (!videoUrl) {
       return NextResponse.json(
         { success: false, error: "Video URL is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -140,7 +143,7 @@ export async function POST(request: NextRequest) {
     console.error("Failed to create vertical video:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create vertical video" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -156,16 +159,27 @@ export async function PATCH(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing video ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Build update object - only include allowed fields
     const allowedFields = [
-      "title", "description", "thumbnailUrl", "duration",
-      "width", "height", "isFeatured", "isPublished",
-      "displayOrder", "artistId", "eventId", "platform", "platformId",
-      "platformUrl", "embedUrl",
+      "title",
+      "description",
+      "thumbnailUrl",
+      "duration",
+      "width",
+      "height",
+      "isFeatured",
+      "isPublished",
+      "displayOrder",
+      "artistId",
+      "eventId",
+      "platform",
+      "platformId",
+      "platformUrl",
+      "embedUrl",
     ];
     const updateData: Record<string, unknown> = {};
 
@@ -177,13 +191,18 @@ export async function PATCH(request: NextRequest) {
 
     if (Object.keys(updateData).length > 0) {
       updateData.updatedAt = new Date();
-      await db.update(verticalVideos).set(updateData).where(eq(verticalVideos.id, id));
+      await db
+        .update(verticalVideos)
+        .set(updateData)
+        .where(eq(verticalVideos.id, id));
     }
 
     // Update tags if provided
     if (tagIds !== undefined) {
       // Delete existing tags
-      await db.delete(verticalVideoTags).where(eq(verticalVideoTags.videoId, id));
+      await db
+        .delete(verticalVideoTags)
+        .where(eq(verticalVideoTags.videoId, id));
       // Insert new tags
       for (const tagId of tagIds) {
         await db.insert(verticalVideoTags).values({
@@ -214,7 +233,7 @@ export async function PATCH(request: NextRequest) {
     console.error("Failed to update vertical video:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update vertical video" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -230,7 +249,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing video ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -242,7 +261,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Failed to delete vertical video:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete vertical video" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

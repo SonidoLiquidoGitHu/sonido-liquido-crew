@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  MessageCircle,
-  Send,
+  CheckCircle,
+  Globe,
   Heart,
   Loader2,
-  CheckCircle,
-  X,
+  MessageCircle,
+  Send,
   Sparkles,
-  Globe,
   User,
+  X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 interface FanMessage {
   id: string;
@@ -178,7 +178,9 @@ export function FanWall({
             {submitted ? (
               <div className="text-center py-8">
                 <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <h3 className="font-oswald text-xl uppercase mb-2">¡Mensaje enviado!</h3>
+                <h3 className="font-oswald text-xl uppercase mb-2">
+                  ¡Mensaje enviado!
+                </h3>
                 <p className="text-slc-muted text-sm">
                   Tu mensaje aparecerá después de ser aprobado.
                 </p>
@@ -279,14 +281,14 @@ export function FanWall({
                         type="button"
                         onClick={() =>
                           setSelectedReaction(
-                            selectedReaction === reaction ? "" : reaction
+                            selectedReaction === reaction ? "" : reaction,
                           )
                         }
                         className={cn(
                           "w-10 h-10 text-xl rounded-lg border transition-all",
                           selectedReaction === reaction
                             ? "border-primary bg-primary/20 scale-110"
-                            : "border-slc-border bg-slc-dark hover:border-slc-muted"
+                            : "border-slc-border bg-slc-dark hover:border-slc-muted",
                         )}
                       >
                         {reaction}
@@ -295,13 +297,13 @@ export function FanWall({
                   </div>
                 </div>
 
-                {error && (
-                  <p className="text-sm text-red-500">{error}</p>
-                )}
+                {error && <p className="text-sm text-red-500">{error}</p>}
 
                 <Button
                   type="submit"
-                  disabled={submitting || !displayName.trim() || !message.trim()}
+                  disabled={
+                    submitting || !displayName.trim() || !message.trim()
+                  }
                   className="w-full"
                 >
                   {submitting ? (
@@ -353,16 +355,18 @@ export function FanWall({
 }
 
 // Individual message card
-function MessageCard({ message, index }: { message: FanMessage; index: number }) {
+function MessageCard({
+  message,
+  index,
+}: { message: FanMessage; index: number }) {
   const bgColor =
-    message.backgroundColor ||
-    PASTEL_COLORS[index % PASTEL_COLORS.length];
+    message.backgroundColor || PASTEL_COLORS[index % PASTEL_COLORS.length];
 
   return (
     <div
       className={cn(
         "group relative p-5 rounded-xl border border-slc-border/50 transition-all duration-300 hover:border-primary/30 hover:-translate-y-1",
-        message.isFeatured && "ring-2 ring-primary/30"
+        message.isFeatured && "ring-2 ring-primary/30",
       )}
       style={{ backgroundColor: bgColor }}
     >
@@ -376,7 +380,9 @@ function MessageCard({ message, index }: { message: FanMessage; index: number })
 
       {/* Reaction */}
       {message.reaction && (
-        <span className="absolute -top-3 left-4 text-2xl">{message.reaction}</span>
+        <span className="absolute -top-3 left-4 text-2xl">
+          {message.reaction}
+        </span>
       )}
 
       {/* Message */}
@@ -384,7 +390,7 @@ function MessageCard({ message, index }: { message: FanMessage; index: number })
         className={cn(
           "text-white text-sm leading-relaxed mb-4",
           message.fontStyle === "handwritten" && "font-serif italic",
-          message.fontStyle === "bold" && "font-bold"
+          message.fontStyle === "bold" && "font-bold",
         )}
       >
         "{message.message}"

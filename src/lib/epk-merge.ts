@@ -1,10 +1,10 @@
 /**
  * EPK Merge Utility
- * 
+ *
  * Merges Artist and EPK data with EPK priority.
  * When both have the same field, EPK wins.
  * When EPK is empty, Artist data is used as fallback.
- * 
+ *
  * This ensures that info entered via the Artists section
  * is reflected in the EPK public page, but EPK-specific
  * edits always take precedence.
@@ -152,15 +152,18 @@ export interface MergedEpkData {
 
 /**
  * Merge Artist and EPK data with EPK priority.
- * 
+ *
  * Priority: EPK field > Artist field > null
  * For array fields (pressQuotes, etc.): EPK items come first, then Artist items not already present
  */
-export function mergeArtistEpk(artist: Artist, epk: ArtistEpk | null): MergedEpkData {
+export function mergeArtistEpk(
+  artist: Artist,
+  epk: ArtistEpk | null,
+): MergedEpkData {
   // Helper: merge two JSON arrays, EPK items first, deduplicated
   function mergeJsonArrays<T extends { source?: string }>(
     epkValue: string | null | undefined,
-    artistValue: string | null | undefined
+    artistValue: string | null | undefined,
   ): T[] {
     const epkItems = parseJson<T[]>(epkValue, []);
     const artistItems = parseJson<T[]>(artistValue, []);
@@ -175,7 +178,10 @@ export function mergeArtistEpk(artist: Artist, epk: ArtistEpk | null): MergedEpk
   }
 
   // Helper: string field with EPK priority
-  function mergeString(epkVal: string | null | undefined, artistVal: string | null | undefined): string | null {
+  function mergeString(
+    epkVal: string | null | undefined,
+    artistVal: string | null | undefined,
+  ): string | null {
     if (!isEmpty(epkVal)) return epkVal!;
     if (!isEmpty(artistVal)) return artistVal!;
     return null;
@@ -184,7 +190,10 @@ export function mergeArtistEpk(artist: Artist, epk: ArtistEpk | null): MergedEpk
   return {
     // Identity
     tagline: mergeString(epk?.tagline, null),
-    genreSpecific: mergeString(epk?.genreSpecific, artist.genres ? parseJson<string[]>(artist.genres, []).join(", ") : null),
+    genreSpecific: mergeString(
+      epk?.genreSpecific,
+      artist.genres ? parseJson<string[]>(artist.genres, []).join(", ") : null,
+    ),
     subgenres: parseJson<string[]>(epk?.subgenres, []),
     artistType: epk?.artistType || null,
 
@@ -203,9 +212,12 @@ export function mergeArtistEpk(artist: Artist, epk: ArtistEpk | null): MergedEpk
     brandFont: epk?.brandFont || null,
 
     // Streaming Stats
-    spotifyMonthlyListeners: epk?.spotifyMonthlyListeners || artist.monthlyListeners || null,
+    spotifyMonthlyListeners:
+      epk?.spotifyMonthlyListeners || artist.monthlyListeners || null,
     spotifyFollowers: epk?.spotifyFollowers || null,
-    spotifyTopTrack: epk?.spotifyTopTrack ? parseJson(epk?.spotifyTopTrack, null) : null,
+    spotifyTopTrack: epk?.spotifyTopTrack
+      ? parseJson(epk?.spotifyTopTrack, null)
+      : null,
     appleMusicUrl: epk?.appleMusicUrl || null,
     youtubeSubscribers: epk?.youtubeSubscribers || null,
     youtubeTotalViews: epk?.youtubeTotalViews || null,
@@ -236,15 +248,21 @@ export function mergeArtistEpk(artist: Artist, epk: ArtistEpk | null): MergedEpk
 
     // Music
     topTracks: parseJson<unknown[]>(epk?.topTracks, []),
-    latestRelease: epk?.latestRelease ? parseJson(epk?.latestRelease, null) : null,
-    upcomingRelease: epk?.upcomingRelease ? parseJson(epk?.upcomingRelease, null) : null,
+    latestRelease: epk?.latestRelease
+      ? parseJson(epk?.latestRelease, null)
+      : null,
+    upcomingRelease: epk?.upcomingRelease
+      ? parseJson(epk?.upcomingRelease, null)
+      : null,
 
     // Videos — if EPK has no videos but Artist has featuredVideos, use those
     officialMusicVideos: hasItems(epk?.officialMusicVideos)
       ? parseJson<unknown[]>(epk?.officialMusicVideos, [])
       : parseJson<unknown[]>(artist.featuredVideos, []),
     livePerformanceVideos: parseJson<unknown[]>(epk?.livePerformanceVideos, []),
-    featuredVideo: epk?.featuredVideo ? parseJson(epk?.featuredVideo, null) : null,
+    featuredVideo: epk?.featuredVideo
+      ? parseJson(epk?.featuredVideo, null)
+      : null,
     visualizerVideos: parseJson<unknown[]>(epk?.visualizerVideos, []),
     behindTheScenes: parseJson<unknown[]>(epk?.behindTheScenes, []),
 
@@ -268,15 +286,19 @@ export function mergeArtistEpk(artist: Artist, epk: ArtistEpk | null): MergedEpk
     // Labels — EPK labelName is a string, Artist labels is JSON array
     labelName: mergeString(
       epk?.labelName,
-      artist.labels ? parseJson<string[]>(artist.labels, []).join(" / ") : null
+      artist.labels ? parseJson<string[]>(artist.labels, []).join(" / ") : null,
     ),
     labels: parseJson<string[]>(artist.labels, []),
 
     // Technical Rider
     performanceFormat: epk?.performanceFormat || null,
     setLengthOptions: parseJson<number[]>(epk?.setLengthOptions, []),
-    technicalRequirements: epk?.technicalRequirements ? parseJson(epk?.technicalRequirements, null) : null,
-    backlineNeeds: epk?.backlineNeeds ? parseJson(epk?.backlineNeeds, null) : null,
+    technicalRequirements: epk?.technicalRequirements
+      ? parseJson(epk?.technicalRequirements, null)
+      : null,
+    backlineNeeds: epk?.backlineNeeds
+      ? parseJson(epk?.backlineNeeds, null)
+      : null,
     stageRequirements: epk?.stageRequirements || null,
     hospitalityRider: epk?.hospitalityRider || null,
     travelRequirements: epk?.travelRequirements || null,

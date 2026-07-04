@@ -1,5 +1,9 @@
-import { youtubeClient, YouTubeClient } from "@/lib/clients";
-import { videosRepository, syncJobsRepository, siteSettingsRepository } from "@/lib/repositories";
+import { YouTubeClient, youtubeClient } from "@/lib/clients";
+import {
+  siteSettingsRepository,
+  syncJobsRepository,
+  videosRepository,
+} from "@/lib/repositories";
 import { generateUUID } from "@/lib/utils";
 
 // ===========================================
@@ -122,7 +126,11 @@ async function getLastSyncDate(): Promise<Date | null> {
 }
 
 async function setLastSyncDate(date: Date): Promise<void> {
-  await siteSettingsRepository.set(LAST_ROSTER_SYNC_KEY, date.toISOString(), "string");
+  await siteSettingsRepository.set(
+    LAST_ROSTER_SYNC_KEY,
+    date.toISOString(),
+    "string",
+  );
 }
 
 function isSameMonth(date1: Date, date2: Date): boolean {
@@ -141,7 +149,7 @@ function isSameMonth(date1: Date, date2: Date): boolean {
  * Only fetches videos that haven't been loaded yet.
  */
 export async function syncRosterVideos(
-  options: RosterVideosSyncOptions = {}
+  options: RosterVideosSyncOptions = {},
 ): Promise<RosterVideosSyncResult> {
   const {
     videosPerMonth = 4,
@@ -163,7 +171,9 @@ export async function syncRosterVideos(
   // Check if YouTube API is configured
   if (!youtubeClient.isConfigured()) {
     result.success = false;
-    result.errors.push("YouTube API key not configured. Set YOUTUBE_API_KEY in environment variables.");
+    result.errors.push(
+      "YouTube API key not configured. Set YOUTUBE_API_KEY in environment variables.",
+    );
     return result;
   }
 
@@ -173,7 +183,9 @@ export async function syncRosterVideos(
     result.lastSyncDate = lastSync.toISOString();
     if (!force && isSameMonth(lastSync, new Date())) {
       result.alreadySyncedThisMonth = true;
-      result.errors.push(`Ya se sincronizaron videos este mes (${lastSync.toLocaleDateString("es-MX")}). Usa force=true para forzar.`);
+      result.errors.push(
+        `Ya se sincronizaron videos este mes (${lastSync.toLocaleDateString("es-MX")}). Usa force=true para forzar.`,
+      );
       return result;
     }
   }
@@ -189,7 +201,7 @@ export async function syncRosterVideos(
     await syncJobsRepository.addLog(
       syncJob.id,
       "info",
-      `Iniciando sincronización mensual de videos del roster (${videosPerMonth} videos)`
+      `Iniciando sincronización mensual de videos del roster (${videosPerMonth} videos)`,
     );
 
     // Collect candidate videos from all channels
@@ -197,11 +209,17 @@ export async function syncRosterVideos(
 
     for (const artist of rosterYoutubeChannels) {
       try {
-        await syncJobsRepository.addLog(syncJob.id, "info", `Procesando canal de ${artist.name}`);
+        await syncJobsRepository.addLog(
+          syncJob.id,
+          "info",
+          `Procesando canal de ${artist.name}`,
+        );
 
         // Validate youtube URL exists
         if (!artist.youtube) {
-          result.errors.push(`${artist.name}: No tiene URL de YouTube configurada`);
+          result.errors.push(
+            `${artist.name}: No tiene URL de YouTube configurada`,
+          );
           result.channelsFailed++;
           continue;
         }
@@ -209,7 +227,9 @@ export async function syncRosterVideos(
         // Extract channel info from URL
         const channelInfo = YouTubeClient.extractChannelInfo(artist.youtube);
         if (!channelInfo) {
-          result.errors.push(`${artist.name}: No se pudo extraer info del canal de ${artist.youtube}`);
+          result.errors.push(
+            `${artist.name}: No se pudo extraer info del canal de ${artist.youtube}`,
+          );
           result.channelsFailed++;
           continue;
         }
@@ -221,17 +241,24 @@ export async function syncRosterVideos(
         } else {
           // Handle @handle format
           try {
-            const channel = await youtubeClient.getChannelByHandle(channelInfo.value);
-            if (channel && channel.id) {
+            const channel = await youtubeClient.getChannelByHandle(
+              channelInfo.value,
+            );
+            if (channel?.id) {
               channelId = channel.id;
             } else {
-              result.errors.push(`${artist.name}: Canal @${channelInfo.value} no encontrado en YouTube`);
+              result.errors.push(
+                `${artist.name}: Canal @${channelInfo.value} no encontrado en YouTube`,
+              );
               result.channelsFailed++;
               continue;
             }
           } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            result.errors.push(`${artist.name}: Error resolviendo handle @${channelInfo.value} - ${errorMsg}`);
+            const errorMsg =
+              error instanceof Error ? error.message : String(error);
+            result.errors.push(
+              `${artist.name}: Error resolviendo handle @${channelInfo.value} - ${errorMsg}`,
+            );
             result.channelsFailed++;
             continue;
           }
@@ -244,19 +271,30 @@ export async function syncRosterVideos(
         }
 
         // Fetch recent videos from channel
-        let videos: Awaited<ReturnType<typeof youtubeClient.getChannelVideos>> = [];
+        let videos: Awaited<ReturnType<typeof youtubeClient.getChannelVideos>> =
+          [];
         try {
-          videos = await youtubeClient.getChannelVideos(channelId, maxVideosPerChannel);
+          videos = await youtubeClient.getChannelVideos(
+            channelId,
+            maxVideosPerChannel,
+          );
         } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          result.errors.push(`${artist.name}: Error obteniendo videos - ${errorMsg}`);
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          result.errors.push(
+            `${artist.name}: Error obteniendo videos - ${errorMsg}`,
+          );
           result.channelsFailed++;
           continue;
         }
 
         if (!videos || videos.length === 0) {
           // Not an error, just no videos found
-          await syncJobsRepository.addLog(syncJob.id, "info", `${artist.name}: Sin videos públicos`);
+          await syncJobsRepository.addLog(
+            syncJob.id,
+            "info",
+            `${artist.name}: Sin videos públicos`,
+          );
           result.channelsProcessed++;
           continue;
         }
@@ -272,17 +310,18 @@ export async function syncRosterVideos(
           }
 
           // Safely extract video data with fallbacks
-          const thumbnailUrl = video.snippet?.thumbnails?.high?.url
-            || video.snippet?.thumbnails?.medium?.url
-            || video.snippet?.thumbnails?.default?.url
-            || "";
+          const thumbnailUrl =
+            video.snippet?.thumbnails?.high?.url ||
+            video.snippet?.thumbnails?.medium?.url ||
+            video.snippet?.thumbnails?.default?.url ||
+            "";
 
           const duration = video.contentDetails?.duration
             ? YouTubeClient.parseDuration(video.contentDetails.duration)
             : 0;
 
           const viewCount = video.statistics?.viewCount
-            ? parseInt(video.statistics.viewCount, 10)
+            ? Number.parseInt(video.statistics.viewCount, 10)
             : 0;
 
           // Add to candidates
@@ -306,9 +345,14 @@ export async function syncRosterVideos(
         const errorMsg = error instanceof Error ? error.message : String(error);
         result.errors.push(`${artist.name}: ${errorMsg}`);
         result.channelsFailed++;
-        await syncJobsRepository.addLog(syncJob.id, "error", `Error procesando ${artist.name}`, {
-          error: errorMsg,
-        });
+        await syncJobsRepository.addLog(
+          syncJob.id,
+          "error",
+          `Error procesando ${artist.name}`,
+          {
+            error: errorMsg,
+          },
+        );
       }
     }
 
@@ -317,12 +361,16 @@ export async function syncRosterVideos(
     await syncJobsRepository.addLog(
       syncJob.id,
       "info",
-      `Encontrados ${allCandidates.length} videos nuevos de ${result.channelsProcessed} canales`
+      `Encontrados ${allCandidates.length} videos nuevos de ${result.channelsProcessed} canales`,
     );
 
     // If no new videos available
     if (allCandidates.length === 0) {
-      await syncJobsRepository.addLog(syncJob.id, "info", "No hay videos nuevos disponibles");
+      await syncJobsRepository.addLog(
+        syncJob.id,
+        "info",
+        "No hay videos nuevos disponibles",
+      );
       await syncJobsRepository.update(syncJob.id, {
         status: "completed",
         completedAt: new Date(),
@@ -332,7 +380,10 @@ export async function syncRosterVideos(
     }
 
     // Select random videos (up to videosPerMonth)
-    const selectedVideos = shuffleArray(allCandidates).slice(0, Math.min(videosPerMonth, allCandidates.length));
+    const selectedVideos = shuffleArray(allCandidates).slice(
+      0,
+      Math.min(videosPerMonth, allCandidates.length),
+    );
 
     // Import videos to database
     for (const candidate of selectedVideos) {
@@ -341,7 +392,9 @@ export async function syncRosterVideos(
         let artistId: string | null = null;
         try {
           const { artistsRepository } = await import("@/lib/repositories");
-          const artist = await artistsRepository.findBySlug(candidate.artistSlug);
+          const artist = await artistsRepository.findBySlug(
+            candidate.artistSlug,
+          );
           if (artist) {
             artistId = artist.id;
           }
@@ -364,9 +417,15 @@ export async function syncRosterVideos(
 
         result.videosSynced++;
 
-        await syncJobsRepository.addLog(syncJob.id, "info", `Video guardado: ${candidate.title} (${candidate.artistName})`);
+        await syncJobsRepository.addLog(
+          syncJob.id,
+          "info",
+          `Video guardado: ${candidate.title} (${candidate.artistName})`,
+        );
       } catch (error) {
-        result.errors.push(`Error guardando video "${candidate.title}": ${(error as Error).message}`);
+        result.errors.push(
+          `Error guardando video "${candidate.title}": ${(error as Error).message}`,
+        );
       }
     }
 
@@ -385,9 +444,8 @@ export async function syncRosterVideos(
       syncJob.id,
       result.errors.length === 0 ? "info" : "warning",
       `Sincronización completada: ${result.videosSynced} videos nuevos guardados`,
-      { errors: result.errors }
+      { errors: result.errors },
     );
-
   } catch (error) {
     result.success = false;
     result.errors.push(`Sincronización fallida: ${(error as Error).message}`);
@@ -398,9 +456,14 @@ export async function syncRosterVideos(
       errorMessage: (error as Error).message,
     });
 
-    await syncJobsRepository.addLog(syncJob.id, "error", "Sincronización fallida", {
-      error: (error as Error).message,
-    });
+    await syncJobsRepository.addLog(
+      syncJob.id,
+      "error",
+      "Sincronización fallida",
+      {
+        error: (error as Error).message,
+      },
+    );
   }
 
   return result;

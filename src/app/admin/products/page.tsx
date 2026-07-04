@@ -1,19 +1,19 @@
-import Link from "next/link";
-import Image from "next/image";
+import { Button } from "@/components/ui/button";
 import { productsService } from "@/lib/services";
 import { formatCurrency } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
+  CheckCircle,
+  DollarSign,
+  Edit,
+  Package,
   Plus,
   Search,
-  Edit,
-  Trash2,
   ShoppingBag,
-  Package,
-  DollarSign,
-  CheckCircle,
+  Trash2,
   XCircle,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ const categoryLabels: Record<string, string> = {
 export default async function AdminProductsPage() {
   const products = await productsService.getAll({ limit: 100 });
 
-  const activeProducts = products.filter(p => p.isActive);
+  const activeProducts = products.filter((p) => p.isActive);
   const totalValue = products.reduce((acc, p) => acc + p.price, 0);
 
   return (
@@ -79,16 +79,20 @@ export default async function AdminProductsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-primary">{products.length}</div>
+          <div className="font-oswald text-2xl text-primary">
+            {products.length}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Total</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
-          <div className="font-oswald text-2xl text-green-500">{activeProducts.length}</div>
+          <div className="font-oswald text-2xl text-green-500">
+            {activeProducts.length}
+          </div>
           <div className="text-xs text-slc-muted uppercase">Activos</div>
         </div>
         <div className="bg-slc-card border border-slc-border rounded-lg p-4 text-center">
           <div className="font-oswald text-2xl text-yellow-500">
-            {products.filter(p => p.stockQuantity === 0).length}
+            {products.filter((p) => p.stockQuantity === 0).length}
           </div>
           <div className="text-xs text-slc-muted uppercase">Agotados</div>
         </div>
@@ -96,7 +100,9 @@ export default async function AdminProductsPage() {
           <div className="font-oswald text-2xl text-blue-500">
             {formatCurrency(totalValue / products.length || 0, "MXN")}
           </div>
-          <div className="text-xs text-slc-muted uppercase">Precio Promedio</div>
+          <div className="text-xs text-slc-muted uppercase">
+            Precio Promedio
+          </div>
         </div>
       </div>
 
@@ -154,7 +160,9 @@ export default async function AdminProductsPage() {
                           >
                             {product.name}
                           </Link>
-                          <p className="text-xs text-slc-muted">/{product.slug}</p>
+                          <p className="text-xs text-slc-muted">
+                            /{product.slug}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -168,26 +176,36 @@ export default async function AdminProductsPage() {
                         <span className="font-oswald">
                           {formatCurrency(product.price, product.currency)}
                         </span>
-                        {product.compareAtPrice && product.compareAtPrice > product.price && (
-                          <span className="text-xs text-slc-muted line-through">
-                            {formatCurrency(product.compareAtPrice, product.currency)}
-                          </span>
-                        )}
+                        {product.compareAtPrice &&
+                          product.compareAtPrice > product.price && (
+                            <span className="text-xs text-slc-muted line-through">
+                              {formatCurrency(
+                                product.compareAtPrice,
+                                product.currency,
+                              )}
+                            </span>
+                          )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       {product.stockQuantity !== null ? (
-                        <span className={`text-sm ${
-                          product.stockQuantity === 0
-                            ? "text-red-500"
-                            : product.stockQuantity < 5
-                              ? "text-yellow-500"
-                              : "text-green-500"
-                        }`}>
-                          {product.stockQuantity === 0 ? "Agotado" : `${product.stockQuantity} unidades`}
+                        <span
+                          className={`text-sm ${
+                            product.stockQuantity === 0
+                              ? "text-red-500"
+                              : product.stockQuantity < 5
+                                ? "text-yellow-500"
+                                : "text-green-500"
+                          }`}
+                        >
+                          {product.stockQuantity === 0
+                            ? "Agotado"
+                            : `${product.stockQuantity} unidades`}
                         </span>
                       ) : (
-                        <span className="text-sm text-slc-muted">Ilimitado</span>
+                        <span className="text-sm text-slc-muted">
+                          Ilimitado
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -210,7 +228,11 @@ export default async function AdminProductsPage() {
                             <Edit className="w-4 h-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-400">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-400"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -225,7 +247,9 @@ export default async function AdminProductsPage() {
         /* Empty State */
         <div className="text-center py-16 bg-slc-dark border border-slc-border rounded-xl">
           <ShoppingBag className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-          <h3 className="font-oswald text-xl uppercase mb-2">No hay productos</h3>
+          <h3 className="font-oswald text-xl uppercase mb-2">
+            No hay productos
+          </h3>
           <p className="text-slc-muted mb-6">
             Agrega productos para tu tienda oficial.
           </p>

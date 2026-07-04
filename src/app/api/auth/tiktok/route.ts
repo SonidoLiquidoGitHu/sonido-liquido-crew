@@ -4,8 +4,8 @@
 // Redirects the user to TikTok's OAuth consent screen.
 // After the user authorizes, TikTok redirects back to /api/auth/tiktok/callback
 
-import { NextRequest, NextResponse } from "next/server";
 import { getTikTokAuthUrl } from "@/lib/clients/tiktok";
+import { type NextRequest, NextResponse } from "next/server";
 
 const REDIRECT_URI =
   process.env.TIKTOK_REDIRECT_URI ||
@@ -21,15 +21,18 @@ export async function GET(request: NextRequest) {
       returnUrl,
       timestamp: Date.now(),
       nonce: crypto.randomUUID(),
-    })
+    }),
   ).toString("base64");
 
   const authUrl = await getTikTokAuthUrl(REDIRECT_URI, state);
 
   if (!authUrl || authUrl.includes("client_key=&")) {
     return NextResponse.json(
-      { error: "TikTok Client Key not configured. Set TIKTOK_CLIENT_KEY in the admin panel or as an env var." },
-      { status: 500 }
+      {
+        error:
+          "TikTok Client Key not configured. Set TIKTOK_CLIENT_KEY in the admin panel or as an env var.",
+      },
+      { status: 500 },
     );
   }
 

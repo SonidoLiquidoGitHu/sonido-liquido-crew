@@ -1,10 +1,10 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { releasesService } from "@/lib/services";
-import { formatDate, getReleaseTypeDisplay, proxyImageUrl } from "@/lib/utils";
 import { SpotifyEmbed } from "@/components/public/embeds/SpotifyEmbed";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Calendar, Disc3, User } from "lucide-react";
+import { releasesService } from "@/lib/services";
+import { formatDate, getReleaseTypeDisplay, proxyImageUrl } from "@/lib/utils";
+import { ArrowLeft, Calendar, Disc3, ExternalLink, User } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,8 @@ export async function generateMetadata({ params }: ReleasePageProps) {
 
   return {
     title: `${release.title} | Sonido Líquido Crew`,
-    description: release.description || `Escucha ${release.title} de Sonido Líquido Crew.`,
+    description:
+      release.description || `Escucha ${release.title} de Sonido Líquido Crew.`,
   };
 }
 
@@ -100,7 +101,7 @@ export default async function ReleasePage({ params }: ReleasePageProps) {
                 {formatDate(release.releaseDate, {
                   year: "numeric",
                   month: "long",
-                  day: "numeric"
+                  day: "numeric",
                 })}
               </span>
             </div>
@@ -116,7 +117,11 @@ export default async function ReleasePage({ params }: ReleasePageProps) {
             <div className="flex flex-wrap gap-3 mt-8">
               {release.spotifyUrl && (
                 <Button asChild className="bg-spotify hover:bg-spotify-dark">
-                  <a href={release.spotifyUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={release.spotifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                       <path
                         fill="currentColor"
@@ -130,7 +135,11 @@ export default async function ReleasePage({ params }: ReleasePageProps) {
 
               {release.appleMusicUrl && (
                 <Button asChild variant="outline">
-                  <a href={release.appleMusicUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={release.appleMusicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Apple Music
                     <ExternalLink className="w-4 h-4 ml-2" />
                   </a>
@@ -139,7 +148,11 @@ export default async function ReleasePage({ params }: ReleasePageProps) {
 
               {release.youtubeMusicUrl && (
                 <Button asChild variant="outline">
-                  <a href={release.youtubeMusicUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={release.youtubeMusicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     YouTube Music
                     <ExternalLink className="w-4 h-4 ml-2" />
                   </a>
@@ -150,7 +163,11 @@ export default async function ReleasePage({ params }: ReleasePageProps) {
             {/* Spotify Embed */}
             {release.spotifyId && (
               <div className="mt-8">
-                <SpotifyEmbed type="album" id={release.spotifyId} height={352} />
+                <SpotifyEmbed
+                  type="album"
+                  id={release.spotifyId}
+                  height={352}
+                />
               </div>
             )}
           </div>

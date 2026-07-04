@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 type RevealDirection = "up" | "down" | "left" | "right" | "scale" | "fade";
 
@@ -78,7 +78,7 @@ export function ScrollReveal({
           }
         });
       },
-      { threshold }
+      { threshold },
     );
 
     if (ref.current) {
@@ -108,7 +108,6 @@ export function ScrollReveal({
         return { ...base, transform: `translateX(-${distance}px)` };
       case "scale":
         return { ...base, transform: "scale(0.8)" };
-      case "fade":
       default:
         return base;
     }
@@ -184,7 +183,7 @@ export function StaggerReveal({
           }
         });
       },
-      { threshold }
+      { threshold },
     );
 
     if (ref.current) {

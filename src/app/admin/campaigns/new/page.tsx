@@ -6,7 +6,7 @@ export default async function NewCampaignPage() {
   const allArtists = await artistsService.getAll();
 
   // Map to the format expected by ArtistSelector
-  const artists = allArtists.map(artist => ({
+  const artists = allArtists.map((artist) => ({
     id: artist.id,
     name: artist.name,
     profileImageUrl: artist.profileImageUrl,

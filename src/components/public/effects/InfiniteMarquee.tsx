@@ -37,15 +37,24 @@ export function InfiniteMarquee({
     });
 
     // Set animation direction
-    scroller.style.setProperty("--marquee-direction", direction === "left" ? "forwards" : "reverse");
-    scroller.style.setProperty("--marquee-duration", `${items.length * (100 / speed)}s`);
+    scroller.style.setProperty(
+      "--marquee-direction",
+      direction === "left" ? "forwards" : "reverse",
+    );
+    scroller.style.setProperty(
+      "--marquee-duration",
+      `${items.length * (100 / speed)}s`,
+    );
   }, [items, direction, speed]);
 
   return (
     <div
       ref={containerRef}
       className={`overflow-hidden ${className}`}
-      style={{ maskImage: "linear-gradient(to right, transparent, black 5%, black 95%, transparent)" }}
+      style={{
+        maskImage:
+          "linear-gradient(to right, transparent, black 5%, black 95%, transparent)",
+      }}
     >
       <div
         ref={scrollerRef}

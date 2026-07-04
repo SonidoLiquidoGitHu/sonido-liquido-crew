@@ -1,12 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { subscribersService } from "@/lib/services";
-import { subscribeSchema, VALID_SUBSCRIPTION_SOURCES } from "@/lib/validations";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
+import { subscribersService } from "@/lib/services";
+import { VALID_SUBSCRIPTION_SOURCES, subscribeSchema } from "@/lib/validations";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Rate limiting: track IPs in memory (resets on serverless cold start, but effective)
-const submitAttempts = new Map<string, { count: number; firstAttempt: number }>();
+const submitAttempts = new Map<
+  string,
+  { count: number; firstAttempt: number }
+>();
 const MAX_ATTEMPTS = 5; // Max 5 subscriptions per IP per window
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour window
 
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
       } else if (attempts.count >= MAX_ATTEMPTS) {
         return NextResponse.json(
           { success: false, error: "Demasiados intentos. Intenta más tarde." },
-          { status: 429 }
+          { status: 429 },
         );
       } else {
         attempts.count++;
@@ -104,7 +107,7 @@ export async function POST(request: NextRequest) {
           error: "Invalid input",
           details: parsed.error.flatten().fieldErrors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -124,7 +127,7 @@ export async function POST(request: NextRequest) {
     if (isSpamEmail(email)) {
       return NextResponse.json(
         { success: false, error: "Email no válido." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
     if (isBotName(name)) {
       return NextResponse.json(
         { success: false, error: "Nombre no válido." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -142,12 +145,14 @@ export async function POST(request: NextRequest) {
       // Check if it starts with a known prefix (like "popup_" or "download-gate:")
       const isKnownPrefix = VALID_SUBSCRIPTION_SOURCES.some(
         (valid) =>
-          validatedSource.startsWith(valid + ":") ||
-          validatedSource.startsWith(valid + "_")
+          validatedSource.startsWith(`${valid}:`) ||
+          validatedSource.startsWith(`${valid}_`),
       );
       if (!isKnownPrefix) {
         // Unknown source — default to "website" instead of accepting arbitrary values
-        console.warn(`[Newsletter] Rejected source "${validatedSource}" from ${email}, defaulting to "website"`);
+        console.warn(
+          `[Newsletter] Rejected source "${validatedSource}" from ${email}, defaulting to "website"`,
+        );
         validatedSource = "website";
       }
     }
@@ -156,19 +161,27 @@ export async function POST(request: NextRequest) {
     const subscriber = await subscribersService.subscribe(
       email,
       name || undefined,
-      validatedSource
+      validatedSource,
     );
 
     // Fetch download file settings to return on successful subscription
-    let downloadFile: { url: string; name: string; buttonText: string; description: string } | null = null;
+    let downloadFile: {
+      url: string;
+      name: string;
+      buttonText: string;
+      description: string;
+    } | null = null;
     try {
       const setting = await db.query.siteSettings.findFirst({
         where: (s, { eq }) => eq(s.key, "newsletter_popup_settings"),
       });
 
-      if (setting && setting.value) {
+      if (setting?.value) {
         const popupSettings = JSON.parse(setting.value);
-        if (popupSettings.downloadFileEnabled && popupSettings.downloadFileUrl) {
+        if (
+          popupSettings.downloadFileEnabled &&
+          popupSettings.downloadFileUrl
+        ) {
           downloadFile = {
             url: popupSettings.downloadFileUrl,
             name: popupSettings.downloadFileName || "Regalo exclusivo",
@@ -195,7 +208,7 @@ export async function POST(request: NextRequest) {
     console.error("Error subscribing:", error);
     return NextResponse.json(
       { success: false, error: "Failed to subscribe" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

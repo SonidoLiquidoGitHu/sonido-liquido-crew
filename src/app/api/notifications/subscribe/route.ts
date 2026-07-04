@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { pushSubscriptions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     if (!subscription || !subscription.endpoint) {
       return NextResponse.json(
         { success: false, error: "Invalid subscription" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -52,12 +52,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new subscription
-    const result = await db.insert(pushSubscriptions).values({
-      endpoint: subscription.endpoint,
-      keysP256dh: subscription.keys?.p256dh || "",
-      keysAuth: subscription.keys?.auth || "",
-      userAgent,
-    }).returning({ id: pushSubscriptions.id });
+    const result = await db
+      .insert(pushSubscriptions)
+      .values({
+        endpoint: subscription.endpoint,
+        keysP256dh: subscription.keys?.p256dh || "",
+        keysAuth: subscription.keys?.auth || "",
+        userAgent,
+      })
+      .returning({ id: pushSubscriptions.id });
 
     return NextResponse.json({
       success: true,
@@ -68,7 +71,7 @@ export async function POST(request: NextRequest) {
     console.error("[Notifications Subscribe] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to subscribe" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -78,7 +81,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -88,7 +91,7 @@ export async function DELETE(request: NextRequest) {
     if (!endpoint) {
       return NextResponse.json(
         { success: false, error: "Endpoint required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -104,7 +107,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Notifications Unsubscribe] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to unsubscribe" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

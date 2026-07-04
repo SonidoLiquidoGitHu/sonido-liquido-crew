@@ -1,40 +1,40 @@
-import { notFound } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
-import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistEpk, artistExternalProfiles } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
+import { db, isDatabaseConfigured } from "@/db/client";
+import { artistEpk, artistExternalProfiles, artists } from "@/db/schema";
 import { mergeArtistEpk } from "@/lib/epk-merge";
+import { eq } from "drizzle-orm";
 import {
   ArrowLeft,
-  User,
-  Music,
-  Instagram,
-  Youtube,
-  Mail,
-  Phone,
-  MapPin,
+  Award,
+  Building,
+  Calendar,
+  Clock,
+  Disc3,
   Download,
   ExternalLink,
-  Quote,
-  Play,
-  Calendar,
-  Disc3,
-  Video,
-  Users,
-  Building,
-  Mic,
-  Award,
-  TrendingUp,
-  FileText,
-  Palette,
-  Wrench,
-  Star,
-  Clock,
-  Globe,
   FileDown,
+  FileText,
+  Globe,
+  Instagram,
+  Mail,
+  MapPin,
+  Mic,
+  Music,
+  Palette,
+  Phone,
+  Play,
+  Quote,
+  Star,
+  TrendingUp,
+  User,
+  Users,
+  Video,
+  Wrench,
+  Youtube,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +108,10 @@ export async function generateMetadata({ params }: PageProps) {
 
   return {
     title: `${artist.name} - EPK | Sonido Líquido Crew`,
-    description: merged.bioShort || merged.tagline || `Electronic Press Kit de ${artist.name}`,
+    description:
+      merged.bioShort ||
+      merged.tagline ||
+      `Electronic Press Kit de ${artist.name}`,
     openGraph: {
       images: artist.profileImageUrl ? [artist.profileImageUrl] : [],
     },
@@ -194,16 +197,52 @@ export default async function PublicEpkPage({ params }: PageProps) {
   const brandColors = merged.brandColors;
   const subgenres = merged.subgenres;
   const streamingHighlights = merged.streamingHighlights as string[];
-  const pressFeatures = merged.pressFeatures as { outlet: string; title: string; url: string; date?: string }[];
-  const pressQuotes = merged.pressQuotes as { quote: string; source: string; sourceUrl?: string }[];
-  const editorialPlaylists = merged.editorialPlaylists as { name: string; platform: string; followers: number; url: string }[];
-  const pastShows = merged.pastShows as { venue: string; city: string; date: string; type: string }[];
+  const pressFeatures = merged.pressFeatures as {
+    outlet: string;
+    title: string;
+    url: string;
+    date?: string;
+  }[];
+  const pressQuotes = merged.pressQuotes as {
+    quote: string;
+    source: string;
+    sourceUrl?: string;
+  }[];
+  const editorialPlaylists = merged.editorialPlaylists as {
+    name: string;
+    platform: string;
+    followers: number;
+    url: string;
+  }[];
+  const pastShows = merged.pastShows as {
+    venue: string;
+    city: string;
+    date: string;
+    type: string;
+  }[];
   const festivalAppearances = merged.festivalAppearances as string[];
   const notableVenues = merged.notableVenues as string[];
-  const collaborations = merged.collaborations as { artistName: string; trackName: string; year: number; type: string }[];
-  const topTracks = merged.topTracks as { title: string; url: string; platform: string }[];
-  const officialMusicVideos = merged.officialMusicVideos as { title: string; url: string; views: number }[];
-  const featuredVideo = merged.featuredVideo as { title: string; url: string; platform: string } | null;
+  const collaborations = merged.collaborations as {
+    artistName: string;
+    trackName: string;
+    year: number;
+    type: string;
+  }[];
+  const topTracks = merged.topTracks as {
+    title: string;
+    url: string;
+    platform: string;
+  }[];
+  const officialMusicVideos = merged.officialMusicVideos as {
+    title: string;
+    url: string;
+    views: number;
+  }[];
+  const featuredVideo = merged.featuredVideo as {
+    title: string;
+    url: string;
+    platform: string;
+  } | null;
   const setLengthOptions = merged.setLengthOptions;
 
   return (
@@ -278,7 +317,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
               </h1>
 
               {/* Role Badge */}
-              <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium border ${getRoleBadgeColor(artist.role)} mb-4`}>
+              <span
+                className={`inline-block px-4 py-2 rounded-full text-sm font-medium border ${getRoleBadgeColor(artist.role)} mb-4`}
+              >
                 {getRoleLabel(artist.role)}
               </span>
 
@@ -298,7 +339,10 @@ export default async function PublicEpkPage({ params }: PageProps) {
                     </span>
                   )}
                   {subgenres.map((genre, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-slc-card/50 border border-slc-border/50 rounded-full text-sm text-slc-muted">
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-slc-card/50 border border-slc-border/50 rounded-full text-sm text-slc-muted"
+                    >
                       {genre}
                     </span>
                   ))}
@@ -307,20 +351,25 @@ export default async function PublicEpkPage({ params }: PageProps) {
 
               {/* Quick Stats */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-6 mb-8">
-                {merged.spotifyMonthlyListeners && merged.spotifyMonthlyListeners > 0 && (
-                  <div className="text-center">
-                    <div className="font-oswald text-3xl text-[#1DB954]">
-                      {formatNumber(merged.spotifyMonthlyListeners)}
+                {merged.spotifyMonthlyListeners &&
+                  merged.spotifyMonthlyListeners > 0 && (
+                    <div className="text-center">
+                      <div className="font-oswald text-3xl text-[#1DB954]">
+                        {formatNumber(merged.spotifyMonthlyListeners)}
+                      </div>
+                      <div className="text-xs text-slc-muted uppercase tracking-wider">
+                        Oyentes/Mes
+                      </div>
                     </div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Oyentes/Mes</div>
-                  </div>
-                )}
+                  )}
                 {merged.youtubeSubscribers && merged.youtubeSubscribers > 0 && (
                   <div className="text-center">
                     <div className="font-oswald text-3xl text-red-500">
                       {formatNumber(merged.youtubeSubscribers)}
                     </div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Suscriptores</div>
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Suscriptores
+                    </div>
                   </div>
                 )}
                 {merged.instagramFollowers && merged.instagramFollowers > 0 && (
@@ -328,7 +377,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                     <div className="font-oswald text-3xl text-pink-500">
                       {formatNumber(merged.instagramFollowers)}
                     </div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Seguidores</div>
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Seguidores
+                    </div>
                   </div>
                 )}
                 {merged.totalStreams && merged.totalStreams > 0 && (
@@ -336,7 +387,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                     <div className="font-oswald text-3xl text-primary">
                       {formatNumber(merged.totalStreams)}
                     </div>
-                    <div className="text-xs text-slc-muted uppercase tracking-wider">Streams Totales</div>
+                    <div className="text-xs text-slc-muted uppercase tracking-wider">
+                      Streams Totales
+                    </div>
                   </div>
                 )}
               </div>
@@ -352,7 +405,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${getPlatformColor(profile.platform)}`}
                   >
                     {getPlatformIcon(profile.platform)}
-                    <span className="capitalize text-sm">{profile.platform.replace("_", " ")}</span>
+                    <span className="capitalize text-sm">
+                      {profile.platform.replace("_", " ")}
+                    </span>
                   </a>
                 ))}
               </div>
@@ -371,9 +426,13 @@ export default async function PublicEpkPage({ params }: PageProps) {
                 Biografía
               </h2>
               <div className="prose prose-invert prose-lg max-w-none">
-                {(merged.bioPress || merged.bioLong || merged.bioShort || "").split("\n\n").map((p, i) => (
-                  <p key={i} className="text-slc-muted mb-4 leading-relaxed">{p}</p>
-                ))}
+                {(merged.bioPress || merged.bioLong || merged.bioShort || "")
+                  .split("\n\n")
+                  .map((p, i) => (
+                    <p key={i} className="text-slc-muted mb-4 leading-relaxed">
+                      {p}
+                    </p>
+                  ))}
               </div>
             </div>
           </div>
@@ -391,7 +450,10 @@ export default async function PublicEpkPage({ params }: PageProps) {
               </h2>
               <div className="grid gap-3">
                 {streamingHighlights.map((highlight, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-4 bg-slc-card border border-slc-border rounded-lg">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 p-4 bg-slc-card border border-slc-border rounded-lg"
+                  >
                     <Award className="w-5 h-5 text-primary flex-shrink-0" />
                     <span>{highlight}</span>
                   </div>
@@ -422,7 +484,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                       "{quote.quote}"
                     </p>
                     <footer className="pl-10 flex items-center gap-2">
-                      <span className="text-primary font-medium">— {quote.source}</span>
+                      <span className="text-primary font-medium">
+                        — {quote.source}
+                      </span>
                       {quote.sourceUrl && (
                         <a
                           href={quote.sourceUrl}
@@ -475,7 +539,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                 )}
               </div>
               {featuredVideo.title && (
-                <p className="text-center text-slc-muted mt-4">{featuredVideo.title}</p>
+                <p className="text-center text-slc-muted mt-4">
+                  {featuredVideo.title}
+                </p>
               )}
             </div>
           </div>
@@ -567,7 +633,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                       <h4 className="font-medium truncate group-hover:text-primary transition-colors">
                         {track.title}
                       </h4>
-                      <p className="text-xs text-slc-muted capitalize">{track.platform}</p>
+                      <p className="text-xs text-slc-muted capitalize">
+                        {track.platform}
+                      </p>
                     </div>
                     <ExternalLink className="w-4 h-4 text-slc-muted" />
                   </a>
@@ -604,7 +672,8 @@ export default async function PublicEpkPage({ params }: PageProps) {
                         {playlist.name}
                       </h4>
                       <p className="text-xs text-slc-muted">
-                        {formatNumber(playlist.followers)} seguidores • {playlist.platform}
+                        {formatNumber(playlist.followers)} seguidores •{" "}
+                        {playlist.platform}
                       </p>
                     </div>
                   </a>
@@ -676,7 +745,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                     <p className="text-sm text-slc-muted">
                       "{collab.trackName}" ({collab.year})
                     </p>
-                    <span className="text-xs text-primary/70 capitalize">{collab.type}</span>
+                    <span className="text-xs text-primary/70 capitalize">
+                      {collab.type}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -686,7 +757,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
       )}
 
       {/* Shows & Festivals */}
-      {(pastShows.length > 0 || festivalAppearances.length > 0 || notableVenues.length > 0) && (
+      {(pastShows.length > 0 ||
+        festivalAppearances.length > 0 ||
+        notableVenues.length > 0) && (
         <section className="py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
@@ -697,7 +770,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
 
               {festivalAppearances.length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">Festivales</h3>
+                  <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">
+                    Festivales
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {festivalAppearances.map((festival, idx) => (
                       <span
@@ -713,7 +788,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
 
               {notableVenues.length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">Venues Notables</h3>
+                  <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">
+                    Venues Notables
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {notableVenues.map((venue, idx) => (
                       <span
@@ -729,7 +806,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
 
               {pastShows.length > 0 && (
                 <div>
-                  <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">Shows Recientes</h3>
+                  <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">
+                    Shows Recientes
+                  </h3>
                   <div className="grid gap-3">
                     {pastShows.slice(0, 5).map((show, idx) => (
                       <div
@@ -741,7 +820,9 @@ export default async function PublicEpkPage({ params }: PageProps) {
                           <span className="font-medium">{show.venue}</span>
                           <span className="text-slc-muted"> • {show.city}</span>
                         </div>
-                        <span className="text-sm text-slc-muted">{show.date}</span>
+                        <span className="text-sm text-slc-muted">
+                          {show.date}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -764,21 +845,33 @@ export default async function PublicEpkPage({ params }: PageProps) {
               <div className="grid gap-4 sm:grid-cols-2">
                 {merged.performanceFormat && (
                   <div className="p-4 bg-slc-card border border-slc-border rounded-lg">
-                    <h4 className="text-sm text-slc-muted uppercase mb-2">Formato</h4>
-                    <p className="font-medium capitalize">{merged.performanceFormat.replace("_", " ")}</p>
+                    <h4 className="text-sm text-slc-muted uppercase mb-2">
+                      Formato
+                    </h4>
+                    <p className="font-medium capitalize">
+                      {merged.performanceFormat.replace("_", " ")}
+                    </p>
                   </div>
                 )}
                 {setLengthOptions.length > 0 && (
                   <div className="p-4 bg-slc-card border border-slc-border rounded-lg">
-                    <h4 className="text-sm text-slc-muted uppercase mb-2">Duración del Set</h4>
-                    <p className="font-medium">{setLengthOptions.join(", ")} minutos</p>
+                    <h4 className="text-sm text-slc-muted uppercase mb-2">
+                      Duración del Set
+                    </h4>
+                    <p className="font-medium">
+                      {setLengthOptions.join(", ")} minutos
+                    </p>
                   </div>
                 )}
               </div>
               {merged.technicalRiderPdfUrl && (
                 <div className="mt-4">
                   <Button asChild variant="outline">
-                    <a href={merged.technicalRiderPdfUrl} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={merged.technicalRiderPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Download className="w-4 h-4 mr-2" />
                       Descargar Rider Técnico (PDF)
                     </a>
@@ -805,9 +898,13 @@ export default async function PublicEpkPage({ params }: PageProps) {
                   href={`mailto:${merged.bookingEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
-                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Booking</div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">
+                    Booking
+                  </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline text-sm">{merged.bookingEmail}</span>
+                    <span className="text-primary group-hover:underline text-sm">
+                      {merged.bookingEmail}
+                    </span>
                     <Mail className="w-4 h-4 text-slc-muted" />
                   </div>
                 </a>
@@ -818,13 +915,19 @@ export default async function PublicEpkPage({ params }: PageProps) {
                   href={`mailto:${merged.managementEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
-                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Management</div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">
+                    Management
+                  </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline text-sm">{merged.managementEmail}</span>
+                    <span className="text-primary group-hover:underline text-sm">
+                      {merged.managementEmail}
+                    </span>
                     <Building className="w-4 h-4 text-slc-muted" />
                   </div>
                   {merged.managementName && (
-                    <p className="text-xs text-slc-muted mt-1">{merged.managementName}</p>
+                    <p className="text-xs text-slc-muted mt-1">
+                      {merged.managementName}
+                    </p>
                   )}
                 </a>
               )}
@@ -834,13 +937,19 @@ export default async function PublicEpkPage({ params }: PageProps) {
                   href={`mailto:${merged.publicistEmail}`}
                   className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
                 >
-                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Prensa / PR</div>
+                  <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">
+                    Prensa / PR
+                  </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary group-hover:underline text-sm">{merged.publicistEmail}</span>
+                    <span className="text-primary group-hover:underline text-sm">
+                      {merged.publicistEmail}
+                    </span>
                     <FileText className="w-4 h-4 text-slc-muted" />
                   </div>
                   {merged.publicistName && (
-                    <p className="text-xs text-slc-muted mt-1">{merged.publicistName}</p>
+                    <p className="text-xs text-slc-muted mt-1">
+                      {merged.publicistName}
+                    </p>
                   )}
                 </a>
               )}
@@ -850,9 +959,13 @@ export default async function PublicEpkPage({ params }: PageProps) {
                 href="mailto:prensasonidoliquido@gmail.com"
                 className="bg-slc-card border border-slc-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
               >
-                <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">Sonido Líquido Crew</div>
+                <div className="text-xs text-slc-muted uppercase tracking-wider mb-2">
+                  Sonido Líquido Crew
+                </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-primary group-hover:underline text-sm">prensasonidoliquido@gmail.com</span>
+                  <span className="text-primary group-hover:underline text-sm">
+                    prensasonidoliquido@gmail.com
+                  </span>
                   <Mail className="w-4 h-4 text-slc-muted" />
                 </div>
               </a>
@@ -879,7 +992,11 @@ export default async function PublicEpkPage({ params }: PageProps) {
               </Button>
               {merged.pressKitPdfUrl && (
                 <Button asChild variant="outline" size="lg">
-                  <a href={merged.pressKitPdfUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={merged.pressKitPdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <FileText className="w-5 h-5 mr-2" />
                     Press Kit PDF
                   </a>
@@ -887,7 +1004,11 @@ export default async function PublicEpkPage({ params }: PageProps) {
               )}
               {merged.hiResPhotosZipUrl && (
                 <Button asChild variant="outline" size="lg">
-                  <a href={merged.hiResPhotosZipUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={merged.hiResPhotosZipUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Download className="w-5 h-5 mr-2" />
                     Fotos Hi-Res
                   </a>
@@ -895,7 +1016,11 @@ export default async function PublicEpkPage({ params }: PageProps) {
               )}
               {merged.logoPackZipUrl && (
                 <Button asChild variant="outline" size="lg">
-                  <a href={merged.logoPackZipUrl} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={merged.logoPackZipUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Palette className="w-5 h-5 mr-2" />
                     Logos
                   </a>

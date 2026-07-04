@@ -1,30 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { generateUUID, slugify } from "@/lib/utils";
+import { artistExternalProfiles, artists } from "@/db/schema";
 import { spotifyClient } from "@/lib/clients";
 import {
   AppError,
   DatabaseError,
+  ErrorCode,
   ExternalApiError,
+  createErrorResponse,
   errorLogger,
   getErrorMessage,
-  createErrorResponse,
-  ErrorCode,
 } from "@/lib/errors";
+import { generateUUID, slugify } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Spotify oembed endpoint (no auth, no rate limits)
 async function fetchArtistEmbed(spotifyId: string): Promise<{
   name: string;
   imageUrl: string | null;
 } | null> {
-  const context = { service: "SpotifySync", method: "fetchArtistEmbed", entityId: spotifyId };
+  const context = {
+    service: "SpotifySync",
+    method: "fetchArtistEmbed",
+    entityId: spotifyId,
+  };
 
   try {
     const url = `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${spotifyId}`;
 
-    errorLogger.info(`Fetching Spotify oembed data`, { spotifyId, url });
+    errorLogger.info("Fetching Spotify oembed data", { spotifyId, url });
 
     const response = await fetch(url, {
       headers: {
@@ -36,16 +40,19 @@ async function fetchArtistEmbed(spotifyId: string): Promise<{
       const errorText = await response.text().catch(() => "Unknown error");
 
       if (response.status === 404) {
-        errorLogger.warn(`Spotify artist not found via oembed`, { spotifyId });
+        errorLogger.warn("Spotify artist not found via oembed", { spotifyId });
         return null;
       }
 
       if (response.status === 429) {
-        errorLogger.warn(`Spotify oembed rate limited`, { spotifyId });
-        throw ExternalApiError.rateLimited("Spotify", parseInt(response.headers.get("Retry-After") || "60", 10));
+        errorLogger.warn("Spotify oembed rate limited", { spotifyId });
+        throw ExternalApiError.rateLimited(
+          "Spotify",
+          Number.parseInt(response.headers.get("Retry-After") || "60", 10),
+        );
       }
 
-      errorLogger.warn(`Spotify oembed request failed`, {
+      errorLogger.warn("Spotify oembed request failed", {
         spotifyId,
         status: response.status,
         statusText: response.statusText,
@@ -58,7 +65,10 @@ async function fetchArtistEmbed(spotifyId: string): Promise<{
     const data = await response.json();
 
     if (!data || typeof data !== "object") {
-      errorLogger.warn(`Invalid response from Spotify oembed`, { spotifyId, data });
+      errorLogger.warn("Invalid response from Spotify oembed", {
+        spotifyId,
+        data,
+      });
       return null;
     }
 
@@ -74,8 +84,8 @@ async function fetchArtistEmbed(spotifyId: string): Promise<{
         "fetch artist oembed",
         `Spotify ID: ${spotifyId} - ${getErrorMessage(error)}`,
         undefined,
-        error as Error
-      )
+        error as Error,
+      ),
     );
     return null;
   }
@@ -85,7 +95,7 @@ export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
   const context = { service: "SpotifySync", method: "POST", requestId };
 
-  errorLogger.info(`Starting Spotify sync`, { requestId });
+  errorLogger.info("Starting Spotify sync", { requestId });
 
   try {
     // Check database configuration
@@ -101,7 +111,7 @@ export async function POST(request: NextRequest) {
             help: "Set DATABASE_URL and DATABASE_AUTH_TOKEN environment variables",
           },
         },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -110,7 +120,9 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (parseError) {
-      errorLogger.warn(`Failed to parse request body, using defaults`, { requestId });
+      errorLogger.warn("Failed to parse request body, using defaults", {
+        requestId,
+      });
       body = {};
     }
 
@@ -119,48 +131,76 @@ export async function POST(request: NextRequest) {
 
     let processed = 0;
     let failed = 0;
-    let created = 0;
+    const created = 0;
     const errors: Array<{ artist: string; error: string; code?: string }> = [];
 
     // Mode: seed - Create artists from roster if they don't exist
     if (mode === "seed") {
       // Fetch all existing artists from DB to check what's already there
-      let existingArtists: typeof artists.$inferSelect[] = [];
-      let existingProfiles: typeof artistExternalProfiles.$inferSelect[] = [];
+      let existingArtists: (typeof artists.$inferSelect)[] = [];
+      let existingProfiles: (typeof artistExternalProfiles.$inferSelect)[] = [];
       try {
-        existingArtists = await db.select().from(artists).where(eq(artists.isActive, true));
+        existingArtists = await db
+          .select()
+          .from(artists)
+          .where(eq(artists.isActive, true));
         existingProfiles = await db.select().from(artistExternalProfiles);
       } catch (dbErr) {
-        errorLogger.warn(`Failed to fetch existing artists for seed`, { error: getErrorMessage(dbErr) });
+        errorLogger.warn("Failed to fetch existing artists for seed", {
+          error: getErrorMessage(dbErr),
+        });
       }
 
       // Build a list of artists that are in the DB but missing Spotify profiles
-      const artistsNeedingProfiles = existingArtists.filter(a =>
-        !existingProfiles.some(p => p.artistId === a.id && p.platform === "spotify" && p.externalId)
+      const artistsNeedingProfiles = existingArtists.filter(
+        (a) =>
+          !existingProfiles.some(
+            (p) =>
+              p.artistId === a.id && p.platform === "spotify" && p.externalId,
+          ),
       );
 
-      errorLogger.info(`[Spotify Sync] Checking ${artistsNeedingProfiles.length} artists needing Spotify profiles`, { requestId });
+      errorLogger.info(
+        `[Spotify Sync] Checking ${artistsNeedingProfiles.length} artists needing Spotify profiles`,
+        { requestId },
+      );
 
       for (const dbArtist of artistsNeedingProfiles) {
         try {
-          errorLogger.info(`Processing artist`, { name: dbArtist.name, slug: dbArtist.slug });
+          errorLogger.info("Processing artist", {
+            name: dbArtist.name,
+            slug: dbArtist.slug,
+          });
 
           // Try to find Spotify profile from existing external profiles that might have a URL but no ID
-          const existingSpotify = existingProfiles.find(p => p.artistId === dbArtist.id && p.platform === "spotify");
+          const existingSpotify = existingProfiles.find(
+            (p) => p.artistId === dbArtist.id && p.platform === "spotify",
+          );
 
           if (existingSpotify?.externalUrl) {
             // Extract Spotify ID from URL
-            const spotifyIdMatch = existingSpotify.externalUrl.match(/artist\/([a-zA-Z0-9]+)/);
+            const spotifyIdMatch = existingSpotify.externalUrl.match(
+              /artist\/([a-zA-Z0-9]+)/,
+            );
             if (spotifyIdMatch) {
               try {
                 await db
                   .update(artistExternalProfiles)
-                  .set({ externalId: spotifyIdMatch[1], isVerified: true, updatedAt: new Date() })
+                  .set({
+                    externalId: spotifyIdMatch[1],
+                    isVerified: true,
+                    updatedAt: new Date(),
+                  })
                   .where(eq(artistExternalProfiles.id, existingSpotify.id));
                 processed++;
-                errorLogger.info(`✓ Updated Spotify ID for ${dbArtist.name}`, { artistId: dbArtist.id });
+                errorLogger.info(`✓ Updated Spotify ID for ${dbArtist.name}`, {
+                  artistId: dbArtist.id,
+                });
               } catch (dbError) {
-                errorLogger.warn(`Failed to update Spotify profile for ${dbArtist.name}`, { error: getErrorMessage(dbError) });
+                errorLogger.warn(
+                  `Failed to update Spotify profile for ${dbArtist.name}`,
+                  { error: getErrorMessage(dbError) },
+                );
               }
               continue;
             }
@@ -169,23 +209,37 @@ export async function POST(request: NextRequest) {
           // No Spotify data found — try to search by artist name via oembed.
           // Note: oembed requires a real Spotify ID (Base62), NOT the artist slug.
           // Since we don't have the Spotify ID, we skip oembed and just log it.
-          errorLogger.info(`No Spotify profile for ${dbArtist.name} — needs manual setup`, {
-            artistId: dbArtist.id,
-            slug: dbArtist.slug,
-            help: "Add a Spotify profile URL via the admin artist page or the seed endpoint",
-          });
+          errorLogger.info(
+            `No Spotify profile for ${dbArtist.name} — needs manual setup`,
+            {
+              artistId: dbArtist.id,
+              slug: dbArtist.slug,
+              help: "Add a Spotify profile URL via the admin artist page or the seed endpoint",
+            },
+          );
 
           processed++;
         } catch (error) {
           failed++;
           const errorMessage = getErrorMessage(error);
-          const errorCode = error instanceof AppError ? error.code : ErrorCode.UNKNOWN_ERROR;
-          errors.push({ artist: dbArtist.name, error: errorMessage, code: errorCode });
-          errorLogger.warn(`Failed to seed artist: ${dbArtist.name}`, { error: errorMessage });
+          const errorCode =
+            error instanceof AppError ? error.code : ErrorCode.UNKNOWN_ERROR;
+          errors.push({
+            artist: dbArtist.name,
+            error: errorMessage,
+            code: errorCode,
+          });
+          errorLogger.warn(`Failed to seed artist: ${dbArtist.name}`, {
+            error: errorMessage,
+          });
         }
       }
 
-      errorLogger.info(`Seed operation complete`, { processed, failed, requestId });
+      errorLogger.info("Seed operation complete", {
+        processed,
+        failed,
+        requestId,
+      });
 
       return NextResponse.json({
         success: true,
@@ -203,36 +257,58 @@ export async function POST(request: NextRequest) {
     if (mode === "stats") {
       // Check if Spotify API is configured
       if (!spotifyClient.isConfigured()) {
-        return NextResponse.json({
-          success: false,
-          error: {
-            code: "SPOTIFY_NOT_CONFIGURED",
-            message: "Spotify API credentials not configured",
-            help: "Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables",
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "SPOTIFY_NOT_CONFIGURED",
+              message: "Spotify API credentials not configured",
+              help: "Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables",
+            },
           },
-        }, { status: 503 });
+          { status: 503 },
+        );
       }
 
-      errorLogger.info(`Fetching all artists for stats sync`, { requestId });
+      errorLogger.info("Fetching all artists for stats sync", { requestId });
 
       // Get artists and their Spotify profiles separately to avoid relation issues
       let allArtists;
       let allProfiles;
       try {
         allArtists = await db.select().from(artists);
-        allProfiles = await db.select().from(artistExternalProfiles).where(eq(artistExternalProfiles.platform, "spotify"));
+        allProfiles = await db
+          .select()
+          .from(artistExternalProfiles)
+          .where(eq(artistExternalProfiles.platform, "spotify"));
       } catch (dbError) {
-        const error = DatabaseError.queryFailed("fetch", "artists", getErrorMessage(dbError), dbError as Error);
+        const error = DatabaseError.queryFailed(
+          "fetch",
+          "artists",
+          getErrorMessage(dbError),
+          dbError as Error,
+        );
         errorLogger.log(error);
         return NextResponse.json(createErrorResponse(error), { status: 500 });
       }
 
       // Get all Spotify IDs - filter for valid, non-empty IDs
-      const spotifyIds: { artistId: string; spotifyId: string; profileId: string; artistName: string }[] = [];
+      const spotifyIds: {
+        artistId: string;
+        spotifyId: string;
+        profileId: string;
+        artistName: string;
+      }[] = [];
       for (const artist of allArtists) {
-        const spotifyProfile = allProfiles.find(p => p.artistId === artist.id);
+        const spotifyProfile = allProfiles.find(
+          (p) => p.artistId === artist.id,
+        );
         // Only add if externalId exists, is a string, and is not empty
-        if (spotifyProfile?.externalId && typeof spotifyProfile.externalId === "string" && spotifyProfile.externalId.trim().length > 0) {
+        if (
+          spotifyProfile?.externalId &&
+          typeof spotifyProfile.externalId === "string" &&
+          spotifyProfile.externalId.trim().length > 0
+        ) {
           spotifyIds.push({
             artistId: artist.id,
             spotifyId: spotifyProfile.externalId.trim(),
@@ -242,22 +318,28 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      errorLogger.info(`Found ${spotifyIds.length} artists with valid Spotify IDs`, { requestId, ids: spotifyIds.map(s => s.spotifyId) });
+      errorLogger.info(
+        `Found ${spotifyIds.length} artists with valid Spotify IDs`,
+        { requestId, ids: spotifyIds.map((s) => s.spotifyId) },
+      );
 
       if (spotifyIds.length === 0) {
-        return NextResponse.json({
-          success: false,
-          mode: "stats",
-          error: {
-            code: "NO_SPOTIFY_IDS",
-            message: "No artists found with valid Spotify IDs",
-            help: "Ensure artists have Spotify profiles with external IDs configured",
+        return NextResponse.json(
+          {
+            success: false,
+            mode: "stats",
+            error: {
+              code: "NO_SPOTIFY_IDS",
+              message: "No artists found with valid Spotify IDs",
+              help: "Ensure artists have Spotify profiles with external IDs configured",
+            },
           },
-        }, { status: 400 });
+          { status: 400 },
+        );
       }
 
       // Fetch stats from Spotify API (batched by 50)
-      const chunks: typeof spotifyIds[] = [];
+      const chunks: (typeof spotifyIds)[] = [];
       for (let i = 0; i < spotifyIds.length; i += 50) {
         chunks.push(spotifyIds.slice(i, i + 50));
       }
@@ -265,21 +347,26 @@ export async function POST(request: NextRequest) {
       for (const chunk of chunks) {
         try {
           // Validate all IDs in the chunk are valid
-          const validIds = chunk.filter(c => c.spotifyId && c.spotifyId.length > 0).map(c => c.spotifyId);
+          const validIds = chunk
+            .filter((c) => c.spotifyId && c.spotifyId.length > 0)
+            .map((c) => c.spotifyId);
 
           if (validIds.length === 0) {
-            errorLogger.warn(`Skipping chunk with no valid IDs`, { requestId });
+            errorLogger.warn("Skipping chunk with no valid IDs", { requestId });
             continue;
           }
 
-          errorLogger.info(`Fetching Spotify data for ${validIds.length} artists`, { requestId, ids: validIds });
+          errorLogger.info(
+            `Fetching Spotify data for ${validIds.length} artists`,
+            { requestId, ids: validIds },
+          );
 
           const spotifyArtists = await spotifyClient.getArtists(validIds);
 
           for (const spotifyArtist of spotifyArtists) {
             if (!spotifyArtist) continue;
 
-            const mapping = chunk.find(c => c.spotifyId === spotifyArtist.id);
+            const mapping = chunk.find((c) => c.spotifyId === spotifyArtist.id);
             if (!mapping) continue;
 
             try {
@@ -308,9 +395,12 @@ export async function POST(request: NextRequest) {
                 .where(eq(artistExternalProfiles.id, mapping.profileId));
 
               processed++;
-              errorLogger.info(`✓ Synced stats for ${spotifyArtist.name}: ${spotifyArtist.followers?.total} followers`, {
-                artistId: mapping.artistId,
-              });
+              errorLogger.info(
+                `✓ Synced stats for ${spotifyArtist.name}: ${spotifyArtist.followers?.total} followers`,
+                {
+                  artistId: mapping.artistId,
+                },
+              );
             } catch (dbError) {
               failed++;
               errors.push({
@@ -322,7 +412,10 @@ export async function POST(request: NextRequest) {
         } catch (apiError) {
           failed += chunk.length;
           const errorMsg = getErrorMessage(apiError);
-          errorLogger.warn(`Failed to fetch Spotify batch`, { error: errorMsg, chunk: chunk.map(c => c.spotifyId) });
+          errorLogger.warn("Failed to fetch Spotify batch", {
+            error: errorMsg,
+            chunk: chunk.map((c) => c.spotifyId),
+          });
           errors.push({
             artist: `Batch of ${chunk.length} artists`,
             error: errorMsg,
@@ -330,7 +423,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Small delay between batches
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
       return NextResponse.json({
@@ -345,7 +438,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mode: sync or images-only - Sync images from Spotify
-    errorLogger.info(`Fetching all artists for image sync`, { requestId });
+    errorLogger.info("Fetching all artists for image sync", { requestId });
 
     let allArtists;
     try {
@@ -355,21 +448,28 @@ export async function POST(request: NextRequest) {
         },
       });
     } catch (dbError) {
-      const error = DatabaseError.queryFailed("fetch", "artists with profiles", getErrorMessage(dbError), dbError as Error);
+      const error = DatabaseError.queryFailed(
+        "fetch",
+        "artists with profiles",
+        getErrorMessage(dbError),
+        dbError as Error,
+      );
       errorLogger.log(error);
       return NextResponse.json(createErrorResponse(error), { status: 500 });
     }
 
-    errorLogger.info(`Found ${allArtists.length} artists to process`, { requestId });
+    errorLogger.info(`Found ${allArtists.length} artists to process`, {
+      requestId,
+    });
 
     for (const artist of allArtists) {
       const spotifyProfile = artist.externalProfiles?.find(
-        (p) => p.platform === "spotify"
+        (p) => p.platform === "spotify",
       );
 
       if (!spotifyProfile?.externalId) {
         // No Spotify profile in DB - skip this artist
-        errorLogger.warn(`No Spotify ID found for artist`, {
+        errorLogger.warn("No Spotify ID found for artist", {
           artistName: artist.name,
           artistId: artist.id,
           help: "Add Spotify profile via admin or seed endpoint",
@@ -395,7 +495,7 @@ export async function POST(request: NextRequest) {
           processed++;
           errorLogger.info(`✓ Updated image for ${artist.name}`, {
             artistId: artist.id,
-            imageUrl: embedData.imageUrl.substring(0, 50) + "...",
+            imageUrl: `${embedData.imageUrl.substring(0, 50)}...`,
           });
         } else {
           failed++;
@@ -413,13 +513,20 @@ export async function POST(request: NextRequest) {
         errors.push({
           artist: artist.name,
           error: getErrorMessage(error),
-          code: error instanceof AppError ? error.code : ErrorCode.UNKNOWN_ERROR,
+          code:
+            error instanceof AppError ? error.code : ErrorCode.UNKNOWN_ERROR,
         });
-        errorLogger.warn(`Failed to sync ${artist.name}`, { error: getErrorMessage(error) });
+        errorLogger.warn(`Failed to sync ${artist.name}`, {
+          error: getErrorMessage(error),
+        });
       }
     }
 
-    errorLogger.info(`Sync operation complete`, { processed, failed, requestId });
+    errorLogger.info("Sync operation complete", {
+      processed,
+      failed,
+      requestId,
+    });
 
     return NextResponse.json({
       success: true,
@@ -439,13 +546,13 @@ export async function POST(request: NextRequest) {
             ErrorCode.UNKNOWN_ERROR,
             500,
             context,
-            error as Error
-          )
+            error as Error,
+          ),
     );
 
     return NextResponse.json(
       createErrorResponse(error, "Failed to run Spotify sync"),
-      { status: error instanceof AppError ? error.statusCode : 500 }
+      { status: error instanceof AppError ? error.statusCode : 500 },
     );
   }
 }
@@ -455,7 +562,9 @@ export async function GET() {
 
   try {
     if (!isDatabaseConfigured()) {
-      errorLogger.info(`Database not configured, returning default status`, { requestId });
+      errorLogger.info("Database not configured, returning default status", {
+        requestId,
+      });
       return NextResponse.json({
         success: true,
         data: {
@@ -474,7 +583,12 @@ export async function GET() {
     try {
       allArtists = await db.query.artists.findMany();
     } catch (dbError) {
-      const error = DatabaseError.queryFailed("fetch", "artists", getErrorMessage(dbError), dbError as Error);
+      const error = DatabaseError.queryFailed(
+        "fetch",
+        "artists",
+        getErrorMessage(dbError),
+        dbError as Error,
+      );
       errorLogger.log(error);
       return NextResponse.json(createErrorResponse(error), { status: 500 });
     }
@@ -488,7 +602,11 @@ export async function GET() {
         totalArtists: allArtists.length,
         artistsWithImages: artistsWithImages.length,
         artistsWithoutImages: artistsWithoutImages.length,
-        artistsNeedingSync: artistsWithoutImages.map((a) => ({ id: a.id, name: a.name, slug: a.slug })),
+        artistsNeedingSync: artistsWithoutImages.map((a) => ({
+          id: a.id,
+          name: a.name,
+          slug: a.slug,
+        })),
         rosterCount: allArtists.length,
         lastSync: null, // Will be enabled after migration
         databaseConfigured: true,
@@ -504,13 +622,13 @@ export async function GET() {
             ErrorCode.UNKNOWN_ERROR,
             500,
             { service: "SpotifySync", method: "GET", requestId },
-            error as Error
-          )
+            error as Error,
+          ),
     );
 
     return NextResponse.json(
       createErrorResponse(error, "Failed to fetch sync status"),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

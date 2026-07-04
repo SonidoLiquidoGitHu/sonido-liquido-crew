@@ -1,16 +1,17 @@
+import { Button } from "@/components/ui/button";
 import { Img } from "@/components/ui/img";
-import Link from "next/link";
-import { ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Product } from "@/types";
-import { Button } from "@/components/ui/button";
+import { ShoppingCart } from "lucide-react";
+import Link from "next/link";
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
+  const hasDiscount =
+    product.compareAtPrice && product.compareAtPrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round((1 - product.price / product.compareAtPrice!) * 100)
     : 0;
@@ -18,7 +19,10 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="group bg-slc-card border border-slc-border rounded-xl overflow-hidden hover:border-primary/50 transition-colors">
       {/* Image */}
-      <Link href={`/tienda/${product.slug}`} className="block relative aspect-square">
+      <Link
+        href={`/tienda/${product.slug}`}
+        className="block relative aspect-square"
+      >
         {product.imageUrl ? (
           <Img
             src={product.imageUrl}
@@ -53,9 +57,13 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Info */}
       <div className="p-4">
         <span className="text-xs text-primary uppercase tracking-wider">
-          {product.category === "music" ? "Música" :
-           product.category === "clothing" ? "Ropa" :
-           product.category === "accessories" ? "Accesorios" : "Mercancía"}
+          {product.category === "music"
+            ? "Música"
+            : product.category === "clothing"
+              ? "Ropa"
+              : product.category === "accessories"
+                ? "Accesorios"
+                : "Mercancía"}
         </span>
 
         <Link href={`/tienda/${product.slug}`}>

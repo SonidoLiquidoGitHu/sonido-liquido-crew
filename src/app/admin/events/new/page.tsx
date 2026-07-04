@@ -1,29 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { DropboxUploader } from "@/components/admin/DropboxUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropboxUploader } from "@/components/admin/DropboxUploader";
 import {
-  ArrowLeft,
-  Save,
-  Calendar,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  MapPin,
+  ArrowLeft,
+  Calendar,
+  CheckCircle,
   Clock,
-  Ticket,
   Image as ImageIcon,
+  Loader2,
+  MapPin,
+  Save,
   Star,
+  Ticket,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function NewEventPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -52,7 +55,12 @@ export default function NewEventPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.venue || !formData.city || !formData.eventDate) {
+    if (
+      !formData.title ||
+      !formData.venue ||
+      !formData.city ||
+      !formData.eventDate
+    ) {
       showMessage("error", "Por favor completa los campos requeridos");
       return;
     }
@@ -130,21 +138,33 @@ export default function NewEventPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Título *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Título *
+                  </label>
                   <Input
                     value={formData.title}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="Nombre del evento"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Descripción
+                  </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, description: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
                     }
                     placeholder="Descripción del evento..."
                     rows={4}
@@ -163,30 +183,48 @@ export default function NewEventPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Venue / Lugar *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Venue / Lugar *
+                  </label>
                   <Input
                     value={formData.venue}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, venue: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        venue: e.target.value,
+                      }))
+                    }
                     placeholder="ej: Foro Sol, Teatro Metropolitan"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Ciudad *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Ciudad *
+                  </label>
                   <Input
                     value={formData.city}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, city: e.target.value }))
+                    }
                     placeholder="ej: Ciudad de México"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">País</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    País
+                  </label>
                   <Input
                     value={formData.country}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, country: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        country: e.target.value,
+                      }))
+                    }
                     placeholder="México"
                   />
                 </div>
@@ -202,24 +240,34 @@ export default function NewEventPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha *
+                  </label>
                   <Input
                     type="date"
                     value={formData.eventDate}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, eventDate: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        eventDate: e.target.value,
+                      }))
                     }
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Hora</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Hora
+                  </label>
                   <Input
                     type="time"
                     value={formData.eventTime}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, eventTime: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        eventTime: e.target.value,
+                      }))
                     }
                     placeholder="20:00"
                   />
@@ -242,7 +290,10 @@ export default function NewEventPage() {
                   type="url"
                   value={formData.ticketUrl}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, ticketUrl: e.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      ticketUrl: e.target.value,
+                    }))
                   }
                   placeholder="https://ticketmaster.com.mx/..."
                 />
@@ -283,12 +334,17 @@ export default function NewEventPage() {
               />
 
               <div className="mt-3">
-                <label className="block text-sm text-slc-muted mb-2">O ingresa URL</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  O ingresa URL
+                </label>
                 <Input
                   type="url"
                   value={formData.imageUrl}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      imageUrl: e.target.value,
+                    }))
                   }
                   placeholder="https://..."
                 />
@@ -305,7 +361,10 @@ export default function NewEventPage() {
                     type="checkbox"
                     checked={formData.isFeatured}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, isFeatured: e.target.checked }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        isFeatured: e.target.checked,
+                      }))
                     }
                     className="w-4 h-4 rounded border-slc-border"
                   />
@@ -320,7 +379,10 @@ export default function NewEventPage() {
                     type="checkbox"
                     checked={formData.isCancelled}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, isCancelled: e.target.checked }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        isCancelled: e.target.checked,
+                      }))
                     }
                     className="w-4 h-4 rounded border-slc-border"
                   />

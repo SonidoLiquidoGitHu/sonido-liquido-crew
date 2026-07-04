@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { curatedTracks, curatedSpotifyChannels } from "@/db/schema";
-import { eq, desc, and, like, sql } from "drizzle-orm";
+import { curatedSpotifyChannels, curatedTracks } from "@/db/schema";
+import { and, desc, eq, like, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     if (!isDatabaseConfigured()) {
-      return NextResponse.json({ success: false, error: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -19,7 +22,7 @@ export async function GET(request: NextRequest) {
     const available = searchParams.get("available");
     const searchQuery = searchParams.get("search");
     const limitParam = searchParams.get("limit");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const offset = Number.parseInt(searchParams.get("offset") || "0");
 
     // Get total count first (before any limit)
     const [countResult] = await db
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Build query — no default limit, fetch all tracks
     // (Admin panel needs to see all tracks; pagination can be added later if needed)
-    const limit = limitParam ? parseInt(limitParam) : 9999;
+    const limit = limitParam ? Number.parseInt(limitParam) : 9999;
 
     // Get all tracks with channel info
     const tracks = await db
@@ -44,7 +47,10 @@ export async function GET(request: NextRequest) {
         },
       })
       .from(curatedTracks)
-      .leftJoin(curatedSpotifyChannels, eq(curatedTracks.curatedChannelId, curatedSpotifyChannels.id))
+      .leftJoin(
+        curatedSpotifyChannels,
+        eq(curatedTracks.curatedChannelId, curatedSpotifyChannels.id),
+      )
       .orderBy(desc(curatedTracks.addedAt))
       .limit(limit)
       .offset(offset);
@@ -53,25 +59,26 @@ export async function GET(request: NextRequest) {
     let filtered = tracks;
 
     if (channelId) {
-      filtered = filtered.filter(t => t.track.curatedChannelId === channelId);
+      filtered = filtered.filter((t) => t.track.curatedChannelId === channelId);
     }
 
     if (featured === "true") {
-      filtered = filtered.filter(t => t.track.isFeatured);
+      filtered = filtered.filter((t) => t.track.isFeatured);
     }
 
     if (available === "true") {
-      filtered = filtered.filter(t => t.track.isAvailableForPlaylist);
+      filtered = filtered.filter((t) => t.track.isAvailableForPlaylist);
     } else if (available === "false") {
-      filtered = filtered.filter(t => !t.track.isAvailableForPlaylist);
+      filtered = filtered.filter((t) => !t.track.isAvailableForPlaylist);
     }
 
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
-      filtered = filtered.filter(t =>
-        t.track.name.toLowerCase().includes(searchLower) ||
-        t.track.artistName.toLowerCase().includes(searchLower) ||
-        (t.track.albumName?.toLowerCase().includes(searchLower) ?? false)
+      filtered = filtered.filter(
+        (t) =>
+          t.track.name.toLowerCase().includes(searchLower) ||
+          t.track.artistName.toLowerCase().includes(searchLower) ||
+          (t.track.albumName?.toLowerCase().includes(searchLower) ?? false),
       );
     }
 
@@ -91,7 +98,7 @@ export async function GET(request: NextRequest) {
     console.error("[Curated Tracks API] Error fetching tracks:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching tracks" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

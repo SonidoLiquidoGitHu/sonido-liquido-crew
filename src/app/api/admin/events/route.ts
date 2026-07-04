@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { eventsRepository } from "@/lib/repositories";
 import {
   AppError,
   DatabaseError,
+  ErrorCode,
   ValidationError,
+  createErrorResponse,
   errorLogger,
   getErrorMessage,
-  createErrorResponse,
-  ErrorCode,
 } from "@/lib/errors";
+import { eventsRepository } from "@/lib/repositories";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
@@ -24,12 +24,17 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     errorLogger.log(
-      DatabaseError.queryFailed("fetch", "events", getErrorMessage(error), error as Error)
+      DatabaseError.queryFailed(
+        "fetch",
+        "events",
+        getErrorMessage(error),
+        error as Error,
+      ),
     );
 
     return NextResponse.json(
       createErrorResponse(error, "Failed to fetch events"),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -54,7 +59,7 @@ export async function POST(request: NextRequest) {
       throw ValidationError.missingRequired("eventDate");
     }
 
-    errorLogger.info(`Creating event`, { requestId, title: body.title });
+    errorLogger.info("Creating event", { requestId, title: body.title });
 
     const event = await eventsRepository.create({
       title: body.title,
@@ -70,7 +75,10 @@ export async function POST(request: NextRequest) {
       isCancelled: body.isCancelled || false,
     });
 
-    errorLogger.info(`Event created successfully`, { requestId, eventId: event.id });
+    errorLogger.info("Event created successfully", {
+      requestId,
+      eventId: event.id,
+    });
 
     return NextResponse.json({
       success: true,
@@ -88,19 +96,24 @@ export async function POST(request: NextRequest) {
           },
           requestId,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     errorLogger.log(
       error instanceof AppError
         ? error
-        : DatabaseError.queryFailed("create", "event", getErrorMessage(error), error as Error)
+        : DatabaseError.queryFailed(
+            "create",
+            "event",
+            getErrorMessage(error),
+            error as Error,
+          ),
     );
 
     return NextResponse.json(
       createErrorResponse(error, "Failed to create event"),
-      { status: error instanceof AppError ? error.statusCode : 500 }
+      { status: error instanceof AppError ? error.statusCode : 500 },
     );
   }
 }

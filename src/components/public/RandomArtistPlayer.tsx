@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Music, Play, ExternalLink, Shuffle, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2, Music, Play, Shuffle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 // Type for artist data from /api/artists/roster
 interface RosterArtist {
@@ -56,7 +56,7 @@ export function RandomArtistPlayer() {
             if (selectedArtist.spotifyId) {
               try {
                 const imgResponse = await fetch(
-                  `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${selectedArtist.spotifyId}`
+                  `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${selectedArtist.spotifyId}`,
                 );
                 if (imgResponse.ok) {
                   const imgData = await imgResponse.json();
@@ -85,7 +85,10 @@ export function RandomArtistPlayer() {
     let newIndex: number;
     do {
       newIndex = Math.floor(Math.random() * rosterData.length);
-    } while (rosterData.length > 1 && rosterData[newIndex].spotifyId === artist?.spotifyId);
+    } while (
+      rosterData.length > 1 &&
+      rosterData[newIndex].spotifyId === artist?.spotifyId
+    );
 
     const selectedArtist = rosterData[newIndex];
     setArtist(selectedArtist);
@@ -93,7 +96,7 @@ export function RandomArtistPlayer() {
 
     if (selectedArtist.spotifyId) {
       fetch(
-        `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${selectedArtist.spotifyId}`
+        `https://open.spotify.com/oembed?url=https://open.spotify.com/artist/${selectedArtist.spotifyId}`,
       )
         .then((res) => res.json())
         .then((data) => {
@@ -151,7 +154,6 @@ export function RandomArtistPlayer() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-
           {/* Large Album/Artist Cover */}
           <div
             className="relative group"
@@ -179,12 +181,17 @@ export function RandomArtistPlayer() {
                     className="w-full h-full object-cover"
                   />
                   {/* Play overlay on hover */}
-                  <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}>
+                  <div
+                    className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+                  >
                     <div
                       className="w-20 h-20 rounded-full flex items-center justify-center transform transition-transform duration-300 hover:scale-110"
                       style={{ backgroundColor: color }}
                     >
-                      <Play className="w-10 h-10 text-white ml-1" fill="white" />
+                      <Play
+                        className="w-10 h-10 text-white ml-1"
+                        fill="white"
+                      />
                     </div>
                   </div>
                 </>
@@ -236,12 +243,27 @@ export function RandomArtistPlayer() {
             {/* Now Playing Badge */}
             <div className="inline-flex items-center gap-2 mb-4">
               <div className="flex items-center gap-1">
-                <span className="w-1 h-4 rounded-full animate-pulse" style={{ backgroundColor: color, animationDelay: "0ms" }} />
-                <span className="w-1 h-6 rounded-full animate-pulse" style={{ backgroundColor: color, animationDelay: "150ms" }} />
-                <span className="w-1 h-3 rounded-full animate-pulse" style={{ backgroundColor: color, animationDelay: "300ms" }} />
-                <span className="w-1 h-5 rounded-full animate-pulse" style={{ backgroundColor: color, animationDelay: "450ms" }} />
+                <span
+                  className="w-1 h-4 rounded-full animate-pulse"
+                  style={{ backgroundColor: color, animationDelay: "0ms" }}
+                />
+                <span
+                  className="w-1 h-6 rounded-full animate-pulse"
+                  style={{ backgroundColor: color, animationDelay: "150ms" }}
+                />
+                <span
+                  className="w-1 h-3 rounded-full animate-pulse"
+                  style={{ backgroundColor: color, animationDelay: "300ms" }}
+                />
+                <span
+                  className="w-1 h-5 rounded-full animate-pulse"
+                  style={{ backgroundColor: color, animationDelay: "450ms" }}
+                />
               </div>
-              <span className="text-sm font-medium uppercase tracking-wider" style={{ color }}>
+              <span
+                className="text-sm font-medium uppercase tracking-wider"
+                style={{ color }}
+              >
                 Escuchando Ahora
               </span>
             </div>
@@ -253,7 +275,8 @@ export function RandomArtistPlayer() {
 
             {/* Role */}
             <p className="text-xl text-slc-muted mb-6">
-              {artist.role} · <span className="text-primary">Sonido Líquido Crew</span>
+              {artist.role} ·{" "}
+              <span className="text-primary">Sonido Líquido Crew</span>
             </p>
 
             {/* Spotify Player */}
@@ -283,7 +306,10 @@ export function RandomArtistPlayer() {
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-spotify hover:bg-spotify/90 text-black font-semibold rounded-full transition-all hover:scale-105"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                    <path
+                      fill="currentColor"
+                      d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"
+                    />
                   </svg>
                   Abrir en Spotify
                   <ExternalLink className="w-4 h-4" />

@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  AlertTriangle,
   Bell,
   BellRing,
-  Send,
   Calendar,
-  Users,
-  Clock,
   CheckCircle,
-  AlertTriangle,
+  Clock,
   Loader2,
-  Trash2,
+  RefreshCw,
+  Send,
+  Settings,
   Smartphone,
   Sparkles,
-  Settings,
-  RefreshCw,
+  Trash2,
+  Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ScheduledNotification {
   id: string;
@@ -45,7 +45,9 @@ export function PushNotificationManager({
 }: PushNotificationManagerProps) {
   const [isConfigured, setIsConfigured] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState(0);
-  const [scheduledNotifications, setScheduledNotifications] = useState<ScheduledNotification[]>([]);
+  const [scheduledNotifications, setScheduledNotifications] = useState<
+    ScheduledNotification[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +58,9 @@ export function PushNotificationManager({
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
   const [scheduleDate, setScheduleDate] = useState("");
-  const [notificationType, setNotificationType] = useState<"general" | "release" | "presave" | "event">("general");
+  const [notificationType, setNotificationType] = useState<
+    "general" | "release" | "presave" | "event"
+  >("general");
 
   // Fetch stats on mount
   useEffect(() => {
@@ -111,10 +115,14 @@ export function PushNotificationManager({
       }
 
       if (data.data.scheduled) {
-        setSuccess(`Notificación programada para ${new Date(data.data.scheduledFor).toLocaleString("es-MX")}`);
+        setSuccess(
+          `Notificación programada para ${new Date(data.data.scheduledFor).toLocaleString("es-MX")}`,
+        );
         fetchStats();
       } else {
-        setSuccess(`Notificación enviada a ${data.data.sent} suscriptores (${data.data.failed} fallidos)`);
+        setSuccess(
+          `Notificación enviada a ${data.data.sent} suscriptores (${data.data.failed} fallidos)`,
+        );
       }
 
       // Clear form
@@ -130,23 +138,27 @@ export function PushNotificationManager({
   }
 
   // Prefill for release notifications
-  function prefillReleaseNotification(type: "announcement" | "reminder" | "release") {
+  function prefillReleaseNotification(
+    type: "announcement" | "reminder" | "release",
+  ) {
     if (!releaseTitle) return;
 
     switch (type) {
       case "announcement":
         setTitle(`🎵 Próximamente: ${releaseTitle}`);
-        setBody(`Nuevo lanzamiento de Sonido Líquido Crew. ¡Haz pre-save ahora!`);
+        setBody(
+          "Nuevo lanzamiento de Sonido Líquido Crew. ¡Haz pre-save ahora!",
+        );
         setNotificationType("presave");
         break;
       case "reminder":
-        setTitle(`⏰ ¡No te lo pierdas!`);
+        setTitle("⏰ ¡No te lo pierdas!");
         setBody(`${releaseTitle} sale pronto. ¿Ya hiciste pre-save?`);
         setNotificationType("presave");
         break;
       case "release":
         setTitle(`🚀 ¡Ya disponible: ${releaseTitle}!`);
-        setBody(`Nueva música de Sonido Líquido Crew. ¡Escúchala ahora!`);
+        setBody("Nueva música de Sonido Líquido Crew. ¡Escúchala ahora!");
         setNotificationType("release");
         break;
     }
@@ -180,7 +192,9 @@ export function PushNotificationManager({
 
       {/* Status */}
       <div className="grid grid-cols-2 gap-4">
-        <div className={`p-4 rounded-xl border ${isConfigured ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20"}`}>
+        <div
+          className={`p-4 rounded-xl border ${isConfigured ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20"}`}
+        >
           <div className="flex items-center gap-2 mb-2">
             {isConfigured ? (
               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -269,7 +283,9 @@ export function PushNotificationManager({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium mb-2">URL de destino</label>
+            <label className="block text-sm font-medium mb-2">
+              URL de destino
+            </label>
             <input
               type="url"
               value={url}
@@ -365,7 +381,9 @@ export function PushNotificationManager({
                 <div>
                   <p className="font-medium text-sm">{notification.title}</p>
                   <p className="text-xs text-slc-muted">
-                    {new Date(notification.scheduledFor).toLocaleString("es-MX")}
+                    {new Date(notification.scheduledFor).toLocaleString(
+                      "es-MX",
+                    )}
                   </p>
                 </div>
                 <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded text-xs">

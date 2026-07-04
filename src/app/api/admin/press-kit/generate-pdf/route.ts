@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { pressKit, artists, artistExternalProfiles } from "@/db/schema";
+import { artistExternalProfiles, artists, pressKit } from "@/db/schema";
+import {
+  generatePressKitFilename,
+  generatePressKitPDF,
+} from "@/lib/pdf/press-kit-generator";
 import { eq } from "drizzle-orm";
-import { generatePressKitPDF, generatePressKitFilename } from "@/lib/pdf/press-kit-generator";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface KeyPoint {
   icon: string;
@@ -31,7 +34,10 @@ interface SpotifyArtistData {
   imageUrl?: string;
 }
 
-function parseJson<T>(value: string | T | null | undefined, defaultValue: T): T {
+function parseJson<T>(
+  value: string | T | null | undefined,
+  defaultValue: T,
+): T {
   if (!value) return defaultValue;
   if (typeof value === "string") {
     try {
@@ -44,7 +50,9 @@ function parseJson<T>(value: string | T | null | undefined, defaultValue: T): T 
 }
 
 // Fetch Spotify data for an artist using oEmbed (no API key needed)
-async function fetchSpotifyOembedData(spotifyUrl: string): Promise<Partial<SpotifyArtistData> | null> {
+async function fetchSpotifyOembedData(
+  spotifyUrl: string,
+): Promise<Partial<SpotifyArtistData> | null> {
   try {
     const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`;
     const response = await fetch(oembedUrl);
@@ -67,7 +75,10 @@ async function fetchDatabaseStats() {
     if (!isDatabaseConfigured()) return null;
 
     // Get artist count
-    const allArtists = await db.select().from(artists).where(eq(artists.isActive, true));
+    const allArtists = await db
+      .select()
+      .from(artists)
+      .where(eq(artists.isActive, true));
 
     return {
       artistCount: allArtists.length,
@@ -80,13 +91,17 @@ async function fetchDatabaseStats() {
 export async function GET(request: NextRequest) {
   try {
     // Check if we should include Spotify data
-    const includeSpotify = request.nextUrl.searchParams.get("spotify") === "true";
+    const includeSpotify =
+      request.nextUrl.searchParams.get("spotify") === "true";
 
     // Fetch artist count from DB, fallback to counting active artists
     let artistCount = 15; // sensible fallback
     try {
       if (isDatabaseConfigured()) {
-        const activeArtists = await db.select().from(artists).where(eq(artists.isActive, true));
+        const activeArtists = await db
+          .select()
+          .from(artists)
+          .where(eq(artists.isActive, true));
         artistCount = activeArtists.length || artistCount;
       }
     } catch {}
@@ -106,9 +121,21 @@ export async function GET(request: NextRequest) {
 
 Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√°s talentosos y comprometidos del g√©nero, abarcando MCs, DJs, productores y cantantes que representan la diversidad y riqueza del Hip Hop mexicano.`,
       keyPoints: [
-        { icon: "calendar", title: "Fundado en 1999", description: "M√°s de 25 a√±os de historia en el Hip Hop mexicano" },
-        { icon: "disc", title: "190+ Lanzamientos", description: "Cat√°logo extenso de m√∫sica original" },
-        { icon: "users", title: `${artistCount}+ Artistas`, description: "Roster activo de talento mexicano" },
+        {
+          icon: "calendar",
+          title: "Fundado en 1999",
+          description: "M√°s de 25 a√±os de historia en el Hip Hop mexicano",
+        },
+        {
+          icon: "disc",
+          title: "190+ Lanzamientos",
+          description: "Cat√°logo extenso de m√∫sica original",
+        },
+        {
+          icon: "users",
+          title: `${artistCount}+ Artistas`,
+          description: "Roster activo de talento mexicano",
+        },
       ],
       contactEmail: "prensasonidoliquido@gmail.com",
       contactPhone: "+52 55 2801 1881",
@@ -132,7 +159,10 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√
 
     if (isDatabaseConfigured()) {
       try {
-        const [dbData] = await db.select().from(pressKit).where(eq(pressKit.id, "main"));
+        const [dbData] = await db
+          .select()
+          .from(pressKit)
+          .where(eq(pressKit.id, "main"));
         data = dbData;
         dbStats = await fetchDatabaseStats();
       } catch (dbError) {
@@ -147,11 +177,18 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√
 
       // Get artists with their Spotify profiles from DB
       try {
-        const dbArtists = await db.select().from(artists).where(eq(artists.isActive, true)).limit(10);
-        const dbProfiles = await db.select().from(artistExternalProfiles).where(eq(artistExternalProfiles.platform, "spotify"));
+        const dbArtists = await db
+          .select()
+          .from(artists)
+          .where(eq(artists.isActive, true))
+          .limit(10);
+        const dbProfiles = await db
+          .select()
+          .from(artistExternalProfiles)
+          .where(eq(artistExternalProfiles.platform, "spotify"));
 
         const spotifyPromises = dbArtists.map(async (artist) => {
-          const profile = dbProfiles.find(p => p.artistId === artist.id);
+          const profile = dbProfiles.find((p) => p.artistId === artist.id);
           if (!profile?.externalUrl) return null;
           const oembedData = await fetchSpotifyOembedData(profile.externalUrl);
           return {
@@ -163,7 +200,10 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√
         const results = await Promise.all(spotifyPromises);
         spotifyArtists = results.filter(Boolean) as SpotifyArtistData[];
       } catch (dbErr) {
-        console.warn("[API] Could not fetch artist Spotify data from DB:", dbErr);
+        console.warn(
+          "[API] Could not fetch artist Spotify data from DB:",
+          dbErr,
+        );
       }
 
       console.log(`[API] Fetched data for ${spotifyArtists.length} artists`);
@@ -178,14 +218,20 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√
       heroTitle: data?.heroTitle || defaultPressKit.heroTitle,
       heroSubtitle: data?.heroSubtitle || defaultPressKit.heroSubtitle,
       heroTagline: data?.heroTagline || defaultPressKit.heroTagline,
-      heroCoverImageUrl: data?.heroCoverImageUrl || defaultPressKit.heroCoverImageUrl,
-      heroBannerImageUrl: data?.heroBannerImageUrl || defaultPressKit.heroBannerImageUrl,
-      statsArtists: dbStats?.artistCount ? `${dbStats.artistCount}+` : (data?.statsArtists || defaultPressKit.statsArtists),
+      heroCoverImageUrl:
+        data?.heroCoverImageUrl || defaultPressKit.heroCoverImageUrl,
+      heroBannerImageUrl:
+        data?.heroBannerImageUrl || defaultPressKit.heroBannerImageUrl,
+      statsArtists: dbStats?.artistCount
+        ? `${dbStats.artistCount}+`
+        : data?.statsArtists || defaultPressKit.statsArtists,
       statsReleases: data?.statsReleases || defaultPressKit.statsReleases,
       statsYears: `${yearsActive}+`,
       aboutTitle: data?.aboutTitle || defaultPressKit.aboutTitle,
       aboutContent: data?.aboutContent || defaultPressKit.aboutContent,
-      keyPoints: data?.keyPoints ? parseJson<KeyPoint[]>(data.keyPoints, defaultPressKit.keyPoints) : defaultPressKit.keyPoints,
+      keyPoints: data?.keyPoints
+        ? parseJson<KeyPoint[]>(data.keyPoints, defaultPressKit.keyPoints)
+        : defaultPressKit.keyPoints,
       contactEmail: data?.contactEmail || defaultPressKit.contactEmail,
       contactPhone: data?.contactPhone || defaultPressKit.contactPhone,
       contactLocation: data?.contactLocation || defaultPressKit.contactLocation,
@@ -194,12 +240,19 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√
       youtubeUrl: data?.youtubeUrl || defaultPressKit.youtubeUrl,
       twitterUrl: data?.twitterUrl || defaultPressKit.twitterUrl,
       facebookUrl: data?.facebookUrl || defaultPressKit.facebookUrl,
-      downloads: data?.downloads ? parseJson<DownloadItem[]>(data.downloads, []) : defaultPressKit.downloads,
-      pressQuotes: data?.pressQuotes ? parseJson<PressQuote[]>(data.pressQuotes, []) : defaultPressKit.pressQuotes,
-      featuredVideoUrl: data?.featuredVideoUrl || defaultPressKit.featuredVideoUrl,
-      featuredVideoTitle: data?.featuredVideoTitle || defaultPressKit.featuredVideoTitle,
+      downloads: data?.downloads
+        ? parseJson<DownloadItem[]>(data.downloads, [])
+        : defaultPressKit.downloads,
+      pressQuotes: data?.pressQuotes
+        ? parseJson<PressQuote[]>(data.pressQuotes, [])
+        : defaultPressKit.pressQuotes,
+      featuredVideoUrl:
+        data?.featuredVideoUrl || defaultPressKit.featuredVideoUrl,
+      featuredVideoTitle:
+        data?.featuredVideoTitle || defaultPressKit.featuredVideoTitle,
       footerCtaTitle: data?.footerCtaTitle || defaultPressKit.footerCtaTitle,
-      footerCtaButtonText: data?.footerCtaButtonText || defaultPressKit.footerCtaButtonText,
+      footerCtaButtonText:
+        data?.footerCtaButtonText || defaultPressKit.footerCtaButtonText,
       // Spotify data
       spotifyArtists: includeSpotify ? spotifyArtists : undefined,
       generatedAt: new Date().toISOString(),
@@ -227,7 +280,7 @@ Bajo el liderazgo de Zaque, el colectivo ha reunido a algunos de los artistas m√
     console.error("[API] Error generating press kit PDF:", error);
     return NextResponse.json(
       { success: false, error: "Failed to generate PDF" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

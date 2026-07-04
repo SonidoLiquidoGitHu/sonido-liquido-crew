@@ -1,25 +1,25 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { DropboxUploader } from "@/components/admin/DropboxUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropboxUploader } from "@/components/admin/DropboxUploader";
 import {
-  ArrowLeft,
-  Save,
-  Calendar,
-  Loader2,
-  CheckCircle,
   AlertTriangle,
-  MapPin,
+  ArrowLeft,
+  Calendar,
+  CheckCircle,
   Clock,
-  Ticket,
   Image as ImageIcon,
+  Loader2,
+  MapPin,
+  Save,
   Star,
+  Ticket,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
 
 interface Event {
   id: string;
@@ -36,12 +36,17 @@ interface Event {
   isCancelled: boolean;
 }
 
-export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditEventPage({
+  params,
+}: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -73,7 +78,9 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           venue: event.venue || "",
           city: event.city || "",
           country: event.country || "México",
-          eventDate: event.eventDate ? new Date(event.eventDate).toISOString().split("T")[0] : "",
+          eventDate: event.eventDate
+            ? new Date(event.eventDate).toISOString().split("T")[0]
+            : "",
           eventTime: event.eventTime || "",
           ticketUrl: event.ticketUrl || "",
           imageUrl: event.imageUrl || "",
@@ -102,7 +109,12 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.venue || !formData.city || !formData.eventDate) {
+    if (
+      !formData.title ||
+      !formData.venue ||
+      !formData.city ||
+      !formData.eventDate
+    ) {
       showMessage("error", "Por favor completa los campos requeridos");
       return;
     }
@@ -123,7 +135,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           router.push("/admin/events");
         }, 1500);
       } else {
-        showMessage("error", data.error?.message || "Error al actualizar evento");
+        showMessage(
+          "error",
+          data.error?.message || "Error al actualizar evento",
+        );
       }
     } catch (error) {
       showMessage("error", "Error de conexión");
@@ -179,7 +194,11 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           <h1 className="font-oswald text-3xl uppercase">Editar Evento</h1>
           <p className="text-slc-muted mt-1">{formData.title}</p>
         </div>
-        <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
+        <Button
+          variant="destructive"
+          onClick={handleDelete}
+          disabled={isLoading}
+        >
           <Trash2 className="w-4 h-4 mr-2" />
           Eliminar
         </Button>
@@ -216,21 +235,33 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Título *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Título *
+                  </label>
                   <Input
                     value={formData.title}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="Nombre del evento"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Descripción
+                  </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, description: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
                     }
                     placeholder="Descripción del evento..."
                     rows={4}
@@ -249,30 +280,48 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slc-muted mb-2">Venue / Lugar *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Venue / Lugar *
+                  </label>
                   <Input
                     value={formData.venue}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, venue: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        venue: e.target.value,
+                      }))
+                    }
                     placeholder="ej: Foro Sol, Teatro Metropolitan"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Ciudad *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Ciudad *
+                  </label>
                   <Input
                     value={formData.city}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, city: e.target.value }))
+                    }
                     placeholder="ej: Ciudad de México"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">País</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    País
+                  </label>
                   <Input
                     value={formData.country}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, country: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        country: e.target.value,
+                      }))
+                    }
                     placeholder="México"
                   />
                 </div>
@@ -288,24 +337,34 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Fecha *</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Fecha *
+                  </label>
                   <Input
                     type="date"
                     value={formData.eventDate}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, eventDate: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        eventDate: e.target.value,
+                      }))
                     }
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slc-muted mb-2">Hora</label>
+                  <label className="block text-sm text-slc-muted mb-2">
+                    Hora
+                  </label>
                   <Input
                     type="time"
                     value={formData.eventTime}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, eventTime: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        eventTime: e.target.value,
+                      }))
                     }
                     placeholder="20:00"
                   />
@@ -328,7 +387,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                   type="url"
                   value={formData.ticketUrl}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, ticketUrl: e.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      ticketUrl: e.target.value,
+                    }))
                   }
                   placeholder="https://ticketmaster.com.mx/..."
                 />
@@ -369,12 +431,17 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
               />
 
               <div className="mt-3">
-                <label className="block text-sm text-slc-muted mb-2">O ingresa URL</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  O ingresa URL
+                </label>
                 <Input
                   type="url"
                   value={formData.imageUrl}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      imageUrl: e.target.value,
+                    }))
                   }
                   placeholder="https://..."
                 />
@@ -391,7 +458,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     type="checkbox"
                     checked={formData.isFeatured}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, isFeatured: e.target.checked }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        isFeatured: e.target.checked,
+                      }))
                     }
                     className="w-4 h-4 rounded border-slc-border"
                   />
@@ -406,7 +476,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
                     type="checkbox"
                     checked={formData.isCancelled}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, isCancelled: e.target.checked }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        isCancelled: e.target.checked,
+                      }))
                     }
                     className="w-4 h-4 rounded border-slc-border"
                   />

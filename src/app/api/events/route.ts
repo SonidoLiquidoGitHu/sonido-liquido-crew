@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { eventsService } from "@/lib/services";
 import {
   AppError,
+  ErrorCode,
+  createErrorResponse,
   errorLogger,
   getErrorMessage,
-  createErrorResponse,
-  ErrorCode,
 } from "@/lib/errors";
+import { eventsService } from "@/lib/services";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const filter = searchParams.get("filter"); // "upcoming" | "past" | "all"
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const limit = Number.parseInt(searchParams.get("limit") || "10");
 
-    errorLogger.info(`Fetching events`, { requestId, filter, limit });
+    errorLogger.info("Fetching events", { requestId, filter, limit });
 
     let events;
 
@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
             ErrorCode.UNKNOWN_ERROR,
             500,
             { service: "EventsAPI", method: "GET", requestId },
-            error as Error
-          )
+            error as Error,
+          ),
     );
 
     return NextResponse.json(
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         ...createErrorResponse(error, "Failed to fetch events"),
         requestId,
       },
-      { status: error instanceof AppError ? error.statusCode : 500 }
+      { status: error instanceof AppError ? error.statusCode : 500 },
     );
   }
 }

@@ -1,26 +1,31 @@
 import {
-  artistsRepository,
-  releasesRepository,
-  videosRepository,
-  eventsRepository,
-  productsRepository,
-  subscribersRepository,
-  playlistsRepository,
-  syncJobsRepository,
-  siteSettingsRepository,
-} from "@/lib/repositories";
-import { spotifyClient, youtubeClient, dropboxClient, mailchimpClient } from "@/lib/clients";
-import { parseISODuration } from "@/lib/utils";
+  dropboxClient,
+  mailchimpClient,
+  spotifyClient,
+  youtubeClient,
+} from "@/lib/clients";
 import {
   AppError,
   DatabaseError,
+  ErrorCode,
   ExternalApiError,
   NotFoundError,
   ValidationError,
-  ErrorCode,
   errorLogger,
   getErrorMessage,
 } from "@/lib/errors";
+import {
+  artistsRepository,
+  eventsRepository,
+  playlistsRepository,
+  productsRepository,
+  releasesRepository,
+  siteSettingsRepository,
+  subscribersRepository,
+  syncJobsRepository,
+  videosRepository,
+} from "@/lib/repositories";
+import { parseISODuration } from "@/lib/utils";
 import type { Artist, Release, Video } from "@/types";
 
 // ===========================================
@@ -33,7 +38,12 @@ export const artistsService = {
       return await artistsRepository.findAll(options);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "artists", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "artists",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return empty array instead of throwing to prevent page crashes
       return [];
@@ -45,7 +55,12 @@ export const artistsService = {
       return await artistsRepository.findAllWithProfiles();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "artists with profiles", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "artists with profiles",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       return [];
     }
@@ -54,12 +69,15 @@ export const artistsService = {
   async getById(id: string) {
     try {
       if (!id || typeof id !== "string") {
-        throw ValidationError.invalidInput("id", "Artist ID must be a non-empty string");
+        throw ValidationError.invalidInput(
+          "id",
+          "Artist ID must be a non-empty string",
+        );
       }
 
       const artist = await artistsRepository.findById(id);
       if (!artist) {
-        errorLogger.warn(`Artist not found by ID`, { id });
+        errorLogger.warn("Artist not found by ID", { id });
         return null;
       }
 
@@ -72,44 +90,80 @@ export const artistsService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "artist", `ID: ${id}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "artist",
+          `ID: ${id}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "artist", `Failed to get artist by ID: ${id}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "artist",
+        `Failed to get artist by ID: ${id}`,
+        error as Error,
+      );
     }
   },
 
   async getBySlug(slug: string) {
     try {
       if (!slug || typeof slug !== "string") {
-        throw ValidationError.invalidInput("slug", "Artist slug must be a non-empty string");
+        throw ValidationError.invalidInput(
+          "slug",
+          "Artist slug must be a non-empty string",
+        );
       }
 
       const artist = await artistsRepository.findBySlugWithDetails(slug);
       if (!artist) {
-        errorLogger.warn(`Artist not found by slug`, { slug });
+        errorLogger.warn("Artist not found by slug", { slug });
       }
       return artist;
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "artist", `Slug: ${slug}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "artist",
+          `Slug: ${slug}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "artist", `Failed to get artist by slug: ${slug}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "artist",
+        `Failed to get artist by slug: ${slug}`,
+        error as Error,
+      );
     }
   },
 
   async getFeatured(limit = 5) {
     try {
       if (limit < 1 || limit > 100) {
-        throw ValidationError.invalidInput("limit", "Limit must be between 1 and 100");
+        throw ValidationError.invalidInput(
+          "limit",
+          "Limit must be between 1 and 100",
+        );
       }
       return await artistsRepository.findFeatured(limit);
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "featured artists", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "featured artists",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "featured artists", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "featured artists",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -118,24 +172,47 @@ export const artistsService = {
       return await artistsRepository.findWithConflicts();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "conflicted artists", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "conflicted artists",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "conflicted artists", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "conflicted artists",
+        undefined,
+        error as Error,
+      );
     }
   },
 
   async search(query: string) {
     try {
       if (!query || query.trim().length < 2) {
-        throw ValidationError.invalidInput("query", "Search query must be at least 2 characters");
+        throw ValidationError.invalidInput(
+          "query",
+          "Search query must be at least 2 characters",
+        );
       }
       return await artistsRepository.search(query.trim());
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("search", "artists", `Query: "${query}"`, error as Error)
+        DatabaseError.queryFailed(
+          "search",
+          "artists",
+          `Query: "${query}"`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("search", "artists", `Search failed for: "${query}"`, error as Error);
+      throw DatabaseError.queryFailed(
+        "search",
+        "artists",
+        `Search failed for: "${query}"`,
+        error as Error,
+      );
     }
   },
 
@@ -144,18 +221,35 @@ export const artistsService = {
       return await artistsRepository.count();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("count", "artists", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "count",
+          "artists",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("count", "artists", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "count",
+        "artists",
+        undefined,
+        error as Error,
+      );
     }
   },
 
   async syncFromSpotify(spotifyId: string) {
-    const context = { service: "ArtistsService", method: "syncFromSpotify", entityId: spotifyId };
+    const context = {
+      service: "ArtistsService",
+      method: "syncFromSpotify",
+      entityId: spotifyId,
+    };
 
     try {
       if (!spotifyId || typeof spotifyId !== "string") {
-        throw ValidationError.invalidInput("spotifyId", "Spotify ID must be a non-empty string");
+        throw ValidationError.invalidInput(
+          "spotifyId",
+          "Spotify ID must be a non-empty string",
+        );
       }
 
       if (!spotifyClient.isConfigured()) {
@@ -163,11 +257,11 @@ export const artistsService = {
           "Spotify API is not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables.",
           ErrorCode.SPOTIFY_ERROR,
           503,
-          context
+          context,
         );
       }
 
-      errorLogger.info(`Syncing artist from Spotify`, { spotifyId });
+      errorLogger.info("Syncing artist from Spotify", { spotifyId });
 
       const spotifyArtist = await spotifyClient.getArtist(spotifyId);
 
@@ -178,13 +272,19 @@ export const artistsService = {
       const existing = await artistsRepository.findBySpotifyId(spotifyId);
 
       if (existing) {
-        errorLogger.info(`Updating existing artist from Spotify`, { artistId: existing.id, spotifyId });
+        errorLogger.info("Updating existing artist from Spotify", {
+          artistId: existing.id,
+          spotifyId,
+        });
         return await artistsRepository.update(existing.id, {
           profileImageUrl: spotifyArtist.images[0]?.url,
         });
       }
 
-      errorLogger.info(`Creating new artist from Spotify`, { name: spotifyArtist.name, spotifyId });
+      errorLogger.info("Creating new artist from Spotify", {
+        name: spotifyArtist.name,
+        spotifyId,
+      });
 
       const artist = await artistsRepository.create({
         name: spotifyArtist.name,
@@ -206,9 +306,19 @@ export const artistsService = {
       if (error instanceof AppError) throw error;
 
       errorLogger.log(
-        ExternalApiError.spotifyError("sync artist", `Spotify ID: ${spotifyId}`, undefined, error as Error)
+        ExternalApiError.spotifyError(
+          "sync artist",
+          `Spotify ID: ${spotifyId}`,
+          undefined,
+          error as Error,
+        ),
       );
-      throw ExternalApiError.spotifyError("sync artist", getErrorMessage(error), undefined, error as Error);
+      throw ExternalApiError.spotifyError(
+        "sync artist",
+        getErrorMessage(error),
+        undefined,
+        error as Error,
+      );
     }
   },
 };
@@ -223,7 +333,12 @@ export const releasesService = {
       return await releasesRepository.findAll(options);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return empty array instead of throwing to prevent page crashes
       return [];
@@ -239,9 +354,19 @@ export const releasesService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "release", `Slug: ${slug}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "release",
+          `Slug: ${slug}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "release", `Failed to get release by slug: ${slug}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "release",
+        `Failed to get release by slug: ${slug}`,
+        error as Error,
+      );
     }
   },
 
@@ -250,7 +375,12 @@ export const releasesService = {
       return await releasesRepository.findUpcoming(limit);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "upcoming releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "upcoming releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return empty array instead of throwing to prevent page crashes
       return [];
@@ -262,7 +392,12 @@ export const releasesService = {
       return await releasesRepository.findNextUpcoming();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "next upcoming release", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "next upcoming release",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return null instead of throwing to prevent page crashes
       return null;
@@ -274,7 +409,12 @@ export const releasesService = {
       return await releasesRepository.findFeatured(limit);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "featured releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "featured releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return empty array instead of throwing to prevent page crashes
       return [];
@@ -286,7 +426,12 @@ export const releasesService = {
       return await releasesRepository.findLatest(limit);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "latest releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "latest releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return empty array instead of throwing to prevent page crashes
       return [];
@@ -298,9 +443,19 @@ export const releasesService = {
       return await releasesRepository.countByYear();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("count", "releases by year", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "count",
+          "releases by year",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("count", "releases by year", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "count",
+        "releases by year",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -309,9 +464,19 @@ export const releasesService = {
       return await releasesRepository.countByArtist();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("count", "releases by artist", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "count",
+          "releases by artist",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("count", "releases by artist", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "count",
+        "releases by artist",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -320,9 +485,19 @@ export const releasesService = {
       return await releasesRepository.count();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("count", "releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "count",
+          "releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("count", "releases", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "count",
+        "releases",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -333,7 +508,15 @@ export const releasesService = {
       const { sql } = await import("drizzle-orm");
 
       if (!isDatabaseConfigured()) {
-        return { total: 0, albums: 0, singles: 0, maxiSingles: 0, eps: 0, compilations: 0, mixtapes: 0 };
+        return {
+          total: 0,
+          albums: 0,
+          singles: 0,
+          maxiSingles: 0,
+          eps: 0,
+          compilations: 0,
+          mixtapes: 0,
+        };
       }
 
       // Get all counts in a single optimized query using CASE statements
@@ -361,24 +544,50 @@ export const releasesService = {
       };
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("stats", "releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "stats",
+          "releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      return { total: 0, albums: 0, singles: 0, maxiSingles: 0, eps: 0, compilations: 0, mixtapes: 0 };
+      return {
+        total: 0,
+        albums: 0,
+        singles: 0,
+        maxiSingles: 0,
+        eps: 0,
+        compilations: 0,
+        mixtapes: 0,
+      };
     }
   },
 
   async search(query: string) {
     try {
       if (!query || query.trim().length < 2) {
-        throw ValidationError.invalidInput("query", "Search query must be at least 2 characters");
+        throw ValidationError.invalidInput(
+          "query",
+          "Search query must be at least 2 characters",
+        );
       }
       return await releasesRepository.search(query.trim());
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("search", "releases", `Query: "${query}"`, error as Error)
+        DatabaseError.queryFailed(
+          "search",
+          "releases",
+          `Query: "${query}"`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("search", "releases", `Search failed for: "${query}"`, error as Error);
+      throw DatabaseError.queryFailed(
+        "search",
+        "releases",
+        `Search failed for: "${query}"`,
+        error as Error,
+      );
     }
   },
 };
@@ -393,7 +602,12 @@ export const videosService = {
       return await videosRepository.findAll(options);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "videos", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "videos",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return empty array instead of throwing to prevent page crashes
       return [];
@@ -409,9 +623,19 @@ export const videosService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "video", `ID: ${id}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "video",
+          `ID: ${id}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "video", `Failed to get video by ID: ${id}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "video",
+        `Failed to get video by ID: ${id}`,
+        error as Error,
+      );
     }
   },
 
@@ -420,9 +644,19 @@ export const videosService = {
       return await videosRepository.findFeatured(limit);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "featured videos", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "featured videos",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "featured videos", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "featured videos",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -431,18 +665,35 @@ export const videosService = {
       return await videosRepository.count();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("count", "videos", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "count",
+          "videos",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("count", "videos", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "count",
+        "videos",
+        undefined,
+        error as Error,
+      );
     }
   },
 
   async syncFromYouTube(youtubeId: string, artistId?: string) {
-    const context = { service: "VideosService", method: "syncFromYouTube", entityId: youtubeId };
+    const context = {
+      service: "VideosService",
+      method: "syncFromYouTube",
+      entityId: youtubeId,
+    };
 
     try {
       if (!youtubeId || typeof youtubeId !== "string") {
-        throw ValidationError.invalidInput("youtubeId", "YouTube ID must be a non-empty string");
+        throw ValidationError.invalidInput(
+          "youtubeId",
+          "YouTube ID must be a non-empty string",
+        );
       }
 
       if (!youtubeClient.isConfigured()) {
@@ -450,34 +701,42 @@ export const videosService = {
           "YouTube API is not configured. Set YOUTUBE_API_KEY environment variable.",
           ErrorCode.YOUTUBE_ERROR,
           503,
-          context
+          context,
         );
       }
 
       // Check if video already exists
       const existing = await videosRepository.findByYouTubeId(youtubeId);
       if (existing) {
-        errorLogger.info(`Video already exists in database`, { youtubeId, videoId: existing.id });
+        errorLogger.info("Video already exists in database", {
+          youtubeId,
+          videoId: existing.id,
+        });
         return existing;
       }
 
-      errorLogger.info(`Fetching video from YouTube`, { youtubeId });
+      errorLogger.info("Fetching video from YouTube", { youtubeId });
 
       const ytVideo = await youtubeClient.getVideo(youtubeId);
       if (!ytVideo) {
         throw ExternalApiError.notFound("YouTube", "Video", youtubeId);
       }
 
-      errorLogger.info(`Creating video record from YouTube`, { title: ytVideo.snippet.title, youtubeId });
+      errorLogger.info("Creating video record from YouTube", {
+        title: ytVideo.snippet.title,
+        youtubeId,
+      });
 
       return await videosRepository.create({
         title: ytVideo.snippet.title,
         description: ytVideo.snippet.description,
         youtubeId,
         youtubeUrl: `https://www.youtube.com/watch?v=${youtubeId}`,
-        thumbnailUrl: ytVideo.snippet.thumbnails.high?.url || ytVideo.snippet.thumbnails.medium.url,
+        thumbnailUrl:
+          ytVideo.snippet.thumbnails.high?.url ||
+          ytVideo.snippet.thumbnails.medium.url,
         duration: parseISODuration(ytVideo.contentDetails.duration),
-        viewCount: parseInt(ytVideo.statistics.viewCount, 10),
+        viewCount: Number.parseInt(ytVideo.statistics.viewCount, 10),
         publishedAt: new Date(ytVideo.snippet.publishedAt),
         artistId,
       });
@@ -485,9 +744,19 @@ export const videosService = {
       if (error instanceof AppError) throw error;
 
       errorLogger.log(
-        ExternalApiError.youtubeError("sync video", `YouTube ID: ${youtubeId}`, undefined, error as Error)
+        ExternalApiError.youtubeError(
+          "sync video",
+          `YouTube ID: ${youtubeId}`,
+          undefined,
+          error as Error,
+        ),
       );
-      throw ExternalApiError.youtubeError("sync video", getErrorMessage(error), undefined, error as Error);
+      throw ExternalApiError.youtubeError(
+        "sync video",
+        getErrorMessage(error),
+        undefined,
+        error as Error,
+      );
     }
   },
 };
@@ -502,9 +771,19 @@ export const eventsService = {
       return await eventsRepository.findAll(options);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "events", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "events",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "events", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "events",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -513,9 +792,19 @@ export const eventsService = {
       return await eventsRepository.findUpcoming(limit);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "upcoming events", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "upcoming events",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "upcoming events", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "upcoming events",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -524,9 +813,19 @@ export const eventsService = {
       return await eventsRepository.findPast(limit);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "past events", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "past events",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "past events", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "past events",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -539,9 +838,19 @@ export const eventsService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "event", `ID: ${id}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "event",
+          `ID: ${id}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "event", `Failed to get event by ID: ${id}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "event",
+        `Failed to get event by ID: ${id}`,
+        error as Error,
+      );
     }
   },
 };
@@ -556,9 +865,19 @@ export const productsService = {
       return await productsRepository.findAll(options);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "products", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "products",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "products", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "products",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -571,9 +890,19 @@ export const productsService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "product", `Slug: ${slug}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "product",
+          `Slug: ${slug}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "product", `Failed to get product by slug: ${slug}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "product",
+        `Failed to get product by slug: ${slug}`,
+        error as Error,
+      );
     }
   },
 
@@ -582,9 +911,19 @@ export const productsService = {
       return await productsRepository.count();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("count", "products", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "count",
+          "products",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("count", "products", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "count",
+        "products",
+        undefined,
+        error as Error,
+      );
     }
   },
 };
@@ -608,24 +947,37 @@ export const subscribersService = {
         throw ValidationError.invalidInput("email", "Invalid email format");
       }
 
-      errorLogger.info(`Creating new subscriber`, { email: email.substring(0, 3) + "***", source });
+      errorLogger.info("Creating new subscriber", {
+        email: `${email.substring(0, 3)}***`,
+        source,
+      });
 
-      const subscriber = await subscribersRepository.create({ email, name, source });
+      const subscriber = await subscribersRepository.create({
+        email,
+        name,
+        source,
+      });
 
       // Sync to Mailchimp if configured (adds "sonidoliquido.com" tag automatically)
       if (mailchimpClient.isConfigured()) {
         try {
           await mailchimpClient.addSubscriber(email, { name, source });
-          errorLogger.info(`Subscriber synced to Mailchimp with tag "sonidoliquido.com"`, {
-            email: email.substring(0, 3) + "***",
-            source,
-          });
+          errorLogger.info(
+            `Subscriber synced to Mailchimp with tag "sonidoliquido.com"`,
+            {
+              email: `${email.substring(0, 3)}***`,
+              source,
+            },
+          );
         } catch (error) {
           // Log but don't fail the subscription
-          errorLogger.warn(`Failed to sync subscriber to Mailchimp: ${getErrorMessage(error)}`, {
-            email: email.substring(0, 3) + "***",
-            error: getErrorMessage(error),
-          });
+          errorLogger.warn(
+            `Failed to sync subscriber to Mailchimp: ${getErrorMessage(error)}`,
+            {
+              email: `${email.substring(0, 3)}***`,
+              error: getErrorMessage(error),
+            },
+          );
         }
       }
 
@@ -633,9 +985,19 @@ export const subscribersService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("create", "subscriber", `Email: ${email?.substring(0, 3)}***`, error as Error)
+        DatabaseError.queryFailed(
+          "create",
+          "subscriber",
+          `Email: ${email?.substring(0, 3)}***`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("create", "subscriber", getErrorMessage(error), error as Error);
+      throw DatabaseError.queryFailed(
+        "create",
+        "subscriber",
+        getErrorMessage(error),
+        error as Error,
+      );
     }
   },
 
@@ -647,19 +1009,26 @@ export const subscribersService = {
         throw ValidationError.missingRequired("email");
       }
 
-      errorLogger.info(`Unsubscribing user`, { email: email.substring(0, 3) + "***" });
+      errorLogger.info("Unsubscribing user", {
+        email: `${email.substring(0, 3)}***`,
+      });
 
       const subscriber = await subscribersRepository.unsubscribe(email);
 
       if (mailchimpClient.isConfigured()) {
         try {
           await mailchimpClient.unsubscribe(email);
-          errorLogger.info(`Subscriber removed from Mailchimp`, { email: email.substring(0, 3) + "***" });
-        } catch (error) {
-          errorLogger.warn(`Failed to unsubscribe from Mailchimp: ${getErrorMessage(error)}`, {
-            email: email.substring(0, 3) + "***",
-            error: getErrorMessage(error),
+          errorLogger.info("Subscriber removed from Mailchimp", {
+            email: `${email.substring(0, 3)}***`,
           });
+        } catch (error) {
+          errorLogger.warn(
+            `Failed to unsubscribe from Mailchimp: ${getErrorMessage(error)}`,
+            {
+              email: `${email.substring(0, 3)}***`,
+              error: getErrorMessage(error),
+            },
+          );
         }
       }
 
@@ -667,9 +1036,19 @@ export const subscribersService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("unsubscribe", "subscriber", `Email: ${email?.substring(0, 3)}***`, error as Error)
+        DatabaseError.queryFailed(
+          "unsubscribe",
+          "subscriber",
+          `Email: ${email?.substring(0, 3)}***`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("unsubscribe", "subscriber", getErrorMessage(error), error as Error);
+      throw DatabaseError.queryFailed(
+        "unsubscribe",
+        "subscriber",
+        getErrorMessage(error),
+        error as Error,
+      );
     }
   },
 
@@ -678,9 +1057,19 @@ export const subscribersService = {
       return await subscribersRepository.count();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("count", "subscribers", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "count",
+          "subscribers",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("count", "subscribers", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "count",
+        "subscribers",
+        undefined,
+        error as Error,
+      );
     }
   },
 };
@@ -695,18 +1084,35 @@ export const playlistsService = {
       return await playlistsRepository.findAll(options);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "playlists", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "playlists",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "playlists", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "playlists",
+        undefined,
+        error as Error,
+      );
     }
   },
 
   async syncFromSpotify(playlistId: string) {
-    const context = { service: "PlaylistsService", method: "syncFromSpotify", entityId: playlistId };
+    const context = {
+      service: "PlaylistsService",
+      method: "syncFromSpotify",
+      entityId: playlistId,
+    };
 
     try {
       if (!playlistId || typeof playlistId !== "string") {
-        throw ValidationError.invalidInput("playlistId", "Spotify playlist ID must be a non-empty string");
+        throw ValidationError.invalidInput(
+          "playlistId",
+          "Spotify playlist ID must be a non-empty string",
+        );
       }
 
       if (!spotifyClient.isConfigured()) {
@@ -714,11 +1120,11 @@ export const playlistsService = {
           "Spotify API is not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables.",
           ErrorCode.SPOTIFY_ERROR,
           503,
-          context
+          context,
         );
       }
 
-      errorLogger.info(`Syncing playlist from Spotify`, { playlistId });
+      errorLogger.info("Syncing playlist from Spotify", { playlistId });
 
       const spotifyPlaylist = await spotifyClient.getPlaylist(playlistId);
 
@@ -729,7 +1135,10 @@ export const playlistsService = {
       const existing = await playlistsRepository.findBySpotifyId(playlistId);
 
       if (existing) {
-        errorLogger.info(`Updating existing playlist`, { playlistId, internalId: existing.id });
+        errorLogger.info("Updating existing playlist", {
+          playlistId,
+          internalId: existing.id,
+        });
         return await playlistsRepository.update(existing.id, {
           name: spotifyPlaylist.name,
           description: spotifyPlaylist.description,
@@ -738,7 +1147,10 @@ export const playlistsService = {
         });
       }
 
-      errorLogger.info(`Creating new playlist`, { name: spotifyPlaylist.name, playlistId });
+      errorLogger.info("Creating new playlist", {
+        name: spotifyPlaylist.name,
+        playlistId,
+      });
 
       return await playlistsRepository.create({
         name: spotifyPlaylist.name,
@@ -753,9 +1165,19 @@ export const playlistsService = {
       if (error instanceof AppError) throw error;
 
       errorLogger.log(
-        ExternalApiError.spotifyError("sync playlist", `Playlist ID: ${playlistId}`, undefined, error as Error)
+        ExternalApiError.spotifyError(
+          "sync playlist",
+          `Playlist ID: ${playlistId}`,
+          undefined,
+          error as Error,
+        ),
       );
-      throw ExternalApiError.spotifyError("sync playlist", getErrorMessage(error), undefined, error as Error);
+      throw ExternalApiError.spotifyError(
+        "sync playlist",
+        getErrorMessage(error),
+        undefined,
+        error as Error,
+      );
     }
   },
 };
@@ -769,7 +1191,7 @@ export const dashboardService = {
     const context = { service: "DashboardService", method: "getSummary" };
 
     try {
-      errorLogger.info(`Fetching dashboard summary`);
+      errorLogger.info("Fetching dashboard summary");
 
       const [
         totalArtists,
@@ -802,19 +1224,27 @@ export const dashboardService = {
           return 0;
         }),
         subscribersRepository.count().catch((e) => {
-          errorLogger.warn(`Failed to count subscribers: ${getErrorMessage(e)}`);
+          errorLogger.warn(
+            `Failed to count subscribers: ${getErrorMessage(e)}`,
+          );
           return 0;
         }),
         releasesRepository.findLatest(5).catch((e) => {
-          errorLogger.warn(`Failed to fetch latest releases: ${getErrorMessage(e)}`);
+          errorLogger.warn(
+            `Failed to fetch latest releases: ${getErrorMessage(e)}`,
+          );
           return [];
         }),
         releasesRepository.countByYear().catch((e) => {
-          errorLogger.warn(`Failed to count releases by year: ${getErrorMessage(e)}`);
+          errorLogger.warn(
+            `Failed to count releases by year: ${getErrorMessage(e)}`,
+          );
           return [];
         }),
         releasesRepository.countByArtist().catch((e) => {
-          errorLogger.warn(`Failed to count releases by artist: ${getErrorMessage(e)}`);
+          errorLogger.warn(
+            `Failed to count releases by artist: ${getErrorMessage(e)}`,
+          );
           return [];
         }),
         syncJobsRepository.findLatest("spotify").catch(() => null),
@@ -840,13 +1270,15 @@ export const dashboardService = {
               .where(
                 and(
                   eq(upcomingReleases.isActive, true),
-                  gte(upcomingReleases.releaseDate, now)
-                )
+                  gte(upcomingReleases.releaseDate, now),
+                ),
               );
 
             // Get total presaves
             const [presaveSum] = await db
-              .select({ total: sql<number>`COALESCE(SUM(${upcomingReleases.presaveCount}), 0)` })
+              .select({
+                total: sql<number>`COALESCE(SUM(${upcomingReleases.presaveCount}), 0)`,
+              })
               .from(upcomingReleases);
 
             // Get top release by presaves
@@ -867,7 +1299,9 @@ export const dashboardService = {
               topRelease: topRelease || null,
             };
           } catch (e) {
-            errorLogger.warn(`Failed to fetch upcoming stats: ${getErrorMessage(e)}`);
+            errorLogger.warn(
+              `Failed to fetch upcoming stats: ${getErrorMessage(e)}`,
+            );
             return { activeReleases: 0, totalPresaves: 0, topRelease: null };
           }
         })(),
@@ -904,8 +1338,8 @@ export const dashboardService = {
           ErrorCode.DB_QUERY_FAILED,
           500,
           context,
-          error as Error
-        )
+          error as Error,
+        ),
       );
       // Return fallback values instead of throwing to prevent page crashes
       return {
@@ -981,7 +1415,12 @@ export const beatsService = {
       return featuredBeats;
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "featured beats", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "featured beats",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       // Return empty array instead of throwing to prevent page crashes
       return [];
@@ -1001,9 +1440,14 @@ export const beatsService = {
         return [];
       }
 
-      const allBeats = options?.onlyActive !== false
-        ? await db.select().from(beats).where(eq(beats.isActive, true)).orderBy(desc(beats.createdAt))
-        : await db.select().from(beats).orderBy(desc(beats.createdAt));
+      const allBeats =
+        options?.onlyActive !== false
+          ? await db
+              .select()
+              .from(beats)
+              .where(eq(beats.isActive, true))
+              .orderBy(desc(beats.createdAt))
+          : await db.select().from(beats).orderBy(desc(beats.createdAt));
 
       if (options?.limit) {
         return allBeats.slice(0, options.limit);
@@ -1012,14 +1456,23 @@ export const beatsService = {
       return allBeats;
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "beats", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "beats",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       return [];
     }
   },
 
   async getBySlug(slug: string) {
-    const context = { service: "BeatsService", method: "getBySlug", entityId: slug };
+    const context = {
+      service: "BeatsService",
+      method: "getBySlug",
+      entityId: slug,
+    };
 
     try {
       if (!slug) {
@@ -1042,14 +1495,19 @@ export const beatsService = {
         .limit(1);
 
       if (!beat) {
-        errorLogger.warn(`Beat not found by slug`, { slug });
+        errorLogger.warn("Beat not found by slug", { slug });
       }
 
       return beat || null;
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "beat", `Slug: ${slug}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "beat",
+          `Slug: ${slug}`,
+          error as Error,
+        ),
       );
       return null;
     }
@@ -1078,8 +1536,8 @@ export const upcomingReleasesService = {
         .where(
           and(
             eq(upcomingReleases.isActive, true),
-            gte(upcomingReleases.releaseDate, now)
-          )
+            gte(upcomingReleases.releaseDate, now),
+          ),
         )
         .orderBy(upcomingReleases.releaseDate)
         .limit(limit);
@@ -1087,7 +1545,12 @@ export const upcomingReleasesService = {
       return releases;
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "upcoming releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "upcoming releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       return [];
     }
@@ -1111,8 +1574,8 @@ export const upcomingReleasesService = {
           and(
             eq(upcomingReleases.isActive, true),
             eq(upcomingReleases.isFeatured, true),
-            gte(upcomingReleases.releaseDate, now)
-          )
+            gte(upcomingReleases.releaseDate, now),
+          ),
         )
         .orderBy(upcomingReleases.releaseDate)
         .limit(limit);
@@ -1120,7 +1583,12 @@ export const upcomingReleasesService = {
       return releases;
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "featured upcoming releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "featured upcoming releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       return [];
     }
@@ -1148,9 +1616,9 @@ export const upcomingReleasesService = {
             or(
               eq(upcomingReleases.artistName, artistName),
               like(upcomingReleases.artistName, `%${artistName}%`),
-              like(upcomingReleases.featuredArtists, `%${artistName}%`)
-            )
-          )
+              like(upcomingReleases.featuredArtists, `%${artistName}%`),
+            ),
+          ),
         )
         .orderBy(upcomingReleases.releaseDate)
         .limit(limit);
@@ -1158,7 +1626,12 @@ export const upcomingReleasesService = {
       return releases;
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "artist upcoming releases", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "artist upcoming releases",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
       return [];
     }
@@ -1183,7 +1656,12 @@ export const upcomingReleasesService = {
       return release || null;
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "upcoming release", `Slug: ${slug}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "upcoming release",
+          `Slug: ${slug}`,
+          error as Error,
+        ),
       );
       return null;
     }
@@ -1207,7 +1685,12 @@ export const upcomingReleasesService = {
         .where(eq(upcomingReleases.id, id));
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("update", "upcoming release presave count", `ID: ${id}`, error as Error)
+        DatabaseError.queryFailed(
+          "update",
+          "upcoming release presave count",
+          `ID: ${id}`,
+          error as Error,
+        ),
       );
     }
   },
@@ -1227,9 +1710,19 @@ export const siteSettingsService = {
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "site setting", `Key: ${key}`, error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "site setting",
+          `Key: ${key}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "site setting", `Failed to get setting: ${key}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "site setting",
+        `Failed to get setting: ${key}`,
+        error as Error,
+      );
     }
   },
 
@@ -1238,14 +1731,24 @@ export const siteSettingsService = {
       if (!key) {
         throw ValidationError.invalidInput("key", "Setting key is required");
       }
-      errorLogger.info(`Updating site setting`, { key });
+      errorLogger.info("Updating site setting", { key });
       return await siteSettingsRepository.set(key, value);
     } catch (error) {
       if (error instanceof AppError) throw error;
       errorLogger.log(
-        DatabaseError.queryFailed("update", "site setting", `Key: ${key}`, error as Error)
+        DatabaseError.queryFailed(
+          "update",
+          "site setting",
+          `Key: ${key}`,
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("update", "site setting", `Failed to set setting: ${key}`, error as Error);
+      throw DatabaseError.queryFailed(
+        "update",
+        "site setting",
+        `Failed to set setting: ${key}`,
+        error as Error,
+      );
     }
   },
 
@@ -1254,9 +1757,19 @@ export const siteSettingsService = {
       return await siteSettingsRepository.findAll();
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "site settings", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "site settings",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "site settings", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "site settings",
+        undefined,
+        error as Error,
+      );
     }
   },
 
@@ -1276,9 +1789,19 @@ export const siteSettingsService = {
       ]);
     } catch (error) {
       errorLogger.log(
-        DatabaseError.queryFailed("fetch", "site info", getErrorMessage(error), error as Error)
+        DatabaseError.queryFailed(
+          "fetch",
+          "site info",
+          getErrorMessage(error),
+          error as Error,
+        ),
       );
-      throw DatabaseError.queryFailed("fetch", "site info", undefined, error as Error);
+      throw DatabaseError.queryFailed(
+        "fetch",
+        "site info",
+        undefined,
+        error as Error,
+      );
     }
   },
 };

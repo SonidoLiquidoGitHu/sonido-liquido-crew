@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { mediaReleases } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!mediaRelease) {
       return NextResponse.json(
         { success: false, error: "Media release not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.error("[API] Error fetching media release:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch media release" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

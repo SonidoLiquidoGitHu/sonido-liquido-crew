@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artistGalleryAssets } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { asc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (!artistId && !artistSlug) {
       return NextResponse.json(
         { success: false, error: "artistId or artistSlug is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     console.error("[Artist Gallery API] Error fetching:", error);
     return NextResponse.json(
       { success: false, error: "Error fetching gallery assets" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -73,14 +73,14 @@ export async function POST(request: NextRequest) {
     if (!artistId) {
       return NextResponse.json(
         { success: false, error: "artistId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!assets || !Array.isArray(assets) || assets.length === 0) {
       return NextResponse.json(
         { success: false, error: "At least one asset is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -91,28 +91,31 @@ export async function POST(request: NextRequest) {
       .where(eq(artistGalleryAssets.artistId, artistId))
       .orderBy(asc(artistGalleryAssets.sortOrder));
 
-    let nextSortOrder = existing.length > 0
-      ? Math.max(...existing.map((a) => a.sortOrder)) + 1
-      : 0;
+    let nextSortOrder =
+      existing.length > 0
+        ? Math.max(...existing.map((a) => a.sortOrder)) + 1
+        : 0;
 
-    const newAssets = assets.map((asset: {
-      assetUrl: string;
-      thumbnailUrl?: string;
-      assetType?: "photo" | "press_photo" | "album_art" | "logo" | "banner";
-      caption?: string;
-      credit?: string;
-      isPublic?: boolean;
-    }) => ({
-      id: generateUUID(),
-      artistId,
-      assetUrl: asset.assetUrl,
-      thumbnailUrl: asset.thumbnailUrl || null,
-      assetType: asset.assetType || ("photo" as const),
-      caption: asset.caption || null,
-      credit: asset.credit || null,
-      isPublic: asset.isPublic !== false,
-      sortOrder: nextSortOrder++,
-    }));
+    const newAssets = assets.map(
+      (asset: {
+        assetUrl: string;
+        thumbnailUrl?: string;
+        assetType?: "photo" | "press_photo" | "album_art" | "logo" | "banner";
+        caption?: string;
+        credit?: string;
+        isPublic?: boolean;
+      }) => ({
+        id: generateUUID(),
+        artistId,
+        assetUrl: asset.assetUrl,
+        thumbnailUrl: asset.thumbnailUrl || null,
+        assetType: asset.assetType || ("photo" as const),
+        caption: asset.caption || null,
+        credit: asset.credit || null,
+        isPublic: asset.isPublic !== false,
+        sortOrder: nextSortOrder++,
+      }),
+    );
 
     await db.insert(artistGalleryAssets).values(newAssets);
 
@@ -125,7 +128,7 @@ export async function POST(request: NextRequest) {
     console.error("[Artist Gallery API] Error adding assets:", error);
     return NextResponse.json(
       { success: false, error: "Error adding gallery assets" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -136,7 +139,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -146,7 +149,7 @@ export async function DELETE(request: NextRequest) {
     if (!assetId) {
       return NextResponse.json(
         { success: false, error: "assetId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -159,7 +162,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[Artist Gallery API] Error deleting asset:", error);
     return NextResponse.json(
       { success: false, error: "Error deleting asset" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, executeRaw } from "@/db/client";
 import { samplingResources, samplingResourcesSettings } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { asc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // ===========================================
 // Sampling Resources Admin API (DB-backed)
@@ -50,7 +50,10 @@ async function ensureTables(): Promise<void> {
     `);
     console.log("[sampling-resources] Tables ensured");
   } catch (err) {
-    console.warn("[sampling-resources] ensureTables error (may be OK if tables already exist):", err);
+    console.warn(
+      "[sampling-resources] ensureTables error (may be OK if tables already exist):",
+      err,
+    );
   }
 
   tablesEnsured = true;
@@ -101,7 +104,10 @@ async function upsertSetting(key: string, value: string): Promise<void> {
   await db
     .insert(samplingResourcesSettings)
     .values({ key, value })
-    .onConflictDoUpdate({ target: samplingResourcesSettings.key, set: { value, updatedAt: new Date() } });
+    .onConflictDoUpdate({
+      target: samplingResourcesSettings.key,
+      set: { value, updatedAt: new Date() },
+    });
 }
 
 // -------------------------------------------
@@ -129,7 +135,10 @@ export async function GET() {
 
     const [settings, rows] = await Promise.all([
       readSettingsFromDB(),
-      db.select().from(samplingResources).orderBy(asc(samplingResources.sortOrder)),
+      db
+        .select()
+        .from(samplingResources)
+        .orderBy(asc(samplingResources.sortOrder)),
     ]);
 
     const resources = rows.map(rowToResource);
@@ -140,7 +149,10 @@ export async function GET() {
       if (seeded) {
         const [settings2, rows2] = await Promise.all([
           readSettingsFromDB(),
-          db.select().from(samplingResources).orderBy(asc(samplingResources.sortOrder)),
+          db
+            .select()
+            .from(samplingResources)
+            .orderBy(asc(samplingResources.sortOrder)),
         ]);
         return NextResponse.json({
           success: true,
@@ -157,7 +169,7 @@ export async function GET() {
     console.error("[sampling-resources] GET error:", error);
     return NextResponse.json(
       { success: false, error: "Error al leer recursos." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -172,9 +184,12 @@ export async function POST(request: NextRequest) {
     // Check if this is a settings update (has _action: "settings")
     if (body._action === "settings") {
       const validGateTypes: GateType[] = ["email", "presave", "both"];
-      const gateType = validGateTypes.includes(body.gateType) ? body.gateType : "email";
+      const gateType = validGateTypes.includes(body.gateType)
+        ? body.gateType
+        : "email";
       const presaveUrl = (body.presaveUrl || "").trim();
-      const presaveCta = (body.presaveCta || "").trim() || "Pre-guardar en Spotify";
+      const presaveCta =
+        (body.presaveCta || "").trim() || "Pre-guardar en Spotify";
 
       await upsertSetting("gateType", gateType);
       await upsertSetting("presaveUrl", presaveUrl);
@@ -187,19 +202,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Otherwise, create a new resource
-    const { type, title, url, category, description, tags, videoId, playlistId, handle } = body;
+    const {
+      type,
+      title,
+      url,
+      category,
+      description,
+      tags,
+      videoId,
+      playlistId,
+      handle,
+    } = body;
 
     if (!type || !title || !url || !category || !description) {
       return NextResponse.json(
-        { success: false, error: "Faltan campos requeridos: type, title, url, category, description" },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            "Faltan campos requeridos: type, title, url, category, description",
+        },
+        { status: 400 },
       );
     }
 
     if (!["video", "channel", "playlist"].includes(type)) {
       return NextResponse.json(
-        { success: false, error: "Tipo inválido. Debe ser: video, channel o playlist" },
-        { status: 400 }
+        {
+          success: false,
+          error: "Tipo inválido. Debe ser: video, channel o playlist",
+        },
+        { status: 400 },
       );
     }
 
@@ -217,7 +249,9 @@ export async function POST(request: NextRequest) {
       category: category.trim(),
       description: description.trim(),
       tags: JSON.stringify(
-        Array.isArray(tags) ? tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean) : []
+        Array.isArray(tags)
+          ? tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean)
+          : [],
       ),
       videoId: type === "video" && videoId ? videoId.trim() : null,
       playlistId: type === "playlist" && playlistId ? playlistId.trim() : null,
@@ -227,12 +261,15 @@ export async function POST(request: NextRequest) {
 
     await db.insert(samplingResources).values(newResource);
 
-    return NextResponse.json({ success: true, data: rowToResource(newResource as any) });
+    return NextResponse.json({
+      success: true,
+      data: rowToResource(newResource as any),
+    });
   } catch (error) {
     console.error("[sampling-resources] POST error:", error);
     return NextResponse.json(
       { success: false, error: "Error al crear recurso." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -248,16 +285,20 @@ export async function PUT(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "ID requerido para actualizar." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Check existence
-    const [existing] = await db.select().from(samplingResources).where(eq(samplingResources.id, id)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(samplingResources)
+      .where(eq(samplingResources.id, id))
+      .limit(1);
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Recurso no encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -267,31 +308,45 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, any> = { updatedAt: new Date() };
     if (updates.title !== undefined) updateData.title = updates.title.trim();
     if (updates.url !== undefined) updateData.url = updates.url.trim();
-    if (updates.category !== undefined) updateData.category = updates.category.trim();
-    if (updates.description !== undefined) updateData.description = updates.description.trim();
+    if (updates.category !== undefined)
+      updateData.category = updates.category.trim();
+    if (updates.description !== undefined)
+      updateData.description = updates.description.trim();
     if (updates.type !== undefined) updateData.type = updates.type;
 
     if (updates.tags !== undefined) {
       updateData.tags = JSON.stringify(
-        updates.tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean)
+        updates.tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean),
       );
     }
 
     // Type-specific fields: clear fields that don't belong to the new type
-    updateData.videoId = newType === "video" && updates.videoId ? updates.videoId.trim() : null;
-    updateData.playlistId = newType === "playlist" && updates.playlistId ? updates.playlistId.trim() : null;
-    updateData.handle = newType === "channel" && updates.handle ? updates.handle.trim() : null;
+    updateData.videoId =
+      newType === "video" && updates.videoId ? updates.videoId.trim() : null;
+    updateData.playlistId =
+      newType === "playlist" && updates.playlistId
+        ? updates.playlistId.trim()
+        : null;
+    updateData.handle =
+      newType === "channel" && updates.handle ? updates.handle.trim() : null;
 
-    await db.update(samplingResources).set(updateData).where(eq(samplingResources.id, id));
+    await db
+      .update(samplingResources)
+      .set(updateData)
+      .where(eq(samplingResources.id, id));
 
-    const [updated] = await db.select().from(samplingResources).where(eq(samplingResources.id, id)).limit(1);
+    const [updated] = await db
+      .select()
+      .from(samplingResources)
+      .where(eq(samplingResources.id, id))
+      .limit(1);
 
     return NextResponse.json({ success: true, data: rowToResource(updated!) });
   } catch (error) {
     console.error("[sampling-resources] PUT error:", error);
     return NextResponse.json(
       { success: false, error: "Error al actualizar recurso." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -307,7 +362,7 @@ export async function PATCH(request: NextRequest) {
     if (!Array.isArray(orderedIds)) {
       return NextResponse.json(
         { success: false, error: "orderedIds debe ser un array." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -324,7 +379,7 @@ export async function PATCH(request: NextRequest) {
     console.error("[sampling-resources] PATCH error:", error);
     return NextResponse.json(
       { success: false, error: "Error al reordenar recursos." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -340,15 +395,19 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "ID requerido para eliminar." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const [existing] = await db.select().from(samplingResources).where(eq(samplingResources.id, id)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(samplingResources)
+      .where(eq(samplingResources.id, id))
+      .limit(1);
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Recurso no encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -359,7 +418,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[sampling-resources] DELETE error:", error);
     return NextResponse.json(
       { success: false, error: "Error al eliminar recurso." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -369,9 +428,12 @@ export async function DELETE(request: NextRequest) {
 // -------------------------------------------
 async function seedFromJsonFile(): Promise<boolean> {
   try {
-    const { readFile } = await import("fs/promises");
-    const path = await import("path");
-    const dataPath = path.join(process.cwd(), "src/data/sampling-resources.json");
+    const { readFile } = await import("node:fs/promises");
+    const path = await import("node:path");
+    const dataPath = path.join(
+      process.cwd(),
+      "src/data/sampling-resources.json",
+    );
     const raw = await readFile(dataPath, "utf-8");
     const data = JSON.parse(raw);
 
@@ -386,7 +448,10 @@ async function seedFromJsonFile(): Promise<boolean> {
       await db
         .insert(samplingResourcesSettings)
         .values({ key, value })
-        .onConflictDoUpdate({ target: samplingResourcesSettings.key, set: { value, updatedAt: new Date() } });
+        .onConflictDoUpdate({
+          target: samplingResourcesSettings.key,
+          set: { value, updatedAt: new Date() },
+        });
     }
 
     // Seed resources
@@ -407,7 +472,9 @@ async function seedFromJsonFile(): Promise<boolean> {
       });
     }
 
-    console.log(`[sampling-resources] Seeded ${data.resources.length} resources from JSON file`);
+    console.log(
+      `[sampling-resources] Seeded ${data.resources.length} resources from JSON file`,
+    );
     return true;
   } catch (err) {
     // JSON file might not exist in production build — that's fine

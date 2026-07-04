@@ -1,8 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { artists, artistExternalProfiles, artistGalleryAssets, artistRelations, artistEpk } from "@/db/schema";
+import {
+  artistEpk,
+  artistExternalProfiles,
+  artistGalleryAssets,
+  artistRelations,
+  artists,
+} from "@/db/schema";
+import { extractSpotifyId, generateUUID, slugify } from "@/lib/utils";
 import { eq, or } from "drizzle-orm";
-import { generateUUID, slugify, extractSpotifyId } from "@/lib/utils";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -16,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -29,31 +35,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!artist) {
       return NextResponse.json(
         { success: false, error: "Artist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Fetch related data
     const [externalProfiles, galleryAssets, relations] = await Promise.all([
-      db.select().from(artistExternalProfiles).where(eq(artistExternalProfiles.artistId, id)),
-      db.select().from(artistGalleryAssets).where(eq(artistGalleryAssets.artistId, id)),
+      db
+        .select()
+        .from(artistExternalProfiles)
+        .where(eq(artistExternalProfiles.artistId, id)),
+      db
+        .select()
+        .from(artistGalleryAssets)
+        .where(eq(artistGalleryAssets.artistId, id)),
       db.select().from(artistRelations).where(eq(artistRelations.artistId, id)),
     ]);
 
     // Get the related artist details for each relation
-    const relatedArtistIds = relations.map(r => r.relatedArtistId);
-    let relatedArtists: typeof artist[] = [];
+    const relatedArtistIds = relations.map((r) => r.relatedArtistId);
+    let relatedArtists: (typeof artist)[] = [];
     if (relatedArtistIds.length > 0) {
       relatedArtists = await db
         .select()
         .from(artists)
-        .where(or(...relatedArtistIds.map(aid => eq(artists.id, aid))));
+        .where(or(...relatedArtistIds.map((aid) => eq(artists.id, aid))));
     }
 
     // Combine relations with artist details
-    const relationsWithDetails = relations.map(r => ({
+    const relationsWithDetails = relations.map((r) => ({
       ...r,
-      relatedArtist: relatedArtists.find(a => a.id === r.relatedArtistId),
+      relatedArtist: relatedArtists.find((a) => a.id === r.relatedArtistId),
     }));
 
     return NextResponse.json({
@@ -69,7 +81,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.error("[API] Error fetching artist:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch artist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -83,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -93,37 +105,70 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Only include fields that are present in the request body (even if value is null/empty)
     // Use "key in body" to detect explicit presence, not truthiness
-    if ('name' in body) updateData.name = body.name;
-    if ('slug' in body) updateData.slug = body.slug || slugify(body.name);
-    if ('realName' in body) updateData.realName = body.realName || null;
-    if ('bio' in body) updateData.bio = body.bio || null;
-    if ('shortBio' in body) updateData.shortBio = body.shortBio || null;
-    if ('role' in body) updateData.role = body.role || "mc";
-    if ('profileImageUrl' in body) updateData.profileImageUrl = body.profileImageUrl || null;
-    if ('featuredImageUrl' in body) updateData.featuredImageUrl = body.featuredImageUrl || null;
-    if ('bannerImageUrl' in body) updateData.bannerImageUrl = body.bannerImageUrl || null;
-    if ('tintColor' in body) updateData.tintColor = body.tintColor || null;
-    if ('location' in body) updateData.location = body.location || null;
-    if ('country' in body) updateData.country = body.country || null;
-    if ('bookingEmail' in body) updateData.bookingEmail = body.bookingEmail || null;
-    if ('managementEmail' in body) updateData.managementEmail = body.managementEmail || null;
-    if ('pressEmail' in body) updateData.pressEmail = body.pressEmail || null;
-    if ('websiteUrl' in body) updateData.websiteUrl = body.websiteUrl || null;
-    if ('yearStarted' in body) updateData.yearStarted = body.yearStarted ? parseInt(body.yearStarted) : null;
+    if ("name" in body) updateData.name = body.name;
+    if ("slug" in body) updateData.slug = body.slug || slugify(body.name);
+    if ("realName" in body) updateData.realName = body.realName || null;
+    if ("bio" in body) updateData.bio = body.bio || null;
+    if ("shortBio" in body) updateData.shortBio = body.shortBio || null;
+    if ("role" in body) updateData.role = body.role || "mc";
+    if ("profileImageUrl" in body)
+      updateData.profileImageUrl = body.profileImageUrl || null;
+    if ("featuredImageUrl" in body)
+      updateData.featuredImageUrl = body.featuredImageUrl || null;
+    if ("bannerImageUrl" in body)
+      updateData.bannerImageUrl = body.bannerImageUrl || null;
+    if ("tintColor" in body) updateData.tintColor = body.tintColor || null;
+    if ("location" in body) updateData.location = body.location || null;
+    if ("country" in body) updateData.country = body.country || null;
+    if ("bookingEmail" in body)
+      updateData.bookingEmail = body.bookingEmail || null;
+    if ("managementEmail" in body)
+      updateData.managementEmail = body.managementEmail || null;
+    if ("pressEmail" in body) updateData.pressEmail = body.pressEmail || null;
+    if ("websiteUrl" in body) updateData.websiteUrl = body.websiteUrl || null;
+    if ("yearStarted" in body)
+      updateData.yearStarted = body.yearStarted
+        ? Number.parseInt(body.yearStarted)
+        : null;
     // For JSON fields: if the value is already a string, use it as-is (prevents double-escaping).
     // If it's an array/object, stringify it. If empty/null, store null.
-    if ('genres' in body) updateData.genres = body.genres ? (typeof body.genres === 'string' ? body.genres : JSON.stringify(body.genres)) : null;
-    if ('labels' in body) updateData.labels = body.labels ? (typeof body.labels === 'string' ? body.labels : JSON.stringify(body.labels)) : null;
-    if ('pressQuotes' in body) updateData.pressQuotes = body.pressQuotes ? (typeof body.pressQuotes === 'string' ? body.pressQuotes : JSON.stringify(body.pressQuotes)) : null;
-    if ('featuredVideos' in body) updateData.featuredVideos = body.featuredVideos ? (typeof body.featuredVideos === 'string' ? body.featuredVideos : JSON.stringify(body.featuredVideos)) : null;
-    if ('isActive' in body) updateData.isActive = body.isActive ?? true;
-    if ('isFeatured' in body) updateData.isFeatured = body.isFeatured ?? false;
-    if ('sortOrder' in body) updateData.sortOrder = body.sortOrder || 0;
-    if ('verificationStatus' in body) updateData.verificationStatus = body.verificationStatus || "pending";
-    if ('identityConflictFlag' in body) updateData.identityConflictFlag = body.identityConflictFlag ?? false;
-    if ('adminNotes' in body) updateData.adminNotes = body.adminNotes || null;
+    if ("genres" in body)
+      updateData.genres = body.genres
+        ? typeof body.genres === "string"
+          ? body.genres
+          : JSON.stringify(body.genres)
+        : null;
+    if ("labels" in body)
+      updateData.labels = body.labels
+        ? typeof body.labels === "string"
+          ? body.labels
+          : JSON.stringify(body.labels)
+        : null;
+    if ("pressQuotes" in body)
+      updateData.pressQuotes = body.pressQuotes
+        ? typeof body.pressQuotes === "string"
+          ? body.pressQuotes
+          : JSON.stringify(body.pressQuotes)
+        : null;
+    if ("featuredVideos" in body)
+      updateData.featuredVideos = body.featuredVideos
+        ? typeof body.featuredVideos === "string"
+          ? body.featuredVideos
+          : JSON.stringify(body.featuredVideos)
+        : null;
+    if ("isActive" in body) updateData.isActive = body.isActive ?? true;
+    if ("isFeatured" in body) updateData.isFeatured = body.isFeatured ?? false;
+    if ("sortOrder" in body) updateData.sortOrder = body.sortOrder || 0;
+    if ("verificationStatus" in body)
+      updateData.verificationStatus = body.verificationStatus || "pending";
+    if ("identityConflictFlag" in body)
+      updateData.identityConflictFlag = body.identityConflictFlag ?? false;
+    if ("adminNotes" in body) updateData.adminNotes = body.adminNotes || null;
 
-    console.log(`[API] Updating artist ${id} with fields:`, Object.keys(updateData).join(", "));
+    console.log(
+      `[API] Updating artist ${id} with fields:`,
+      Object.keys(updateData).join(", "),
+    );
 
     const [updatedArtist] = await db
       .update(artists)
@@ -134,14 +179,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!updatedArtist) {
       return NextResponse.json(
         { success: false, error: "Artist not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Update external profiles if provided
     if (body.externalProfiles) {
       // Delete existing profiles
-      await db.delete(artistExternalProfiles).where(eq(artistExternalProfiles.artistId, id));
+      await db
+        .delete(artistExternalProfiles)
+        .where(eq(artistExternalProfiles.artistId, id));
 
       // Insert new profiles
       for (const profile of body.externalProfiles) {
@@ -170,7 +217,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Update gallery assets if provided
     if (body.galleryAssets) {
       // Delete existing assets
-      await db.delete(artistGalleryAssets).where(eq(artistGalleryAssets.artistId, id));
+      await db
+        .delete(artistGalleryAssets)
+        .where(eq(artistGalleryAssets.artistId, id));
 
       // Insert new assets
       for (let i = 0; i < body.galleryAssets.length; i++) {
@@ -241,11 +290,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         }
         // genreSpecific: sync from Artist.genres if EPK is empty
         if (!existingEpk.genreSpecific && body.genres) {
-          epkUpdates.genreSpecific = Array.isArray(body.genres) ? body.genres.join(", ") : body.genres;
+          epkUpdates.genreSpecific = Array.isArray(body.genres)
+            ? body.genres.join(", ")
+            : body.genres;
         }
         // labelName: sync from Artist.labels if EPK is empty
         if (!existingEpk.labelName && body.labels) {
-          epkUpdates.labelName = Array.isArray(body.labels) ? body.labels.join(" / ") : body.labels;
+          epkUpdates.labelName = Array.isArray(body.labels)
+            ? body.labels.join(" / ")
+            : body.labels;
         }
         // pressQuotes: sync from Artist if EPK is empty
         if (!existingEpk.pressQuotes && body.pressQuotes) {
@@ -256,16 +309,22 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           epkUpdates.officialMusicVideos = JSON.stringify(body.featuredVideos);
         }
 
-        if (Object.keys(epkUpdates).length > 1) { // >1 because updatedAt is always there
+        if (Object.keys(epkUpdates).length > 1) {
+          // >1 because updatedAt is always there
           await db
             .update(artistEpk)
             .set(epkUpdates)
             .where(eq(artistEpk.artistId, id));
-          console.log(`[API] Synced artist fields to EPK for: ${updatedArtist.name}`);
+          console.log(
+            `[API] Synced artist fields to EPK for: ${updatedArtist.name}`,
+          );
         }
       }
     } catch (syncError) {
-      console.error("[API] Error syncing artist to EPK (non-critical):", syncError);
+      console.error(
+        "[API] Error syncing artist to EPK (non-critical):",
+        syncError,
+      );
       // Don't fail the request if sync fails
     }
     // ===== End sync to EPK =====
@@ -279,13 +338,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     console.error("[API] Error updating artist:", error);
 
     // Provide a more helpful error message for missing columns
-    if (errorMsg.includes("no such column") || errorMsg.includes("has no column")) {
+    if (
+      errorMsg.includes("no such column") ||
+      errorMsg.includes("has no column")
+    ) {
       return NextResponse.json(
         {
           success: false,
           error: `Database schema mismatch: ${errorMsg}. Try running /api/admin/ensure-tables to add missing columns.`,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -294,15 +356,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         {
           success: false,
-          error: "El slug ya existe para otro artista. Cambia el slug o el nombre.",
+          error:
+            "El slug ya existe para otro artista. Cambia el slug o el nombre.",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     return NextResponse.json(
       { success: false, error: "Failed to update artist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -315,7 +378,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -342,11 +405,29 @@ export async function POST(request: NextRequest) {
         managementEmail: body.managementEmail || null,
         pressEmail: body.pressEmail || null,
         websiteUrl: body.websiteUrl || null,
-        yearStarted: body.yearStarted ? parseInt(body.yearStarted) : null,
-        genres: body.genres ? (typeof body.genres === 'string' ? body.genres : JSON.stringify(body.genres)) : null,
-        labels: body.labels ? (typeof body.labels === 'string' ? body.labels : JSON.stringify(body.labels)) : null,
-        pressQuotes: body.pressQuotes ? (typeof body.pressQuotes === 'string' ? body.pressQuotes : JSON.stringify(body.pressQuotes)) : null,
-        featuredVideos: body.featuredVideos ? (typeof body.featuredVideos === 'string' ? body.featuredVideos : JSON.stringify(body.featuredVideos)) : null,
+        yearStarted: body.yearStarted
+          ? Number.parseInt(body.yearStarted)
+          : null,
+        genres: body.genres
+          ? typeof body.genres === "string"
+            ? body.genres
+            : JSON.stringify(body.genres)
+          : null,
+        labels: body.labels
+          ? typeof body.labels === "string"
+            ? body.labels
+            : JSON.stringify(body.labels)
+          : null,
+        pressQuotes: body.pressQuotes
+          ? typeof body.pressQuotes === "string"
+            ? body.pressQuotes
+            : JSON.stringify(body.pressQuotes)
+          : null,
+        featuredVideos: body.featuredVideos
+          ? typeof body.featuredVideos === "string"
+            ? body.featuredVideos
+            : JSON.stringify(body.featuredVideos)
+          : null,
         isActive: body.isActive ?? true,
         isFeatured: body.isFeatured ?? false,
         sortOrder: body.sortOrder || 0,
@@ -423,7 +504,7 @@ export async function POST(request: NextRequest) {
     console.error("[API] Error creating artist:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create artist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -436,7 +517,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -452,7 +533,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     console.error("[API] Error deleting artist:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete artist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

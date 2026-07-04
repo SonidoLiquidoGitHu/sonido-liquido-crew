@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // UPCOMING RELEASES TABLE
@@ -15,8 +15,10 @@ export const upcomingReleases = sqliteTable("upcoming_releases", {
   artistName: text("artist_name").notNull(),
   featuredArtists: text("featured_artists"), // JSON array of featured artist names
   releaseType: text("release_type", {
-    enum: ["single", "maxi-single", "ep", "album", "compilation", "mixtape"]
-  }).notNull().default("single"),
+    enum: ["single", "maxi-single", "ep", "album", "compilation", "mixtape"],
+  })
+    .notNull()
+    .default("single"),
   description: text("description"),
 
   // Visual Assets
@@ -41,17 +43,33 @@ export const upcomingReleases = sqliteTable("upcoming_releases", {
   distrokidHyperfollowUrl: text("distrokid_hyperfollow_url"),
 
   // Download Gate
-  downloadGateEnabled: integer("download_gate_enabled", { mode: "boolean" }).notNull().default(false),
-  downloadGateFiles: text("download_gate_files", { mode: "json" }).$type<Array<{
-    name: string;
-    type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
-    url: string;
-    fileName: string;
-    fileSize?: string;
-  }>>(),
-  requirePresaveForDownload: integer("require_presave_for_download", { mode: "boolean" }).notNull().default(true),
-  requireHyperfollowForDownload: integer("require_hyperfollow_for_download", { mode: "boolean" }).notNull().default(false),
-  requireEmailForDownload: integer("require_email_for_download", { mode: "boolean" }).notNull().default(true),
+  downloadGateEnabled: integer("download_gate_enabled", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  downloadGateFiles: text("download_gate_files", { mode: "json" }).$type<
+    Array<{
+      name: string;
+      type: "remix" | "wallpaper" | "acapella" | "beat" | "stems" | "other";
+      url: string;
+      fileName: string;
+      fileSize?: string;
+    }>
+  >(),
+  requirePresaveForDownload: integer("require_presave_for_download", {
+    mode: "boolean",
+  })
+    .notNull()
+    .default(true),
+  requireHyperfollowForDownload: integer("require_hyperfollow_for_download", {
+    mode: "boolean",
+  })
+    .notNull()
+    .default(false),
+  requireEmailForDownload: integer("require_email_for_download", {
+    mode: "boolean",
+  })
+    .notNull()
+    .default(true),
 
   // Media
   teaserVideoUrl: text("teaser_video_url"), // Horizontal video (YouTube, web)
@@ -60,8 +78,12 @@ export const upcomingReleases = sqliteTable("upcoming_releases", {
 
   // Status
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
-  showCountdown: integer("show_countdown", { mode: "boolean" }).notNull().default(true),
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  showCountdown: integer("show_countdown", { mode: "boolean" })
+    .notNull()
+    .default(true),
 
   // Stats
   presaveCount: integer("presave_count").notNull().default(0),
@@ -71,8 +93,12 @@ export const upcomingReleases = sqliteTable("upcoming_releases", {
   releasedReleaseId: text("released_release_id"), // Links to releases table after launch
 
   // Timestamps
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -82,9 +108,13 @@ export const upcomingReleases = sqliteTable("upcoming_releases", {
 
 export const presaveSubscribers = sqliteTable("presave_subscribers", {
   id: text("id").primaryKey(),
-  upcomingReleaseId: text("upcoming_release_id").notNull().references(() => upcomingReleases.id, { onDelete: "cascade" }),
+  upcomingReleaseId: text("upcoming_release_id")
+    .notNull()
+    .references(() => upcomingReleases.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
-  subscribedAt: integer("subscribed_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  subscribedAt: integer("subscribed_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
   notified: integer("notified", { mode: "boolean" }).notNull().default(false),
 });
 

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { pressKits, artists } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { artists, pressKits } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
+import { desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - List all press kits
 export async function GET() {
@@ -39,7 +39,7 @@ export async function GET() {
     console.error("[API] Error fetching press kits:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch press kits" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     if (!body.title || !body.downloadUrl) {
       return NextResponse.json(
         { success: false, error: "Title and download URL are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     console.error("[API] Error creating press kit:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create press kit" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -108,7 +108,7 @@ export async function PUT(request: NextRequest) {
     if (!body.id) {
       return NextResponse.json(
         { success: false, error: "Press kit ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -129,7 +129,7 @@ export async function PUT(request: NextRequest) {
     if (!updated) {
       return NextResponse.json(
         { success: false, error: "Press kit not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -143,7 +143,7 @@ export async function PUT(request: NextRequest) {
     console.error("[API] Error updating press kit:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update press kit" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -154,7 +154,7 @@ export async function DELETE(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -164,7 +164,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Press kit ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -180,7 +180,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[API] Error deleting press kit:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete press kit" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

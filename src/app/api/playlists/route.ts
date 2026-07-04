@@ -1,21 +1,69 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
-import { playlistTracks, curatedPlaylists } from "@/db/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { curatedPlaylists, playlistTracks } from "@/db/schema";
+import { asc, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 const DEFAULT_COVER_COLORS = [
-  "#f97316", "#22c55e", "#3b82f6", "#8b5cf6", "#eab308",
+  "#f97316",
+  "#22c55e",
+  "#3b82f6",
+  "#8b5cf6",
+  "#eab308",
 ];
 
 // Fallback playlists with placeholder Spotify IDs (admin can replace via admin panel)
-const FALLBACK_PLAYLISTS: Array<{ id: string; name: string; description: string; coverColor: string; spotifyPlaylistId: string | null; spotifyPlaylistUrl: string | null; trackCount?: number }> = [
-  { id: "gran-reserva", name: "Gran Reserva", description: "Los mejores tracks del roster", coverColor: "#f97316", spotifyPlaylistId: "2y0Z7WdObJY1IvCLCXwUez", spotifyPlaylistUrl: "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez" },
-  { id: "weekly-picks", name: "Picks de la Semana", description: "Selección semanal", coverColor: "#22c55e", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
-  { id: "new-releases", name: "Nuevos Lanzamientos", description: "Lo más reciente", coverColor: "#3b82f6", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
-  { id: "classics", name: "Clásicos", description: "Tracks clásicos del crew", coverColor: "#8b5cf6", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
-  { id: "collaborations", name: "Colaboraciones", description: "Featurings y colaboraciones", coverColor: "#eab308", spotifyPlaylistId: null, spotifyPlaylistUrl: null },
+const FALLBACK_PLAYLISTS: Array<{
+  id: string;
+  name: string;
+  description: string;
+  coverColor: string;
+  spotifyPlaylistId: string | null;
+  spotifyPlaylistUrl: string | null;
+  trackCount?: number;
+}> = [
+  {
+    id: "gran-reserva",
+    name: "Gran Reserva",
+    description: "Los mejores tracks del roster",
+    coverColor: "#f97316",
+    spotifyPlaylistId: "2y0Z7WdObJY1IvCLCXwUez",
+    spotifyPlaylistUrl:
+      "https://open.spotify.com/playlist/2y0Z7WdObJY1IvCLCXwUez",
+  },
+  {
+    id: "weekly-picks",
+    name: "Picks de la Semana",
+    description: "Selección semanal",
+    coverColor: "#22c55e",
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+  },
+  {
+    id: "new-releases",
+    name: "Nuevos Lanzamientos",
+    description: "Lo más reciente",
+    coverColor: "#3b82f6",
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+  },
+  {
+    id: "classics",
+    name: "Clásicos",
+    description: "Tracks clásicos del crew",
+    coverColor: "#8b5cf6",
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+  },
+  {
+    id: "collaborations",
+    name: "Colaboraciones",
+    description: "Featurings y colaboraciones",
+    coverColor: "#eab308",
+    spotifyPlaylistId: null,
+    spotifyPlaylistUrl: null,
+  },
 ];
 
 export async function GET(request: NextRequest) {
@@ -26,7 +74,15 @@ export async function GET(request: NextRequest) {
     if (!isDatabaseConfigured()) {
       return NextResponse.json({
         success: true,
-        data: playlistId ? { id: playlistId, name: "", description: "", tracks: [], trackCount: 0 } : FALLBACK_PLAYLISTS,
+        data: playlistId
+          ? {
+              id: playlistId,
+              name: "",
+              description: "",
+              tracks: [],
+              trackCount: 0,
+            }
+          : FALLBACK_PLAYLISTS,
       });
     }
 
@@ -45,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     // Also filter by isActive
     if (!useFallback) {
-      dbPlaylistRows = dbPlaylistRows.filter(p => p.isActive !== false);
+      dbPlaylistRows = dbPlaylistRows.filter((p) => p.isActive !== false);
     }
 
     if (dbPlaylistRows.length === 0) {
@@ -58,7 +114,9 @@ export async function GET(request: NextRequest) {
           id: p.id,
           name: p.name,
           description: p.description || "",
-          coverColor: p.coverColor || DEFAULT_COVER_COLORS[i % DEFAULT_COVER_COLORS.length],
+          coverColor:
+            p.coverColor ||
+            DEFAULT_COVER_COLORS[i % DEFAULT_COVER_COLORS.length],
           coverImageUrl: p.coverImageUrl || null,
           spotifyPlaylistId: p.spotifyPlaylistId || null,
           spotifyPlaylistUrl: p.spotifyPlaylistUrl || null,
@@ -70,7 +128,7 @@ export async function GET(request: NextRequest) {
       if (!playlist) {
         return NextResponse.json(
           { success: false, error: "Playlist not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -117,7 +175,8 @@ export async function GET(request: NextRequest) {
     const playlistsWithCounts = playlistList.map((playlist) => {
       const count = useFallback
         ? playlist.trackCount || 0
-        : allTracks.filter((t) => t.playlistId === playlist.id && t.isActive).length;
+        : allTracks.filter((t) => t.playlistId === playlist.id && t.isActive)
+            .length;
       return {
         ...playlist,
         trackCount: count || playlist.trackCount || 0,

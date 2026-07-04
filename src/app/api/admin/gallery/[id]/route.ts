@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { galleryPhotos, photoTags, tags } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 
 // GET - Get single photo with tags
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -15,7 +15,7 @@ export async function GET(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -28,7 +28,7 @@ export async function GET(
     if (!photo) {
       return NextResponse.json(
         { success: false, error: "Photo not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -54,7 +54,7 @@ export async function GET(
     console.error("Error fetching photo:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch photo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -62,7 +62,7 @@ export async function GET(
 // PUT - Update photo
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -71,7 +71,7 @@ export async function PUT(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -98,7 +98,7 @@ export async function PUT(
     if (!photo) {
       return NextResponse.json(
         { success: false, error: "Photo not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -127,7 +127,7 @@ export async function PUT(
     console.error("Error updating photo:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update photo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -135,7 +135,7 @@ export async function PUT(
 // DELETE - Delete photo
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -143,7 +143,7 @@ export async function DELETE(
     if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { success: false, error: "Database not configured" },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -163,7 +163,7 @@ export async function DELETE(
     console.error("Error deleting photo:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete photo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

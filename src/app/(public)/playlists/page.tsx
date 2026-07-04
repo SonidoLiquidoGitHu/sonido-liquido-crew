@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  ListMusic,
-  ExternalLink,
-  Loader2,
-  Music,
+  ArrowUpRight,
   ChevronRight,
   Disc3,
+  ExternalLink,
+  ListMusic,
+  Loader2,
+  Music,
   Play,
   Share2,
-  ArrowUpRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { PlaylistStoryCard, type PlaylistShareData } from "./PlaylistStoryCard";
+import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { type PlaylistShareData, PlaylistStoryCard } from "./PlaylistStoryCard";
 
 interface Playlist {
   id: string;
@@ -43,7 +43,9 @@ interface PlaylistTrack {
 function PlaylistsPageContent() {
   const searchParams = useSearchParams();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [sharePlaylist, setSharePlaylist] = useState<Playlist | null>(null);
@@ -106,8 +108,12 @@ function PlaylistsPageContent() {
         <div className="section-container relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full mb-6">
-              <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              <svg
+                className="w-4 h-4 text-green-500"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
               </svg>
               <span className="text-xs font-medium uppercase tracking-wider text-green-500">
                 Escucha en Spotify
@@ -118,7 +124,8 @@ function PlaylistsPageContent() {
               Playlists Curadas
             </h1>
             <p className="text-slc-muted text-lg">
-              Playlists seleccionadas por el crew. Escúchalas directamente o ábrelas en Spotify.
+              Playlists seleccionadas por el crew. Escúchalas directamente o
+              ábrelas en Spotify.
             </p>
           </div>
 
@@ -130,8 +137,12 @@ function PlaylistsPageContent() {
           ) : playlists.length === 0 ? (
             <div className="text-center py-20">
               <ListMusic className="w-16 h-16 text-slc-muted mx-auto mb-4" />
-              <h3 className="font-oswald text-xl uppercase mb-2">No hay playlists</h3>
-              <p className="text-slc-muted">Pronto agregaremos playlists curadas</p>
+              <h3 className="font-oswald text-xl uppercase mb-2">
+                No hay playlists
+              </h3>
+              <p className="text-slc-muted">
+                Pronto agregaremos playlists curadas
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -142,7 +153,7 @@ function PlaylistsPageContent() {
                     "bg-slc-card border border-slc-border rounded-2xl overflow-hidden transition-all",
                     selectedPlaylist?.id === playlist.id
                       ? "border-primary ring-2 ring-primary/20"
-                      : "hover:border-primary/50"
+                      : "hover:border-primary/50",
                   )}
                 >
                   {/* Playlist Header */}
@@ -154,12 +165,20 @@ function PlaylistsPageContent() {
                       {/* Playlist Cover */}
                       {playlist.coverImageUrl ? (
                         <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                          <Image src={playlist.coverImageUrl} alt={playlist.name} width={80} height={80} className="w-full h-full object-cover" />
+                          <Image
+                            src={playlist.coverImageUrl}
+                            alt={playlist.name}
+                            width={80}
+                            height={80}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       ) : (
                         <div
                           className="w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: `${playlist.coverColor}20` }}
+                          style={{
+                            backgroundColor: `${playlist.coverColor}20`,
+                          }}
                         >
                           <ListMusic
                             className="w-10 h-10"
@@ -178,7 +197,13 @@ function PlaylistsPageContent() {
                         <div className="flex items-center gap-2">
                           {playlist.spotifyPlaylistId && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500/10 text-green-500 text-xs rounded-full">
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                              <svg
+                                className="w-3 h-3"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                              >
+                                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                              </svg>
                               Spotify
                             </span>
                           )}
@@ -193,7 +218,7 @@ function PlaylistsPageContent() {
                       <ChevronRight
                         className={cn(
                           "w-5 h-5 text-slc-muted transition-transform flex-shrink-0",
-                          selectedPlaylist?.id === playlist.id && "rotate-90"
+                          selectedPlaylist?.id === playlist.id && "rotate-90",
                         )}
                       />
                     </div>
@@ -236,7 +261,8 @@ function PlaylistsPageContent() {
                             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                             loading="lazy"
                             className="rounded-xl"
-                            style={{ border: 'none' }}
+                            style={{ border: "none" }}
+                            title={`Reproductor de ${playlist.name}`}
                           />
                           {playlist.spotifyPlaylistUrl && (
                             <a
@@ -245,7 +271,13 @@ function PlaylistsPageContent() {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-green-500 hover:bg-green-600 text-black font-bold rounded-full transition-colors text-sm"
                             >
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                              <svg
+                                className="w-4 h-4"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                              >
+                                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                              </svg>
                               Abrir en Spotify
                               <ExternalLink className="w-3 h-3" />
                             </a>
@@ -255,7 +287,8 @@ function PlaylistsPageContent() {
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="w-6 h-6 animate-spin text-primary" />
                         </div>
-                      ) : selectedPlaylist?.tracks && selectedPlaylist.tracks.length > 0 ? (
+                      ) : selectedPlaylist?.tracks &&
+                        selectedPlaylist.tracks.length > 0 ? (
                         /* Track List (legacy for playlists without Spotify ID) */
                         <>
                           <div className="max-h-72 overflow-y-auto">
@@ -268,15 +301,25 @@ function PlaylistsPageContent() {
                                   {index + 1}
                                 </span>
                                 {track.albumImage ? (
-                                  <Image src={track.albumImage} alt={track.name || "Album"} width={40} height={40} className="rounded" />
+                                  <Image
+                                    src={track.albumImage}
+                                    alt={track.name || "Album"}
+                                    width={40}
+                                    height={40}
+                                    className="rounded"
+                                  />
                                 ) : (
                                   <div className="w-10 h-10 rounded bg-slc-dark flex items-center justify-center">
                                     <Disc3 className="w-5 h-5 text-slc-muted" />
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">{track.name}</p>
-                                  <p className="text-xs text-slc-muted truncate">{track.artist}</p>
+                                  <p className="text-sm font-medium truncate">
+                                    {track.name}
+                                  </p>
+                                  <p className="text-xs text-slc-muted truncate">
+                                    {track.artist}
+                                  </p>
                                 </div>
                                 <a
                                   href={`https://open.spotify.com/track/${track.spotifyId}`}
@@ -295,7 +338,9 @@ function PlaylistsPageContent() {
                         /* No tracks, no Spotify */
                         <div className="p-8 text-center">
                           <Music className="w-8 h-8 text-slc-muted mx-auto mb-2" />
-                          <p className="text-sm text-slc-muted">Próximamente con tracks</p>
+                          <p className="text-sm text-slc-muted">
+                            Próximamente con tracks
+                          </p>
                         </div>
                       )}
                     </div>
@@ -360,11 +405,13 @@ function PlaylistsPageContent() {
 
 export default function PlaylistsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-b from-slc-dark via-slc-black to-slc-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-slc-dark via-slc-black to-slc-black flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
       <PlaylistsPageContent />
     </Suspense>
   );

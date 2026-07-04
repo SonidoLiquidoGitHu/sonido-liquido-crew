@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { proxyImageUrl } from "@/lib/utils";
-import { Disc3, Play, ExternalLink, Calendar, Clock, Music2, Loader2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { proxyImageUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import {
+  Calendar,
+  Clock,
+  Disc3,
+  ExternalLink,
+  Filter,
+  Loader2,
+  Music2,
+  Play,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Album {
   id: string;
@@ -46,7 +55,9 @@ export function ArtistDiscography({
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [filter, setFilter] = useState<"all" | "album" | "single" | "compilation">("all");
+  const [filter, setFilter] = useState<
+    "all" | "album" | "single" | "compilation"
+  >("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 
   useEffect(() => {
@@ -66,7 +77,7 @@ export function ArtistDiscography({
             // Note: This requires a valid Spotify access token
             // For now, we'll use the embed approach instead
           },
-        }
+        },
       );
 
       // Since we don't have direct API access, use alternative approach
@@ -76,15 +87,17 @@ export function ArtistDiscography({
       if (localResponse.ok) {
         const data = await localResponse.json();
         if (data.success && data.data) {
-          setAlbums(data.data.map((r: any) => ({
-            id: r.spotifyId || r.id,
-            name: r.title,
-            images: [{ url: r.coverImageUrl, width: 300, height: 300 }],
-            release_date: r.releaseDate,
-            album_type: r.releaseType || "album",
-            total_tracks: r.trackCount || 1,
-            external_urls: { spotify: r.spotifyUrl },
-          })));
+          setAlbums(
+            data.data.map((r: any) => ({
+              id: r.spotifyId || r.id,
+              name: r.title,
+              images: [{ url: r.coverImageUrl, width: 300, height: 300 }],
+              release_date: r.releaseDate,
+              album_type: r.releaseType || "album",
+              total_tracks: r.trackCount || 1,
+              external_urls: { spotify: r.spotifyUrl },
+            })),
+          );
         }
       }
     } catch (err) {
@@ -105,12 +118,15 @@ export function ArtistDiscography({
     });
 
   // Group by year
-  const albumsByYear = filteredAlbums.reduce((acc, album) => {
-    const year = new Date(album.release_date).getFullYear();
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(album);
-    return acc;
-  }, {} as Record<number, Album[]>);
+  const albumsByYear = filteredAlbums.reduce(
+    (acc, album) => {
+      const year = new Date(album.release_date).getFullYear();
+      if (!acc[year]) acc[year] = [];
+      acc[year].push(album);
+      return acc;
+    },
+    {} as Record<number, Album[]>,
+  );
 
   const years = Object.keys(albumsByYear)
     .map(Number)
@@ -139,7 +155,8 @@ export function ArtistDiscography({
           </div>
           {!loading && albums.length > 0 && (
             <p className="text-gray-400">
-              {stats.total} lanzamientos • {stats.albums} álbumes • {stats.singles} singles
+              {stats.total} lanzamientos • {stats.albums} álbumes •{" "}
+              {stats.singles} singles
             </p>
           )}
         </div>
@@ -147,25 +164,33 @@ export function ArtistDiscography({
         {/* Filters */}
         {albums.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {(["all", "album", "single", "compilation"] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setFilter(type)}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium transition-all",
-                  filter === type
-                    ? "bg-primary text-white"
-                    : "bg-white/5 text-gray-400 hover:bg-white/10"
-                )}
-              >
-                {releaseTypeLabels[type]}
-                {type !== "all" && (
-                  <span className="ml-1 opacity-60">
-                    ({type === "album" ? stats.albums : type === "single" ? stats.singles : stats.compilations})
-                  </span>
-                )}
-              </button>
-            ))}
+            {(["all", "album", "single", "compilation"] as const).map(
+              (type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilter(type)}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-medium transition-all",
+                    filter === type
+                      ? "bg-primary text-white"
+                      : "bg-white/5 text-gray-400 hover:bg-white/10",
+                  )}
+                >
+                  {releaseTypeLabels[type]}
+                  {type !== "all" && (
+                    <span className="ml-1 opacity-60">
+                      (
+                      {type === "album"
+                        ? stats.albums
+                        : type === "single"
+                          ? stats.singles
+                          : stats.compilations}
+                      )
+                    </span>
+                  )}
+                </button>
+              ),
+            )}
           </div>
         )}
       </div>
@@ -218,10 +243,13 @@ export function ArtistDiscography({
             <div key={year}>
               {/* Year Header */}
               <div className="flex items-center gap-4 mb-6">
-                <span className="font-oswald text-4xl text-primary">{year}</span>
+                <span className="font-oswald text-4xl text-primary">
+                  {year}
+                </span>
                 <div className="flex-1 h-px bg-gradient-to-r from-primary/50 to-transparent" />
                 <span className="text-sm text-gray-500">
-                  {albumsByYear[year].length} lanzamiento{albumsByYear[year].length !== 1 ? "s" : ""}
+                  {albumsByYear[year].length} lanzamiento
+                  {albumsByYear[year].length !== 1 ? "s" : ""}
                 </span>
               </div>
 
@@ -254,7 +282,10 @@ export function ArtistDiscography({
                       {/* Play Overlay */}
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <div className="w-14 h-14 rounded-full bg-spotify flex items-center justify-center transform scale-75 group-hover:scale-100 transition-transform">
-                          <Play className="w-6 h-6 text-white ml-1" fill="white" />
+                          <Play
+                            className="w-6 h-6 text-white ml-1"
+                            fill="white"
+                          />
                         </div>
                       </div>
 
@@ -263,14 +294,15 @@ export function ArtistDiscography({
                         <span
                           className={cn(
                             "px-2 py-0.5 rounded text-[10px] font-medium uppercase",
-                            releaseTypeColors[album.album_type] || "bg-gray-500"
+                            releaseTypeColors[album.album_type] ||
+                              "bg-gray-500",
                           )}
                         >
                           {album.album_type === "album"
                             ? "Álbum"
                             : album.album_type === "single"
-                            ? "Single"
-                            : "Compilación"}
+                              ? "Single"
+                              : "Compilación"}
                         </span>
                       </div>
                     </div>

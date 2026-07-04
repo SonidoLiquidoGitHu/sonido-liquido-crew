@@ -1,35 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { usePageViewTracking, Analytics } from "@/hooks/use-analytics";
+import { Analytics, usePageViewTracking } from "@/hooks/use-analytics";
+import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
 import {
-  User,
-  Music,
-  Instagram,
-  Youtube,
-  Mail,
-  Phone,
-  MapPin,
+  ArrowRight,
+  Calendar,
+  ChevronDown,
+  Disc3,
   Download,
   ExternalLink,
-  ChevronDown,
-  Play,
-  Calendar,
-  Disc3,
-  Users,
-  Quote,
-  Twitter,
   Facebook,
-  FileText,
-  ArrowRight,
   FileDown,
+  FileText,
+  Instagram,
   Loader2,
+  Mail,
+  MapPin,
+  Music,
+  Phone,
+  Play,
+  Quote,
   Sparkles,
+  Twitter,
+  User,
+  Users,
+  Youtube,
 } from "lucide-react";
-import { useCrewSocialLinks } from "@/hooks/use-crew-social-links";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface ArtistFromRoster {
   id: string;
@@ -106,9 +106,21 @@ const defaultPressKit: PressKitData = {
   aboutTitle: "Sobre Nosotros",
   aboutContent: null,
   keyPoints: [
-    { icon: "calendar", title: "Fundado en 1999", description: "Más de 25 años de historia en el Hip Hop mexicano" },
-    { icon: "disc", title: "160+ Lanzamientos", description: "Catálogo extenso de música original" },
-    { icon: "users", title: "20+ Artistas", description: "Roster activo de talento mexicano" },
+    {
+      icon: "calendar",
+      title: "Fundado en 1999",
+      description: "Más de 25 años de historia en el Hip Hop mexicano",
+    },
+    {
+      icon: "disc",
+      title: "160+ Lanzamientos",
+      description: "Catálogo extenso de música original",
+    },
+    {
+      icon: "users",
+      title: "20+ Artistas",
+      description: "Roster activo de talento mexicano",
+    },
   ],
   contactEmail: "prensasonidoliquido@gmail.com",
   contactPhone: "+52 55 2801 1881",
@@ -126,7 +138,10 @@ const defaultPressKit: PressKitData = {
   footerCtaButtonText: "Enviar Mensaje",
 };
 
-function parseJson<T>(value: string | T | null | undefined, defaultValue: T): T {
+function parseJson<T>(
+  value: string | T | null | undefined,
+  defaultValue: T,
+): T {
   if (!value) return defaultValue;
   if (typeof value === "string") {
     try {
@@ -251,7 +266,8 @@ export default function PressPage() {
           featuredVideoUrl: d.featuredVideoUrl || null,
           featuredVideoTitle: d.featuredVideoTitle || null,
           footerCtaTitle: d.footerCtaTitle || defaultPressKit.footerCtaTitle,
-          footerCtaButtonText: d.footerCtaButtonText || defaultPressKit.footerCtaButtonText,
+          footerCtaButtonText:
+            d.footerCtaButtonText || defaultPressKit.footerCtaButtonText,
         });
       }
     } catch (error) {
@@ -300,9 +316,10 @@ export default function PressPage() {
     return colors[role || ""] || "bg-slc-card text-slc-muted border-slc-border";
   };
 
-  const filteredArtists = selectedRole === "all"
-    ? artists
-    : artists.filter(a => a.role === selectedRole);
+  const filteredArtists =
+    selectedRole === "all"
+      ? artists
+      : artists.filter((a) => a.role === selectedRole);
 
   const roles = [
     { value: "all", label: "Todos" },
@@ -316,8 +333,18 @@ export default function PressPage() {
   const formatAboutContent = (content: string | null) => {
     if (!content) return [];
     return content.split("\n\n").map((paragraph, i) => {
-      const formatted = paragraph.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>');
-      return <p key={i} className="mb-4" dangerouslySetInnerHTML={{ __html: formatted }} />;
+      const formatted = paragraph.replace(
+        /\*\*([^*]+)\*\*/g,
+        '<strong class="text-white">$1</strong>',
+      );
+      return (
+        <p
+          key={i}
+          className="mb-4"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: user-generated HTML is sanitized before rendering
+          dangerouslySetInnerHTML={{ __html: formatted }}
+        />
+      );
     });
   };
 
@@ -369,9 +396,13 @@ export default function PressPage() {
             </div>
 
             <h1 className="font-oswald text-5xl md:text-7xl lg:text-8xl uppercase mb-6">
-              <span className="text-white">{pressKit.heroTitle.split(" ").slice(0, -1).join(" ")}</span>
+              <span className="text-white">
+                {pressKit.heroTitle.split(" ").slice(0, -1).join(" ")}
+              </span>
               <br />
-              <span className="text-primary">{pressKit.heroTitle.split(" ").slice(-1)}</span>
+              <span className="text-primary">
+                {pressKit.heroTitle.split(" ").slice(-1)}
+              </span>
             </h1>
 
             <p className="text-xl md:text-2xl text-slc-muted mb-4 max-w-2xl mx-auto">
@@ -385,22 +416,38 @@ export default function PressPage() {
             {/* Stats */}
             <div className="flex flex-wrap justify-center gap-8 md:gap-16 mb-12">
               <div className="text-center">
-                <div className="font-oswald text-4xl md:text-5xl text-primary">{pressKit.statsArtists}</div>
-                <div className="text-sm text-slc-muted uppercase tracking-wider">Artistas</div>
+                <div className="font-oswald text-4xl md:text-5xl text-primary">
+                  {pressKit.statsArtists}
+                </div>
+                <div className="text-sm text-slc-muted uppercase tracking-wider">
+                  Artistas
+                </div>
               </div>
               <div className="text-center">
-                <div className="font-oswald text-4xl md:text-5xl text-primary">{pressKit.statsReleases}</div>
-                <div className="text-sm text-slc-muted uppercase tracking-wider">Lanzamientos</div>
+                <div className="font-oswald text-4xl md:text-5xl text-primary">
+                  {pressKit.statsReleases}
+                </div>
+                <div className="text-sm text-slc-muted uppercase tracking-wider">
+                  Lanzamientos
+                </div>
               </div>
               <div className="text-center">
-                <div className="font-oswald text-4xl md:text-5xl text-primary">{pressKit.statsYears}</div>
-                <div className="text-sm text-slc-muted uppercase tracking-wider">Años</div>
+                <div className="font-oswald text-4xl md:text-5xl text-primary">
+                  {pressKit.statsYears}
+                </div>
+                <div className="text-sm text-slc-muted uppercase tracking-wider">
+                  Años
+                </div>
               </div>
             </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap justify-center gap-4">
-              <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+              <Button
+                asChild
+                size="lg"
+                className="bg-primary hover:bg-primary/90"
+              >
                 <a href={`mailto:${pressKit.contactEmail}`}>
                   <Mail className="w-5 h-5 mr-2" />
                   Contactar Prensa
@@ -462,7 +509,9 @@ export default function PressPage() {
                       &ldquo;{quote.quote}&rdquo;
                     </p>
                     <footer className="pl-10 flex items-center gap-2">
-                      <span className="text-primary font-medium">— {quote.source}</span>
+                      <span className="text-primary font-medium">
+                        — {quote.source}
+                      </span>
                       {quote.url && (
                         <a
                           href={quote.url}
@@ -492,7 +541,7 @@ export default function PressPage() {
                   {i === arr.length - 1 ? (
                     <span className="text-primary">{word}</span>
                   ) : (
-                    word + " "
+                    `${word} `
                   )}
                 </span>
               ))}
@@ -504,14 +553,17 @@ export default function PressPage() {
               ) : (
                 <>
                   <p>
-                    <strong className="text-white">Sonido Líquido Crew</strong> es un colectivo de Hip Hop mexicano
-                    fundado en 1999 en la Ciudad de México. Con más de dos décadas de trayectoria, el crew ha sido
-                    fundamental en el desarrollo y profesionalización del Hip Hop en México.
+                    <strong className="text-white">Sonido Líquido Crew</strong>{" "}
+                    es un colectivo de Hip Hop mexicano fundado en 1999 en la
+                    Ciudad de México. Con más de dos décadas de trayectoria, el
+                    crew ha sido fundamental en el desarrollo y
+                    profesionalización del Hip Hop en México.
                   </p>
                   <p>
-                    El colectivo ha reunido a algunos de los artistas más talentosos y comprometidos del género,
-                    abarcando MCs, DJs, productores y cantantes que representan la diversidad y riqueza del Hip Hop
-                    mexicano.
+                    El colectivo ha reunido a algunos de los artistas más
+                    talentosos y comprometidos del género, abarcando MCs, DJs,
+                    productores y cantantes que representan la diversidad y
+                    riqueza del Hip Hop mexicano.
                   </p>
                 </>
               )}
@@ -522,10 +574,17 @@ export default function PressPage() {
               {pressKit.keyPoints.map((point, index) => {
                 const Icon = getKeyPointIcon(point.icon);
                 return (
-                  <div key={index} className="bg-slc-card border border-slc-border rounded-xl p-6 text-center">
+                  <div
+                    key={index}
+                    className="bg-slc-card border border-slc-border rounded-xl p-6 text-center"
+                  >
                     <Icon className="w-10 h-10 text-primary mx-auto mb-4" />
-                    <h3 className="font-oswald text-xl uppercase mb-2">{point.title}</h3>
-                    <p className="text-sm text-slc-muted">{point.description}</p>
+                    <h3 className="font-oswald text-xl uppercase mb-2">
+                      {point.title}
+                    </h3>
+                    <p className="text-sm text-slc-muted">
+                      {point.description}
+                    </p>
                   </div>
                 );
               })}
@@ -544,7 +603,9 @@ export default function PressPage() {
               </h2>
 
               {pressKit.featuredVideoTitle && (
-                <p className="text-center text-slc-muted mb-6">{pressKit.featuredVideoTitle}</p>
+                <p className="text-center text-slc-muted mb-6">
+                  {pressKit.featuredVideoTitle}
+                </p>
               )}
 
               <div className="aspect-video rounded-2xl overflow-hidden bg-slc-card shadow-2xl">
@@ -594,7 +655,10 @@ export default function PressPage() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-slc-card border border-slc-border rounded-xl overflow-hidden animate-pulse">
+                <div
+                  key={i}
+                  className="bg-slc-card border border-slc-border rounded-xl overflow-hidden animate-pulse"
+                >
                   <div className="aspect-square bg-slc-border" />
                   <div className="p-4">
                     <div className="h-6 bg-slc-border rounded mb-2" />
@@ -606,7 +670,8 @@ export default function PressPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredArtists.map((artist) => {
-                const displayImageUrl = artist.imageUrl || artist.profileImageUrl;
+                const displayImageUrl =
+                  artist.imageUrl || artist.profileImageUrl;
                 return (
                   <div
                     key={artist.slug}
@@ -665,7 +730,9 @@ export default function PressPage() {
 
                       {/* Role Badge */}
                       <div className="absolute top-3 left-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(artist.role)}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(artist.role)}`}
+                        >
                           {getRoleLabel(artist.role)}
                         </span>
                       </div>
@@ -673,9 +740,13 @@ export default function PressPage() {
 
                     {/* Info */}
                     <div className="p-4">
-                      <h3 className="font-oswald text-xl uppercase mb-1">{artist.name}</h3>
+                      <h3 className="font-oswald text-xl uppercase mb-1">
+                        {artist.name}
+                      </h3>
                       {artist.instagramHandle && (
-                        <p className="text-sm text-slc-muted">{artist.instagramHandle}</p>
+                        <p className="text-sm text-slc-muted">
+                          {artist.instagramHandle}
+                        </p>
                       )}
                       {/* Press Kit & EPK Links */}
                       <div className="flex flex-wrap gap-2 mt-3">
@@ -747,13 +818,17 @@ export default function PressPage() {
                   <MapPin className="w-7 h-7 text-primary" />
                 </div>
                 <h3 className="font-medium mb-1">Ubicación</h3>
-                <p className="text-sm text-slc-muted">{pressKit.contactLocation}</p>
+                <p className="text-sm text-slc-muted">
+                  {pressKit.contactLocation}
+                </p>
               </div>
             </div>
 
             {/* Social Links — dynamic from DB */}
             <div className="text-center">
-              <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">Redes Sociales</h3>
+              <h3 className="text-sm uppercase tracking-wider text-slc-muted mb-4">
+                Redes Sociales
+              </h3>
               <div className="flex justify-center gap-4">
                 {displaySpotifyUrl && (
                   <a
@@ -836,7 +911,9 @@ export default function PressPage() {
                     <div className="text-left">
                       <p className="font-medium">{item.name}</p>
                       {item.description && (
-                        <p className="text-xs text-slc-muted">{item.description}</p>
+                        <p className="text-xs text-slc-muted">
+                          {item.description}
+                        </p>
                       )}
                     </div>
                   </a>
@@ -861,7 +938,10 @@ export default function PressPage() {
 
             <p className="text-sm text-slc-muted">
               Para solicitar material de prensa específico, contacta a{" "}
-              <a href={`mailto:${pressKit.contactEmail}`} className="text-primary hover:underline">
+              <a
+                href={`mailto:${pressKit.contactEmail}`}
+                className="text-primary hover:underline"
+              >
                 {pressKit.contactEmail}
               </a>
             </p>

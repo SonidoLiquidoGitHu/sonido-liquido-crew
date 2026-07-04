@@ -1,35 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
-  MessageCircle,
+  Calendar,
   Camera,
   CheckCircle,
-  XCircle,
-  Star,
+  CheckSquare,
   Eye,
   EyeOff,
-  Trash2,
+  Filter,
+  Gift,
+  Globe,
   Loader2,
   Mail,
-  Gift,
-  Settings,
-  RefreshCw,
-  Globe,
-  User,
-  Calendar,
-  Filter,
-  Send,
-  CheckSquare,
-  Square,
-  X,
+  MessageCircle,
   MonitorPlay,
+  RefreshCw,
+  Send,
+  Settings,
   Shield,
+  Square,
+  Star,
   TestTube,
+  Trash2,
+  User,
+  X,
+  XCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface FanMessage {
   id: string;
@@ -79,23 +79,31 @@ export default function CommunityModerationPage() {
   const [showSettings, setShowSettings] = useState(false);
 
   // Bulk selection state
-  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
-  const [selectedMemories, setSelectedMemories] = useState<Set<string>>(new Set());
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedMemories, setSelectedMemories] = useState<Set<string>>(
+    new Set(),
+  );
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Email preview state
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [emailPreviewHtml, setEmailPreviewHtml] = useState("");
-  const [previewContentType, setPreviewContentType] = useState<"message" | "memory">("message");
+  const [previewContentType, setPreviewContentType] = useState<
+    "message" | "memory"
+  >("message");
 
   // Email settings state
   const [emailSettings, setEmailSettings] = useState({
     sendApprovalEmail: true,
     emailSubject: "¡Tu mensaje ha sido publicado en Sonido Líquido!",
-    emailMessage: "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
+    emailMessage:
+      "Gracias por formar parte de nuestra comunidad. Tu mensaje ya está visible en el Fan Wall.",
     includeReward: false,
     rewardTitle: "Regalo sorpresa",
-    rewardDescription: "Como agradecimiento, aquí tienes una descarga exclusiva:",
+    rewardDescription:
+      "Como agradecimiento, aquí tienes una descarga exclusiva:",
     rewardDownloadUrl: "",
     rewardFileName: "",
   });
@@ -205,7 +213,7 @@ export default function CommunityModerationPage() {
     if (selectedMessages.size === messages.length) {
       setSelectedMessages(new Set());
     } else {
-      setSelectedMessages(new Set(messages.map(m => m.id)));
+      setSelectedMessages(new Set(messages.map((m) => m.id)));
     }
   }
 
@@ -213,21 +221,22 @@ export default function CommunityModerationPage() {
     if (selectedMemories.size === memories.length) {
       setSelectedMemories(new Set());
     } else {
-      setSelectedMemories(new Set(memories.map(m => m.id)));
+      setSelectedMemories(new Set(memories.map((m) => m.id)));
     }
   }
 
   // Bulk actions
   async function bulkAction(
     type: "message" | "memory",
-    action: "approve" | "reject" | "delete"
+    action: "approve" | "reject" | "delete",
   ) {
     const selected = type === "message" ? selectedMessages : selectedMemories;
     if (selected.size === 0) return;
 
-    const confirmMsg = action === "delete"
-      ? `¿Eliminar ${selected.size} ${type === "message" ? "mensajes" : "fotos"} permanentemente?`
-      : `¿${action === "approve" ? "Aprobar" : "Rechazar"} ${selected.size} ${type === "message" ? "mensajes" : "fotos"}?`;
+    const confirmMsg =
+      action === "delete"
+        ? `¿Eliminar ${selected.size} ${type === "message" ? "mensajes" : "fotos"} permanentemente?`
+        : `¿${action === "approve" ? "Aprobar" : "Rechazar"} ${selected.size} ${type === "message" ? "mensajes" : "fotos"}?`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -240,10 +249,11 @@ export default function CommunityModerationPage() {
           });
         } else {
           const items = type === "message" ? messages : memories;
-          const item = items.find(i => i.id === id);
-          const email = type === "message"
-            ? (item as FanMessage)?.email
-            : (item as ConcertMemory)?.submitterEmail;
+          const item = items.find((i) => i.id === id);
+          const email =
+            type === "message"
+              ? (item as FanMessage)?.email
+              : (item as ConcertMemory)?.submitterEmail;
 
           await fetch("/api/admin/community", {
             method: "PUT",
@@ -252,7 +262,10 @@ export default function CommunityModerationPage() {
               type,
               id,
               action,
-              sendEmail: action === "approve" && emailSettings.sendApprovalEmail && email,
+              sendEmail:
+                action === "approve" &&
+                emailSettings.sendApprovalEmail &&
+                email,
               recipientEmail: email,
             }),
           });
@@ -277,7 +290,7 @@ export default function CommunityModerationPage() {
     type: "message" | "memory",
     id: string,
     action: "approve" | "reject" | "feature" | "unfeature" | "hide" | "delete",
-    email?: string
+    email?: string,
   ) {
     setActionLoading(`${type}-${id}-${action}`);
     try {
@@ -293,7 +306,8 @@ export default function CommunityModerationPage() {
             type,
             id,
             action,
-            sendEmail: action === "approve" && emailSettings.sendApprovalEmail && email,
+            sendEmail:
+              action === "approve" && emailSettings.sendApprovalEmail && email,
             emailSettings: action === "approve" ? emailSettings : undefined,
             recipientEmail: email,
           }),
@@ -307,9 +321,10 @@ export default function CommunityModerationPage() {
     }
   }
 
-  const pendingCount = activeTab === "messages"
-    ? messages.filter(m => !m.isApproved && !m.isHidden).length
-    : memories.filter(m => !m.isApproved && !m.isHidden).length;
+  const pendingCount =
+    activeTab === "messages"
+      ? messages.filter((m) => !m.isApproved && !m.isHidden).length
+      : memories.filter((m) => !m.isApproved && !m.isHidden).length;
 
   return (
     <div className="p-6 lg:p-8">
@@ -330,13 +345,19 @@ export default function CommunityModerationPage() {
             Actualizar
           </Button>
           <Link href="/admin/community/trusted">
-            <Button variant="outline" className="border-green-500/50 text-green-500 hover:bg-green-500/10">
+            <Button
+              variant="outline"
+              className="border-green-500/50 text-green-500 hover:bg-green-500/10"
+            >
               <Shield className="w-4 h-4 mr-2" />
               Confianza
             </Button>
           </Link>
           <Link href="/admin/email-test">
-            <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">
+            <Button
+              variant="outline"
+              className="border-primary/50 text-primary hover:bg-primary/10"
+            >
               <TestTube className="w-4 h-4 mr-2" />
               Test Email
             </Button>
@@ -356,7 +377,7 @@ export default function CommunityModerationPage() {
             "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors",
             activeTab === "messages"
               ? "bg-primary text-white"
-              : "bg-slc-card text-slc-muted hover:text-white"
+              : "bg-slc-card text-slc-muted hover:text-white",
           )}
         >
           <MessageCircle className="w-4 h-4" />
@@ -368,7 +389,7 @@ export default function CommunityModerationPage() {
             "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors",
             activeTab === "memories"
               ? "bg-pink-500 text-white"
-              : "bg-slc-card text-slc-muted hover:text-white"
+              : "bg-slc-card text-slc-muted hover:text-white",
           )}
         >
           <Camera className="w-4 h-4" />
@@ -388,10 +409,14 @@ export default function CommunityModerationPage() {
               "px-3 py-1 text-sm rounded-full transition-colors",
               filterStatus === status
                 ? "bg-slc-border text-white"
-                : "text-slc-muted hover:text-white"
+                : "text-slc-muted hover:text-white",
             )}
           >
-            {status === "pending" ? "Pendientes" : status === "approved" ? "Aprobados" : "Todos"}
+            {status === "pending"
+              ? "Pendientes"
+              : status === "approved"
+                ? "Aprobados"
+                : "Todos"}
             {status === "pending" && pendingCount > 0 && (
               <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
                 {pendingCount}
@@ -406,23 +431,40 @@ export default function CommunityModerationPage() {
         (activeTab === "memories" && selectedMemories.size > 0)) && (
         <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-primary/10 border border-primary/20 rounded-xl animate-in slide-in-from-top-2">
           <span className="font-medium">
-            {activeTab === "messages" ? selectedMessages.size : selectedMemories.size} seleccionado(s)
+            {activeTab === "messages"
+              ? selectedMessages.size
+              : selectedMemories.size}{" "}
+            seleccionado(s)
           </span>
           <div className="flex-1" />
           <Button
             size="sm"
             className="bg-green-600 hover:bg-green-700"
             disabled={bulkActionLoading}
-            onClick={() => bulkAction(activeTab === "messages" ? "message" : "memory", "approve")}
+            onClick={() =>
+              bulkAction(
+                activeTab === "messages" ? "message" : "memory",
+                "approve",
+              )
+            }
           >
-            {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle className="w-4 h-4 mr-1" />}
+            {bulkActionLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+            ) : (
+              <CheckCircle className="w-4 h-4 mr-1" />
+            )}
             Aprobar todos
           </Button>
           <Button
             size="sm"
             variant="destructive"
             disabled={bulkActionLoading}
-            onClick={() => bulkAction(activeTab === "messages" ? "message" : "memory", "reject")}
+            onClick={() =>
+              bulkAction(
+                activeTab === "messages" ? "message" : "memory",
+                "reject",
+              )
+            }
           >
             <XCircle className="w-4 h-4 mr-1" />
             Rechazar todos
@@ -432,7 +474,12 @@ export default function CommunityModerationPage() {
             variant="outline"
             className="text-red-500 border-red-500/50 hover:bg-red-500/10"
             disabled={bulkActionLoading}
-            onClick={() => bulkAction(activeTab === "messages" ? "message" : "memory", "delete")}
+            onClick={() =>
+              bulkAction(
+                activeTab === "messages" ? "message" : "memory",
+                "delete",
+              )
+            }
           >
             <Trash2 className="w-4 h-4 mr-1" />
             Eliminar
@@ -451,22 +498,32 @@ export default function CommunityModerationPage() {
       )}
 
       {/* Select All */}
-      {!loading && (activeTab === "messages" ? messages.length > 0 : memories.length > 0) && (
-        <div className="flex items-center gap-2 mb-4">
-          <button
-            onClick={activeTab === "messages" ? selectAllMessages : selectAllMemories}
-            className="flex items-center gap-2 text-sm text-slc-muted hover:text-white transition-colors"
-          >
-            {(activeTab === "messages" && selectedMessages.size === messages.length && messages.length > 0) ||
-             (activeTab === "memories" && selectedMemories.size === memories.length && memories.length > 0) ? (
-              <CheckSquare className="w-4 h-4 text-primary" />
-            ) : (
-              <Square className="w-4 h-4" />
-            )}
-            Seleccionar todo ({activeTab === "messages" ? messages.length : memories.length})
-          </button>
-        </div>
-      )}
+      {!loading &&
+        (activeTab === "messages"
+          ? messages.length > 0
+          : memories.length > 0) && (
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={
+                activeTab === "messages" ? selectAllMessages : selectAllMemories
+              }
+              className="flex items-center gap-2 text-sm text-slc-muted hover:text-white transition-colors"
+            >
+              {(activeTab === "messages" &&
+                selectedMessages.size === messages.length &&
+                messages.length > 0) ||
+              (activeTab === "memories" &&
+                selectedMemories.size === memories.length &&
+                memories.length > 0) ? (
+                <CheckSquare className="w-4 h-4 text-primary" />
+              ) : (
+                <Square className="w-4 h-4" />
+              )}
+              Seleccionar todo (
+              {activeTab === "messages" ? messages.length : memories.length})
+            </button>
+          </div>
+        )}
 
       {/* Content */}
       {loading ? (
@@ -511,9 +568,14 @@ export default function CommunityModerationPage() {
             <div className="flex items-center justify-between p-4 border-b border-slc-border">
               <h2 className="font-oswald text-xl uppercase flex items-center gap-2">
                 <MonitorPlay className="w-5 h-5 text-primary" />
-                Vista Previa del Email ({previewContentType === "message" ? "Mensaje" : "Foto"})
+                Vista Previa del Email (
+                {previewContentType === "message" ? "Mensaje" : "Foto"})
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowEmailPreview(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowEmailPreview(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -525,13 +587,18 @@ export default function CommunityModerationPage() {
               />
             </div>
             <div className="p-4 border-t border-slc-border flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowEmailPreview(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowEmailPreview(false)}
+              >
                 Cerrar
               </Button>
-              <Button onClick={() => {
-                setShowEmailPreview(false);
-                setShowSettings(true);
-              }}>
+              <Button
+                onClick={() => {
+                  setShowEmailPreview(false);
+                  setShowSettings(true);
+                }}
+              >
                 Editar Configuración
               </Button>
             </div>
@@ -552,7 +619,12 @@ function MessagesGrid({
   onToggleSelect,
 }: {
   messages: FanMessage[];
-  onAction: (type: "message" | "memory", id: string, action: "approve" | "reject" | "feature" | "unfeature" | "hide" | "delete", email?: string) => void;
+  onAction: (
+    type: "message" | "memory",
+    id: string,
+    action: "approve" | "reject" | "feature" | "unfeature" | "hide" | "delete",
+    email?: string,
+  ) => void;
   actionLoading: string | null;
   emailEnabled: boolean;
   selectedIds: Set<string>;
@@ -577,9 +649,9 @@ function MessagesGrid({
             msg.isApproved && !msg.isHidden
               ? "border-green-500/30"
               : msg.isHidden
-              ? "border-red-500/30 opacity-60"
-              : "border-yellow-500/30",
-            selectedIds.has(msg.id) && "ring-2 ring-primary"
+                ? "border-red-500/30 opacity-60"
+                : "border-yellow-500/30",
+            selectedIds.has(msg.id) && "ring-2 ring-primary",
           )}
         >
           <div className="flex gap-4">
@@ -590,7 +662,7 @@ function MessagesGrid({
                 "w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors",
                 selectedIds.has(msg.id)
                   ? "bg-primary text-white"
-                  : "bg-slc-dark hover:bg-slc-border"
+                  : "bg-slc-dark hover:bg-slc-border",
               )}
             >
               {selectedIds.has(msg.id) && <CheckCircle className="w-4 h-4" />}
@@ -599,7 +671,11 @@ function MessagesGrid({
             {/* Avatar */}
             <div className="w-12 h-12 rounded-full bg-slc-dark flex items-center justify-center flex-shrink-0">
               {msg.avatarUrl ? (
-                <img src={msg.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                <img
+                  src={msg.avatarUrl}
+                  alt=""
+                  className="w-full h-full rounded-full object-cover"
+                />
               ) : (
                 <User className="w-6 h-6 text-slc-muted" />
               )}
@@ -608,8 +684,12 @@ function MessagesGrid({
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium text-white">{msg.displayName}</span>
-                {msg.reaction && <span className="text-lg">{msg.reaction}</span>}
+                <span className="font-medium text-white">
+                  {msg.displayName}
+                </span>
+                {msg.reaction && (
+                  <span className="text-lg">{msg.reaction}</span>
+                )}
                 {msg.isFeatured && (
                   <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-full">
                     Destacado
@@ -647,7 +727,9 @@ function MessagesGrid({
                   <Button
                     size="sm"
                     className="bg-green-600 hover:bg-green-700"
-                    onClick={() => onAction("message", msg.id, "approve", msg.email)}
+                    onClick={() =>
+                      onAction("message", msg.id, "approve", msg.email)
+                    }
                     disabled={actionLoading === `message-${msg.id}-approve`}
                   >
                     {actionLoading === `message-${msg.id}-approve` ? (
@@ -679,10 +761,23 @@ function MessagesGrid({
                   <Button
                     size="sm"
                     variant={msg.isFeatured ? "outline" : "default"}
-                    className={msg.isFeatured ? "" : "bg-yellow-600 hover:bg-yellow-700"}
-                    onClick={() => onAction("message", msg.id, msg.isFeatured ? "unfeature" : "feature")}
+                    className={
+                      msg.isFeatured ? "" : "bg-yellow-600 hover:bg-yellow-700"
+                    }
+                    onClick={() =>
+                      onAction(
+                        "message",
+                        msg.id,
+                        msg.isFeatured ? "unfeature" : "feature",
+                      )
+                    }
                   >
-                    <Star className={cn("w-4 h-4 mr-1", msg.isFeatured && "fill-current")} />
+                    <Star
+                      className={cn(
+                        "w-4 h-4 mr-1",
+                        msg.isFeatured && "fill-current",
+                      )}
+                    />
                     {msg.isFeatured ? "Quitar" : "Destacar"}
                   </Button>
                   <Button
@@ -700,7 +795,9 @@ function MessagesGrid({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onAction("message", msg.id, "approve", msg.email)}
+                  onClick={() =>
+                    onAction("message", msg.id, "approve", msg.email)
+                  }
                 >
                   <Eye className="w-4 h-4 mr-1" />
                   Mostrar
@@ -737,7 +834,12 @@ function MemoriesGrid({
   onToggleSelect,
 }: {
   memories: ConcertMemory[];
-  onAction: (type: "message" | "memory", id: string, action: "approve" | "reject" | "feature" | "unfeature" | "hide" | "delete", email?: string) => void;
+  onAction: (
+    type: "message" | "memory",
+    id: string,
+    action: "approve" | "reject" | "feature" | "unfeature" | "hide" | "delete",
+    email?: string,
+  ) => void;
   actionLoading: string | null;
   emailEnabled: boolean;
   selectedIds: Set<string>;
@@ -762,9 +864,9 @@ function MemoriesGrid({
             memory.isApproved && !memory.isHidden
               ? "border-green-500/30"
               : memory.isHidden
-              ? "border-red-500/30 opacity-60"
-              : "border-yellow-500/30",
-            selectedIds.has(memory.id) && "ring-2 ring-primary"
+                ? "border-red-500/30 opacity-60"
+                : "border-yellow-500/30",
+            selectedIds.has(memory.id) && "ring-2 ring-primary",
           )}
         >
           {/* Image */}
@@ -781,10 +883,12 @@ function MemoriesGrid({
                 "absolute top-2 left-2 w-6 h-6 rounded flex items-center justify-center transition-colors z-10",
                 selectedIds.has(memory.id)
                   ? "bg-primary text-white"
-                  : "bg-black/50 text-white hover:bg-black/70"
+                  : "bg-black/50 text-white hover:bg-black/70",
               )}
             >
-              {selectedIds.has(memory.id) && <CheckCircle className="w-4 h-4" />}
+              {selectedIds.has(memory.id) && (
+                <CheckCircle className="w-4 h-4" />
+              )}
             </button>
             {memory.isFeatured && (
               <div className="absolute top-2 right-2 px-2 py-1 bg-primary text-white text-xs rounded-full flex items-center gap-1">
@@ -797,9 +901,13 @@ function MemoriesGrid({
           {/* Info */}
           <div className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <span className="font-medium text-white">{memory.submitterName}</span>
+              <span className="font-medium text-white">
+                {memory.submitterName}
+              </span>
               {memory.submitterInstagram && (
-                <span className="text-xs text-pink-500">@{memory.submitterInstagram}</span>
+                <span className="text-xs text-pink-500">
+                  @{memory.submitterInstagram}
+                </span>
               )}
             </div>
 
@@ -810,7 +918,9 @@ function MemoriesGrid({
             )}
 
             {memory.caption && (
-              <p className="text-sm text-white/80 mb-3 line-clamp-2">"{memory.caption}"</p>
+              <p className="text-sm text-white/80 mb-3 line-clamp-2">
+                "{memory.caption}"
+              </p>
             )}
 
             <div className="flex items-center gap-2 text-xs text-slc-muted mb-4">
@@ -831,7 +941,14 @@ function MemoriesGrid({
                   <Button
                     size="sm"
                     className="bg-green-600 hover:bg-green-700"
-                    onClick={() => onAction("memory", memory.id, "approve", memory.submitterEmail)}
+                    onClick={() =>
+                      onAction(
+                        "memory",
+                        memory.id,
+                        "approve",
+                        memory.submitterEmail,
+                      )
+                    }
                     disabled={actionLoading === `memory-${memory.id}-approve`}
                   >
                     {actionLoading === `memory-${memory.id}-approve` ? (
@@ -862,10 +979,25 @@ function MemoriesGrid({
                   <Button
                     size="sm"
                     variant={memory.isFeatured ? "outline" : "default"}
-                    className={memory.isFeatured ? "" : "bg-yellow-600 hover:bg-yellow-700"}
-                    onClick={() => onAction("memory", memory.id, memory.isFeatured ? "unfeature" : "feature")}
+                    className={
+                      memory.isFeatured
+                        ? ""
+                        : "bg-yellow-600 hover:bg-yellow-700"
+                    }
+                    onClick={() =>
+                      onAction(
+                        "memory",
+                        memory.id,
+                        memory.isFeatured ? "unfeature" : "feature",
+                      )
+                    }
                   >
-                    <Star className={cn("w-4 h-4 mr-1", memory.isFeatured && "fill-current")} />
+                    <Star
+                      className={cn(
+                        "w-4 h-4 mr-1",
+                        memory.isFeatured && "fill-current",
+                      )}
+                    />
                     {memory.isFeatured ? "Quitar" : "Destacar"}
                   </Button>
                   <Button
@@ -943,11 +1075,15 @@ function EmailSettingsModal({
             <input
               type="checkbox"
               checked={settings.sendApprovalEmail}
-              onChange={(e) => onChange({ ...settings, sendApprovalEmail: e.target.checked })}
+              onChange={(e) =>
+                onChange({ ...settings, sendApprovalEmail: e.target.checked })
+              }
               className="w-5 h-5 rounded"
             />
             <div>
-              <span className="font-medium text-white">Enviar email al aprobar</span>
+              <span className="font-medium text-white">
+                Enviar email al aprobar
+              </span>
               <p className="text-xs text-slc-muted">
                 Notifica al usuario cuando su contenido es aprobado
               </p>
@@ -958,21 +1094,29 @@ function EmailSettingsModal({
             <>
               {/* Subject */}
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Asunto del email</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Asunto del email
+                </label>
                 <input
                   type="text"
                   value={settings.emailSubject}
-                  onChange={(e) => onChange({ ...settings, emailSubject: e.target.value })}
+                  onChange={(e) =>
+                    onChange({ ...settings, emailSubject: e.target.value })
+                  }
                   className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                 />
               </div>
 
               {/* Message */}
               <div>
-                <label className="block text-sm text-slc-muted mb-2">Mensaje</label>
+                <label className="block text-sm text-slc-muted mb-2">
+                  Mensaje
+                </label>
                 <textarea
                   value={settings.emailMessage}
-                  onChange={(e) => onChange({ ...settings, emailMessage: e.target.value })}
+                  onChange={(e) =>
+                    onChange({ ...settings, emailMessage: e.target.value })
+                  }
                   rows={4}
                   className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary resize-none"
                 />
@@ -984,7 +1128,9 @@ function EmailSettingsModal({
                   <input
                     type="checkbox"
                     checked={settings.includeReward}
-                    onChange={(e) => onChange({ ...settings, includeReward: e.target.checked })}
+                    onChange={(e) =>
+                      onChange({ ...settings, includeReward: e.target.checked })
+                    }
                     className="w-5 h-5 rounded"
                   />
                   <div>
@@ -1001,22 +1147,33 @@ function EmailSettingsModal({
                 {settings.includeReward && (
                   <div className="space-y-4 pl-8">
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Título del regalo</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Título del regalo
+                      </label>
                       <input
                         type="text"
                         value={settings.rewardTitle}
-                        onChange={(e) => onChange({ ...settings, rewardTitle: e.target.value })}
+                        onChange={(e) =>
+                          onChange({ ...settings, rewardTitle: e.target.value })
+                        }
                         placeholder="Ej: Track exclusivo"
                         className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Descripción</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Descripción
+                      </label>
                       <input
                         type="text"
                         value={settings.rewardDescription}
-                        onChange={(e) => onChange({ ...settings, rewardDescription: e.target.value })}
+                        onChange={(e) =>
+                          onChange({
+                            ...settings,
+                            rewardDescription: e.target.value,
+                          })
+                        }
                         placeholder="Ej: Como agradecimiento..."
                         className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                       />
@@ -1029,18 +1186,30 @@ function EmailSettingsModal({
                       <input
                         type="url"
                         value={settings.rewardDownloadUrl}
-                        onChange={(e) => onChange({ ...settings, rewardDownloadUrl: e.target.value })}
+                        onChange={(e) =>
+                          onChange({
+                            ...settings,
+                            rewardDownloadUrl: e.target.value,
+                          })
+                        }
                         placeholder="https://..."
                         className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">Nombre del archivo</label>
+                      <label className="block text-sm text-slc-muted mb-2">
+                        Nombre del archivo
+                      </label>
                       <input
                         type="text"
                         value={settings.rewardFileName}
-                        onChange={(e) => onChange({ ...settings, rewardFileName: e.target.value })}
+                        onChange={(e) =>
+                          onChange({
+                            ...settings,
+                            rewardFileName: e.target.value,
+                          })
+                        }
                         placeholder="Ej: track_exclusivo.mp3"
                         className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
                       />
@@ -1055,11 +1224,19 @@ function EmailSettingsModal({
         <div className="flex flex-wrap items-center gap-3 p-6 border-t border-slc-border">
           {/* Preview Buttons */}
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onPreview("message")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPreview("message")}
+            >
               <MonitorPlay className="w-4 h-4 mr-1" />
               Vista Previa (Mensaje)
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onPreview("memory")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPreview("memory")}
+            >
               <MonitorPlay className="w-4 h-4 mr-1" />
               Vista Previa (Foto)
             </Button>

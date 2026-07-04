@@ -1,11 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Img } from "@/components/ui/img";
-import Link from "next/link";
-import { ArrowRight, X, ChevronLeft, ChevronRight, Camera, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Img } from "@/components/ui/img";
 import { cn } from "@/lib/utils";
+import {
+  ArrowRight,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Loader2,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface GalleryPhoto {
   id: string;
@@ -31,13 +39,19 @@ interface GallerySectionProps {
   limit?: number;
 }
 
-export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: GallerySectionProps) {
+export function GallerySection({
+  initialPhotos,
+  showAll = false,
+  limit = 12,
+}: GallerySectionProps) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>(initialPhotos || []);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(!initialPhotos);
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [allTags, setAllTags] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [allTags, setAllTags] = useState<
+    { id: string; name: string; slug: string }[]
+  >([]);
 
   useEffect(() => {
     if (!initialPhotos) {
@@ -110,7 +124,9 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
   };
   const prevPhoto = () => {
     if (lightboxIndex !== null) {
-      setLightboxIndex((lightboxIndex - 1 + filteredPhotos.length) % filteredPhotos.length);
+      setLightboxIndex(
+        (lightboxIndex - 1 + filteredPhotos.length) % filteredPhotos.length,
+      );
     }
   };
 
@@ -159,7 +175,11 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
             </p>
           </div>
           {!showAll && (
-            <Button asChild variant="outline" className="shrink-0 border-gray-600 text-white hover:bg-white/10">
+            <Button
+              asChild
+              variant="outline"
+              className="shrink-0 border-gray-600 text-white hover:bg-white/10"
+            >
               <Link href="/galeria">
                 Ver todas
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -177,7 +197,7 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
                 "px-4 py-2 rounded-full text-sm font-medium transition-all duration-300",
                 !selectedTag
                   ? "bg-primary text-white shadow-lg shadow-primary/30"
-                  : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                  : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
               )}
             >
               Todas
@@ -190,7 +210,7 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
                   "px-4 py-2 rounded-full text-sm font-medium transition-all duration-300",
                   selectedTag === tag.slug
                     ? "bg-primary text-white shadow-lg shadow-primary/30"
-                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
                 )}
               >
                 {tag.name}
@@ -209,10 +229,11 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
                 "group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card",
                 // Make some images span 2 rows for visual interest
                 index % 5 === 0 && "md:row-span-2",
-                index % 7 === 3 && "lg:col-span-2"
+                index % 7 === 3 && "lg:col-span-2",
               )}
               style={{
-                aspectRatio: index % 5 === 0 ? "3/4" : index % 7 === 3 ? "16/9" : "1/1",
+                aspectRatio:
+                  index % 5 === 0 ? "3/4" : index % 7 === 3 ? "16/9" : "1/1",
               }}
             >
               <Img
@@ -267,7 +288,12 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
         {/* View More Button (if not showing all) */}
         {!showAll && photos.length >= limit && (
           <div className="text-center mt-10">
-            <Button asChild size="lg" variant="outline" className="border-gray-600 text-white hover:bg-white/10">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-gray-600 text-white hover:bg-white/10"
+            >
               <Link href="/galeria">
                 Ver galería completa
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -340,7 +366,9 @@ export function GallerySection({ initialPhotos, showAll = false, limit = 12 }: G
               )}
               <div className="flex items-center justify-center gap-4 text-sm text-white/60">
                 {filteredPhotos[lightboxIndex].photographer && (
-                  <span>Foto: {filteredPhotos[lightboxIndex].photographer}</span>
+                  <span>
+                    Foto: {filteredPhotos[lightboxIndex].photographer}
+                  </span>
                 )}
                 {filteredPhotos[lightboxIndex].location && (
                   <span>{filteredPhotos[lightboxIndex].location}</span>

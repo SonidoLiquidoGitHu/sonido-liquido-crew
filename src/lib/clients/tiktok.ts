@@ -125,14 +125,15 @@ export interface TikTokPostResult {
 export async function postToTikTok(
   imageUrl: string,
   caption: string,
-  linkUrl?: string
+  linkUrl?: string,
 ): Promise<TikTokPostResult> {
   if (!isTikTokConfigured()) {
     return {
       success: false,
       videoId: null,
       postUrl: null,
-      error: "TikTok API not configured. Set TIKTOK_CLIENT_KEY and TIKTOK_ACCESS_TOKEN env vars.",
+      error:
+        "TikTok API not configured. Set TIKTOK_CLIENT_KEY and TIKTOK_ACCESS_TOKEN env vars.",
     };
   }
 
@@ -145,34 +146,35 @@ export async function postToTikTok(
     // ========================================
 
     // Build the caption with link
-    const fullCaption = linkUrl
-      ? `${caption}\n\n${linkUrl}`
-      : caption;
+    const fullCaption = linkUrl ? `${caption}\n\n${linkUrl}` : caption;
 
     // Step 1: Initialize direct post
-    const initResponse = await fetch(`${TIKTOK_API_BASE}/post/publish/content/init/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const initResponse = await fetch(
+      `${TIKTOK_API_BASE}/post/publish/content/init/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          post_info: {
+            title: caption.substring(0, 150), // TikTok title max 150 chars
+            description: fullCaption,
+            disable_duet: false,
+            disable_comment: false,
+            disable_stitch: false,
+            privacy_level: "PUBLIC_TO_EVERYONE",
+          },
+          source_info: {
+            source: "PULL_FROM_URL",
+            photo_images: [imageUrl], // For photo posts
+          },
+          post_mode: "DIRECT_POST",
+          media_type: "PHOTO", // PHOTO for image posts, VIDEO for video posts
+        }),
       },
-      body: JSON.stringify({
-        post_info: {
-          title: caption.substring(0, 150), // TikTok title max 150 chars
-          description: fullCaption,
-          disable_duet: false,
-          disable_comment: false,
-          disable_stitch: false,
-          privacy_level: "PUBLIC_TO_EVERYONE",
-        },
-        source_info: {
-          source: "PULL_FROM_URL",
-          photo_images: [imageUrl], // For photo posts
-        },
-        post_mode: "DIRECT_POST",
-        media_type: "PHOTO", // PHOTO for image posts, VIDEO for video posts
-      }),
-    });
+    );
 
     const initData = await initResponse.json();
 
@@ -180,7 +182,10 @@ export async function postToTikTok(
       console.error("[TikTok] Init error:", initData.error);
 
       // If PHOTO type fails, try as VIDEO
-      if (initData.error.code === "invalid_parameter" || initData.error.message?.includes("media_type")) {
+      if (
+        initData.error.code === "invalid_parameter" ||
+        initData.error.message?.includes("media_type")
+      ) {
         return await postToTikTokAsVideo(imageUrl, caption, linkUrl);
       }
 
@@ -210,18 +215,24 @@ export async function postToTikTok(
     let attempts = 0;
     const maxAttempts = 15;
 
-    while ((status === "PROCESSING_UPLOAD" || status === "SEND_TO_USER_INBOX") && attempts < maxAttempts) {
+    while (
+      (status === "PROCESSING_UPLOAD" || status === "SEND_TO_USER_INBOX") &&
+      attempts < maxAttempts
+    ) {
       await new Promise((resolve) => setTimeout(resolve, 3000)); // 3s between polls
       attempts++;
 
-      const statusResponse = await fetch(`${TIKTOK_API_BASE}/post/publish/status/fetch/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const statusResponse = await fetch(
+        `${TIKTOK_API_BASE}/post/publish/status/fetch/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ publish_id: publishId }),
         },
-        body: JSON.stringify({ publish_id: publishId }),
-      });
+      );
 
       const statusData = await statusResponse.json();
 
@@ -233,7 +244,8 @@ export async function postToTikTok(
       status = statusData.data?.status || "UNKNOWN";
 
       if (status === "PUBLISH_COMPLETE") {
-        const videoId = statusData.data?.publicly_available_post_id || publishId;
+        const videoId =
+          statusData.data?.publicly_available_post_id || publishId;
         console.log("[TikTok] Post published successfully:", videoId);
         return {
           success: true,
@@ -291,7 +303,7 @@ export async function postToTikTok(
 async function postToTikTokAsVideo(
   imageUrl: string,
   caption: string,
-  linkUrl?: string
+  linkUrl?: string,
 ): Promise<TikTokPostResult> {
   const token = await getAccessToken();
 
@@ -300,29 +312,32 @@ async function postToTikTokAsVideo(
   const fullCaption = linkUrl ? `${caption}\n\n${linkUrl}` : caption;
 
   try {
-    const initResponse = await fetch(`${TIKTOK_API_BASE}/post/publish/content/init/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const initResponse = await fetch(
+      `${TIKTOK_API_BASE}/post/publish/content/init/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          post_info: {
+            title: caption.substring(0, 150),
+            description: fullCaption,
+            disable_duet: false,
+            disable_comment: false,
+            disable_stitch: false,
+            privacy_level: "MUTUAL_FOLLOW_FRIENDS", // More private for inbox posts
+          },
+          source_info: {
+            source: "PULL_FROM_URL",
+            photo_images: [imageUrl],
+          },
+          post_mode: "DIRECT_POST",
+          media_type: "PHOTO",
+        }),
       },
-      body: JSON.stringify({
-        post_info: {
-          title: caption.substring(0, 150),
-          description: fullCaption,
-          disable_duet: false,
-          disable_comment: false,
-          disable_stitch: false,
-          privacy_level: "MUTUAL_FOLLOW_FRIENDS", // More private for inbox posts
-        },
-        source_info: {
-          source: "PULL_FROM_URL",
-          photo_images: [imageUrl],
-        },
-        post_mode: "DIRECT_POST",
-        media_type: "PHOTO",
-      }),
-    });
+    );
 
     const initData = await initResponse.json();
 
@@ -420,7 +435,10 @@ export async function validateTikTokToken(): Promise<TikTokTokenInfo> {
  * Generate the TikTok OAuth authorization URL.
  * The user needs to visit this URL to authorize the app.
  */
-export async function getTikTokAuthUrl(redirectUri: string, state?: string): Promise<string> {
+export async function getTikTokAuthUrl(
+  redirectUri: string,
+  state?: string,
+): Promise<string> {
   const clientKey = await getClientKey();
   const scopes = "video.publish,video.list";
 
@@ -441,8 +459,12 @@ export async function getTikTokAuthUrl(redirectUri: string, state?: string): Pro
  */
 export async function exchangeTikTokCode(
   code: string,
-  redirectUri: string
-): Promise<{ accessToken: string; refreshToken: string; openId: string } | null> {
+  redirectUri: string,
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  openId: string;
+} | null> {
   const clientKey = await getClientKey();
   const clientSecret = await getClientSecret();
 

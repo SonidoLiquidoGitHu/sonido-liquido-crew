@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ===========================================
 // TAGS TABLE
@@ -10,7 +10,9 @@ export const tags = sqliteTable("tags", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   category: text("category"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================
@@ -19,12 +21,16 @@ export const tags = sqliteTable("tags", {
 
 export const tagAssignments = sqliteTable("tag_assignments", {
   id: text("id").primaryKey(),
-  tagId: text("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  tagId: text("tag_id")
+    .notNull()
+    .references(() => tags.id, { onDelete: "cascade" }),
   entityType: text("entity_type", {
-    enum: ["artist", "release", "video", "product", "event", "photo"]
+    enum: ["artist", "release", "video", "product", "event", "photo"],
   }).notNull(),
   entityId: text("entity_id").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 // ===========================================

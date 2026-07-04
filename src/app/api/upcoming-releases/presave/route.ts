@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { upcomingReleasesService } from "@/lib/services";
+import { type NextRequest, NextResponse } from "next/server";
 
 // POST - Track presave click
 export async function POST(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!releaseId) {
       return NextResponse.json(
         { success: false, error: "Release ID required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     console.error("[Presave API] Error:", error);
     return NextResponse.json(
       { success: false, error: "Error tracking presave" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
