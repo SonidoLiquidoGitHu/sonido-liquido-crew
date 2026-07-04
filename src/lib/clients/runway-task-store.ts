@@ -125,7 +125,8 @@ async function _doEnsureTable(): Promise<void> {
 /**
  * Convert a DB row to a RunwayTaskInfo object
  */
-function rowToTaskInfo(row: any): RunwayTaskInfo {
+// biome-ignore lint/suspicious/noExplicitAny: DB row shape is dynamic
+function rowToTaskInfo(row: Record<string, any>): RunwayTaskInfo {
   return {
     id: row.id,
     upcomingReleaseId: row.upcoming_release_id || undefined,
@@ -235,6 +236,7 @@ export async function updateTask(
     // Build dynamic SET clause — only update fields that have values
     // This prevents overwriting valid output with null during polling
     const setClauses: string[] = ["status = ?", "updated_at = ?"];
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic SQL args
     const args: any[] = [updates.status ?? "PENDING", now];
 
     if (updates.output !== undefined && updates.output.length > 0) {

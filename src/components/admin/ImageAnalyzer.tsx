@@ -326,19 +326,19 @@ function ImageCropperModal({
 
     const handleSize = 8;
     ctx.fillStyle = "#ff6b00";
-    [
+    for (const [hx, hy] of [
       [cropX, cropY],
       [cropX + cropW, cropY],
       [cropX, cropY + cropH],
       [cropX + cropW, cropY + cropH],
-    ].forEach(([hx, hy]) => {
+    ]) {
       ctx.fillRect(
         hx - handleSize / 2,
         hy - handleSize / 2,
         handleSize,
         handleSize,
       );
-    });
+    }
 
     ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
     ctx.lineWidth = 1;

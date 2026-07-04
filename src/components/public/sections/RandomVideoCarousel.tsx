@@ -66,6 +66,7 @@ export function RandomVideoCarousel({
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchRandomVideos();
   }, [limit]);

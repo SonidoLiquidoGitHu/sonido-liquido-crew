@@ -1242,9 +1242,9 @@ export default function AdminSyncPage() {
                       </p>
                     </div>
                     <Button
-                      onClick={() =>
-                        (window.location.href = "/api/dropbox/auth")
-                      }
+                      onClick={() => {
+                        window.location.href = "/api/dropbox/auth";
+                      }}
                       className="bg-blue-500 hover:bg-blue-600 font-bold shrink-0"
                     >
                       <svg

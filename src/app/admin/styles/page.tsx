@@ -71,6 +71,7 @@ export default function StyleLibraryPage() {
   const [editingStyle, setEditingStyle] = useState<CustomStyle | null>(null);
   const [previewStyle, setPreviewStyle] = useState<CustomStyle | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchStyles();
   }, [selectedCategory]);

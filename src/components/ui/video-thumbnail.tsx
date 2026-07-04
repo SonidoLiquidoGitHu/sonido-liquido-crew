@@ -64,7 +64,7 @@ export function VideoThumbnail({
     return (
       <div className={`${fill ? "absolute inset-0" : "relative"} ${className}`}>
         <SafeImage
-          src={thumbnailUrl!}
+          src={thumbnailUrl as string}
           alt={alt}
           fill={fill}
           className="object-cover"
@@ -72,9 +72,9 @@ export function VideoThumbnail({
           priority={priority}
           fallbackSrc={(() => {
             const ytId = getYouTubeId(video);
-            if (ytId && isYouTubeThumbnailUrl(thumbnailUrl!)) {
+            if (ytId && isYouTubeThumbnailUrl(thumbnailUrl as string)) {
               return (
-                getYouTubeThumbnailFallback(ytId, thumbnailUrl!) ||
+                getYouTubeThumbnailFallback(ytId, thumbnailUrl as string) ||
                 getVideoPlaceholderSvg(aspectRatio)
               );
             }

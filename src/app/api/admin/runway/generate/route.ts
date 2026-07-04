@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate video
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let result;
     try {
       if (promptImage) {

@@ -272,11 +272,10 @@ export function NewsletterPopup({
   useEffect(() => {
     if (hasShown) return;
 
-    let timeoutId: NodeJS.Timeout;
     let scrollHandler: (() => void) | null = null;
 
     // Time-based trigger
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       showPopup("time");
     }, settings.delaySeconds * 1000);
 

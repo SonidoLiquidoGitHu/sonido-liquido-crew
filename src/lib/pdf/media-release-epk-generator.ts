@@ -323,10 +323,10 @@ export async function generateMediaReleaseEpkPDF(
     data.title.toUpperCase(),
     contentWidth - 35,
   );
-  titleLines.slice(0, 2).forEach((line: string) => {
+  for (const line of titleLines.slice(0, 2) as string[]) {
     doc.text(line, margin, yPos);
     yPos += 12;
-  });
+  }
 
   // Subtitle
   if (data.subtitle) {
@@ -387,8 +387,9 @@ export async function generateMediaReleaseEpkPDF(
       const statsBoxWidth =
         (contentWidth - (stats.length - 1) * 4) / stats.length;
 
-      stats.forEach((stat, index) => {
-        const xPos = margin + index * (statsBoxWidth + 4);
+      for (let i = 0; i < stats.length; i++) {
+        const stat = stats[i];
+        const xPos = margin + i * (statsBoxWidth + 4);
 
         doc.setFillColor(COLORS.card);
         doc.roundedRect(xPos, yPos, statsBoxWidth, 22, 2, 2, "F");
@@ -406,7 +407,7 @@ export async function generateMediaReleaseEpkPDF(
         doc.text(stat.label, xPos + statsBoxWidth / 2, yPos + 17, {
           align: "center",
         });
-      });
+      }
 
       yPos += 30;
     }
@@ -424,11 +425,11 @@ export async function generateMediaReleaseEpkPDF(
     doc.setTextColor(COLORS.textSecondary);
 
     const summaryLines = doc.splitTextToSize(data.summary, contentWidth);
-    summaryLines.forEach((line: string) => {
+    for (const line of summaryLines as string[]) {
       checkPageBreak(6);
       doc.text(line, margin, yPos);
       yPos += 5;
-    });
+    }
     yPos += 6;
   }
 
@@ -458,10 +459,10 @@ export async function generateMediaReleaseEpkPDF(
     doc.setTextColor(COLORS.text);
 
     let quoteY = yPos + 8;
-    quoteLines.forEach((line: string) => {
+    for (const line of quoteLines as string[]) {
       doc.text(line, margin + 10, quoteY);
       quoteY += 5;
-    });
+    }
 
     // Attribution
     if (data.pullQuoteAttribution) {
@@ -516,11 +517,11 @@ export async function generateMediaReleaseEpkPDF(
 
       const cleanBio = cleanMarkdown(bio);
       const bioLines = doc.splitTextToSize(cleanBio, contentWidth);
-      bioLines.forEach((line: string) => {
+      for (const line of bioLines as string[]) {
         checkPageBreak(5);
         doc.text(line, margin, yPos);
         yPos += 4.5;
-      });
+      }
     }
 
     yPos += 8;
@@ -546,10 +547,11 @@ export async function generateMediaReleaseEpkPDF(
     yPos += 10;
 
     // Track rows
-    data.audioTracks.forEach((track, index) => {
+    for (let i = 0; i < data.audioTracks.length; i++) {
+      const track = data.audioTracks[i];
       checkPageBreak(8);
 
-      if (index % 2 === 0) {
+      if (i % 2 === 0) {
         doc.setFillColor(COLORS.sectionBg);
         doc.rect(margin, yPos - 3, contentWidth, 7, "F");
       }
@@ -557,7 +559,7 @@ export async function generateMediaReleaseEpkPDF(
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(COLORS.muted);
-      doc.text(`${track.trackNumber || index + 1}`, margin + 4, yPos);
+      doc.text(`${track.trackNumber || i + 1}`, margin + 4, yPos);
 
       doc.setTextColor(COLORS.text);
       doc.text(track.title, margin + 12, yPos);
@@ -568,7 +570,7 @@ export async function generateMediaReleaseEpkPDF(
       });
 
       yPos += 7;
-    });
+    }
 
     yPos += 8;
   }
@@ -587,11 +589,11 @@ export async function generateMediaReleaseEpkPDF(
 
     const cleanContent = cleanMarkdown(data.content);
     const contentLines = doc.splitTextToSize(cleanContent, contentWidth);
-    contentLines.forEach((line: string) => {
+    for (const line of contentLines as string[]) {
       checkPageBreak(5);
       doc.text(line, margin, yPos);
       yPos += 4.5;
-    });
+    }
 
     yPos += 8;
   }
@@ -610,11 +612,11 @@ export async function generateMediaReleaseEpkPDF(
 
     const cleanCredits = cleanMarkdown(data.credits);
     const creditLines = doc.splitTextToSize(cleanCredits, contentWidth);
-    creditLines.forEach((line: string) => {
+    for (const line of creditLines as string[]) {
       checkPageBreak(5);
       doc.text(line, margin, yPos);
       yPos += 4.5;
-    });
+    }
 
     yPos += 8;
   }
@@ -627,7 +629,7 @@ export async function generateMediaReleaseEpkPDF(
     checkPageBreak(30);
     drawSectionHeader("Citas de Prensa");
 
-    data.artist.pressQuotes.slice(0, 4).forEach((quote) => {
+    for (const quote of data.artist.pressQuotes.slice(0, 4)) {
       checkPageBreak(25);
 
       const quoteLines = doc.splitTextToSize(
@@ -650,10 +652,10 @@ export async function generateMediaReleaseEpkPDF(
       doc.setTextColor(COLORS.text);
 
       let quoteY = yPos + 6;
-      quoteLines.forEach((line: string) => {
+      for (const line of quoteLines as string[]) {
         doc.text(line, margin + 8, quoteY);
         quoteY += 4.5;
-      });
+      }
 
       // Source
       doc.setFont("helvetica", "bold");
@@ -662,7 +664,7 @@ export async function generateMediaReleaseEpkPDF(
       doc.text(`-- ${quote.source}`, margin + 8, quoteY + 2);
 
       yPos += quoteHeight + 5;
-    });
+    }
 
     yPos += 5;
   }
@@ -682,10 +684,11 @@ export async function generateMediaReleaseEpkPDF(
     let col = 0;
     let rowY = yPos;
 
-    collabs.forEach((collab, index) => {
+    for (let i = 0; i < collabs.length; i++) {
+      const collab = collabs[i];
       const xPos = margin + col * (colWidth + 6);
 
-      if (col === 0 && index > 0) {
+      if (col === 0 && i > 0) {
         checkPageBreak(18);
         rowY = yPos;
       }
@@ -711,7 +714,7 @@ export async function generateMediaReleaseEpkPDF(
         col = 0;
         yPos = rowY + 20;
       }
-    });
+    }
 
     if (col !== 0) {
       yPos = rowY + 20;
@@ -748,11 +751,11 @@ export async function generateMediaReleaseEpkPDF(
         .slice(0, 8)
         .join(" | ");
       const festivalLines = doc.splitTextToSize(festivalText, contentWidth);
-      festivalLines.forEach((line: string) => {
+      for (const line of festivalLines as string[]) {
         checkPageBreak(5);
         doc.text(line, margin, yPos);
         yPos += 5;
-      });
+      }
       yPos += 3;
     }
 
@@ -768,11 +771,11 @@ export async function generateMediaReleaseEpkPDF(
       doc.setTextColor(COLORS.text);
       const venueText = data.artist.notableVenues.slice(0, 8).join(" | ");
       const venueLines = doc.splitTextToSize(venueText, contentWidth);
-      venueLines.forEach((line: string) => {
+      for (const line of venueLines as string[]) {
         checkPageBreak(5);
         doc.text(line, margin, yPos);
         yPos += 5;
-      });
+      }
       yPos += 3;
     }
 
@@ -792,10 +795,11 @@ export async function generateMediaReleaseEpkPDF(
     let profileCol = 0;
     let profileRowY = yPos;
 
-    profiles.forEach((profile, index) => {
+    for (let i = 0; i < profiles.length; i++) {
+      const profile = profiles[i];
       const xPos = margin + profileCol * (profileColWidth + 6);
 
-      if (profileCol === 0 && index > 0) {
+      if (profileCol === 0 && i > 0) {
         checkPageBreak(12);
         profileRowY = yPos;
       }
@@ -828,7 +832,7 @@ export async function generateMediaReleaseEpkPDF(
         profileCol = 0;
         yPos = profileRowY + 13;
       }
-    });
+    }
 
     if (profileCol !== 0) {
       yPos = profileRowY + 13;
@@ -887,7 +891,7 @@ export async function generateMediaReleaseEpkPDF(
     return true;
   });
 
-  uniqueContacts.forEach((contact) => {
+  for (const contact of uniqueContacts) {
     checkPageBreak(8);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
@@ -900,7 +904,7 @@ export async function generateMediaReleaseEpkPDF(
     doc.text(contact.value, margin + 40, yPos);
 
     yPos += 7;
-  });
+  }
 
   yPos += 5;
 
@@ -945,7 +949,7 @@ export function generateMediaReleaseEpkFilename(
     .join(" ")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/\p{M}/gu, "") // Remove accents
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
   return `${slug}-epk-${date}.pdf`;

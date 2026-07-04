@@ -184,8 +184,8 @@ const verificationStatuses = [
  */
 function safeJsonParse(
   value: string | null | undefined,
-  fallback: any = null,
-): any {
+  fallback: Record<string, unknown> | null = null,
+): Record<string, unknown> | unknown[] | null {
   if (!value) return fallback;
   try {
     let parsed: unknown = JSON.parse(value);
@@ -293,7 +293,8 @@ const relationTypes = [
 interface ArtistFormProps {
   mode: "create" | "edit";
   artistId?: string;
-  initialData?: any;
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic artist data
+  initialData?: Record<string, any>;
 }
 
 export default function ArtistForm({
@@ -386,7 +387,8 @@ export default function ArtistForm({
         const res = await fetch("/api/admin/artists");
         const data = await res.json();
         if (data.success && data.data) {
-          setAllArtists(data.data.filter((a: any) => a.id !== artistId));
+          // biome-ignore lint/suspicious/noExplicitAny: API response filter
+          setAllArtists(data.data.filter((a: Record<string, any>) => a.id !== artistId));
         }
       } catch (error) {
         console.error("Error fetching artists:", error);
@@ -439,7 +441,8 @@ export default function ArtistForm({
 
             if (artist.galleryAssets) {
               setGalleryAssets(
-                artist.galleryAssets.map((asset: any) => ({
+                // biome-ignore lint/suspicious/noExplicitAny: API response mapping
+                artist.galleryAssets.map((asset: Record<string, any>) => ({
                   id: asset.id,
                   assetUrl: asset.assetUrl,
                   thumbnailUrl: asset.thumbnailUrl,
@@ -453,7 +456,8 @@ export default function ArtistForm({
 
             if (artist.artistRelations) {
               setArtistRelationsList(
-                artist.artistRelations.map((rel: any) => ({
+                // biome-ignore lint/suspicious/noExplicitAny: API response mapping
+                artist.artistRelations.map((rel: Record<string, any>) => ({
                   id: rel.id,
                   relatedArtistId: rel.relatedArtistId,
                   relatedArtist: rel.relatedArtist,
@@ -721,6 +725,7 @@ export default function ArtistForm({
       });
 
       // Handle non-JSON responses gracefully
+      // biome-ignore lint/suspicious/noImplicitAnyLet: inferred from json()
       let data;
       try {
         data = await response.json();
@@ -739,9 +744,9 @@ export default function ArtistForm({
       } else {
         showMessage("error", data.error || "Error al guardar");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[ArtistForm] Error saving artist:", error);
-      const msg = error?.message || "Error de conexión";
+      const msg = error instanceof Error ? error.message : "Error de conexión";
       showMessage(
         "error",
         msg.includes("fetch") ? "Error de conexión al servidor" : msg,
@@ -1659,10 +1664,12 @@ export default function ArtistForm({
                           value={newGenre}
                           onChange={(e) => setNewGenre(e.target.value)}
                           placeholder="Hip Hop, Trap, Boom Bap..."
-                          onKeyDown={(e) =>
-                            e.key === "Enter" &&
-                            (e.preventDefault(), addGenre())
-                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addGenre();
+                            }
+                          }}
                         />
                         <Button
                           type="button"
@@ -1700,10 +1707,12 @@ export default function ArtistForm({
                           value={newLabel}
                           onChange={(e) => setNewLabel(e.target.value)}
                           placeholder="Sonido Líquido, Independent..."
-                          onKeyDown={(e) =>
-                            e.key === "Enter" &&
-                            (e.preventDefault(), addLabel())
-                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addLabel();
+                            }
+                          }}
                         />
                         <Button
                           type="button"

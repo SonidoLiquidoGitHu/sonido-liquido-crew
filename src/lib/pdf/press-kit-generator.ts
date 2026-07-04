@@ -163,8 +163,9 @@ export async function generatePressKitPDF(
     { value: data.statsYears, label: "AÑOS" },
   ];
 
-  stats.forEach((stat, index) => {
-    const xPos = margin + index * (statsBoxWidth + 10);
+  for (let i = 0; i < stats.length; i++) {
+    const stat = stats[i];
+    const xPos = margin + i * (statsBoxWidth + 10);
 
     // Box background
     doc.setFillColor(COLORS.light);
@@ -185,7 +186,7 @@ export async function generatePressKitPDF(
     doc.text(stat.label, xPos + statsBoxWidth / 2, yPos + 24, {
       align: "center",
     });
-  });
+  }
 
   yPos += 45;
 
@@ -205,11 +206,11 @@ export async function generatePressKitPDF(
 
     const lines = doc.splitTextToSize(cleanContent, contentWidth);
 
-    lines.forEach((line: string) => {
+    for (const line of lines as string[]) {
       checkPageBreak(6);
       doc.text(line, margin, yPos);
       yPos += 5;
-    });
+    }
 
     yPos += 10;
   }
@@ -218,7 +219,7 @@ export async function generatePressKitPDF(
   if (data.keyPoints && data.keyPoints.length > 0) {
     drawSectionHeader("PUNTOS CLAVE");
 
-    data.keyPoints.forEach((point) => {
+    for (const point of data.keyPoints) {
       checkPageBreak(20);
 
       // Bullet point
@@ -241,14 +242,14 @@ export async function generatePressKitPDF(
           contentWidth - 10,
         );
         yPos += 5;
-        descLines.forEach((line: string) => {
+        for (const line of descLines as string[]) {
           doc.text(line, margin + 8, yPos);
           yPos += 4;
-        });
+        }
       }
 
       yPos += 5;
-    });
+    }
 
     yPos += 5;
   }
@@ -266,10 +267,11 @@ export async function generatePressKitPDF(
     let col = 0;
     let rowY = yPos;
 
-    data.spotifyArtists.forEach((artist, index) => {
+    for (let i = 0; i < data.spotifyArtists.length; i++) {
+      const artist = data.spotifyArtists[i];
       const xPos = margin + col * (colWidth + 10);
 
-      if (col === 0 && index > 0) {
+      if (col === 0 && i > 0) {
         checkPageBreak(25);
         rowY = yPos;
       }
@@ -297,7 +299,7 @@ export async function generatePressKitPDF(
         col = 0;
         yPos = rowY + 25;
       }
-    });
+    }
 
     if (col !== 0) {
       yPos = rowY + 25;
@@ -315,7 +317,7 @@ export async function generatePressKitPDF(
     checkPageBreak(40);
     drawSectionHeader("LO QUE DICEN DE NOSOTROS");
 
-    data.pressQuotes.forEach((quote) => {
+    for (const quote of data.pressQuotes) {
       checkPageBreak(30);
 
       // Quote box
@@ -333,10 +335,10 @@ export async function generatePressKitPDF(
       doc.setTextColor(COLORS.text);
 
       let quoteY = yPos + 8;
-      quoteLines.forEach((line: string) => {
+      for (const line of quoteLines as string[]) {
         doc.text(line, margin + 10, quoteY);
         quoteY += 5;
-      });
+      }
 
       // Source
       doc.setFont("helvetica", "bold");
@@ -345,7 +347,7 @@ export async function generatePressKitPDF(
       doc.text(`— ${quote.source}`, margin + 10, quoteY + 2);
 
       yPos += quoteHeight + 8;
-    });
+    }
 
     yPos += 5;
   }
@@ -360,7 +362,7 @@ export async function generatePressKitPDF(
     { label: "Ubicación", value: data.contactLocation },
   ];
 
-  contactInfo.forEach((info) => {
+  for (const info of contactInfo) {
     if (info.value) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
@@ -373,7 +375,7 @@ export async function generatePressKitPDF(
 
       yPos += 7;
     }
-  });
+  }
 
   yPos += 10;
 
@@ -390,7 +392,7 @@ export async function generatePressKitPDF(
     checkPageBreak(30);
     drawSectionHeader("REDES SOCIALES");
 
-    socialLinks.forEach((social) => {
+    for (const social of socialLinks) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(COLORS.primary);
@@ -399,10 +401,10 @@ export async function generatePressKitPDF(
       doc.setFont("helvetica", "normal");
       doc.setTextColor(COLORS.text);
       doc.setFontSize(9);
-      doc.text(social.value!, margin + 25, yPos);
+      doc.text(social.value as string, margin + 25, yPos);
 
       yPos += 7;
-    });
+    }
 
     yPos += 10;
   }
@@ -412,7 +414,7 @@ export async function generatePressKitPDF(
     checkPageBreak(30);
     drawSectionHeader("RECURSOS DESCARGABLES");
 
-    data.downloads.forEach((download) => {
+    for (const download of data.downloads) {
       checkPageBreak(15);
 
       // Download item
@@ -432,7 +434,7 @@ export async function generatePressKitPDF(
       }
 
       yPos += 16;
-    });
+    }
   }
 
   // =====================

@@ -99,6 +99,7 @@ export function StyleSettingsEditor({
   const settings = { ...defaultStyleSettings, ...value };
 
   // Fetch saved styles and artist style on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchSavedStyles();
     if (artistId) {
@@ -1211,6 +1212,7 @@ export function StyleSettingsEditor({
                 >
                   {/* Inject animation keyframes */}
                   <style
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: animation keyframes
                     dangerouslySetInnerHTML={{ __html: animationKeyframes }}
                   />
 

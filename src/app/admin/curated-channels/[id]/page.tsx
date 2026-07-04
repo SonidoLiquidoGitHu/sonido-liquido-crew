@@ -91,6 +91,7 @@ export default function CuratedChannelDetailPage({
   const [playingTrack, setPlayingTrack] = useState<string | null>(null);
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchChannel is stable
   useEffect(() => {
     fetchChannel();
   }, [id]);

@@ -27,6 +27,7 @@ export function AudioPreviewPlayer({
   // Check if URL is an audio file
   const isAudioFile = /\.(mp3|wav|flac|m4a|aac|ogg|webm)$/i.test(url);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable reference
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -133,7 +134,9 @@ export function AudioPreviewPlayer({
     <div
       className={`bg-slc-card border border-slc-border rounded-lg p-4 ${className}`}
     >
-      <audio ref={audioRef} src={url} preload="metadata" />
+      <audio ref={audioRef} src={url} preload="metadata" >
+        <track kind="captions" />
+      </audio>
 
       {/* Filename */}
       {filename && (

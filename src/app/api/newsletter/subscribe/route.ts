@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
 
     // Source validation: only accept known valid sources
     let validatedSource = source || "website";
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     if (!VALID_SUBSCRIPTION_SOURCES.includes(validatedSource as any)) {
       // Check if it starts with a known prefix (like "popup_" or "download-gate:")
       const isKnownPrefix = VALID_SUBSCRIPTION_SOURCES.some(

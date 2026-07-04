@@ -44,7 +44,8 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 interface MusicaSectionProps {
-  featuredBeats: any[];
+  // biome-ignore lint/suspicious/noExplicitAny: beats data from API with dynamic shape
+  featuredBeats: Record<string, any>[];
 }
 
 export function MusicaSection({ featuredBeats }: MusicaSectionProps) {

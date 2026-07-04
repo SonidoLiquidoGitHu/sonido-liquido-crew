@@ -168,6 +168,7 @@ export function CalendarDashboard() {
   };
 
   // Fetch releases and events
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable reference
   useEffect(() => {
     fetchData();
   }, [currentDate]);
@@ -187,6 +188,7 @@ export function CalendarDashboard() {
       const upcomingRes = await fetch("/api/upcoming-releases");
       const upcomingData = await upcomingRes.json();
       if (upcomingData.success && upcomingData.data) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         const upcomingReleases = upcomingData.data.map((r: any) => ({
           id: r.id,
           title: r.title,
@@ -459,6 +461,7 @@ export function CalendarDashboard() {
     const icsEvents: string[] = [];
 
     // Add releases as all-day events
+    // biome-ignore lint/complexity/noForEach: intentional forEach usage
     releases.forEach((release) => {
       const date = new Date(release.releaseDate);
       icsEvents.push(
@@ -473,6 +476,7 @@ export function CalendarDashboard() {
     });
 
     // Add events (all-day by default since no time info)
+    // biome-ignore lint/complexity/noForEach: intentional forEach usage
     events.forEach((event) => {
       const date = new Date(event.eventDate);
       icsEvents.push(
@@ -488,6 +492,7 @@ export function CalendarDashboard() {
     });
 
     // Add notes as all-day events
+    // biome-ignore lint/complexity/noForEach: intentional forEach usage
     notes.forEach((note) => {
       const date = new Date(note.date);
       const categoryInfo = getCategoryInfo(note.category);
@@ -634,6 +639,7 @@ export function CalendarDashboard() {
   // Group notes by category for sidebar
   const notesByCategory = useMemo(() => {
     const grouped: Record<string, CalendarNote[]> = {};
+    // biome-ignore lint/complexity/noForEach: intentional forEach usage
     upcomingNotes.forEach((note) => {
       if (!grouped[note.category]) grouped[note.category] = [];
       grouped[note.category].push(note);

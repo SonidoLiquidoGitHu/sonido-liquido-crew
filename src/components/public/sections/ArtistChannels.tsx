@@ -228,7 +228,7 @@ export function ArtistChannels() {
                   >
                     {hasImage ? (
                       <Image
-                        src={artist.profileImageUrl!}
+                        src={artist.profileImageUrl as string}
                         alt={artist.name}
                         width={28}
                         height={28}
@@ -438,7 +438,7 @@ export function ArtistChannels() {
                   >
                     {hasImage ? (
                       <Image
-                        src={artist.profileImageUrl!}
+                        src={artist.profileImageUrl as string}
                         alt={artist.name}
                         width={20}
                         height={20}

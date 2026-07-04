@@ -32,6 +32,7 @@ export function ReleaseNotifyButton({
   const [error, setError] = useState<string | null>(null);
 
   // Check if already subscribed (from localStorage)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     const storedEmail = localStorage.getItem("sl_notify_email");
     if (storedEmail) {

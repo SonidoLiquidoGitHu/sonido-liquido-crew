@@ -199,6 +199,7 @@ export function CollaborationStory({
           </h3>
           <div
             className="prose prose-sm prose-invert max-w-none text-slc-muted leading-relaxed"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: rich content from CMS
             dangerouslySetInnerHTML={{ __html: story }}
           />
         </div>
@@ -349,7 +350,9 @@ export function CollaborationStory({
                 controls
                 autoPlay
                 className="max-h-[70vh] rounded-lg"
-              />
+              >
+                <track kind="captions" />
+              </video>
             ) : (
               <img
                 src={media[selectedMediaIndex].url}

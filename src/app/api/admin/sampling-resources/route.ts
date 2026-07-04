@@ -263,6 +263,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       data: rowToResource(newResource as any),
     });
   } catch (error) {
@@ -305,6 +306,7 @@ export async function PUT(request: NextRequest) {
     const newType = (updates.type || existing.type) as ResourceType;
 
     // Build update object
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     const updateData: Record<string, any> = { updatedAt: new Date() };
     if (updates.title !== undefined) updateData.title = updates.title.trim();
     if (updates.url !== undefined) updateData.url = updates.url.trim();
@@ -341,6 +343,7 @@ export async function PUT(request: NextRequest) {
       .where(eq(samplingResources.id, id))
       .limit(1);
 
+    // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
     return NextResponse.json({ success: true, data: rowToResource(updated!) });
   } catch (error) {
     console.error("[sampling-resources] PUT error:", error);

@@ -201,13 +201,15 @@ async function refreshAccessToken(
       // Update access token
       await db
         .update(siteSettings)
-        .set({ value: newAccessToken, updatedAt: new Date() } as any)
+        .set({ value: newAccessToken, updatedAt: new Date() // biome-ignore lint/suspicious/noExplicitAny: drizzle partial update
+        } as Record<string, any>)
         .where(eq(siteSettings.key, "dropbox_access_token"));
 
       // Update expiry time
       await db
         .update(siteSettings)
-        .set({ value: expiryTime.toString(), updatedAt: new Date() } as any)
+        .set({ value: expiryTime.toString(), updatedAt: new Date() // biome-ignore lint/suspicious/noExplicitAny: drizzle partial update
+        } as Record<string, any>)
         .where(eq(siteSettings.key, "dropbox_token_expiry"));
 
       // Update cache
@@ -296,7 +298,8 @@ export async function saveDropboxToken(token: string): Promise<boolean> {
       console.log("[Dropbox] Updating existing token...");
       await db
         .update(siteSettings)
-        .set({ value: token, updatedAt: new Date() } as any)
+        .set({ value: token, updatedAt: new Date() // biome-ignore lint/suspicious/noExplicitAny: drizzle partial update
+        } as Record<string, any>)
         .where(eq(siteSettings.key, "dropbox_access_token"));
       console.log("[Dropbox] Token updated successfully");
     } else {
@@ -308,7 +311,8 @@ export async function saveDropboxToken(token: string): Promise<boolean> {
         value: token,
         type: "string",
         description: "Dropbox API access token",
-      } as any);
+      // biome-ignore lint/suspicious/noExplicitAny: drizzle partial update
+      } as Record<string, any>);
       console.log("[Dropbox] Token inserted with id:", newId);
     }
 

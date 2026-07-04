@@ -189,7 +189,7 @@ function StoryCircle({
           >
             {getProxiedThumb(video) ? (
               <SafeImage
-                src={getProxiedThumb(video)!}
+                src={getProxiedThumb(video) as string}
                 alt={video.title || video.artistName || "Reel"}
                 fill
                 className={cn(
@@ -198,7 +198,7 @@ function StoryCircle({
                 )}
                 sizes="86px"
                 fallbackSrc={(() => {
-                  const thumb = getProxiedThumb(video)!;
+                  const thumb = getProxiedThumb(video) as string;
                   const ytId = getYouTubeId(video);
                   if (ytId && isYouTubeThumbnailUrl(thumb)) {
                     return (

@@ -62,11 +62,11 @@ export function DiscografiaClient({
   // Extract available years from releases
   const availableYears = useMemo(() => {
     const years = new Set<number>();
-    releases.forEach((r) => {
+    for (const r of releases) {
       if (r.releaseDate) {
         years.add(new Date(r.releaseDate).getFullYear());
       }
-    });
+    }
     return Array.from(years).sort((a, b) => b - a);
   }, [releases]);
 
@@ -139,9 +139,9 @@ export function DiscografiaClient({
   // Count releases per type for badges
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = { all: releases.length };
-    releases.forEach((r) => {
+    for (const r of releases) {
       counts[r.releaseType] = (counts[r.releaseType] || 0) + 1;
-    });
+    }
     return counts;
   }, [releases]);
 

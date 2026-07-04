@@ -74,6 +74,7 @@ export function FanWall({
   const [selectedReaction, setSelectedReaction] = useState<string>("");
   const [country, setCountry] = useState("");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchMessages();
   }, [artistId, releaseId, eventId]);

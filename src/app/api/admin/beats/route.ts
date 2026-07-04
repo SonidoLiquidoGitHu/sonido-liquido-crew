@@ -177,6 +177,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: beat,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: catch error
   } catch (error: any) {
     console.error("[API] Error creating beat:", error);
     console.error("[API] Error details:", {
@@ -296,6 +297,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       data: beat,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: catch error
   } catch (error: any) {
     console.error("[API] Error updating beat:", error);
     console.error("[API] Error details:", {

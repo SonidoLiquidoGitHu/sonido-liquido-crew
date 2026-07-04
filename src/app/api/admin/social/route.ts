@@ -713,6 +713,7 @@ async function handleProcessNextStoryOnly() {
         id: crypto.randomUUID(),
         queueId: `throwback-${throwbackItem.id}`,
         platform: "instagram_story",
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         contentType: throwbackItem.contentType as any,
         sourceId: throwbackItem.sourceId,
         imageUrl: publicImageUrl,
@@ -724,6 +725,7 @@ async function handleProcessNextStoryOnly() {
         status: storyResult.success ? "success" : "failed",
         errorMessage: storyResult.error || null,
         postedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any);
     } catch (logErr) {
       logError = logErr instanceof Error ? logErr.message : String(logErr);
@@ -877,6 +879,7 @@ async function handlePostUpcomingRelease(body: {
         status: fbResult.success ? "success" : "failed",
         errorMessage: fbResult.error || null,
         postedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log FB result:", logError);
@@ -910,6 +913,7 @@ async function handlePostUpcomingRelease(body: {
         status: igResult.success ? "success" : "failed",
         errorMessage: igResult.error || null,
         postedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log IG result:", logError);
@@ -1044,6 +1048,7 @@ async function handlePostReel(body: {
         status: igResult.success ? "success" : "failed",
         errorMessage: igResult.error || null,
         postedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log IG Reel result:", logError);
@@ -1077,6 +1082,7 @@ async function handlePostReel(body: {
         status: fbResult.success ? "success" : "failed",
         errorMessage: fbResult.error || null,
         postedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log FB Reel result:", logError);
@@ -1222,6 +1228,7 @@ async function handlePopulate(options: {
           status: "pending",
           platforms: platformsJson,
           postedPlatforms: "[]",
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         } as any);
 
         existingSourceIds.add(key);
@@ -1306,6 +1313,7 @@ async function handlePopulate(options: {
           status: "pending",
           platforms: platformsJson,
           postedPlatforms: "[]",
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         } as any);
 
         existingSourceIds.add(key);
@@ -1359,6 +1367,7 @@ async function handlePopulate(options: {
           status: "pending",
           platforms: platformsJson,
           postedPlatforms: "[]",
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         } as any);
 
         existingSourceIds.add(key);
@@ -1436,6 +1445,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic type
           } as any);
 
           existingSourceIds.add(key);
@@ -1575,6 +1585,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic type
           } as any);
 
           existingSourceIds.add(key);
@@ -1664,6 +1675,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic type
           } as any);
 
           existingSourceIds.add(key);
@@ -1755,6 +1767,7 @@ async function handlePopulate(options: {
             status: "pending",
             platforms: platformsJson,
             postedPlatforms: "[]",
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic type
           } as any);
 
           existingSourceIds.add(key);
@@ -1967,6 +1980,7 @@ async function handlePostUpcomingEvent(body: {
         status: fbResult.success ? "success" : "failed",
         errorMessage: fbResult.error || null,
         postedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any);
     } catch (logError) {
       console.error("[Social API] Failed to log FB event result:", logError);
@@ -2006,6 +2020,7 @@ async function handlePostUpcomingEvent(body: {
         status: igResult.success ? "success" : "failed",
         errorMessage: igResult.error || null,
         postedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any);
     } catch (logError) {
       console.error(
@@ -2484,6 +2499,7 @@ async function handleAutopostUpcomingEvent() {
       linkUrl: eventLinkUrl,
     });
 
+    // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
     const publicImageUrl = ensurePublicImageUrl(selectedEvent.imageUrl!);
 
     console.log(
@@ -2538,6 +2554,7 @@ async function handleAutopostUpcomingEvent() {
           status: fbResult.success ? "success" : "failed",
           errorMessage: fbResult.error || null,
           postedAt: new Date(),
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         } as any);
       } catch (logError) {
         console.error(
@@ -2581,6 +2598,7 @@ async function handleAutopostUpcomingEvent() {
           status: igResult.success ? "success" : "failed",
           errorMessage: igResult.error || null,
           postedAt: new Date(),
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         } as any);
       } catch (logError) {
         console.error(
@@ -2657,6 +2675,7 @@ async function handleResetCycle() {
         errorMessage: null,
         postedAt: null,
         updatedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any)
       .where(
         drizzleSql`${socialPostQueue.status} IN ('posted', 'skipped', 'processing')`,
@@ -2685,6 +2704,7 @@ async function handleSkipItem(queueId: string) {
 
   await db
     .update(socialPostQueue)
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     .set({ status: "skipped", updatedAt: new Date() } as any)
     .where(eq(socialPostQueue.id, queueId));
 
@@ -2786,6 +2806,7 @@ async function handleRetryFailed() {
         postedPlatforms: "[]",
         errorMessage: null,
         updatedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any)
       .where(eq(socialPostQueue.status, "failed"));
 
@@ -2795,6 +2816,7 @@ async function handleRetryFailed() {
       .set({
         status: "pending",
         updatedAt: new Date(),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } as any)
       .where(eq(socialPostQueue.status, "processing"));
 
@@ -3109,6 +3131,7 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
       if (existing.length > 0) {
         await db
           .update(socialCredentials)
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic type
           .set({ value: config.value, updatedAt: new Date() } as any)
           .where(
             and(
@@ -3123,6 +3146,7 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
           key: config.key,
           value: config.value,
           isFromUi: true,
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         } as any);
       }
     }

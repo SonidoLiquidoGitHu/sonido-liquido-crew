@@ -273,7 +273,9 @@ export async function POST(request: NextRequest) {
       errorLogger.info("Fetching all artists for stats sync", { requestId });
 
       // Get artists and their Spotify profiles separately to avoid relation issues
+      // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
       let allArtists;
+      // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
       let allProfiles;
       try {
         allArtists = await db.select().from(artists);
@@ -440,6 +442,7 @@ export async function POST(request: NextRequest) {
     // Mode: sync or images-only - Sync images from Spotify
     errorLogger.info("Fetching all artists for image sync", { requestId });
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let allArtists;
     try {
       allArtists = await db.query.artists.findMany({
@@ -579,6 +582,7 @@ export async function GET() {
       });
     }
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let allArtists;
     try {
       allArtists = await db.query.artists.findMany();

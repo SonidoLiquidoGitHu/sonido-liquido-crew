@@ -421,7 +421,7 @@ function VideoCard({
         {/* Thumbnail: use VideoThumbnail for reliable display even without explicit thumbnail */}
         {getProxiedThumbnailUrl(video) ? (
           <SafeImage
-            src={getProxiedThumbnailUrl(video)!}
+            src={getProxiedThumbnailUrl(video) as string}
             alt={video.title || "Video"}
             fill
             className={cn(
@@ -430,7 +430,7 @@ function VideoCard({
             )}
             sizes={isSpotlight ? "352px" : "176px"}
             fallbackSrc={(() => {
-              const thumb = getProxiedThumbnailUrl(video)!;
+              const thumb = getProxiedThumbnailUrl(video) as string;
               const ytId = extractYouTubeId(video);
               if (ytId && isYouTubeThumbnailUrl(thumb)) {
                 return (

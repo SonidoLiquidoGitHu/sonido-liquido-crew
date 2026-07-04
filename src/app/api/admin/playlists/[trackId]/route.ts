@@ -38,6 +38,7 @@ export async function PUT(
     }
 
     // Update
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     const updates: Record<string, any> = {};
 
     if (position !== undefined) updates.position = position;

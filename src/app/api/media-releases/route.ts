@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (category) {
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       conditions.push(eq(mediaReleases.category, category as any));
     }
 

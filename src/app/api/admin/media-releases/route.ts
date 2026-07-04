@@ -250,6 +250,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: mediaRelease,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic type
   } catch (error: any) {
     console.error("[API] Error creating media release:", error);
     console.error("[API] Error details:", {

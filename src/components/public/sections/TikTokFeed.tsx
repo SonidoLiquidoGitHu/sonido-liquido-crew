@@ -425,6 +425,7 @@ function VideoPlayer({
   }, [isMuted]);
 
   // Reset loading when video changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     setIsLoading(true);
     setProgress(0);
@@ -519,6 +520,7 @@ function VideoPlayer({
   }, [onVideoEnd, onProgress, video.id]);
 
   // Show play/pause indicator briefly
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     if (isVisible) {
       setShowPlayIndicator(true);
@@ -1018,7 +1020,7 @@ function ReelItem({
           <div className="w-full h-full relative flex items-center justify-center">
             {getProxiedThumbnailUrl(video) && (
               <SafeImage
-                src={getProxiedThumbnailUrl(video)!}
+                src={getProxiedThumbnailUrl(video) as string}
                 alt={video.title || "Video"}
                 fill
                 className="absolute inset-0 object-cover"
@@ -1314,20 +1316,21 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
   }
 
   // IntersectionObserver for autoplay & index tracking
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        for (const entry of entries) {
           if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
             const index = Number(entry.target.getAttribute("data-index"));
             if (!Number.isNaN(index)) {
               setActiveIndex(index);
             }
           }
-        });
+        }
       },
       {
         root: container,
@@ -1337,7 +1340,9 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
 
     // Observe all children
     const children = container.querySelectorAll("[data-index]");
-    children.forEach((child) => observer.observe(child));
+    for (const child of children) {
+      observer.observe(child);
+    }
 
     return () => observer.disconnect();
   }, [videos]);

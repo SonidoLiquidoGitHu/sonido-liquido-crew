@@ -108,6 +108,7 @@ export default function CommunityModerationPage() {
     rewardFileName: "",
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchContent and loadEmailSettings are stable
   useEffect(() => {
     fetchContent();
     loadEmailSettings();

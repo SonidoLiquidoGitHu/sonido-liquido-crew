@@ -141,6 +141,7 @@ export default function AdminBeatsPage() {
     fetchStats();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchStats is stable
   useEffect(() => {
     fetchStats();
   }, [period]);

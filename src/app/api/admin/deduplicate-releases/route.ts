@@ -12,6 +12,7 @@ function normalize(t: string) {
     .replace(/&/g, "y")
     .replace(/\s+/g, " ")
     .normalize("NFD")
+    // biome-ignore lint/suspicious/noMisleadingCharacterClass: intentional range
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 }

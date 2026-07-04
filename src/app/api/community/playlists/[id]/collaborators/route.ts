@@ -144,6 +144,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: updated,
+        // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
         inviteLink: generateInviteLink(playlistId, updated.inviteToken!),
       });
     }

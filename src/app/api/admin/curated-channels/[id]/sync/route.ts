@@ -38,7 +38,8 @@ async function getExistingTrackIds(trackIds: string[]): Promise<Set<string>> {
 
 // Helper: insert tracks with batch + one-by-one fallback
 async function insertTracks(
-  newTracks: any[],
+  // biome-ignore lint/suspicious/noExplicitAny: Spotify API response shapes
+  newTracks: Record<string, any>[],
 ): Promise<{ added: number; skipped: number }> {
   if (newTracks.length === 0) return { added: 0, skipped: 0 };
 
@@ -68,20 +69,23 @@ async function insertTracks(
 
 // Helper to process tracks from a single album
 async function processAlbumTracks(
-  fullAlbum: any,
+  // biome-ignore lint/suspicious/noExplicitAny: Spotify API response shapes
+  fullAlbum: Record<string, any>,
   channelId: string,
   channelName: string,
 ): Promise<{ added: number; skipped: number; errors: number }> {
   if (!fullAlbum?.tracks?.items) return { added: 0, skipped: 0, errors: 0 };
 
-  const tracks = (fullAlbum.tracks.items as any[]).filter((t) => t?.id);
+  // biome-ignore lint/suspicious/noExplicitAny: Spotify API response shapes
+  const tracks = (fullAlbum.tracks.items as Record<string, any>[]).filter((t) => t?.id);
   if (tracks.length === 0) return { added: 0, skipped: 0, errors: 0 };
 
   const trackIds = tracks.map((t) => t.id as string);
   const existingIds = await getExistingTrackIds(trackIds);
 
   let errors = 0;
-  const newTracks: any[] = [];
+  // biome-ignore lint/suspicious/noExplicitAny: Spotify track data
+  const newTracks: Record<string, any>[] = [];
 
   for (const track of tracks) {
     if (existingIds.has(track.id)) continue;
@@ -96,8 +100,10 @@ async function processAlbumTracks(
         spotifyAlbumId: fullAlbum.id as string,
         name: (track.name || "Unknown") as string,
         artistName:
-          track.artists?.map((a: any) => a.name).join(", ") || channelName,
-        artistIds: JSON.stringify(track.artists?.map((a: any) => a.id) || []),
+          // biome-ignore lint/suspicious/noExplicitAny: Spotify artist data
+          track.artists?.map((a: Record<string, any>) => a.name).join(", ") || channelName,
+        // biome-ignore lint/suspicious/noExplicitAny: Spotify artist data
+        artistIds: JSON.stringify(track.artists?.map((a: Record<string, any>) => a.id) || []),
         albumName: (fullAlbum.name || null) as string | null,
         albumImageUrl: fullAlbum.images?.[0]?.url ?? null,
         durationMs: (track.duration_ms ?? null) as number | null,
@@ -142,7 +148,8 @@ async function insertTopTracksAsFallback(
     const trackIds = topTracks.filter((t) => t?.id).map((t) => t.id as string);
     const existingIds = await getExistingTrackIds(trackIds);
 
-    const newTracks: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: Spotify track data
+    const newTracks: Record<string, any>[] = [];
     let skipped = 0;
 
     for (const track of topTracks) {
@@ -153,31 +160,35 @@ async function insertTopTracksAsFallback(
       }
 
       try {
+        // biome-ignore lint/suspicious/noExplicitAny: Spotify track data
+        const trackAny = track as Record<string, any>;
         newTracks.push({
           id: generateUUID(),
           spotifyTrackId: track.id as string,
           spotifyTrackUrl:
-            (track as any).external_urls?.spotify ||
+            trackAny.external_urls?.spotify ||
             `https://open.spotify.com/track/${track.id}`,
-          spotifyAlbumId: (track as any).album?.id || null,
+          spotifyAlbumId: trackAny.album?.id || null,
           name: (track.name || "Unknown") as string,
           artistName:
-            (track as any).artists?.map((a: any) => a.name).join(", ") ||
+            // biome-ignore lint/suspicious/noExplicitAny: Spotify artist data
+            trackAny.artists?.map((a: Record<string, any>) => a.name).join(", ") ||
             channelName,
           artistIds: JSON.stringify(
-            (track as any).artists?.map((a: any) => a.id) || [],
+            // biome-ignore lint/suspicious/noExplicitAny: Spotify artist data
+            trackAny.artists?.map((a: Record<string, any>) => a.id) || [],
           ),
-          albumName: ((track as any).album?.name || null) as string | null,
-          albumImageUrl: ((track as any).album?.images?.[0]?.url ?? null) as
+          albumName: (trackAny.album?.name || null) as string | null,
+          albumImageUrl: (trackAny.album?.images?.[0]?.url ?? null) as
             | string
             | null,
           durationMs: (track.duration_ms ?? null) as number | null,
           previewUrl: (track.preview_url ?? null) as string | null,
-          releaseDate: ((track as any).album?.release_date ?? null) as
+          releaseDate: (trackAny.album?.release_date ?? null) as
             | string
             | null,
-          popularity: ((track as any).popularity ?? null) as number | null,
-          explicit: Boolean((track as any).explicit),
+          popularity: (trackAny.popularity ?? null) as number | null,
+          explicit: Boolean(trackAny.explicit),
           curatedChannelId: channelId,
           isAvailableForPlaylist: true,
           isFeatured: true,
@@ -251,7 +262,8 @@ export async function POST(
     );
 
     // Fetch album list from Spotify
-    let albumList: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: Spotify API response shapes
+    let albumList: Record<string, any>[] = [];
     try {
       const albumsResponse = await spotifyClient.getArtistAlbums(
         channel.spotifyArtistId,
@@ -392,7 +404,8 @@ export async function POST(
       try {
         const artistInfo = (await spotifyClient.getArtist(
           channel.spotifyArtistId,
-        )) as any;
+          // biome-ignore lint/suspicious/noExplicitAny: Spotify artist response
+        )) as Record<string, any>;
         if (artistInfo.name) metadataUpdates.name = artistInfo.name;
         if (artistInfo.images?.[0]?.url)
           metadataUpdates.imageUrl = artistInfo.images[0].url;
@@ -432,7 +445,8 @@ export async function POST(
       );
 
       try {
-        const fullAlbum = (await spotifyClient.getAlbum(album.id)) as any;
+        // biome-ignore lint/suspicious/noExplicitAny: Spotify album response
+        const fullAlbum = (await spotifyClient.getAlbum(album.id)) as Record<string, any>;
         const result = await processAlbumTracks(fullAlbum, id, channel.name);
         addedTracks += result.added;
         skippedTracks += result.skipped;
@@ -463,7 +477,8 @@ export async function POST(
       try {
         const artistInfo = (await spotifyClient.getArtist(
           channel.spotifyArtistId,
-        )) as any;
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
+        )) as Record<string, any>;
         if (artistInfo.name) metadataUpdates.name = artistInfo.name;
         if (artistInfo.images?.[0]?.url)
           metadataUpdates.imageUrl = artistInfo.images[0].url;

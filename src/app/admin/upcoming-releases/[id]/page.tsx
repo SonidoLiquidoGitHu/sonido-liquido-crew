@@ -140,6 +140,7 @@ export default function EditUpcomingReleasePage({
     showCountdown: true,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchRelease();
   }, [resolvedParams.id]);

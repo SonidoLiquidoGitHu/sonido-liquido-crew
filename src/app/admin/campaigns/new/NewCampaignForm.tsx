@@ -204,9 +204,10 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
         console.error("[Campaign Form] Error:", data.error);
         showMessage("error", data.error || "Error al crear campaña");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Campaign Form] Fetch error:", error);
-      showMessage("error", `Error de conexión: ${error?.message || "Unknown"}`);
+      const msg = error instanceof Error ? error.message : "Unknown";
+      showMessage("error", `Error de conexión: ${msg}`);
     } finally {
       setIsLoading(false);
     }
@@ -554,6 +555,7 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                     <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-slc-card">
                       <iframe
                         src={`https://www.youtube.com/embed/${formData.youtubeVideoId}`}
+                        title="YouTube video preview"
                         className="w-full h-full"
                         allowFullScreen
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -612,6 +614,7 @@ export default function NewCampaignForm({ artists }: NewCampaignFormProps) {
                         className={`w-full rounded-lg ${formData.videoIsVertical ? "max-w-xs mx-auto" : ""}`}
                         style={{ maxHeight: "300px" }}
                       >
+                        <track kind="captions" />
                         Tu navegador no soporta video HTML5.
                       </video>
                     </div>

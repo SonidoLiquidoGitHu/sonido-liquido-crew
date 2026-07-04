@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     let useFallback = false;
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     let dbPlaylistRows: any[] = [];
 
     try {
@@ -133,6 +134,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Try to get tracks from DB, but don't fail if empty
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       let tracks: any[] = [];
       try {
         tracks = await db
@@ -163,6 +165,7 @@ export async function GET(request: NextRequest) {
 
     // Return all playlists - DON'T filter out empty ones
     // Get track counts from DB for non-fallback playlists
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     let allTracks: any[] = [];
     if (!useFallback) {
       try {

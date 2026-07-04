@@ -8,6 +8,9 @@ import { type NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+// biome-ignore lint/suspicious/noExplicitAny: Spotify API dynamic response shape
+type SpotifyData = Record<string, any>;
+
 // Bulk-check which track IDs already exist in the DB
 async function getExistingTrackIds(trackIds: string[]): Promise<Set<string>> {
   if (trackIds.length === 0) return new Set();
@@ -68,7 +71,7 @@ export async function POST(
     // 2. Only fetch 3-5 most recent albums
     // 3. Bulk DB operations
 
-    const allNewTracks: any[] = [];
+    const allNewTracks: SpotifyData[] = [];
     let albumsFetched = 0;
 
     // Step 1: Get recent singles/albums (1 API call, limit=5)
@@ -84,13 +87,13 @@ export async function POST(
         // Step 2: Fetch each album's tracks (up to 5 API calls)
         for (const album of albumsResponse.items) {
           try {
-            const fullAlbum = (await spotifyClient.getAlbum(album.id)) as any;
+            const fullAlbum = (await spotifyClient.getAlbum(album.id)) as SpotifyData;
             if (fullAlbum?.tracks?.items) {
-              for (const track of fullAlbum.tracks.items) {
+              for (const track of fullAlbum.tracks.items as SpotifyData[]) {
                 if (!track?.id) continue;
                 // Only include tracks where this artist is credited
-                const isByArtist = track.artists?.some(
-                  (a: any) => a.id === artistId,
+                const isByArtist = (track.artists as SpotifyData[] | undefined)?.some(
+                  (a) => a.id === artistId,
                 );
                 if (!isByArtist) continue;
 
@@ -98,15 +101,15 @@ export async function POST(
                   id: generateUUID(),
                   spotifyTrackId: track.id as string,
                   spotifyTrackUrl:
-                    track.external_urls?.spotify ||
+                    (track.external_urls as SpotifyData)?.spotify ||
                     `https://open.spotify.com/track/${track.id}`,
                   spotifyAlbumId: fullAlbum.id as string,
                   name: (track.name || "Unknown") as string,
                   artistName:
-                    track.artists?.map((a: any) => a.name).join(", ") ||
+                    (track.artists as SpotifyData[] | undefined)?.map((a) => a.name).join(", ") ||
                     channel.name,
                   artistIds: JSON.stringify(
-                    track.artists?.map((a: any) => a.id) || [],
+                    (track.artists as SpotifyData[] | undefined)?.map((a) => a.id) || [],
                   ),
                   albumName: (fullAlbum.name || null) as string | null,
                   albumImageUrl: fullAlbum.images?.[0]?.url ?? null,
@@ -151,8 +154,9 @@ export async function POST(
           if (searchResult.tracks?.items) {
             for (const track of searchResult.tracks.items) {
               if (!track?.id) continue;
-              const isByArtist = (track as any).artists?.some(
-                (a: any) => a.id === artistId,
+              const trackData = track as SpotifyData;
+              const isByArtist = (trackData.artists as SpotifyData[] | undefined)?.some(
+                (a) => a.id === artistId,
               );
               if (!isByArtist) continue;
 
@@ -160,30 +164,30 @@ export async function POST(
                 id: generateUUID(),
                 spotifyTrackId: track.id as string,
                 spotifyTrackUrl:
-                  (track as any).external_urls?.spotify ||
+                  (trackData.external_urls as SpotifyData)?.spotify ||
                   `https://open.spotify.com/track/${track.id}`,
-                spotifyAlbumId: (track as any).album?.id || null,
+                spotifyAlbumId: (trackData.album as SpotifyData)?.id || null,
                 name: (track.name || "Unknown") as string,
                 artistName:
-                  (track as any).artists?.map((a: any) => a.name).join(", ") ||
+                  (trackData.artists as SpotifyData[] | undefined)?.map((a) => a.name).join(", ") ||
                   channel.name,
                 artistIds: JSON.stringify(
-                  (track as any).artists?.map((a: any) => a.id) || [],
+                  (trackData.artists as SpotifyData[] | undefined)?.map((a) => a.id) || [],
                 ),
-                albumName: ((track as any).album?.name || null) as
+                albumName: ((trackData.album as SpotifyData)?.name || null) as
                   | string
                   | null,
-                albumImageUrl: ((track as any).album?.images?.[0]?.url ??
+                albumImageUrl: ((trackData.album as SpotifyData)?.images?.[0]?.url ??
                   null) as string | null,
                 durationMs: (track.duration_ms ?? null) as number | null,
                 previewUrl: (track.preview_url ?? null) as string | null,
-                releaseDate: ((track as any).album?.release_date ?? null) as
+                releaseDate: ((trackData.album as SpotifyData)?.release_date ?? null) as
                   | string
                   | null,
-                popularity: ((track as any).popularity ?? null) as
+                popularity: ((trackData.popularity ?? null) as
                   | number
-                  | null,
-                explicit: Boolean((track as any).explicit),
+                  | null),
+                explicit: Boolean((trackData.explicit ?? false)),
                 curatedChannelId: id,
                 isAvailableForPlaylist: true,
                 isFeatured: true,

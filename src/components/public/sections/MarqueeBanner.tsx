@@ -51,6 +51,7 @@ export function MarqueeBanner({ speed = 40 }: MarqueeBannerProps) {
     fetchRoster();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     if (!scrollerRef.current) return;
 
@@ -59,11 +60,11 @@ export function MarqueeBanner({ speed = 40 }: MarqueeBannerProps) {
 
     // Duplicate items multiple times for seamless loop
     for (let i = 0; i < 3; i++) {
-      scrollerContent.forEach((item) => {
+      for (const item of scrollerContent) {
         const duplicated = item.cloneNode(true) as HTMLElement;
         duplicated.setAttribute("aria-hidden", "true");
         scroller.appendChild(duplicated);
-      });
+      }
     }
   }, [marqueeItems]);
 

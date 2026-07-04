@@ -222,7 +222,8 @@ export default function AdminSettingsPage() {
           const data = await res.json();
           if (data.success) {
             // Merge fetched settings with defaults
-            const fetched = data.data.reduce((acc: any, s: SiteSetting) => {
+            // biome-ignore lint/suspicious/noExplicitAny: accumulator for settings reduce
+            const fetched = data.data.reduce((acc: Record<string, any>, s: SiteSetting) => {
               acc[s.key] = s.value;
               return acc;
             }, {});

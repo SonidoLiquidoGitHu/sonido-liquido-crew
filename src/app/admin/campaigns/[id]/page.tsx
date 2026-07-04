@@ -134,6 +134,7 @@ export default function EditCampaignPage({
     styleSettings: {} as Partial<StyleSettings>,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchCampaign is stable
   useEffect(() => {
     fetchCampaign();
   }, [resolvedParams.id]);
@@ -758,7 +759,9 @@ export default function EditCampaignPage({
                             controls
                             className="w-full max-h-48 object-contain"
                             preload="metadata"
-                          />
+                          >
+                            <track kind="captions" />
+                          </video>
                           <p className="text-xs text-green-500 p-2 flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" />
                             Video cargado
@@ -825,6 +828,7 @@ export default function EditCampaignPage({
                           <div className="mt-2 rounded-lg overflow-hidden">
                             <iframe
                               src={`https://www.youtube.com/embed/${formData.youtubeVideoId}`}
+                              title="YouTube video preview"
                               className={
                                 formData.videoIsVertical
                                   ? "w-full aspect-[9/16] max-w-xs mx-auto"

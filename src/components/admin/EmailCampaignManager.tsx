@@ -306,6 +306,7 @@ export function EmailCampaignManager({
   };
 
   // Sort templates by send date
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   const sortedTemplates = useMemo(() => {
     return [...templates].sort((a, b) => {
       const dateA = getSendDate(a);

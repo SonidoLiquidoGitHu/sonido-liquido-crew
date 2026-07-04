@@ -200,6 +200,7 @@ export default function EditMediaReleasePage() {
     styleSettings: {} as Partial<StyleSettings>,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchMediaRelease();
     fetchArtists();
@@ -267,8 +268,10 @@ export default function EditMediaReleasePage() {
         // Parse attachedPressKitIds
         let attachedPressKitIds: string[] = [];
         try {
-          if ((mr as any).attachedPressKitIds) {
-            const parsed = JSON.parse((mr as any).attachedPressKitIds);
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic API response shape
+          const mrData = mr as Record<string, any>;
+          if (mrData.attachedPressKitIds) {
+            const parsed = JSON.parse(mrData.attachedPressKitIds);
             attachedPressKitIds = Array.isArray(parsed) ? parsed : [];
           }
         } catch (e) {
@@ -691,7 +694,8 @@ export default function EditMediaReleasePage() {
       };
 
       // Remove useCustomArtist from submit data (it's only for UI state)
-      (submitData as any).useCustomArtist = undefined;
+      // biome-ignore lint/suspicious/noExplicitAny: removing internal-only UI field before submit
+      (submitData as Record<string, any>).useCustomArtist = undefined;
 
       const response = await fetch("/api/admin/media-releases", {
         method: "PUT",
@@ -1482,7 +1486,9 @@ export default function EditMediaReleasePage() {
                                     controls
                                     src={track.url}
                                     className="w-full h-8 mt-1"
-                                  />
+                                  >
+                                    <track kind="captions" />
+                                  </audio>
                                 </div>
                                 <Button
                                   type="button"
@@ -1602,7 +1608,9 @@ export default function EditMediaReleasePage() {
                           controls
                           src={formData.audioPreviewUrl}
                           className="w-full"
-                        />
+                        >
+                          <track kind="captions" />
+                        </audio>
                       </div>
                     )}
 
@@ -1624,6 +1632,7 @@ export default function EditMediaReleasePage() {
                       {formData.spotifyEmbedUrl && (
                         <div className="mt-4 rounded-lg overflow-hidden">
                           <iframe
+                            title="Spotify player"
                             src={`https://open.spotify.com/embed/track/${formData.spotifyEmbedUrl.split("/").pop()?.split("?")[0]}`}
                             width="100%"
                             height="152"

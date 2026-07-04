@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     const conditions = [];
 
     if (category) {
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       conditions.push(eq(customStyles.category, category as any));
     }
 
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: allStyles,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic type
   } catch (error: any) {
     // Handle table not existing error gracefully
     if (
@@ -115,6 +117,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: style,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic type
   } catch (error: any) {
     // Handle table not existing error gracefully
     if (

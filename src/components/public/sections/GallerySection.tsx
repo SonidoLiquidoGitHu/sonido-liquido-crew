@@ -59,13 +59,13 @@ export function GallerySection({
     } else {
       // Extract unique tags from photos
       const tagsMap = new Map();
-      initialPhotos.forEach((photo) => {
-        photo.tags.forEach((tag) => {
+      for (const photo of initialPhotos) {
+        for (const tag of photo.tags) {
           if (!tagsMap.has(tag.id)) {
             tagsMap.set(tag.id, tag);
           }
-        });
-      });
+        }
+      }
       setAllTags(Array.from(tagsMap.values()));
     }
   }, [initialPhotos]);
@@ -87,13 +87,13 @@ export function GallerySection({
 
         // Extract unique tags
         const tagsMap = new Map();
-        (data.data || []).forEach((photo: GalleryPhoto) => {
-          photo.tags.forEach((tag) => {
+        for (const photo of (data.data || []) as GalleryPhoto[]) {
+          for (const tag of photo.tags) {
             if (!tagsMap.has(tag.id)) {
               tagsMap.set(tag.id, tag);
             }
-          });
-        });
+          }
+        }
         setAllTags(Array.from(tagsMap.values()));
       }
     } catch (error) {
@@ -103,6 +103,7 @@ export function GallerySection({
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     if (!initialPhotos) {
       fetchGallery();
@@ -131,6 +132,7 @@ export function GallerySection({
   };
 
   // Handle keyboard navigation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (lightboxIndex === null) return;

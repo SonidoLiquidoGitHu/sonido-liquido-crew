@@ -221,7 +221,8 @@ const artistsData = [
 // NOTE: Release data will be synced from Spotify API when credentials are working
 // For now, we'll create placeholder entries that point to real Spotify albums
 // These will be populated by the sync functionality
-const releasesData: any[] = [];
+// biome-ignore lint/suspicious/noExplicitAny: placeholder data for seed
+const releasesData: Record<string, any>[] = [];
 
 // Sample videos
 const videosData = [

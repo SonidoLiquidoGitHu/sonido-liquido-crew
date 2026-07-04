@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
 
     const verified = !!subscriber;
 
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     let downloads: any[] = [];
     if (verified) {
       // Fetch exclusive downloads
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
         if (setting?.value) {
           const allDownloads = JSON.parse(setting.value);
           // Only return active downloads
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic type
           downloads = allDownloads.filter((d: any) => d.isActive !== false);
         }
       } catch (e) {

@@ -263,6 +263,7 @@ export default function EpkEditorPage({
   } | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchEpkData();
   }, [artistId]);
@@ -401,7 +402,8 @@ export default function EpkEditorPage({
     }
   };
 
-  const updateEpk = (field: keyof EpkData, value: any) => {
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic value type for EPK field updates
+  const updateEpk = (field: keyof EpkData, value: Record<string, any>) => {
     setEpk((prev) => (prev ? { ...prev, [field]: value } : null));
     setHasChanges(true);
   };

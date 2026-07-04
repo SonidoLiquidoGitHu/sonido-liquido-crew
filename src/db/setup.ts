@@ -46,7 +46,7 @@ const setupDatabase = async () => {
     .sort(); // Sort to ensure correct order (0000, 0001, 0002, etc.)
 
   console.log(`\n📝 Found ${migrationFiles.length} migration files:`);
-  migrationFiles.forEach((f) => console.log(`   • ${f}`));
+  for (const f of migrationFiles) console.log(`   • ${f}`);
 
   let totalSuccess = 0;
   let totalErrors = 0;

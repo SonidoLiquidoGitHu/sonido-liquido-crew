@@ -60,6 +60,7 @@ export function ArtistDiscography({
   >("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchDiscography();
   }, [spotifyId]);
@@ -88,7 +89,8 @@ export function ArtistDiscography({
         const data = await localResponse.json();
         if (data.success && data.data) {
           setAlbums(
-            data.data.map((r: any) => ({
+            // biome-ignore lint/suspicious/noExplicitAny: API response mapping
+            data.data.map((r: Record<string, any>) => ({
               id: r.spotifyId || r.id,
               name: r.title,
               images: [{ url: r.coverImageUrl, width: 300, height: 300 }],

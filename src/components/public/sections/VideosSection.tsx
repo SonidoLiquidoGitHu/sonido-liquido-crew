@@ -42,7 +42,8 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 interface VideosSectionProps {
-  featuredVideos: any[];
+  // biome-ignore lint/suspicious/noExplicitAny: video data from API
+  featuredVideos: Record<string, any>[];
 }
 
 export function VideosSection({ featuredVideos }: VideosSectionProps) {

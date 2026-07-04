@@ -172,6 +172,7 @@ export default function EditBeatPage({
     styleSettings: {} as Partial<StyleSettings>,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchBeat is stable
   useEffect(() => {
     fetchBeat();
   }, [resolvedParams.id]);
@@ -342,6 +343,7 @@ export default function EditBeatPage({
         return;
       }
 
+      // biome-ignore lint/suspicious/noImplicitAnyLet: inferred from json()
       let data;
       try {
         data = await response.json();
@@ -687,7 +689,9 @@ export default function EditBeatPage({
                       controls
                       src={formData.previewAudioUrl}
                       className="w-full mt-3 rounded-lg"
-                    />
+                    >
+                      <track kind="captions" />
+                    </audio>
                   )}
                 </div>
 

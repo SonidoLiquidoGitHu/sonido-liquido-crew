@@ -211,9 +211,10 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
         console.error("[Beat Form] Error:", data.error);
         showMessage("error", data.error || "Error al crear beat");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Beat Form] Fetch error:", error);
-      showMessage("error", `Error de conexión: ${error?.message || "Unknown"}`);
+      const msg = error instanceof Error ? error.message : "Unknown";
+      showMessage("error", `Error de conexión: ${msg}`);
     } finally {
       setIsLoading(false);
     }
@@ -430,7 +431,9 @@ export default function NewBeatForm({ artists }: NewBeatFormProps) {
                       controls
                       src={formData.previewAudioUrl}
                       className="w-full mt-3 rounded-lg"
-                    />
+                    >
+                      <track kind="captions" />
+                    </audio>
                   )}
                 </div>
 

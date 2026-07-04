@@ -88,6 +88,7 @@ export function StatsSection() {
   const sectionRef = useRef<HTMLElement>(null);
 
   // Check for limited browser on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     const limited = isLimitedBrowser();
     setIsLimited(limited);
@@ -161,12 +162,12 @@ export function StatsSection() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        for (const entry of entries) {
           if (entry.isIntersecting) {
             setIsVisible(true);
             observer.disconnect();
           }
-        });
+        }
       },
       { threshold: 0.1 }, // Lower threshold for better detection
     );
@@ -213,7 +214,11 @@ export function StatsSection() {
       }, interval);
     });
 
-    return () => timers.forEach((timer) => clearInterval(timer));
+    return () => {
+      for (const timer of timers) {
+        clearInterval(timer);
+      }
+    };
   }, [isVisible, stats, hasAnimated, isLimited]);
 
   return (

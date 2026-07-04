@@ -92,6 +92,7 @@ function applyThemeToDocument(
 // Convert hex to HSL format for shadcn compatibility
 function hexToHSL(hex: string): string {
   // Remove # if present
+  // biome-ignore lint/style/noParameterAssign: intentional mutation
   hex = hex.replace(/^#/, "");
 
   // Parse RGB

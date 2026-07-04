@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     if (publishedOnly) conditions.push(eq(verticalVideos.isPublished, true));
     if (search) conditions.push(like(verticalVideos.title, `%${search}%`));
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let allVideos;
     if (conditions.length > 0) {
       allVideos = await db

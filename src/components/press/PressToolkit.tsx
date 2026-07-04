@@ -568,7 +568,7 @@ Para darse de baja de esta lista, responda a este correo.`;
           await new Promise<void>((resolve, reject) => {
             img.onload = () => resolve();
             img.onerror = () => reject();
-            img.src = release.coverImageUrl!;
+            img.src = release.coverImageUrl as string;
           });
 
           // Draw rounded rectangle clip
@@ -1041,7 +1041,7 @@ Para darse de baja de esta lista, responda a este correo.`;
                   .map((asset, idx) => (
                     <a
                       key={idx}
-                      href={asset.url!}
+                      href={asset.url as string}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-xs hover:border-primary hover:text-primary transition-colors"

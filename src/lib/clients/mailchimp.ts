@@ -919,7 +919,7 @@ class MailchimpClient {
       const allMembers = await this.getAllMembers();
       // Reset all counts to 0
       for (const [id] of tagMap) {
-        const existing = tagMap.get(id)!;
+        const existing = tagMap.get(id) as typeof tagMap extends Map<string, infer V> ? V : never;
         tagMap.set(id, { ...existing, count: 0 });
       }
       // Count members per tag

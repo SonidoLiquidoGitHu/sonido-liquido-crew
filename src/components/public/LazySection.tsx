@@ -68,9 +68,9 @@ export function LazySection({
   useEffect(() => {
     if (!lazyImages || !isVisible || !ref.current) return;
     const images = ref.current.querySelectorAll("img:not([loading])");
-    images.forEach((img) => {
+    for (const img of images) {
       img.setAttribute("loading", "lazy");
-    });
+    }
   }, [lazyImages, isVisible]);
 
   useEffect(() => {

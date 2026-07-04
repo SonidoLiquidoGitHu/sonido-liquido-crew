@@ -71,6 +71,7 @@ function applyColorMode(mode: "dark" | "light") {
   const root = document.documentElement;
   const overrides = mode === "light" ? lightModeOverrides : darkModeOverrides;
 
+  // biome-ignore lint/complexity/noForEach: intentional forEach usage
   Object.entries(overrides).forEach(([key, value]) => {
     root.style.setProperty(key, value);
   });

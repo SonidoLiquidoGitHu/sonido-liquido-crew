@@ -460,6 +460,7 @@ export async function POST(
           isActive: true,
         });
         added++;
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       } catch (e: any) {
         if (e.message?.includes("UNIQUE constraint")) {
           skipped++;
@@ -485,6 +486,7 @@ export async function POST(
         metadataUpdated: Object.keys(playlistUpdates).length > 1,
       },
     });
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic type
   } catch (error: any) {
     console.error("[Spotify Sync API] Error:", error);
 

@@ -299,7 +299,7 @@ export function PushNotificationManager({
             <label className="block text-sm font-medium mb-2">Tipo</label>
             <select
               value={notificationType}
-              onChange={(e) => setNotificationType(e.target.value as any)}
+              onChange={(e) => setNotificationType(e.target.value as typeof notificationType)}
               className="w-full px-4 py-3 bg-slc-dark border border-slc-border rounded-lg focus:outline-none focus:border-primary"
             >
               <option value="general">General</option>

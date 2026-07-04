@@ -105,7 +105,9 @@ export function RunwayVideoStudio({
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
-      pollingRef.current.forEach((timeout) => clearInterval(timeout));
+      for (const timeout of pollingRef.current.values()) {
+        clearInterval(timeout);
+      }
     };
   }, []);
 
@@ -822,7 +824,9 @@ export function RunwayVideoStudio({
                           src={task.output[0]}
                           controls
                           className="w-full max-h-[200px] object-contain"
-                        />
+                        >
+                          <track kind="captions" />
+                        </video>
                       </div>
                     )}
 

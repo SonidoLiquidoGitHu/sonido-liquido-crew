@@ -539,7 +539,7 @@ export const releasesRepository = {
           const [linkedRelease] = await db
             .select({ releaseType: releases.releaseType })
             .from(releases)
-            .where(eq(releases.id, linked.releasedReleaseId!))
+            .where(eq(releases.id, linked.releasedReleaseId as number))
             .limit(1);
 
           if (
@@ -636,7 +636,7 @@ export const releasesRepository = {
             .replace(/&/g, "y") // "Beats, Donas & Café" → "beats, donas y café"
             .replace(/\s+/g, " ") // collapse whitespace
             .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "") // strip diacritics
+            .replace(/\p{M}/gu, "") // strip diacritics
             .trim();
 
         const byNormTitle = new Map<string, typeof allReleases>();

@@ -274,7 +274,7 @@ export function SocialPublisher({
     checking: boolean;
   }>({ checked: false, valid: false, message: "", checking: false });
 
-  const platform = PLATFORMS.find((p) => p.id === selectedPlatform)!;
+  const platform = PLATFORMS.find((p) => p.id === selectedPlatform) as (typeof PLATFORMS)[number];
 
   // Generate caption
   const generateCaption = useCallback(() => {
@@ -380,6 +380,7 @@ export function SocialPublisher({
   };
 
   // Auto-post to Facebook and Instagram
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   const handleAutoPost = useCallback(async () => {
     if (!coverImageUrl) return;
     setIsAutoPosting(true);
@@ -431,6 +432,7 @@ export function SocialPublisher({
   }, [coverImageUrl, presaveUrl, releaseId, generateCaption]);
 
   // Post as Reel to IG and/or FB
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   const handlePostReel = useCallback(async () => {
     if (!verticalVideoUrl) return;
     setIsPostingReel(true);
@@ -544,6 +546,7 @@ export function SocialPublisher({
         checking: false,
       });
     }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   }, [safeParseJson]);
 
   // Get recommended video for platform

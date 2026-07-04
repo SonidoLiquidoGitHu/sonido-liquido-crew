@@ -110,7 +110,8 @@ export default function AdminVerticalVideosPage() {
   // Upload modal state
   const [showUploader, setShowUploader] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadVideoInfo, setUploadVideoInfo] = useState<any>(null);
+  // biome-ignore lint/suspicious/noExplicitAny: video info from upload API
+  const [uploadVideoInfo, setUploadVideoInfo] = useState<Record<string, any> | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDescription, setUploadDescription] = useState("");
   const [uploadArtistId, setUploadArtistId] = useState("");
@@ -1585,7 +1586,7 @@ export default function AdminVerticalVideosPage() {
         "/vertical-videos/event-covers",
       );
       if (result.success && result.url) {
-        setEventForm((prev) => ({ ...prev, coverImageUrl: result.url! }));
+        setEventForm((prev) => ({ ...prev, coverImageUrl: result.url as string }));
       } else {
         setMessage({
           type: "error",
@@ -1941,13 +1942,13 @@ export default function AdminVerticalVideosPage() {
                 <div className="relative aspect-[9/16] bg-black">
                   {getVideoThumbnail(video) ? (
                     <SafeImage
-                      src={getVideoThumbnail(video)!}
+                      src={getVideoThumbnail(video) as string}
                       alt={video.title || "Video"}
                       fill
                       className="object-cover"
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
                       fallbackSrc={(() => {
-                        const thumb = getVideoThumbnail(video)!;
+                        const thumb = getVideoThumbnail(video) as string;
                         const ytId = getYouTubeId(video);
                         if (ytId && isYouTubeThumbnailUrl(thumb)) {
                           return (

@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the release
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let release;
     if (releaseId) {
       [release] = await db

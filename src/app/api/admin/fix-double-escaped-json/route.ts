@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       ] as const;
 
       for (const field of jsonFields) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         const raw = (artist as any)[field];
         if (!raw || typeof raw !== "string") continue;
 

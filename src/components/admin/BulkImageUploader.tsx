@@ -364,6 +364,7 @@ export function BulkImageUploader({
   const clearCompleted = useCallback(() => {
     setFiles((prev) => {
       // Revoke URLs for completed files
+      // biome-ignore lint/complexity/noForEach: intentional forEach usage
       prev
         .filter((f) => f.status === "success")
         .forEach((f) => {
@@ -619,6 +620,7 @@ export function BulkImageUploader({
             type="button"
             variant="outline"
             onClick={() => {
+              // biome-ignore lint/complexity/noForEach: intentional forEach usage
               files.forEach((f) => {
                 if (f.preview) URL.revokeObjectURL(f.preview);
               });

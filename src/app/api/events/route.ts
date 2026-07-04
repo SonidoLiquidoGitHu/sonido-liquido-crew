@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
 
     errorLogger.info("Fetching events", { requestId, filter, limit });
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let events;
 
     if (filter === "past") {

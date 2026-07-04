@@ -78,6 +78,7 @@ export function ABTestDashboard({ className = "" }: ABTestDashboardProps) {
   const [activeTest, setActiveTest] = useState<{
     id: string;
     name: string;
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     variants: any[];
   } | null>(null);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);

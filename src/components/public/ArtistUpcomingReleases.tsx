@@ -78,6 +78,7 @@ export function ArtistUpcomingReleases({
   const [presaving, setPresaving] = useState<string | null>(null);
 
   // Fetch releases if not provided
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     if (!initialReleases) {
       fetchReleases();
@@ -296,7 +297,7 @@ function UpcomingReleaseCard({
                 {/* Primary presave button (RPM or first available) */}
                 {presaveLinks[0] && (
                   <Button
-                    onClick={() => onPresave(presaveLinks[0].url!)}
+                    onClick={() => onPresave(presaveLinks[0].url as string)}
                     disabled={presaving}
                     size="sm"
                     className="bg-primary hover:bg-primary/80"
@@ -320,7 +321,7 @@ function UpcomingReleaseCard({
                     size="sm"
                     className="border-slc-border hover:border-white/30"
                     onClick={() =>
-                      window.open(link.url!, "_blank", "noopener,noreferrer")
+                      window.open(link.url as string, "_blank", "noopener,noreferrer")
                     }
                     title={`Pre-save en ${link.label}`}
                   >

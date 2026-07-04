@@ -77,6 +77,7 @@ export default function CuratedChannelsPage() {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [fetchingTop, setFetchingTop] = useState<string | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchChannels is stable
   useEffect(() => {
     fetchChannels();
   }, [showInactive]);

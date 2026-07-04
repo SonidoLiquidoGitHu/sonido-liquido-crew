@@ -182,8 +182,8 @@ export function mergeArtistEpk(
     epkVal: string | null | undefined,
     artistVal: string | null | undefined,
   ): string | null {
-    if (!isEmpty(epkVal)) return epkVal!;
-    if (!isEmpty(artistVal)) return artistVal!;
+    if (!isEmpty(epkVal)) return epkVal as string;
+    if (!isEmpty(artistVal)) return artistVal as string;
     return null;
   }
 

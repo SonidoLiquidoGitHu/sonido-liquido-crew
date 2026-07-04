@@ -55,6 +55,7 @@ export default function ThemesPage() {
   });
 
   // Load current theme on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     const loadCurrentTheme = async () => {
       try {

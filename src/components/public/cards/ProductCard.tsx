@@ -13,7 +13,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const hasDiscount =
     product.compareAtPrice && product.compareAtPrice > product.price;
   const discountPercent = hasDiscount
-    ? Math.round((1 - product.price / product.compareAtPrice!) * 100)
+    ? Math.round((1 - product.price / (product.compareAtPrice as number)) * 100)
     : 0;
 
   return (
@@ -79,7 +79,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </span>
           {hasDiscount && (
             <span className="text-sm text-slc-muted line-through">
-              {formatCurrency(product.compareAtPrice!, product.currency)}
+              {formatCurrency(product.compareAtPrice as number, product.currency)}
             </span>
           )}
         </div>

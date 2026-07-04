@@ -261,23 +261,29 @@ class SpotifyClient {
       for (const album of albumsResponse.items) {
         try {
           const fullAlbum = await this.getAlbum(album.id);
-          const albumTracks = (fullAlbum as any).tracks?.items || [];
+          // biome-ignore lint/suspicious/noExplicitAny: Spotify API response shape is dynamic
+          const albumTracks = (fullAlbum as Record<string, any>).tracks?.items || [];
 
           for (const t of albumTracks) {
             // Only include tracks where this artist is listed
-            const isByArtist = (t as any).artists?.some(
-              (a: any) => a.id === artistId,
+            // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+            const isByArtist = (t as Record<string, any>).artists?.some(
+              // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+              (a: Record<string, any>) => a.id === artistId,
             );
             if (isByArtist) {
               // Enrich the track with album data (since album tracks don't include it)
-              const enriched: any = {
+              // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+              const enriched: Record<string, any> = {
                 ...t,
                 album: {
                   id: fullAlbum.id,
                   name: fullAlbum.name,
                   images: fullAlbum.images,
-                  release_date: (fullAlbum as any).release_date,
-                  album_type: (fullAlbum as any).album_type,
+                  // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+                  release_date: (fullAlbum as Record<string, any>).release_date,
+                  // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+                  album_type: (fullAlbum as Record<string, any>).album_type,
                 },
               };
               tracks.push(enriched as SpotifyTrack);
@@ -339,8 +345,10 @@ class SpotifyClient {
         10,
       );
 
-      const tracks = (searchResult.tracks?.items || []).filter((t: any) =>
-        t.artists?.some((a: any) => a.id === artistId),
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+      const tracks = (searchResult.tracks?.items || []).filter((t: Record<string, any>) =>
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+        t.artists?.some((a: Record<string, any>) => a.id === artistId),
       );
 
       console.log(
@@ -466,8 +474,10 @@ class SpotifyClient {
         if (items) {
           for (const album of items) {
             // Only include albums where this artist is credited
-            const isByArtist = (album as any).artists?.some(
-              (a: any) => a.id === artistId,
+            // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+            const isByArtist = (album as Record<string, any>).artists?.some(
+              // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+              (a: Record<string, any>) => a.id === artistId,
             );
             if (isByArtist && !seenIds.has(album.id)) {
               seenIds.add(album.id);
@@ -484,8 +494,10 @@ class SpotifyClient {
 
       // Sort by release date (newest first)
       albums.sort((a, b) => {
-        const dateA = (a as any).release_date || "";
-        const dateB = (b as any).release_date || "";
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+        const dateA = (a as Record<string, any>).release_date || "";
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic Spotify response
+        const dateB = (b as Record<string, any>).release_date || "";
         return dateB.localeCompare(dateA);
       });
 

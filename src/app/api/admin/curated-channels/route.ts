@@ -7,6 +7,9 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+// biome-ignore lint/suspicious/noExplicitAny: Spotify API dynamic response shape
+type SpotifyData = Record<string, any>;
+
 // GET - List all curated channels
 export async function GET(request: NextRequest) {
   try {
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
         try {
           const artistInfo = (await spotifyClient.getArtist(
             spotifyArtistId,
-          )) as any;
+          )) as SpotifyData;
           updates.name = artistInfo.name || existingChannel.name;
           updates.imageUrl =
             artistInfo.images?.[0]?.url ?? existingChannel.imageUrl;
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch artist info from Spotify
-    let artistInfo;
+    let artistInfo: SpotifyData;
     try {
       artistInfo = await spotifyClient.getArtist(spotifyArtistId);
     } catch (err) {
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     // Create the curated channel
     const id = generateUUID();
-    const artistData = artistInfo as any; // Spotify may not return all fields with client credentials
+    const artistData = artistInfo as SpotifyData; // Spotify may not return all fields with client credentials
     const newChannel = {
       id,
       spotifyArtistId,
@@ -202,23 +205,23 @@ export async function POST(request: NextRequest) {
               id: generateUUID(),
               spotifyTrackId: track.id,
               spotifyTrackUrl:
-                (track as any).external_urls?.spotify ||
+                (track as SpotifyData).external_urls?.spotify ||
                 `https://open.spotify.com/track/${track.id}`,
-              spotifyAlbumId: (track as any).album?.id || null,
+              spotifyAlbumId: (track as SpotifyData).album?.id || null,
               name: track.name || "Unknown",
               artistName:
-                (track as any).artists?.map((a: any) => a.name).join(", ") ||
+                (track as SpotifyData).artists?.map((a: SpotifyData) => a.name).join(", ") ||
                 artistInfo.name,
               artistIds: JSON.stringify(
-                (track as any).artists?.map((a: any) => a.id) || [],
+                (track as SpotifyData).artists?.map((a: SpotifyData) => a.id) || [],
               ),
-              albumName: (track as any).album?.name || null,
-              albumImageUrl: (track as any).album?.images?.[0]?.url || null,
+              albumName: (track as SpotifyData).album?.name || null,
+              albumImageUrl: (track as SpotifyData).album?.images?.[0]?.url || null,
               durationMs: track.duration_ms ?? null,
               previewUrl: track.preview_url || null,
-              releaseDate: (track as any).album?.release_date || null,
-              popularity: (track as any).popularity ?? null,
-              explicit: Boolean((track as any).explicit),
+              releaseDate: (track as SpotifyData).album?.release_date || null,
+              popularity: (track as SpotifyData).popularity ?? null,
+              explicit: Boolean((track as SpotifyData).explicit),
               curatedChannelId: id,
               isAvailableForPlaylist: true,
               isFeatured: true, // Top tracks are featured by default

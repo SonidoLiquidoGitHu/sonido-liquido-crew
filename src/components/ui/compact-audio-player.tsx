@@ -70,11 +70,11 @@ export function CompactAudioPlayer({
       audio.pause();
     } else {
       // Pause all other audio elements
-      document.querySelectorAll("audio").forEach((el) => {
+      for (const el of document.querySelectorAll("audio")) {
         if (el !== audio) {
           el.pause();
         }
-      });
+      }
       audio.play();
     }
     setIsPlaying(!isPlaying);
@@ -137,7 +137,9 @@ export function CompactAudioPlayer({
         className,
       )}
     >
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={src} preload="metadata">
+        <track kind="captions" />
+      </audio>
 
       {/* Track Number */}
       {trackNumber !== undefined && (

@@ -67,7 +67,7 @@ export function ScrollReveal({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        for (const entry of entries) {
           if (entry.isIntersecting) {
             setIsVisible(true);
             if (once) {
@@ -76,7 +76,7 @@ export function ScrollReveal({
           } else if (!once) {
             setIsVisible(false);
           }
-        });
+        }
       },
       { threshold },
     );
@@ -176,12 +176,12 @@ export function StaggerReveal({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        for (const entry of entries) {
           if (entry.isIntersecting) {
             setIsVisible(true);
             observer.unobserve(entry.target);
           }
-        });
+        }
       },
       { threshold },
     );

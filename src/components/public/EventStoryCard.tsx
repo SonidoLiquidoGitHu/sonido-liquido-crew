@@ -1051,6 +1051,7 @@ export function EventStoryCard({ event, onClose }: EventStoryCardProps) {
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
+        // biome-ignore lint/suspicious/noExplicitAny: error from Web Share API
         } catch (err: any) {
           if (err?.name === "AbortError") return;
         }
@@ -1066,6 +1067,7 @@ export function EventStoryCard({ event, onClose }: EventStoryCardProps) {
           setShareSuccess(true);
           setTimeout(() => setShareSuccess(false), 2000);
           return;
+        // biome-ignore lint/suspicious/noExplicitAny: error from Web Share API
         } catch (err: any) {
           if (err?.name === "AbortError") return;
         }
@@ -1107,6 +1109,7 @@ export function EventStoryCard({ event, onClose }: EventStoryCardProps) {
             setShareSuccess(true);
             setTimeout(() => setShareSuccess(false), 2000);
             return;
+          // biome-ignore lint/suspicious/noExplicitAny: error from Web Share API
           } catch (err: any) {
             if (err?.name === "AbortError") return;
           }

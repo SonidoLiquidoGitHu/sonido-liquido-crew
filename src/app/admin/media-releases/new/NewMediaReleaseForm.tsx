@@ -423,7 +423,8 @@ export default function NewMediaReleaseForm({
       };
 
       // Remove useCustomArtist from submit data
-      (submitData as any).useCustomArtist = undefined;
+      // biome-ignore lint/suspicious/noExplicitAny: removing internal-only UI field before submit
+      (submitData as Record<string, any>).useCustomArtist = undefined;
 
       const response = await fetch("/api/admin/media-releases", {
         method: "POST",
@@ -444,6 +445,7 @@ export default function NewMediaReleaseForm({
         console.error("[Media Release Form] Error:", data.error);
         showMessage("error", data.error || "Error al crear media release");
       }
+    // biome-ignore lint/suspicious/noExplicitAny: error object from catch
     } catch (error: any) {
       console.error("[Media Release Form] Fetch error:", error);
       showMessage("error", `Error de conexión: ${error?.message || "Unknown"}`);
@@ -1030,7 +1032,9 @@ export default function NewMediaReleaseForm({
                           controls
                           src={formData.audioPreviewUrl}
                           className="w-full"
-                        />
+                        >
+                          <track kind="captions" />
+                        </audio>
                       </div>
                     )}
 
@@ -1052,6 +1056,7 @@ export default function NewMediaReleaseForm({
                       {formData.spotifyEmbedUrl && (
                         <div className="mt-4 rounded-lg overflow-hidden">
                           <iframe
+                            title="Spotify player"
                             src={`https://open.spotify.com/embed/track/${formData.spotifyEmbedUrl.split("/").pop()?.split("?")[0]}`}
                             width="100%"
                             height="152"
@@ -1241,6 +1246,7 @@ export default function NewMediaReleaseForm({
                     {formData.youtubeVideoId && (
                       <div className="aspect-video rounded-lg overflow-hidden">
                         <iframe
+                          title="YouTube video"
                           src={`https://www.youtube.com/embed/${formData.youtubeVideoId}`}
                           width="100%"
                           height="100%"

@@ -27,6 +27,7 @@ export async function GET() {
     step: string;
     success: boolean;
     message: string;
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     data?: any;
   }[] = [];
 
@@ -110,6 +111,7 @@ export async function GET() {
           results,
         });
       }
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     } catch (error: any) {
       results.push({
         step: "4. Verificar tabla campaigns",
@@ -126,6 +128,7 @@ export async function GET() {
     // Step 5: Get table schema
     try {
       const schemaResult = await client.execute("PRAGMA table_info(campaigns)");
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       const columns = schemaResult.rows.map((row: any) => row.name);
 
       results.push({
@@ -134,6 +137,7 @@ export async function GET() {
         message: `✅ ${columns.length} columnas encontradas`,
         data: columns,
       });
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     } catch (error: any) {
       results.push({
         step: "5. Esquema de tabla campaigns",
@@ -215,6 +219,7 @@ export async function GET() {
         success: true,
         message: "✅ Campaña de prueba eliminada (limpieza)",
       });
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     } catch (error: any) {
       results.push({
         step: "6. Insertar campaña de prueba",
@@ -251,6 +256,7 @@ export async function GET() {
         success: true,
         message: `✅ Total de campañas en la base de datos: ${count}`,
       });
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     } catch (error: any) {
       results.push({
         step: "9. Campañas existentes",
@@ -266,6 +272,7 @@ export async function GET() {
         "🎉 Todas las pruebas pasaron correctamente. La API de campañas está lista.",
       results,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic type
   } catch (error: any) {
     results.push({
       step: "Error general",

@@ -62,6 +62,7 @@ export default function EditEventPage({
     isCancelled: false,
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchEvent();
   }, [id]);

@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     const { artistId, artistSlug } = body;
 
     // Fetch artists to sync
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let artistsToSync;
     if (artistId) {
       const [artist] = await db

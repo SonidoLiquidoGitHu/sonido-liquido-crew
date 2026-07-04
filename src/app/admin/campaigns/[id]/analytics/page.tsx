@@ -163,6 +163,7 @@ export default function CampaignAnalyticsPage({
     "all" | "known" | "anonymous"
   >("all");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchAnalytics is stable
   useEffect(() => {
     fetchAnalytics();
   }, [resolvedParams.id]);

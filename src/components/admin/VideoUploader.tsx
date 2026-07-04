@@ -983,7 +983,9 @@ export function VideoUploader({
                   className="w-full h-full object-contain"
                   onEnded={() => setIsPlaying(false)}
                   playsInline
-                />
+                >
+                  <track kind="captions" />
+                </video>
                 {/* Play/pause overlay */}
                 <button
                   type="button"

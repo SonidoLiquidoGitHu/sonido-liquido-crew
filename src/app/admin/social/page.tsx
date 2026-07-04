@@ -256,7 +256,8 @@ export default function AdminSocialPage() {
   const [processing, setProcessing] = useState(false);
   const [populating, setPopulating] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [tokenInfo, setTokenInfo] = useState<any>(null);
+  // biome-ignore lint/suspicious/noExplicitAny: token info from API
+  const [tokenInfo, setTokenInfo] = useState<Record<string, any> | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     "queue" | "history" | "schedule" | "config"
@@ -277,7 +278,8 @@ export default function AdminSocialPage() {
   const [scheduleSaveResult, setScheduleSaveResult] = useState<string | null>(
     null,
   );
-  const [debugResult, setDebugResult] = useState<Record<string, any> | null>(
+  // biome-ignore lint/suspicious/noExplicitAny: debug result from API
+  const [debugResult, setDebugResult] = useState<Record<string, Record<string, any>> | null>(
     null,
   );
   const [debugLoading, setDebugLoading] = useState(false);
@@ -1513,7 +1515,8 @@ export default function AdminSocialPage() {
                   <p>
                     <span className="text-slc-muted">Horarios CST:</span>{" "}
                     <span className="text-white font-mono">
-                      {(debugResult.scheduleConfig as any)?.scheduleHours?.join(
+                      {/* biome-ignore lint/suspicious/noExplicitAny: schedule config from API */}
+                      {(debugResult.scheduleConfig as Record<string, any>)?.scheduleHours?.join(
                         ", ",
                       ) || "N/A"}
                     </span>

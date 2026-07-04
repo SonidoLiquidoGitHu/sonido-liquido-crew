@@ -407,7 +407,7 @@ export function UserPlaylistBuilder({
             await new Promise((resolve, reject) => {
               img.onload = resolve;
               img.onerror = reject;
-              img.src = track.coverUrl!;
+              img.src = track.coverUrl as string;
             });
             ctx.drawImage(img, x, y, coverSize, coverSize);
           } catch {

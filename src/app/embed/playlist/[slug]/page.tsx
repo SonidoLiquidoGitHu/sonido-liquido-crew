@@ -54,6 +54,7 @@ export default function PlaylistEmbedPage() {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable reference
   useEffect(() => {
     fetchPlaylist();
     trackEmbedView();

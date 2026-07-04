@@ -884,9 +884,10 @@ async function runAutoMigration(client: Client): Promise<void> {
     for (const sql of addColumns) {
       try {
         await client.execute(sql);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // "duplicate column name" means it already exists — that's fine
-        if (!String(err?.message || "").includes("duplicate column name")) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (!errMsg.includes("duplicate column name")) {
           console.warn("[DB] Auto-migration column warning:", err);
         }
       }
@@ -968,8 +969,10 @@ function getDb(): LibSQLDatabase<typeof schema & typeof relations> {
 // ===========================================
 
 // Helper to create chainable stub methods that always return empty results
-function createChainableStub(): any {
-  const chainable: any = {
+// biome-ignore lint/suspicious/noExplicitAny: chainable stub proxy
+function createChainableStub(): Record<string, any> {
+  // biome-ignore lint/suspicious/noExplicitAny: chainable stub proxy
+  const chainable: Record<string, any> = {
     from: () => chainable,
     where: () => chainable,
     orderBy: () => chainable,
@@ -978,7 +981,8 @@ function createChainableStub(): any {
     values: () => chainable,
     set: () => chainable,
     returning: () => Promise.resolve([]),
-    then: (resolve: (value: any[]) => any) => resolve([]),
+    // biome-ignore lint/suspicious/noThenProperty: required for Promise-like interface
+    then: (resolve: (value: unknown[]) => unknown) => resolve([]),
   };
   return chainable;
 }

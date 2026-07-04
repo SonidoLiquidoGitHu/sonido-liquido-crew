@@ -101,7 +101,8 @@ async function seedFromExport() {
   // =============================================
   console.log("⚙️  Seeding site settings...");
   try {
-    const settingsValues = (data.settings || []).map((s: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const settingsValues = (data.settings || []).map((s: Record<string, any>) => ({
       id: s.id,
       key: s.key,
       value: toStr(s.value),
@@ -115,9 +116,10 @@ async function seedFromExport() {
     }
     counts.settings = settingsValues.length;
     console.log(`   ✓ ${settingsValues.length} settings`);
-  } catch (e: any) {
-    errors.push(`settings: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`settings: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -125,7 +127,8 @@ async function seedFromExport() {
   // =============================================
   console.log("🎤 Seeding artists...");
   try {
-    const artistValues = (data.artists || []).map((a: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const artistValues = (data.artists || []).map((a: Record<string, any>) => ({
       id: a.id,
       name: a.name,
       slug: a.slug,
@@ -167,7 +170,8 @@ async function seedFromExport() {
 
     // 2b. Artist External Profiles (nested in artists)
     console.log("🔗 Seeding artist external profiles...");
-    const profileValues: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import array
+    const profileValues: Record<string, any>[] = [];
     for (const artist of data.artists || []) {
       for (const p of artist.externalProfiles || []) {
         profileValues.push({
@@ -192,9 +196,10 @@ async function seedFromExport() {
     }
     counts.artistExternalProfiles = profileValues.length;
     console.log(`   ✓ ${profileValues.length} external profiles`);
-  } catch (e: any) {
-    errors.push(`artists: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`artists: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -202,7 +207,8 @@ async function seedFromExport() {
   // =============================================
   console.log("💿 Seeding releases...");
   try {
-    const releaseValues = (data.releases || []).map((r: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const releaseValues = (data.releases || []).map((r: Record<string, any>) => ({
       id: r.id,
       title: r.title,
       slug: r.slug,
@@ -227,7 +233,8 @@ async function seedFromExport() {
 
     // 3b. Release Artists (nested in releases)
     console.log("🎵 Seeding release artists...");
-    const releaseArtistValues: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import array
+    const releaseArtistValues: Record<string, any>[] = [];
     for (const release of data.releases || []) {
       for (const ra of release.artists || []) {
         releaseArtistValues.push({
@@ -244,9 +251,10 @@ async function seedFromExport() {
     }
     counts.releaseArtists = releaseArtistValues.length;
     console.log(`   ✓ ${releaseArtistValues.length} release artists`);
-  } catch (e: any) {
-    errors.push(`releases: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`releases: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -254,7 +262,8 @@ async function seedFromExport() {
   // =============================================
   console.log("🎬 Seeding videos...");
   try {
-    const videoValues = (data.videos || []).map((v: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const videoValues = (data.videos || []).map((v: Record<string, any>) => ({
       id: v.id,
       title: v.title,
       description: toStr(v.description),
@@ -281,9 +290,10 @@ async function seedFromExport() {
     }
     counts.videos = videoValues.length;
     console.log(`   ✓ ${videoValues.length} videos`);
-  } catch (e: any) {
-    errors.push(`videos: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`videos: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -291,7 +301,8 @@ async function seedFromExport() {
   // =============================================
   console.log("📺 Seeding YouTube channels...");
   try {
-    const channelValues = (data.youtubeChannels || []).map((c: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const channelValues = (data.youtubeChannels || []).map((c: Record<string, any>) => ({
       id: c.id,
       channelId: c.channelId,
       channelName: c.channelName,
@@ -311,9 +322,10 @@ async function seedFromExport() {
     }
     counts.youtubeChannels = channelValues.length;
     console.log(`   ✓ ${channelValues.length} YouTube channels`);
-  } catch (e: any) {
-    errors.push(`youtubeChannels: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`youtubeChannels: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -321,7 +333,8 @@ async function seedFromExport() {
   // =============================================
   console.log("📅 Seeding events...");
   try {
-    const eventValues = (data.events || []).map((e: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const eventValues = (data.events || []).map((e: Record<string, any>) => ({
       id: e.id,
       title: e.title,
       description: toStr(e.description),
@@ -342,9 +355,10 @@ async function seedFromExport() {
     }
     counts.events = eventValues.length;
     console.log(`   ✓ ${eventValues.length} events`);
-  } catch (e: any) {
-    errors.push(`events: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`events: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -352,7 +366,8 @@ async function seedFromExport() {
   // =============================================
   console.log("📧 Seeding subscribers...");
   try {
-    const subValues = (data.subscribers || []).map((s: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const subValues = (data.subscribers || []).map((s: Record<string, any>) => ({
       id: crypto.randomUUID(),
       email: s.email,
       name: toStr(s.name),
@@ -370,9 +385,10 @@ async function seedFromExport() {
     }
     counts.subscribers = subValues.length;
     console.log(`   ✓ ${subValues.length} subscribers`);
-  } catch (e: any) {
-    errors.push(`subscribers: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`subscribers: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -381,7 +397,8 @@ async function seedFromExport() {
   console.log("📸 Seeding gallery...");
   try {
     // Collect unique albums from gallery items
-    const albumMap = new Map<string, any>();
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import album map
+    const albumMap = new Map<string, Record<string, any>>();
     for (const g of data.gallery || []) {
       if (g.albumId && !albumMap.has(g.albumId)) {
         albumMap.set(g.albumId, {
@@ -402,7 +419,8 @@ async function seedFromExport() {
       await db.insert(galleryAlbums).values(albumValues);
     }
 
-    const photoValues = (data.gallery || []).map((g: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const photoValues = (data.gallery || []).map((g: Record<string, any>) => ({
       id: g.id,
       title: toStr(g.title),
       description: toStr(g.description),
@@ -432,9 +450,10 @@ async function seedFromExport() {
     console.log(
       `   ✓ ${albumValues.length} albums, ${photoValues.length} photos`,
     );
-  } catch (e: any) {
-    errors.push(`gallery: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`gallery: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -442,7 +461,8 @@ async function seedFromExport() {
   // =============================================
   console.log("🥁 Seeding beats...");
   try {
-    const beatValues = (data.beats || []).map((b: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const beatValues = (data.beats || []).map((b: Record<string, any>) => ({
       id: b.id,
       title: b.title,
       slug: b.slug,
@@ -497,9 +517,10 @@ async function seedFromExport() {
     }
     counts.beats = beatValues.length;
     console.log(`   ✓ ${beatValues.length} beats`);
-  } catch (e: any) {
-    errors.push(`beats: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`beats: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -507,7 +528,8 @@ async function seedFromExport() {
   // =============================================
   console.log("📢 Seeding campaigns...");
   try {
-    const campaignValues = (data.campaigns || []).map((c: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const campaignValues = (data.campaigns || []).map((c: Record<string, any>) => ({
       id: c.id,
       title: c.title,
       slug: c.slug,
@@ -550,9 +572,10 @@ async function seedFromExport() {
     }
     counts.campaigns = campaignValues.length;
     console.log(`   ✓ ${campaignValues.length} campaigns`);
-  } catch (e: any) {
-    errors.push(`campaigns: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`campaigns: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -560,7 +583,8 @@ async function seedFromExport() {
   // =============================================
   console.log("🔜 Seeding upcoming releases...");
   try {
-    const upcomingValues = (data.upcomingReleases || []).map((u: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const upcomingValues = (data.upcomingReleases || []).map((u: Record<string, any>) => ({
       id: u.id,
       title: u.title,
       slug: u.slug,
@@ -597,9 +621,10 @@ async function seedFromExport() {
     }
     counts.upcomingReleases = upcomingValues.length;
     console.log(`   ✓ ${upcomingValues.length} upcoming releases`);
-  } catch (e: any) {
-    errors.push(`upcomingReleases: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`upcomingReleases: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -607,7 +632,8 @@ async function seedFromExport() {
   // =============================================
   console.log("🎵 Seeding curated channels...");
   try {
-    const channelValues = (data.curatedChannels || []).map((c: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const channelValues = (data.curatedChannels || []).map((c: Record<string, any>) => ({
       id: c.id,
       spotifyArtistId: c.spotifyArtistId,
       spotifyArtistUrl: c.spotifyArtistUrl,
@@ -632,9 +658,10 @@ async function seedFromExport() {
     }
     counts.curatedSpotifyChannels = channelValues.length;
     console.log(`   ✓ ${channelValues.length} curated channels`);
-  } catch (e: any) {
-    errors.push(`curatedChannels: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`curatedChannels: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================
@@ -642,7 +669,8 @@ async function seedFromExport() {
   // =============================================
   console.log("🎶 Seeding curated tracks...");
   try {
-    const trackValues = (data.curatedTracks || []).map((t: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic
+    const trackValues = (data.curatedTracks || []).map((t: Record<string, any>) => ({
       id: t.id,
       spotifyTrackId: t.spotifyTrackId,
       spotifyTrackUrl: t.spotifyTrackUrl,
@@ -673,9 +701,10 @@ async function seedFromExport() {
     }
     counts.curatedTracks = trackValues.length;
     console.log(`   ✓ ${trackValues.length} curated tracks`);
-  } catch (e: any) {
-    errors.push(`curatedTracks: ${e.message}`);
-    console.error(`   ❌ ${e.message}`);
+  } catch (e: unknown) {
+    const err = e as Error;
+    errors.push(`curatedTracks: ${err.message}`);
+    console.error(`   ❌ ${err.message}`);
   }
 
   // =============================================

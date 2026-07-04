@@ -106,8 +106,8 @@ export async function GET(
       dailyStats[dateKey] = { views: 0, conversions: 0, downloads: 0 };
     }
 
-    actions.forEach((action) => {
-      if (!action.createdAt) return;
+    for (const action of actions) {
+      if (!action.createdAt) continue;
       const dateKey = action.createdAt.toISOString().split("T")[0];
       if (dailyStats[dateKey]) {
         dailyStats[dateKey].conversions++;
@@ -115,16 +115,16 @@ export async function GET(
           dailyStats[dateKey].downloads++;
         }
       }
-    });
+    }
 
     // Source breakdown
     const sources: Record<string, number> = {};
-    actions.forEach((action) => {
+    for (const action of actions) {
       const source = action.referrer
         ? new URL(action.referrer).hostname.replace("www.", "")
         : "directo";
       sources[source] = (sources[source] || 0) + 1;
-    });
+    }
 
     // Recent actions
     const recentActions = actions.slice(0, 50).map((a) => ({
@@ -187,7 +187,7 @@ export async function GET(
           completed: false,
         });
       }
-      const entry = sessionMap.get(sid)!;
+      const entry = sessionMap.get(sid) as { playCount: number; firstPlayAt: Date | null; lastPlayAt: Date | null; completed: boolean };
       if (event.eventType === "play") {
         entry.playCount++;
         if (!entry.firstPlayAt) entry.firstPlayAt = event.createdAt;

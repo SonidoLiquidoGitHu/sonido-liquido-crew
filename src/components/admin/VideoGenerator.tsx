@@ -332,10 +332,10 @@ export function VideoGenerator({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const videoSourceRef = useRef<HTMLVideoElement | null>(null);
 
-  const currentTemplate = TEMPLATES.find((t) => t.id === selectedTemplate)!;
+  const currentTemplate = TEMPLATES.find((t) => t.id === selectedTemplate) as (typeof TEMPLATES)[number];
   const currentOrientation = ORIENTATIONS.find(
     (o) => o.id === selectedOrientation,
-  )!;
+  ) as (typeof ORIENTATIONS)[number];
 
   // Cleanup
   useEffect(() => {
@@ -443,10 +443,10 @@ export function VideoGenerator({
               const vid = videoSourceRef.current;
               const videoAspect = vid.videoWidth / vid.videoHeight;
               const canvasAspect = width / height;
-              let drawWidth;
-              let drawHeight;
-              let drawX;
-              let drawY;
+              let drawWidth: number;
+              let drawHeight: number;
+              let drawX: number;
+              let drawY: number;
               if (videoAspect > canvasAspect) {
                 drawHeight = height;
                 drawWidth = height * videoAspect;
@@ -849,10 +849,10 @@ export function VideoGenerator({
               // Scale video to fill canvas while maintaining aspect ratio
               const videoAspect = vid.videoWidth / vid.videoHeight;
               const canvasAspect = width / height;
-              let drawWidth;
-              let drawHeight;
-              let drawX;
-              let drawY;
+              let drawWidth: number;
+              let drawHeight: number;
+              let drawX: number;
+              let drawY: number;
               if (videoAspect > canvasAspect) {
                 drawHeight = height;
                 drawWidth = height * videoAspect;
@@ -1042,13 +1042,14 @@ export function VideoGenerator({
   );
 
   // Preview animation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   const startPreview = useCallback(async () => {
     if (!previewCanvasRef.current) return;
 
     try {
       const img = await loadImage();
       const canvas = previewCanvasRef.current;
-      const ctx = canvas.getContext("2d")!;
+      const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
       // Scale down for preview
       const scale = 0.5;
@@ -1125,6 +1126,7 @@ export function VideoGenerator({
   }, []);
 
   // Generate video
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   const generateVideo = useCallback(async () => {
     if (!canvasRef.current) return;
 
@@ -1135,7 +1137,7 @@ export function VideoGenerator({
     try {
       const img = await loadImage();
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d")!;
+      const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
       canvas.width = currentOrientation.dimensions.width;
       canvas.height = currentOrientation.dimensions.height;
@@ -1189,7 +1191,7 @@ export function VideoGenerator({
       };
 
       const recordingPromise = new Promise<Blob>((resolve) => {
-        mediaRecorder!.onstop = () => {
+        (mediaRecorder as MediaRecorder).onstop = () => {
           const blob = new Blob(recordedChunks, { type: "video/webm" });
           resolve(blob);
         };
@@ -1592,7 +1594,9 @@ export function VideoGenerator({
             className={`w-full rounded-lg ${
               selectedOrientation === "vertical" ? "max-h-[400px] mx-auto" : ""
             }`}
-          />
+          >
+            <track kind="captions" />
+          </video>
         </div>
       )}
 

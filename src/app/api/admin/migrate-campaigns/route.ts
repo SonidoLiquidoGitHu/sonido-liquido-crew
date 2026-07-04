@@ -30,6 +30,7 @@ export async function GET() {
     // Get current columns
     const schemaResult = await client.execute("PRAGMA table_info(campaigns)");
     const existingColumns = new Set(
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic type
       schemaResult.rows.map((row: any) => row.name),
     );
 
@@ -49,6 +50,7 @@ export async function GET() {
             `ALTER TABLE campaigns ADD COLUMN ${col.name} ${col.type}`,
           );
           results.push({ column: col.name, status: "✅ Agregada" });
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic type
         } catch (error: any) {
           results.push({
             column: col.name,
@@ -60,6 +62,7 @@ export async function GET() {
 
     // Verify final schema
     const finalSchema = await client.execute("PRAGMA table_info(campaigns)");
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     const finalColumns = finalSchema.rows.map((row: any) => row.name);
 
     return NextResponse.json({
@@ -69,6 +72,7 @@ export async function GET() {
       totalColumns: finalColumns.length,
       columns: finalColumns,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic type
   } catch (error: any) {
     return NextResponse.json({
       success: false,

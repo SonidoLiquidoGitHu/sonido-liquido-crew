@@ -100,6 +100,7 @@ export function ConcertMemoryGallery({
     previewUrl: "",
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     fetchMemories();
   }, [eventId, artistId]);
@@ -242,6 +243,7 @@ export function ConcertMemoryGallery({
   };
 
   // Keyboard navigation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedMemory) return;

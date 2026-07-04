@@ -149,6 +149,7 @@ export function YouTubePreview({
             {showPlayer && showEmbed ? (
               <>
                 <iframe
+                  title="YouTube video preview"
                   src={`${videoInfo.embedUrl}?autoplay=1&rel=0`}
                   className="absolute inset-0 w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

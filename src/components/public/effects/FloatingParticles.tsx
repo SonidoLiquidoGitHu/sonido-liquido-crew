@@ -50,7 +50,7 @@ export function FloatingParticles() {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach((particle) => {
+      for (const particle of particles) {
         // Update position
         particle.x += particle.speedX;
         particle.y += particle.speedY;
@@ -70,7 +70,7 @@ export function FloatingParticles() {
         ctx.shadowColor = particle.color;
         ctx.fill();
         ctx.shadowBlur = 0;
-      });
+      }
 
       ctx.globalAlpha = 1;
       animationId = requestAnimationFrame(animate);

@@ -1193,7 +1193,9 @@ export function BulkAudioUploader({
                         src={URL.createObjectURL(fileInfo.file)}
                         onEnded={() => setPlayingId(null)}
                         className="hidden"
-                      />
+                      >
+                        <track kind="captions" />
+                      </audio>
                       <Button
                         type="button"
                         variant="ghost"
@@ -1216,7 +1218,9 @@ export function BulkAudioUploader({
                       controls
                       src={fileInfo.url}
                       className="h-8 w-36 flex-shrink-0"
-                    />
+                    >
+                      <track kind="captions" />
+                    </audio>
                   )}
 
                   {/* Remove button */}

@@ -57,6 +57,7 @@ function WaveformVisualizer({
       setIsLoading(true);
       try {
         const audioContext = new (
+          // biome-ignore lint/suspicious/noExplicitAny: dynamic type
           window.AudioContext || (window as any).webkitAudioContext
         )();
         const response = await fetch(audioUrl);
@@ -102,6 +103,7 @@ function WaveformVisualizer({
     if (!canvasRef.current || waveformData.length === 0) return;
 
     const canvas = canvasRef.current;
+    // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
     const ctx = canvas.getContext("2d")!;
     const { width, height } = canvas;
 
@@ -226,6 +228,7 @@ export function AudioSnippetUploader({
   }, []);
 
   // Audio event handlers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable reference
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -745,7 +748,9 @@ export function AudioSnippetUploader({
       {/* Audio preview */}
       {value && (
         <div className="bg-slc-dark border border-slc-border rounded-xl p-4 space-y-4">
-          <audio ref={audioRef} src={value} preload="metadata" />
+          <audio ref={audioRef} src={value} preload="metadata" >
+            <track kind="captions" />
+          </audio>
 
           {/* Waveform */}
           {showWaveform && (

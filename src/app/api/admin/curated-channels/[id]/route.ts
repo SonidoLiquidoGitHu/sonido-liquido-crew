@@ -4,6 +4,9 @@ import { spotifyClient } from "@/lib/clients/spotify";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 
+// biome-ignore lint/suspicious/noExplicitAny: Spotify API dynamic response shape
+type SpotifyData = Record<string, any>;
+
 export const dynamic = "force-dynamic";
 
 // GET - Get a single curated channel with its tracks
@@ -104,7 +107,8 @@ export async function PUT(
       try {
         const artistInfo = (await spotifyClient.getArtist(
           existing.spotifyArtistId,
-        )) as any;
+          // biome-ignore lint/suspicious/noExplicitAny: Spotify artist response
+        )) as Record<string, any>;
         const updates: Record<string, unknown> = {
           name: artistInfo.name || existing.name,
           imageUrl: artistInfo.images?.[0]?.url ?? existing.imageUrl,
@@ -134,6 +138,7 @@ export async function PUT(
     }
 
     // Update
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic updates object
     const updates: Record<string, any> = {
       updatedAt: new Date(),
     };

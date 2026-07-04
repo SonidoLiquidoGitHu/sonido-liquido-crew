@@ -101,7 +101,8 @@ export async function GET() {
     );
 
     // Map snake_case to camelCase for frontend compatibility
-    const allCampaigns = result.rows.map((row: any) => ({
+    // biome-ignore lint/suspicious/noExplicitAny: database row mapping
+    const allCampaigns = result.rows.map((row: Record<string, any>) => ({
       id: row.id,
       title: row.title,
       slug: row.slug,
@@ -285,6 +286,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: campaign,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: catch error
   } catch (error: any) {
     console.error("[API] Error creating campaign:", error);
     const errorMessage = error?.message || "Unknown error";
@@ -415,6 +417,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       data: campaign,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: catch error
   } catch (error: any) {
     console.error("[API] Error updating campaign:", error);
     return NextResponse.json(

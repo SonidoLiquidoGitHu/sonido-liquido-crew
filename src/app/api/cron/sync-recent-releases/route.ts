@@ -69,6 +69,7 @@ async function getSyncRoster(): Promise<SyncRosterEntry[]> {
       .filter((r) => r.spotifyId && r.spotifyId.trim().length > 0)
       .map((r) => ({
         name: r.name,
+        // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
         spotifyId: r.spotifyId!,
         artistId: r.artistId,
       }));
@@ -606,7 +607,9 @@ export async function GET() {
       .filter((r) => r.releaseDate)
       .sort(
         (a, b) =>
+          // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
           new Date(b.releaseDate!).getTime() -
+          // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
           new Date(a.releaseDate!).getTime(),
       )[0];
 

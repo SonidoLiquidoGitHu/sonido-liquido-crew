@@ -98,6 +98,7 @@ export function UnlockLanding({
   const hasAudio = !!audioUrl && !hasVideo;
   const mediaRef = hasVideo ? videoRef : audioRef;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -156,6 +157,7 @@ export function UnlockLanding({
   };
 
   // Track watch progress
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     if (isPlaying && duration > 0) {
       const percent = Math.floor((currentTime / duration) * 100);
@@ -177,6 +179,7 @@ export function UnlockLanding({
   }, [currentTime, isPlaying, duration]);
 
   // Send play event when video starts
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     if (isPlaying && !hasStartedPlaying && (hasVideo || hasAudio)) {
       setHasStartedPlaying(true);
@@ -185,6 +188,7 @@ export function UnlockLanding({
   }, [isPlaying, hasStartedPlaying, hasVideo, hasAudio]);
 
   // Cleanup: send final analytics on unmount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     return () => {
       if (hasStartedPlaying && contentId) {
@@ -314,7 +318,9 @@ export function UnlockLanding({
                 preload="metadata"
                 poster={coverImageUrl || undefined}
                 onClick={togglePlay}
-              />
+              >
+                <track kind="captions" />
+              </video>
 
               {/* Video Overlay Controls */}
               <div
@@ -572,7 +578,9 @@ export function UnlockLanding({
               ref={audioRef}
               src={audioUrl || undefined}
               preload="metadata"
-            />
+            >
+              <track kind="captions" />
+            </audio>
 
             {/* Player Container */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">

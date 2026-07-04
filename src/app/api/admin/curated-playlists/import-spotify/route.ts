@@ -277,6 +277,7 @@ export async function POST(request: NextRequest) {
         `[Spotify Import] Fetching tracks page: offset=${offset}, limit=${limit}`,
       );
 
+      // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
       let response;
       try {
         response = await spotifyRequestWithAuth<{

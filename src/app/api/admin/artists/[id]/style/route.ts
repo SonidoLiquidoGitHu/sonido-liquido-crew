@@ -29,6 +29,7 @@ export async function GET(
       success: true,
       data: style || null,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: catch error
   } catch (error: any) {
     // Handle table not existing error gracefully
     if (
@@ -75,7 +76,7 @@ export async function PUT(
       .where(eq(artistStyles.artistId, id))
       .limit(1);
 
-    let style;
+    let style: Record<string, unknown>;
 
     if (existing) {
       // Update existing
@@ -107,6 +108,7 @@ export async function PUT(
       success: true,
       data: style,
     });
+  // biome-ignore lint/suspicious/noExplicitAny: catch error
   } catch (error: any) {
     // Handle table not existing error gracefully
     if (

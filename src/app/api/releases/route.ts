@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       type: searchParams.get("type") || undefined,
       artistId: searchParams.get("artistId") || undefined,
       year: searchParams.get("year")
+        // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null
         ? Number.parseInt(searchParams.get("year")!)
         : undefined,
       isUpcoming: searchParams.get("isUpcoming") === "true" ? true : undefined,

@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const includeEvents = searchParams.get("includeEvents") === "true";
 
     // Fetch events if requested
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic type
     let eventsData: any[] = [];
     if (includeEvents) {
       const allEvents = await db

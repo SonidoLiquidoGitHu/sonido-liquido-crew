@@ -30,11 +30,11 @@ export function InfiniteMarquee({
     const scrollerContent = Array.from(scroller.children);
 
     // Duplicate items for seamless loop
-    scrollerContent.forEach((item) => {
+    for (const item of scrollerContent) {
       const duplicated = item.cloneNode(true) as HTMLElement;
       duplicated.setAttribute("aria-hidden", "true");
       scroller.appendChild(duplicated);
-    });
+    }
 
     // Set animation direction
     scroller.style.setProperty(

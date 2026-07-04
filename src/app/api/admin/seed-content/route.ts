@@ -699,7 +699,9 @@ export async function POST(request: NextRequest) {
       // First create tags
       const tagIds: Record<string, string> = {};
       const allTags = new Set<string>();
+      // biome-ignore lint/complexity/noForEach: intentional forEach usage
       samplePhotos.forEach((photo) =>
+        // biome-ignore lint/complexity/noForEach: intentional forEach usage
         photo.tags.forEach((tag) => allTags.add(tag)),
       );
 

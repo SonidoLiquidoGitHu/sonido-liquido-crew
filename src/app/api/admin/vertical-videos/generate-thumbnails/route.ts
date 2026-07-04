@@ -679,6 +679,7 @@ export async function POST(request: NextRequest) {
     await ensureTmpDir();
 
     // Fetch videos that need thumbnails
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let videos;
     if (videoId) {
       videos = await db

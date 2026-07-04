@@ -131,6 +131,7 @@ export function DirectDropboxUploader({
     return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable reference
   const uploadToDropbox = useCallback(
     async (file: File) => {
       if (!accessToken) {

@@ -107,6 +107,7 @@ export function KaraokeLyrics({
   }, [currentTime, lyricLines, activeLineIndex, hasSyncedLyrics]);
 
   // Auto-scroll to active line
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable function reference
   useEffect(() => {
     if (autoScroll && activeLineRef.current && lyricsRef.current) {
       activeLineRef.current.scrollIntoView({
@@ -408,7 +409,9 @@ export function KaraokeLyrics({
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onEnded={() => setIsPlaying(false)}
-            />
+            >
+              <track kind="captions" />
+            </audio>
 
             {/* Progress bar */}
             <div className="flex items-center gap-3 mb-3">

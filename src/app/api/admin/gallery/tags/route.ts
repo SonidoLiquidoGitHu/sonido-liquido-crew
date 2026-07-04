@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const galleryOnly = searchParams.get("galleryOnly") === "true";
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: inferred type
     let allTags;
 
     if (galleryOnly) {
