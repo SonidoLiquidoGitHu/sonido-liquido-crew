@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "The Instagram Story screenshot shows a post from the account \"sonidoliquido\" (posted 1 minute ago). The main visual is a video or image of a person with the word \"DILEMA\" in a pink box, set against a background of bookshelves. At the bottom of the story, there’s a **link sticker** (a black button with a chain icon and the text \"míralo en YouTube,\" meaning \"watch it on YouTube\"). Other elements include the account’s username \"@sonidoliquido\" below the main visual, and the standard Instagram Story interface elements: a \"Enviar mensaje...\" (Send message) text field, a heart (like) icon, a magnifying glass (search) icon, and a paper plane (share) icon at the bottom. There are no other stickers or text visible beyond these elements.  \n\nThe answer is Yes, a link sticker (\"míralo en YouTube\") is visible. Elements include the story from \"sonidoliquido,\" the \"DILEMA\" visual, the account username, and interactive icons (like, search, share) with a message field.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783272414,
+  "id": "20260706012650a3c20e6cb6674bb7",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260706012650a3c20e6cb6674bb7",
+  "usage": {
+    "completion_tokens": 239,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1002,
+    "prompt_tokens_details": {
+      "cached_tokens": 9
+    },
+    "total_tokens": 1241
+  }
+}
