@@ -8,16 +8,21 @@ import path from "node:path";
  * Generates a 1080×1920 (9:16) image with the source image scaled to fill
  * the full width (1080px), centered vertically on a black background.
  *
- * Optionally overlays a link URL as a semi-transparent pill at the bottom
- * of the image so viewers can see and copy the link. This is necessary
- * because the Meta Graph API does NOT support link stickers on Stories:
- * "Publishing stickers (i.e., link, poll, location) is not supported."
+ * Optionally overlays a link URL as a visual sticker-like pill at the bottom
+ * of the image so viewers can see the link. This is the WORKAROUND for the
+ * fact that Meta's Graph API does NOT support link stickers on Stories:
+ *   "Publishing stickers (i.e., link, poll, location) is not supported."
+ *
+ * The visual overlay mimics the appearance of Instagram's native link sticker
+ * (white pill with blue link icon) but is NOT tappable — it's just an image.
+ * Viewers must manually type or copy the URL. For true clickable link stickers,
+ * use Meta Business Suite or a third-party tool like Storrito.
  *
  * Strategy: "fill width, center vertically"
  * - Resize to fill the full 1080px width (upscaling if needed)
  * - If the resulting height <= 1920: letterbox with black bars top/bottom
  * - If the resulting height > 1920: crop from center to fit the canvas
- * - If a link URL is provided: overlay it as text on a semi-transparent bar
+ * - If a link URL is provided: overlay it as a sticker-like pill at the bottom
  *
  * Usage:
  *   GET /api/social/story-image?url=<encoded-image-url>&link=<encoded-link-url>
@@ -236,31 +241,38 @@ export async function GET(req: NextRequest) {
  */
 async function createLinkOverlay(linkUrl: string): Promise<Buffer> {
   // Truncate URL if too long for display
-  const maxDisplayLen = 55;
+  const maxDisplayLen = 45;
   const displayUrl =
     linkUrl.length > maxDisplayLen
       ? `${linkUrl.substring(0, maxDisplayLen - 1)}…`
       : linkUrl;
 
-  // Use an SVG to render the link text with a semi-transparent background
-  // We use a pill/rounded-rect style overlay
-  const barWidth = STORY_WIDTH - 80; // 40px margin on each side
-  const barX = 40;
-  const barY = 20; // offset from top of the overlay
-  const barHeight = LINK_BAR_HEIGHT - 40; // 80px tall pill
-  const cornerRadius = 16;
-  const fontSize = 32;
-  const textY = barY + barHeight / 2 + fontSize * 0.35; // vertically center text
+  // Create a visual that mimics Instagram's native link sticker:
+  // White rounded pill with a link icon and URL text
+  // Positioned at the bottom of the story image
+  const pillWidth = 700;
+  const pillHeight = 70;
+  const pillX = Math.floor((STORY_WIDTH - pillWidth) / 2);
+  const pillY = Math.floor(LINK_BAR_HEIGHT / 2 - pillHeight / 2) + 10;
+  const cornerRadius = 35; // fully rounded ends like IG sticker
+  const fontSize = 28;
+  const textY = pillY + pillHeight / 2 + fontSize * 0.35;
 
   const svg = `<svg width="${STORY_WIDTH}" height="${LINK_BAR_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-  <!-- Semi-transparent background pill -->
-  <rect x="${barX}" y="${barY}" width="${barWidth}" height="${barHeight}" rx="${cornerRadius}" ry="${cornerRadius}" fill="rgba(0,0,0,0.65)" />
-  <!-- Link icon (simplified chain link) -->
-  <g transform="translate(${barX + 24}, ${barY + barHeight / 2 - 12})" fill="white" opacity="0.9">
-    <path d="M8 10L4 14c-1.1 1.1-1.1 2.9 0 4 1.1 1.1 2.9 1.1 4 0l4-4m2-2l4-4c1.1-1.1 1.1-2.9 0-4-1.1-1.1-2.9-1.1-4 0l-4 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Drop shadow for the pill -->
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.3)"/>
+    </filter>
+  </defs>
+  <!-- White pill background (like IG's link sticker) -->
+  <rect x="${pillX}" y="${pillY}" width="${pillWidth}" height="${pillHeight}" rx="${cornerRadius}" ry="${cornerRadius}" fill="white" filter="url(#shadow)" />
+  <!-- Link icon (chain link, blue like IG) -->
+  <g transform="translate(${pillX + 22}, ${pillY + pillHeight / 2 - 11})">
+    <path d="M8 10L4 14c-1.1 1.1-1.1 2.9 0 4 1.1 1.1 2.9 1.1 4 0l4-4m2-2l4-4c1.1-1.1 1.1-2.9 0-4-1.1-1.1-2.9-1.1-4 0l-4 4" stroke="#0095F6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   </g>
-  <!-- Link URL text -->
-  <text x="${barX + 60}" y="${textY}" font-family="'Liberation Sans', 'DejaVu Sans', Arial, sans-serif" font-size="${fontSize}" fill="white" opacity="0.95">${escapeXml(displayUrl)}</text>
+  <!-- Link URL text (dark, like IG) -->
+  <text x="${pillX + 56}" y="${textY}" font-family="'Liberation Sans', 'DejaVu Sans', Arial, sans-serif" font-size="${fontSize}" font-weight="500" fill="#262626">${escapeXml(displayUrl)}</text>
 </svg>`;
 
   const overlayBuffer = Buffer.from(svg);

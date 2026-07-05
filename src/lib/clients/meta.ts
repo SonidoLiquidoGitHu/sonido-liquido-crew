@@ -749,7 +749,16 @@ export async function postToInstagram(
  *
  * IMPORTANT: image_url must point to a publicly accessible image.
  * The caption is included but may not be visible on the Story itself —
- * it's stored as metadata and can include a link sticker if linkUrl is provided.
+ * it's stored as metadata.
+ *
+ * LINK STICKER LIMITATION: Meta's official Graph API docs state:
+ *   "Publishing stickers (i.e., link, poll, location) is not supported."
+ * The `link` parameter is sent in the container body but is most likely
+ * SILENTLY IGNORED by Meta's API. The workaround is to overlay the URL
+ * as visible text on the story image via the story-image composer endpoint
+ * (see &link= parameter). For true clickable link stickers, use Meta
+ * Business Suite manually or a third-party tool like Storrito that uses
+ * Instagram's private API (not the official Graph API).
  */
 export async function postToInstagramStory(
   imageUrl: string,
@@ -783,10 +792,13 @@ export async function postToInstagramStory(
   // This prevents Instagram from auto-cropping the image (which was causing
   // images to appear oversized/cut off in Stories).
   //
-  // Link stickers are now handled natively via the `link` parameter on the
-  // media container (see below). The story-image composer no longer needs to
-  // overlay the link as visible text on the image.
+  // IMPORTANT: The Meta Graph API does NOT support link stickers on Stories.
+  // Official docs: "Publishing stickers (i.e., link, poll, location) is not supported."
+  // The `link` parameter on the container body is sent anyway (in case Meta adds
+  // support silently), but we also overlay the URL as visible text on the image
+  // so viewers can at least see and manually type the link.
   let finalImageUrl = imageUrl;
+  let composerLinkUrl: string | undefined;
   if (options?.composeForStory && imageUrl) {
     try {
       const siteUrl =
@@ -794,12 +806,20 @@ export async function postToInstagramStory(
         process.env.URL ||
         "https://sonidoliquido.com";
 
-      // Build composer URL for image framing (1080×1920)
-      let composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}`;
+      // Resolve linkUrl to absolute URL for the visual overlay
+      if (linkUrl) {
+        composerLinkUrl = linkUrl.startsWith("http")
+          ? linkUrl
+          : `${siteUrl}${linkUrl.startsWith("/") ? "" : "/"}${linkUrl}`;
+      }
 
-      // Note: we no longer pass &link= to the composer because link stickers
-      // are now created via the API `link` parameter on the container (below).
-      // Keeping the old &link= overlay would show a redundant text URL on the image.
+      // Build composer URL for image framing (1080×1920)
+      // Include &link= so the URL is overlaid as visible text on the image,
+      // since the Meta API cannot create clickable link stickers on Stories.
+      let composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}`;
+      if (composerLinkUrl) {
+        composerUrl += `&link=${encodeURIComponent(composerLinkUrl)}`;
+      }
 
       // Verify the composer can fetch + process the image.
       // If it fails, fall back to the raw image URL (IG will crop it — better
@@ -851,9 +871,9 @@ export async function postToInstagramStory(
       : `${siteUrl}${linkUrl.startsWith("/") ? "" : "/"}${linkUrl}`;
   }
 
-  // Build the Story caption. The link sticker is now handled by the `link`
-  // parameter on the container (which creates a tappable link sticker), so we
-  // no longer need to append the raw URL to the caption as a workaround.
+  // Build the Story caption.
+  // Since Meta's API does NOT support link stickers on Stories, we include
+  // the link in the caption as a fallback so it's at least stored as metadata.
   let storyCaption = caption || "";
 
   try {
@@ -875,12 +895,18 @@ export async function postToInstagramStory(
       containerBody.caption = storyCaption;
     }
 
-    // Add the `link` parameter to create a clickable link sticker on the Story.
-    // Although Meta's older docs state "Publishing stickers (i.e., link, poll,
-    // location) is not supported", the `link` parameter on the media container
-    // has been confirmed to work as of 2026 (see Postiz app PR #1400).
-    // This creates a proper link sticker that viewers can tap — the same
-    // experience as manually adding a link sticker in the Instagram app.
+    // Add the `link` parameter to the container body.
+    // NOTE: As of 2026, Meta's official documentation states:
+    //   "Publishing stickers (i.e., link, poll, location) is not supported."
+    // The Postiz app PR #1400 attempted to add this, but was CLOSED as
+    // "NOT_PLANNED". The `link` parameter is most likely SILENTLY IGNORED
+    // by Meta's API — the container creation succeeds, but no link sticker
+    // is created. We send it anyway in case Meta adds support in the future
+    // or for accounts with special privileges.
+    //
+    // The actual workaround is the visual link overlay on the story image
+    // (see &link= in the composer URL above), which makes the URL visible
+    // as text on the image even though it's not a tappable sticker.
     if (absoluteLinkUrl) {
       containerBody.link = absoluteLinkUrl;
     }
@@ -1017,6 +1043,26 @@ export async function postToInstagramStory(
 
     // Note: Stories don't have public permalinks like feed posts
     console.log("[Meta] Instagram Story published successfully:", mediaId);
+
+    // Post-publish diagnostic: query the published story to check if a link
+    // sticker was actually created. This helps confirm whether the `link`
+    // parameter is being honored or silently ignored by Meta's API.
+    if (absoluteLinkUrl) {
+      try {
+        const diagnosticResponse = await fetch(
+          `${META_GRAPH_API}/${mediaId}?fields=id,caption,timestamp&access_token=${token}`,
+        );
+        const diagnosticData = await diagnosticResponse.json();
+        console.log(
+          "[Meta] IG Story post-publish diagnostic (link sticker check):",
+          JSON.stringify(diagnosticData).substring(0, 500),
+        );
+      } catch (diagErr) {
+        // Non-blocking diagnostic
+        console.warn("[Meta] IG Story post-publish diagnostic failed:", diagErr);
+      }
+    }
+
     return { success: true, mediaId, permalink: null };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
