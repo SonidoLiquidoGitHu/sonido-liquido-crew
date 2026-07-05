@@ -239,7 +239,7 @@ export async function POST(
     let addedCount = 0;
     if (trulyNew.length > 0) {
       try {
-        await db.insert(curatedTracks).values(trulyNew);
+        await db.insert(curatedTracks).values(trulyNew as any);
         addedCount = trulyNew.length;
       } catch (batchErr) {
         // Fallback to one-by-one if batch fails
@@ -249,7 +249,7 @@ export async function POST(
         );
         for (const track of trulyNew) {
           try {
-            await db.insert(curatedTracks).values(track);
+            await db.insert(curatedTracks).values(track as any);
             addedCount++;
           } catch {
             // Duplicate — skip

@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface Beat {
+export interface Beat {
   id: string;
   title: string;
   slug: string;

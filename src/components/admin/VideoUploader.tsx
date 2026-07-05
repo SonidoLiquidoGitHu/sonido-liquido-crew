@@ -533,7 +533,7 @@ function TikTokIcon({ className }: { className?: string }) {
 type VideoSource = "upload" | "youtube" | "social" | "url";
 type VideoOrientation = "horizontal" | "vertical" | "square" | "unknown";
 
-interface VideoInfo {
+export interface VideoInfo {
   source: VideoSource;
   url: string;
   thumbnailUrl?: string;

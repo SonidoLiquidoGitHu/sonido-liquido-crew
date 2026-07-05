@@ -312,7 +312,7 @@ export async function saveDropboxToken(token: string): Promise<boolean> {
         type: "string",
         description: "Dropbox API access token",
       // biome-ignore lint/suspicious/noExplicitAny: drizzle partial update
-      } as Record<string, any>);
+      } as any);
       console.log("[Dropbox] Token inserted with id:", newId);
     }
 

@@ -5,7 +5,7 @@ import { useState } from "react";
 
 // ===========================================
 // MÚSICA SECTION - Tabbed: Artistas / Beats / Playlists
-// Merges: RandomArtistPlayer + FeaturedBeats + SpotifySection
+import { type Beat } from "@/components/public/sections/FeaturedBeats";
 // ===========================================
 
 // Lazy load the heavy sub-components
@@ -44,8 +44,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 interface MusicaSectionProps {
-  // biome-ignore lint/suspicious/noExplicitAny: beats data from API with dynamic shape
-  featuredBeats: Record<string, any>[];
+  featuredBeats: Beat[];
 }
 
 export function MusicaSection({ featuredBeats }: MusicaSectionProps) {

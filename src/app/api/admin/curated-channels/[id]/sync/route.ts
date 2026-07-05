@@ -47,7 +47,7 @@ async function insertTracks(
   let skipped = 0;
 
   try {
-    await db.insert(curatedTracks).values(newTracks);
+    await db.insert(curatedTracks).values(newTracks as any);
     added = newTracks.length;
   } catch (batchErr) {
     console.warn(
@@ -56,7 +56,7 @@ async function insertTracks(
     );
     for (const newTrack of newTracks) {
       try {
-        await db.insert(curatedTracks).values(newTrack);
+        await db.insert(curatedTracks).values(newTrack as any);
         added++;
       } catch (insertErr) {
         skipped++;

@@ -192,7 +192,7 @@ async function seedFromExport() {
       }
     }
     if (profileValues.length > 0) {
-      await db.insert(artistExternalProfiles).values(profileValues);
+      await db.insert(artistExternalProfiles).values(profileValues as any);
     }
     counts.artistExternalProfiles = profileValues.length;
     console.log(`   ✓ ${profileValues.length} external profiles`);
@@ -247,7 +247,7 @@ async function seedFromExport() {
       }
     }
     if (releaseArtistValues.length > 0) {
-      await db.insert(releaseArtists).values(releaseArtistValues);
+      await db.insert(releaseArtists).values(releaseArtistValues as any);
     }
     counts.releaseArtists = releaseArtistValues.length;
     console.log(`   ✓ ${releaseArtistValues.length} release artists`);
@@ -416,7 +416,7 @@ async function seedFromExport() {
 
     const albumValues = Array.from(albumMap.values());
     if (albumValues.length > 0) {
-      await db.insert(galleryAlbums).values(albumValues);
+      await db.insert(galleryAlbums).values(albumValues as any);
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: JSON import data shape is dynamic

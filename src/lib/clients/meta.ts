@@ -2125,7 +2125,7 @@ export async function processQueueItem(
               queueId: item.id,
               platform: "facebook_reel",
               // biome-ignore lint/suspicious/noExplicitAny: drizzle enum cast
-              contentType: item.contentType as Record<string, any>,
+              contentType: item.contentType as unknown as Record<string, any>,
               sourceId: item.sourceId,
               imageUrl: videoUrl,
               caption: item.caption,
@@ -2137,7 +2137,7 @@ export async function processQueueItem(
               errorMessage: fbReelResult.error || null,
               postedAt: new Date(),
             // biome-ignore lint/suspicious/noExplicitAny: drizzle insert
-            } as Record<string, any>);
+            } as any);
           } catch (logError) {
             console.error("[Social] Failed to log FB Reel result:", logError);
           }
@@ -2174,7 +2174,7 @@ export async function processQueueItem(
               queueId: item.id,
               platform: "instagram_reel",
               // biome-ignore lint/suspicious/noExplicitAny: drizzle enum cast
-              contentType: item.contentType as Record<string, any>,
+              contentType: item.contentType as unknown as Record<string, any>,
               sourceId: item.sourceId,
               imageUrl: videoUrl,
               caption: item.caption,
@@ -2186,7 +2186,7 @@ export async function processQueueItem(
               errorMessage: igResult.error || null,
               postedAt: new Date(),
             // biome-ignore lint/suspicious/noExplicitAny: drizzle insert
-            } as Record<string, any>);
+            } as any);
           } catch (logError) {
             console.error("[Social] Failed to log IG Reel result:", logError);
           }
@@ -2232,7 +2232,7 @@ export async function processQueueItem(
           queueId: item.id,
           platform: "facebook",
           // biome-ignore lint/suspicious/noExplicitAny: drizzle enum cast
-          contentType: item.contentType as Record<string, any>,
+          contentType: item.contentType as unknown as Record<string, any>,
           sourceId: item.sourceId,
           imageUrl: item.imageUrl,
           caption: item.caption,
@@ -2244,7 +2244,7 @@ export async function processQueueItem(
           errorMessage: fbResult.error || null,
           postedAt: new Date(),
         // biome-ignore lint/suspicious/noExplicitAny: drizzle insert
-        } as Record<string, any>);
+        } as any);
       } catch (logError) {
         console.error("[Social] Failed to log FB result:", logError);
       }
@@ -2271,7 +2271,7 @@ export async function processQueueItem(
           queueId: item.id,
           platform: "instagram",
           // biome-ignore lint/suspicious/noExplicitAny: drizzle enum cast
-          contentType: item.contentType as Record<string, any>,
+          contentType: item.contentType as unknown as Record<string, any>,
           sourceId: item.sourceId,
           imageUrl: item.imageUrl,
           caption: item.caption,
@@ -2283,7 +2283,7 @@ export async function processQueueItem(
           errorMessage: igResult.error || null,
           postedAt: new Date(),
         // biome-ignore lint/suspicious/noExplicitAny: drizzle insert
-        } as Record<string, any>);
+        } as any);
       } catch (logError) {
         console.error("[Social] Failed to log IG result:", logError);
       }
@@ -2336,7 +2336,7 @@ export async function processQueueItem(
           queueId: item.id,
           platform: "instagram_story",
           // biome-ignore lint/suspicious/noExplicitAny: drizzle enum cast
-          contentType: item.contentType as Record<string, any>,
+          contentType: item.contentType as unknown as Record<string, any>,
           sourceId: item.sourceId,
           imageUrl: item.imageUrl,
           caption: item.caption,
@@ -2348,7 +2348,7 @@ export async function processQueueItem(
           errorMessage: igStoryResult.error || null,
           postedAt: new Date(),
         // biome-ignore lint/suspicious/noExplicitAny: drizzle insert
-        } as Record<string, any>);
+        } as any);
       } catch (logError) {
         console.error("[Social] Failed to log IG Story result:", logError);
       }
@@ -3214,7 +3214,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
     let rotationStartIndex = 0;
     if (lastContentType) {
       // biome-ignore lint/suspicious/noExplicitAny: drizzle enum cast
-      const lastIdx = CONTENT_TYPE_ROTATION.indexOf(lastContentType as Record<string, any>);
+      const lastIdx = CONTENT_TYPE_ROTATION.indexOf(lastContentType as any);
       if (lastIdx >= 0) {
         rotationStartIndex = (lastIdx + 1) % CONTENT_TYPE_ROTATION.length;
       }
@@ -3288,7 +3288,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
             and(
               eq(socialPostsLog.status, "success"),
               // biome-ignore lint/suspicious/noExplicitAny: drizzle enum cast
-              eq(socialPostsLog.contentType, item.contentType as Record<string, any>),
+              eq(socialPostsLog.contentType, item.contentType as any),
               eq(socialPostsLog.sourceId, item.sourceId as string),
               drizzleSql`${socialPostsLog.postedAt} > (unixepoch() - 172800)`,
             ),

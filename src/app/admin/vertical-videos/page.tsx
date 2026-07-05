@@ -1,6 +1,6 @@
 "use client";
 
-import { VideoUploader, parseVideoUrl } from "@/components/admin/VideoUploader";
+import { VideoUploader, parseVideoUrl, type VideoInfo } from "@/components/admin/VideoUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -111,7 +111,7 @@ export default function AdminVerticalVideosPage() {
   const [showUploader, setShowUploader] = useState(false);
   const [uploading, setUploading] = useState(false);
   // biome-ignore lint/suspicious/noExplicitAny: video info from upload API
-  const [uploadVideoInfo, setUploadVideoInfo] = useState<Record<string, any> | null>(null);
+  const [uploadVideoInfo, setUploadVideoInfo] = useState<VideoInfo | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDescription, setUploadDescription] = useState("");
   const [uploadArtistId, setUploadArtistId] = useState("");

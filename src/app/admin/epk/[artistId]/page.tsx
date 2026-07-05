@@ -403,7 +403,7 @@ export default function EpkEditorPage({
   };
 
   // biome-ignore lint/suspicious/noExplicitAny: dynamic value type for EPK field updates
-  const updateEpk = (field: keyof EpkData, value: Record<string, any>) => {
+  const updateEpk = (field: keyof EpkData, value: any) => {
     setEpk((prev) => (prev ? { ...prev, [field]: value } : null));
     setHasChanges(true);
   };
