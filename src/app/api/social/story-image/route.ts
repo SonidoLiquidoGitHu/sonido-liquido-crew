@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
+import path from "node:path";
 
 /**
  * Story Image Composer
@@ -7,16 +8,19 @@ import sharp from "sharp";
  * Generates a 1080×1920 (9:16) image with the source image scaled to fill
  * the full width (1080px), centered vertically on a black background.
  *
+ * Optionally overlays a link URL as a semi-transparent pill at the bottom
+ * of the image so viewers can see and copy the link. This is necessary
+ * because the Meta Graph API does NOT support link stickers on Stories:
+ * "Publishing stickers (i.e., link, poll, location) is not supported."
+ *
  * Strategy: "fill width, center vertically"
  * - Resize to fill the full 1080px width (upscaling if needed)
  * - If the resulting height <= 1920: letterbox with black bars top/bottom
  * - If the resulting height > 1920: crop from center to fit the canvas
- *
- * This ensures images always fill the horizontal space in Instagram Stories,
- * so they appear large and prominent rather than small with wide black bars.
+ * - If a link URL is provided: overlay it as text on a semi-transparent bar
  *
  * Usage:
- *   GET /api/social/story-image?url=<encoded-image-url>
+ *   GET /api/social/story-image?url=<encoded-image-url>&link=<encoded-link-url>
  *
  * Returns:
  *   image/jpeg (1080×1920) with the source image filling the width
@@ -27,6 +31,8 @@ export const maxDuration = 30;
 
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
+const LINK_BAR_HEIGHT = 120; // height of the semi-transparent bar at the bottom
+const LINK_BAR_PADDING = 40; // horizontal padding for the link text
 
 export async function GET(req: NextRequest) {
   const urlParam = req.nextUrl.searchParams.get("url");
@@ -50,6 +56,17 @@ export async function GET(req: NextRequest) {
   // Basic validation — must be http(s)
   if (!/^https?:\/\//i.test(sourceUrl)) {
     return NextResponse.json({ error: "URL must be http(s)" }, { status: 400 });
+  }
+
+  // Optional link parameter — will be overlaid on the image
+  let linkUrl: string | undefined;
+  const linkParam = req.nextUrl.searchParams.get("link");
+  if (linkParam) {
+    try {
+      linkUrl = decodeURIComponent(linkParam);
+    } catch {
+      // Ignore invalid link encoding
+    }
   }
 
   // Fetch the source image
@@ -125,24 +142,61 @@ export async function GET(req: NextRequest) {
       fittedHeight = STORY_HEIGHT;
     }
 
-    // If the fitted image already matches the canvas exactly, return it directly
-    if (fittedWidth === STORY_WIDTH && fittedHeight === STORY_HEIGHT) {
-      return new NextResponse(new Uint8Array(fitted), {
-        status: 200,
-        headers: {
-          "Content-Type": "image/jpeg",
-          "Cache-Control": "public, max-age=86400, s-maxage=86400",
-          "X-Story-Composed": "true",
-          "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
-          "X-Story-Fit-Mode": "cover",
-        },
-      });
+    // Step 3: Build the composites (image + optional link overlay)
+    const composites: sharp.OverlayOptions[] = [];
+
+    // Add the fitted image
+    const imageTop = Math.floor((STORY_HEIGHT - fittedHeight) / 2);
+    composites.push({
+      input: fitted,
+      left: 0,
+      top: imageTop,
+    });
+
+    // Add link overlay if a link URL is provided
+    if (linkUrl) {
+      try {
+        const linkOverlay = await createLinkOverlay(linkUrl);
+        composites.push({
+          input: linkOverlay,
+          left: 0,
+          top: STORY_HEIGHT - LINK_BAR_HEIGHT,
+        });
+      } catch (overlayErr) {
+        // Link overlay is best-effort — don't fail the entire image if it fails
+        console.warn(
+          "[Story Image] Link overlay failed:",
+          overlayErr instanceof Error ? overlayErr.message : overlayErr,
+        );
+      }
     }
 
-    // Composite onto a 1080×1920 black background, centered vertically
-    const left = 0; // already fills the full width
-    const top = Math.floor((STORY_HEIGHT - fittedHeight) / 2);
+    // Create the final composed image
+    // If no link overlay and image fills the canvas exactly, we can skip the background canvas
+    if (
+      composites.length === 1 &&
+      fittedWidth === STORY_WIDTH &&
+      fittedHeight === STORY_HEIGHT
+    ) {
+      // Image fills the entire canvas — no need for a background layer
+      const imageBuffer = composites.length === 1 ? fitted : undefined;
 
+      if (imageBuffer) {
+        return new NextResponse(new Uint8Array(imageBuffer), {
+          status: 200,
+          headers: {
+            "Content-Type": "image/jpeg",
+            "Cache-Control": "public, max-age=86400, s-maxage=86400",
+            "X-Story-Composed": "true",
+            "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
+            "X-Story-Fit-Mode": "cover",
+            "X-Story-Link-Overlay": linkUrl ? "true" : "false",
+          },
+        });
+      }
+    }
+
+    // Composite onto a 1080×1920 black background
     const composed = await sharp({
       create: {
         width: STORY_WIDTH,
@@ -151,13 +205,7 @@ export async function GET(req: NextRequest) {
         background: { r: 0, g: 0, b: 0 },
       },
     })
-      .composite([
-        {
-          input: fitted,
-          left,
-          top,
-        },
-      ])
+      .composite(composites)
       .jpeg({ quality: 90 })
       .toBuffer();
 
@@ -168,7 +216,8 @@ export async function GET(req: NextRequest) {
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
         "X-Story-Composed": "true",
         "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
-        "X-Story-Fit-Mode": "fill-width",
+        "X-Story-Fit-Mode": fittedHeight < STORY_HEIGHT ? "fill-width" : "cover",
+        "X-Story-Link-Overlay": linkUrl ? "true" : "false",
       },
     });
   } catch (err) {
@@ -179,4 +228,57 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * Create a semi-transparent link overlay bar with the URL text.
+ * Returns a PNG buffer of size 1080×LINK_BAR_HEIGHT with transparency.
+ */
+async function createLinkOverlay(linkUrl: string): Promise<Buffer> {
+  // Truncate URL if too long for display
+  const maxDisplayLen = 55;
+  const displayUrl =
+    linkUrl.length > maxDisplayLen
+      ? `${linkUrl.substring(0, maxDisplayLen - 1)}…`
+      : linkUrl;
+
+  // Use an SVG to render the link text with a semi-transparent background
+  // We use a pill/rounded-rect style overlay
+  const barWidth = STORY_WIDTH - 80; // 40px margin on each side
+  const barX = 40;
+  const barY = 20; // offset from top of the overlay
+  const barHeight = LINK_BAR_HEIGHT - 40; // 80px tall pill
+  const cornerRadius = 16;
+  const fontSize = 32;
+  const textY = barY + barHeight / 2 + fontSize * 0.35; // vertically center text
+
+  const svg = `<svg width="${STORY_WIDTH}" height="${LINK_BAR_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+  <!-- Semi-transparent background pill -->
+  <rect x="${barX}" y="${barY}" width="${barWidth}" height="${barHeight}" rx="${cornerRadius}" ry="${cornerRadius}" fill="rgba(0,0,0,0.65)" />
+  <!-- Link icon (simplified chain link) -->
+  <g transform="translate(${barX + 24}, ${barY + barHeight / 2 - 12})" fill="white" opacity="0.9">
+    <path d="M8 10L4 14c-1.1 1.1-1.1 2.9 0 4 1.1 1.1 2.9 1.1 4 0l4-4m2-2l4-4c1.1-1.1 1.1-2.9 0-4-1.1-1.1-2.9-1.1-4 0l-4 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- Link URL text -->
+  <text x="${barX + 60}" y="${textY}" font-family="'Liberation Sans', 'DejaVu Sans', Arial, sans-serif" font-size="${fontSize}" fill="white" opacity="0.95">${escapeXml(displayUrl)}</text>
+</svg>`;
+
+  const overlayBuffer = Buffer.from(svg);
+
+  // Convert SVG to PNG with alpha channel for compositing
+  const pngBuffer = await sharp(overlayBuffer)
+    .png()
+    .toBuffer();
+
+  return pngBuffer;
+}
+
+/** Escape special XML characters for SVG text content */
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }

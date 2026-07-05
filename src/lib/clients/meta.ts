@@ -782,6 +782,12 @@ export async function postToInstagramStory(
   // endpoint which pads the image to a 1080×1920 frame with black bars.
   // This prevents Instagram from auto-cropping the image (which was causing
   // images to appear oversized/cut off in Stories).
+  //
+  // IMPORTANT: The Meta Graph API does NOT support link stickers on Stories.
+  // Quote from official docs: "Publishing stickers (i.e., link, poll, location)
+  // is not supported." As a workaround, we pass the link URL to the story-image
+  // composer which overlays it as visible text on the image itself, so viewers
+  // can see and copy it.
   let finalImageUrl = imageUrl;
   if (options?.composeForStory && imageUrl) {
     try {
@@ -789,8 +795,20 @@ export async function postToInstagramStory(
         process.env.NEXT_PUBLIC_SITE_URL ||
         process.env.URL ||
         "https://sonidoliquido.com";
-      const composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}`;
-      // Quick HEAD request to verify the composer can fetch + process the image.
+
+      // Build composer URL with optional link overlay
+      let composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}`;
+
+      // Pass the link URL to the composer for visual overlay on the image
+      // (since the API `link` parameter doesn't create stickers)
+      if (linkUrl) {
+        const absLink = linkUrl.startsWith("http")
+          ? linkUrl
+          : `${siteUrl}${linkUrl.startsWith("/") ? "" : "/"}${linkUrl}`;
+        composerUrl += `&link=${encodeURIComponent(absLink)}`;
+      }
+
+      // Verify the composer can fetch + process the image.
       // If it fails, fall back to the raw image URL (IG will crop it — better
       // than failing the entire Story post).
       const probe = await fetch(composerUrl, {
@@ -801,6 +819,7 @@ export async function postToInstagramStory(
         finalImageUrl = composerUrl;
         console.log(
           "[Meta] Story image composer: using composed 1080×1920 image",
+          linkUrl ? "with link overlay" : "",
         );
       } else {
         console.warn(
@@ -840,8 +859,11 @@ export async function postToInstagramStory(
       : `${siteUrl}${linkUrl.startsWith("/") ? "" : "/"}${linkUrl}`;
   }
 
-  // Build the Story caption: include the link as visible text fallback
-  // so viewers can see/copy it even if the link sticker doesn't render
+  // Build the Story caption: include the link as visible text
+  // Since Meta's API does NOT support link stickers on Stories
+  // ("Publishing stickers (i.e., link, poll, location) is not supported"),
+  // the link is rendered as text both in the caption AND as an overlay
+  // on the story image (via the story-image composer's &link= parameter).
   let storyCaption = caption || "";
   if (absoluteLinkUrl && !storyCaption.includes(absoluteLinkUrl)) {
     storyCaption = storyCaption
@@ -854,26 +876,26 @@ export async function postToInstagramStory(
     console.log(
       "[Meta] Creating IG Story container with image:",
       imageUrl.substring(0, 80),
-      absoluteLinkUrl ? ` link: ${absoluteLinkUrl.substring(0, 60)}` : "",
+      absoluteLinkUrl ? ` link-overlay: ${absoluteLinkUrl.substring(0, 60)}` : "",
     );
 
-    const containerBody: Record<string, string | boolean> = {
+    const containerBody: Record<string, string> = {
       media_type: "STORIES",
       image_url: finalImageUrl,
       access_token: token,
     };
 
-    // Add caption if provided (visible as text overlay on some story formats)
+    // Add caption — includes the link URL as visible text
     if (storyCaption) {
       containerBody.caption = storyCaption;
     }
 
-    // If a link URL is provided, attach it as a link sticker
-    // This requires instagram_content_publish + instagram_manage_comments permissions
-    // The IG Graph API supports link stickers via the "link" parameter on story containers
-    if (absoluteLinkUrl) {
-      containerBody.link = absoluteLinkUrl;
-    }
+    // NOTE: The `link` parameter is intentionally NOT included here.
+    // Meta's official docs state: "Publishing stickers (i.e., link, poll,
+    // location) is not supported." The `link` parameter is silently ignored
+    // by the API. Instead, we render the link as a visual overlay on the
+    // story image itself (via the story-image composer) and include it in
+    // the caption text.
 
     const containerResponse = await fetch(
       `${META_GRAPH_API}/${igAccountId}/media`,
@@ -910,7 +932,7 @@ export async function postToInstagramStory(
           " — Check that your System User Token has instagram_basic and instagram_content_publish permissions.";
       } else if (igErrorMsg.includes("link")) {
         guidance =
-          " — IG Story link stickers require instagram_content_publish permission and a verified account.";
+          " — Note: Meta's API does not support link stickers on Stories. The link is rendered as a visual overlay on the image instead.";
       }
       return {
         success: false,
