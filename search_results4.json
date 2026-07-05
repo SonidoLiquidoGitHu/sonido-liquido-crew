@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=1lKzu3UVJso",
+    "name": "Instagram Graph API Publishing Content - YouTube",
+    "snippet": "In this video we learn how to publish content with the Instagram Graph API. We publish an image, and a video, as well as pull down the api ...",
+    "host_name": "www.youtube.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://developers.facebook.com/documentation/instagram-platform/changelog",
+    "name": "Changelog for Instagram Platform - Meta for Developers",
+    "snippet": "This new field can be used to trigger different messaging automations based on Link Sticker URL in the story. ... The host URL for API calls is graph.instagram.",
+    "host_name": "developers.facebook.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/gitroomhq/postiz-app/issues/580",
+    "name": "Feature: Instagram Story with link · Issue #580 · gitroomhq/postiz-app",
+    "snippet": "Support either video URL or Reels URL but not both. Publishing stickers (i.e., link, poll, location) is not supported.",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://stackoverflow.com/questions/78841320/how-to-add-clickable-links-in-instagram-stories-via-api",
+    "name": "How to Add Clickable Links in Instagram Stories via API?",
+    "snippet": "I am currently using the Instagram API to publish stories and I would like to know if it's possible to add clickable links directly within the stories via API.",
+    "host_name": "stackoverflow.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://zernio.com/blog/api-to-post-to-instagram",
+    "name": "Instagram Posting API in 2026: Graph API or Zernio One-Call",
+    "snippet": "To use the Instagram Graph API for posting, you need an Instagram Business or Creator account linked to a Facebook Page, a registered Meta ...",
+    "host_name": "zernio.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api",
+    "name": "Instagram API | Documentation | Postman API Network",
+    "snippet": "This guide will help you to generate tokens, publish content, gather insights and manage an Instagram profile. The API is built on top of Facebook's Graph API, ...",
+    "host_name": "www.postman.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://elfsight.com/blog/instagram-graph-api-complete-developer-guide-for-2026",
+    "name": "Instagram Graph API: Complete Developer Guide for 2026 - Elfsight",
+    "snippet": "This guide walks you through the entire ecosystem, from authentication to optimization strategies, so you can build efficient, scalable ...",
+    "host_name": "elfsight.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=wNHkhPteVSw",
+    "name": "How to Post Stories on Instagram | Instagram Graph API PHP SDK",
+    "snippet": "... 2:35 Creae Image Container 4:04 Post Story with Container 5:02 Get User Stories 5:44 Get Story Info 7:49 Get Story Insights 9:29 Recap/Outro ...",
+    "host_name": "www.youtube.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/webdev/comments/1l91sjj/getting_started_with_instagram_graph_api_tips",
+    "name": "Getting started with Instagram Graph API : tips, tricks, and  - Reddit",
+    "snippet": "Been trying to post reels via graph api for 3 days. Followed 3 different youtube tutorials step by step and none of it work. Where do i learn?!!",
+    "host_name": "www.reddit.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://postproxy.dev/blog/post-to-instagram-via-api",
+    "name": "Post to Instagram via API: Guide (2026) - Postproxy",
+    "snippet": "Instagram Graph API content publishing in 2026: container model, app review, page linking, OAuth scopes, and rate limits. Working code for ...",
+    "host_name": "postproxy.dev",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

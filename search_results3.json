@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=23EGOr5pL9U",
+    "name": "Add Clickable Links on Instagram 2026 - YouTube",
+    "snippet": "Ever wished your Instagram had clickable links that actually drive people somewhere? In this tutorial, I'll show you the three ways you can ...",
+    "host_name": "www.youtube.com",
+    "rank": 0,
+    "date": "Jul 3, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://stackoverflow.com/questions/78841320/how-to-add-clickable-links-in-instagram-stories-via-api",
+    "name": "How to Add Clickable Links in Instagram Stories via API?",
+    "snippet": "I am currently using the Instagram API to publish stories and I would like to know if it's possible to add clickable links directly within the stories via API.",
+    "host_name": "stackoverflow.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://creatorflow.so/blog/instagram-story-link-sticker",
+    "name": "Instagram Story Link Sticker: Setup, Limits, and Fixes - CreatorFlow",
+    "snippet": "Open Stories, capture or upload, tap the sticker icon, choose Link, paste your URL, and customize the CTA text. The catch: stories reach roughly ...\nYou can post multiple slides in the same Story sequence and put a different link on each, which is the closest workaround to multi-link Stories.",
+    "host_name": "creatorflow.so",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/gitroomhq/postiz-app/issues/580",
+    "name": "Feature: Instagram Story with link · Issue #580 · gitroomhq/postiz-app",
+    "snippet": "Support either video URL or Reels URL but not both. Publishing stickers (i.e., link, poll, location) is not supported.",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=lbuIWeYm2jU",
+    "name": "How to Add a Link to an Instagram Story | 2025 Tutorial - YouTube",
+    "snippet": "... (Instagram creator + Buffer's Brand and Community Manager) shows you exactly how to add a link to your Instagram Story using the link sticker ...\n... link to your Instagram Story using the link sticker — plus how to schedule linked stories in advance with Buffer. Whether you're promoting a ...",
+    "host_name": "www.youtube.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.facebook.com/business/help/529979981436890",
+    "name": "About the link sticker for Instagram Stories | Meta Business Help",
+    "snippet": "You can use a sticker to include a link to your Instagram stories. When people tap on this link sticker in your story, they'll be redirected to the linked ...",
+    "host_name": "www.facebook.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://storrito.com/resources/instagram-api-2026",
+    "name": "Instagram API Changes in 2026 Explained - Storrito",
+    "snippet": "How Instagram's 2026 API rules replaced Basic Display, reshaping scheduling, embeds, analytics, and what SaaS tools must support today.",
+    "host_name": "storrito.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://zernio.com/blog/instagram-graph-api",
+    "name": "Instagram Graph API 2026: Dev Questions Meta's Docs Leave Open",
+    "snippet": "The Instagram Graph API is Meta's official REST interface for programmatically managing Instagram Business and Creator accounts. It lets ...",
+    "host_name": "zernio.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://elfsight.com/blog/instagram-graph-api-complete-developer-guide-for-2026",
+    "name": "Instagram Graph API: Complete Developer Guide for 2026 - Elfsight",
+    "snippet": "The Instagram Graph API is the primary interface for developers, businesses, and creators who need programmatic access to Instagram data and ...",
+    "host_name": "elfsight.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/AskProgramming/comments/13vx0cu/instagram_adding_links_to_stories_via_api",
+    "name": "Instagram - Adding links to stories via API : r/AskProgramming - Reddit",
+    "snippet": "I'm trying to determine if there's any way to add stickers (specifically links) to Instagram stories via the API, whether that is the SDK or ...",
+    "host_name": "www.reddit.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]
