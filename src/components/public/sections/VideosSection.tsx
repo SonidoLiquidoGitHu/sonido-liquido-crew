@@ -1,6 +1,7 @@
 "use client";
 
-import { Shuffle, Tv, Video } from "lucide-react";
+import { Shuffle, Tv, Video as VideoIcon } from "lucide-react";
+import type { Video } from "@/types";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
@@ -34,7 +35,7 @@ const ArtistChannels = dynamic(
 );
 
 const TABS = [
-  { id: "featured", label: "Destacados", icon: Video },
+  { id: "featured", label: "Destacados", icon: VideoIcon },
   { id: "random", label: "Aleatorios", icon: Shuffle },
   { id: "channels", label: "Canales", icon: Tv },
 ] as const;
@@ -42,8 +43,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 interface VideosSectionProps {
-  // biome-ignore lint/suspicious/noExplicitAny: video data from API
-  featuredVideos: Record<string, any>[];
+  featuredVideos: Video[];
 }
 
 export function VideosSection({ featuredVideos }: VideosSectionProps) {
@@ -58,7 +58,7 @@ export function VideosSection({ featuredVideos }: VideosSectionProps) {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h2 className="font-oswald text-3xl md:text-4xl uppercase text-white flex items-center gap-3">
-              <Video className="w-8 h-8 text-primary" />
+              <VideoIcon className="w-8 h-8 text-primary" />
               Videos
             </h2>
             <p className="text-gray-400 mt-1 text-sm">
@@ -98,7 +98,7 @@ export function VideosSection({ featuredVideos }: VideosSectionProps) {
               <FeaturedVideos videos={featuredVideos} />
             ) : (
               <div className="text-center py-12 text-gray-400">
-                <Video className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <VideoIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Videos destacados próximamente</p>
               </div>
             ))}

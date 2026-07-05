@@ -539,7 +539,7 @@ export const releasesRepository = {
           const [linkedRelease] = await db
             .select({ releaseType: releases.releaseType })
             .from(releases)
-            .where(eq(releases.id, linked.releasedReleaseId as number))
+            .where(eq(releases.id, linked.releasedReleaseId as unknown as string))
             .limit(1);
 
           if (

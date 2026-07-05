@@ -187,7 +187,7 @@ export async function GET(
           completed: false,
         });
       }
-      const entry = sessionMap.get(sid) as { playCount: number; firstPlayAt: Date | null; lastPlayAt: Date | null; completed: boolean };
+      const entry = sessionMap.get(sid) as { playCount: number; firstPlayAt: Date | null; lastPlayAt: Date | null; completed: boolean; maxPercent: number; totalWatchTime: number };
       if (event.eventType === "play") {
         entry.playCount++;
         if (!entry.firstPlayAt) entry.firstPlayAt = event.createdAt;

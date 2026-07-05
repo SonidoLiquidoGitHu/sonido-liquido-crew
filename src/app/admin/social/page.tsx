@@ -279,7 +279,7 @@ export default function AdminSocialPage() {
     null,
   );
   // biome-ignore lint/suspicious/noExplicitAny: debug result from API
-  const [debugResult, setDebugResult] = useState<Record<string, Record<string, any>> | null>(
+  const [debugResult, setDebugResult] = useState<Record<string, any> | null>(
     null,
   );
   const [debugLoading, setDebugLoading] = useState(false);
@@ -1471,15 +1471,15 @@ export default function AdminSocialPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatusBadge
                     label="Meta API"
-                    ok={debugResult.metaConfigured as boolean}
+                    ok={debugResult.metaConfigured as unknown as boolean}
                     okText="Configurada"
                     failText="No configurada"
                   />
                   <StatusBadge
                     label="Token"
-                    ok={debugResult.tokenValid as boolean}
+                    ok={debugResult.tokenValid as unknown as boolean}
                     okText="Válido"
-                    failText={(debugResult.tokenError as string) || "Inválido"}
+                    failText={(debugResult.tokenError as unknown as string) || "Inválido"}
                   />
                   <StatusBadge
                     label="Cola pendiente"

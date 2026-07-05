@@ -184,7 +184,7 @@ const verificationStatuses = [
  */
 function safeJsonParse(
   value: string | null | undefined,
-  fallback: Record<string, unknown> | null = null,
+  fallback: Record<string, unknown> | unknown[] | null = null,
 ): Record<string, unknown> | unknown[] | null {
   if (!value) return fallback;
   try {
@@ -200,7 +200,14 @@ function safeJsonParse(
         break; // Can't parse further — this is the final value
       }
     }
-    return parsed;
+    if (
+      parsed === null ||
+      Array.isArray(parsed) ||
+      (typeof parsed === "object" && parsed !== null)
+    ) {
+      return parsed as Record<string, unknown> | unknown[] | null;
+    }
+    return fallback;
   } catch {
     return fallback;
   }
