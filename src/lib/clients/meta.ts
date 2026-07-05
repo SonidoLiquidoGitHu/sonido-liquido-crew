@@ -885,6 +885,10 @@ export async function postToInstagramStory(
       containerBody.link = absoluteLinkUrl;
     }
 
+    // Log the full container body (redact token) for debugging link sticker issues
+    const loggableBody = { ...containerBody, access_token: "[REDACTED]" };
+    console.log("[Meta] IG Story container body:", JSON.stringify(loggableBody));
+
     const containerResponse = await fetch(
       `${META_GRAPH_API}/${igAccountId}/media`,
       {
@@ -895,6 +899,12 @@ export async function postToInstagramStory(
     );
 
     const containerData = await containerResponse.json();
+
+    // Log full API response for debugging link sticker
+    console.log(
+      "[Meta] IG Story container API response:",
+      JSON.stringify(containerData).substring(0, 500),
+    );
 
     if (containerData.error) {
       console.error(
