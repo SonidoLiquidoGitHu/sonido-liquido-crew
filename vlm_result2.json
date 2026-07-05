@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Yes, there is a link sticker visible at the bottom. The link sticker is a black rectangular sticker with white text that reads \"míralo en YouTube\" (accompanied by a link icon on the left).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783272737,
+  "id": "20260706013215a7b7619456524be6",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260706013215a7b7619456524be6",
+  "usage": {
+    "completion_tokens": 47,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1005,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 1052
+  }
+}
