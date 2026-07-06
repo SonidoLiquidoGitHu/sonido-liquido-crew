@@ -1,0 +1,62 @@
+# ===========================================
+# Sonido Líquido Crew — robots.txt
+# ===========================================
+# https://sonidoliquido.com
+#
+# Public site content is fully crawlable.
+# Internal-only routes (catalogue, admin, embeds) are disallowed.
+
+User-agent: *
+Allow: /
+
+# Internal routes — not for search engines
+Disallow: /catalogo
+Disallow: /api/catalogue
+Disallow: /admin
+Disallow: /api/admin
+Disallow: /api/health
+Disallow: /api/analytics
+Disallow: /api/track
+Disallow: /embed/
+Disallow: /c/
+
+# AI training crawlers — explicitly blocked from internal routes
+# (these specific bots often ignore general Disallow rules)
+User-agent: GPTBot
+Disallow: /catalogo
+Disallow: /api/catalogue
+Disallow: /admin
+Disallow: /api/admin
+
+User-agent: ChatGPT-User
+Disallow: /catalogo
+Disallow: /api/catalogue
+Disallow: /admin
+Disallow: /api/admin
+
+User-agent: ClaudeBot
+Disallow: /catalogo
+Disallow: /api/catalogue
+Disallow: /admin
+Disallow: /api/admin
+
+User-agent: anthropic-ai
+Disallow: /catalogo
+Disallow: /api/catalogue
+Disallow: /admin
+Disallow: /api/admin
+
+User-agent: PerplexityBot
+Disallow: /catalogo
+Disallow: /api/catalogue
+Disallow: /admin
+Disallow: /api/admin
+
+User-agent: Google-Extended
+Disallow: /catalogo
+Disallow: /api/catalogue
+Disallow: /admin
+Disallow: /api/admin
+
+# Sitemap (uncomment when one is published)
+# Sitemap: https://sonidoliquido.com/sitemap.xml

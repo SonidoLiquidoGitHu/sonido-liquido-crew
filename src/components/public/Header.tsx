@@ -10,7 +10,8 @@ import { useState } from "react";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
-  { href: "/catalogo", label: "Catálogo" },
+  // Catalogo is hidden from public nav — it's for AI agents + internal use.
+  // Accessible via /catalogo?key=YOUR_CATALOGO_ACCESS_KEY
   { href: "/artistas", label: "Artistas" },
   { href: "/discografia", label: "Discografía" },
   { href: "/beats", label: "Beats" },
