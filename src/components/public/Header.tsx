@@ -10,6 +10,7 @@ import { useState } from "react";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
+  { href: "/catalogo", label: "Catálogo" },
   { href: "/artistas", label: "Artistas" },
   { href: "/discografia", label: "Discografía" },
   { href: "/beats", label: "Beats" },

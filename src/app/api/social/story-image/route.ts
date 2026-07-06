@@ -1,34 +1,41 @@
 import { type NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
-import path from "node:path";
 
 /**
- * Story Image Composer
- * ====================
- * Generates a 1080×1920 (9:16) image with the source image scaled to fill
- * the full width (1080px), centered vertically on a black background.
+ * Story Image Composer (v2 — no pixelation)
+ * =========================================
+ * Generates a 1080×1920 (9:16) image for Instagram Stories.
  *
- * Optionally overlays a link URL as a visual sticker-like pill at the bottom
- * of the image so viewers can see the link. This is the WORKAROUND for the
- * fact that Meta's Graph API does NOT support link stickers on Stories:
- *   "Publishing stickers (i.e., link, poll, location) is not supported."
+ * PREVIOUS BEHAVIOR (caused pixelation):
+ *   The source image was always resized to fill 1080px wide, with
+ *   `withoutEnlargement: false`. That meant small source images (e.g. a
+ *   500×500 cover or 640×640 Spotify thumbnail) got upscaled 2x+, producing
+ *   soft / blocky / pixelated Stories. The image was also re-encoded twice
+ *   (once after resize, once after composite), which compounded JPEG
+ *   artifacts.
  *
- * The visual overlay mimics the appearance of Instagram's native link sticker
- * (white pill with blue link icon) but is NOT tappable — it's just an image.
- * Viewers must manually type or copy the URL. For true clickable link stickers,
- * use Meta Business Suite or a third-party tool like Storrito.
- *
- * Strategy: "fill width, center vertically"
- * - Resize to fill the full 1080px width (upscaling if needed)
- * - If the resulting height <= 1920: letterbox with black bars top/bottom
- * - If the resulting height > 1920: crop from center to fit the canvas
- * - If a link URL is provided: overlay it as a sticker-like pill at the bottom
+ * NEW BEHAVIOR:
+ *   1. BACKGROUND LAYER — The source image is blurred and scaled with
+ *      `fit: cover` to fill the full 1080×1920 canvas. Upscaling is OK here
+ *      because the blur hides it. The background is also darkened slightly
+ *      so the foreground stands out. This guarantees we always fill the
+ *      screen — no awkward black bars.
+ *   2. FOREGROUND LAYER — The source image is scaled with `fit: contain`
+ *      and `withoutEnlargement: true`, so it is NEVER upscaled. Small
+ *      images appear at their native size, centered on the blurred
+ *      background. This is the same trick Instagram itself uses for
+ *      non-9:16 Story images.
+ *   3. LINK OVERLAY (optional) — A sticker-like pill with the link URL is
+ *      composited at the bottom, since the Meta Graph API does not support
+ *      clickable link stickers on Stories.
+ *   4. SINGLE ENCODE — Everything is composited in the sharp pipeline and
+ *      encoded once at JPEG quality 95 (was 90).
  *
  * Usage:
  *   GET /api/social/story-image?url=<encoded-image-url>&link=<encoded-link-url>
  *
  * Returns:
- *   image/jpeg (1080×1920) with the source image filling the width
+ *   image/jpeg (1080×1920)
  */
 
 export const dynamic = "force-dynamic";
@@ -36,8 +43,9 @@ export const maxDuration = 30;
 
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
-const LINK_BAR_HEIGHT = 120; // height of the semi-transparent bar at the bottom
-const LINK_BAR_PADDING = 40; // horizontal padding for the link text
+const LINK_BAR_HEIGHT = 120;
+const BACKGROUND_BRIGHTNESS = 0.55; // 0..1, lower = darker
+const BACKGROUND_BLUR_SIGMA = 18;
 
 export async function GET(req: NextRequest) {
   const urlParam = req.nextUrl.searchParams.get("url");
@@ -58,7 +66,6 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Basic validation — must be http(s)
   if (!/^https?:\/\//i.test(sourceUrl)) {
     return NextResponse.json({ error: "URL must be http(s)" }, { status: 400 });
   }
@@ -99,66 +106,70 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Compose the Story image:
-  // Strategy: fill the full width (1080px), then handle the height
   try {
-    // Step 1: Get source dimensions after EXIF rotation
-    const rotated = sharp(sourceBuffer).rotate();
-    const sourceMeta = await rotated.metadata();
-    const srcWidth = sourceMeta.width || STORY_WIDTH;
-    const srcHeight = sourceMeta.height || STORY_HEIGHT;
-
-    // Step 2: Calculate scale to fill the width
-    const widthScale = STORY_WIDTH / srcWidth;
-    const scaledHeight = Math.round(srcHeight * widthScale);
-
-    let fitted: Buffer;
-    let fittedWidth: number;
-    let fittedHeight: number;
-
-    if (scaledHeight <= STORY_HEIGHT) {
-      // Image fits within canvas after filling width — letterbox with black bars
-      fitted = await sharp(sourceBuffer)
-        .rotate()
-        .resize({
-          width: STORY_WIDTH,
-          withoutEnlargement: false,
-        })
-        .jpeg({ quality: 90 })
-        .toBuffer();
-
-      fittedWidth = STORY_WIDTH;
-      fittedHeight = scaledHeight;
-    } else {
-      // Image is taller than canvas after filling width — crop from center
-      fitted = await sharp(sourceBuffer)
-        .rotate()
-        .resize({
-          width: STORY_WIDTH,
-          height: STORY_HEIGHT,
-          fit: sharp.fit.cover,
-          position: sharp.gravity.center,
-          withoutEnlargement: false,
-        })
-        .jpeg({ quality: 90 })
-        .toBuffer();
-
-      fittedWidth = STORY_WIDTH;
-      fittedHeight = STORY_HEIGHT;
+    // ---- Step 1: Read source metadata (after EXIF rotation) ----
+    const sourceMeta = await sharp(sourceBuffer).rotate().metadata();
+    const srcWidth = sourceMeta.width || 0;
+    const srcHeight = sourceMeta.height || 0;
+    if (!srcWidth || !srcHeight) {
+      return NextResponse.json(
+        { error: "Could not read image dimensions" },
+        { status: 422 },
+      );
     }
 
-    // Step 3: Build the composites (image + optional link overlay)
-    const composites: sharp.OverlayOptions[] = [];
+    // ---- Step 2: Build the blurred background layer (1080×1920) ----
+    // Cover-fit so it fills the canvas. Upscaling is fine here because the
+    // blur hides any pixelation. Darken so the foreground pops.
+    const backgroundLayer = await sharp(sourceBuffer)
+      .rotate()
+      .resize({
+        width: STORY_WIDTH,
+        height: STORY_HEIGHT,
+        fit: sharp.fit.cover,
+        position: sharp.gravity.center,
+        withoutEnlargement: false,
+        kernel: "lanczos3",
+      })
+      .modulate({ brightness: BACKGROUND_BRIGHTNESS })
+      .blur(BACKGROUND_BLUR_SIGMA)
+      // PNG lossless to avoid recompression artifacts when compositing
+      .png()
+      .toBuffer();
 
-    // Add the fitted image
-    const imageTop = Math.floor((STORY_HEIGHT - fittedHeight) / 2);
-    composites.push({
-      input: fitted,
-      left: 0,
-      top: imageTop,
-    });
+    // ---- Step 3: Build the sharp foreground layer ----
+    // Scale to fit INSIDE the canvas (preserve aspect ratio, never upscale).
+    // The `Math.min(..., 1)` is the key — it caps the scale at 1.0 so a
+    // 500×500 source stays 500×500 instead of being stretched to 1080.
+    const scale = Math.min(
+      STORY_WIDTH / srcWidth,
+      STORY_HEIGHT / srcHeight,
+      1, // never upscale
+    );
+    const fittedWidth = Math.max(1, Math.round(srcWidth * scale));
+    const fittedHeight = Math.max(1, Math.round(srcHeight * scale));
 
-    // Add link overlay if a link URL is provided
+    const foregroundLayer = await sharp(sourceBuffer)
+      .rotate()
+      .resize({
+        width: fittedWidth,
+        height: fittedHeight,
+        fit: sharp.fit.fill, // exact dimensions (we already preserved aspect)
+        withoutEnlargement: true,
+        kernel: "lanczos3",
+      })
+      .png() // lossless intermediate
+      .toBuffer();
+
+    // ---- Step 4: Build composites ----
+    const foregroundLeft = Math.floor((STORY_WIDTH - fittedWidth) / 2);
+    const foregroundTop = Math.floor((STORY_HEIGHT - fittedHeight) / 2);
+
+    const composites: sharp.OverlayOptions[] = [
+      { input: foregroundLayer, left: foregroundLeft, top: foregroundTop },
+    ];
+
+    // Optional link sticker overlay
     if (linkUrl) {
       try {
         const linkOverlay = await createLinkOverlay(linkUrl);
@@ -168,7 +179,6 @@ export async function GET(req: NextRequest) {
           top: STORY_HEIGHT - LINK_BAR_HEIGHT,
         });
       } catch (overlayErr) {
-        // Link overlay is best-effort — don't fail the entire image if it fails
         console.warn(
           "[Story Image] Link overlay failed:",
           overlayErr instanceof Error ? overlayErr.message : overlayErr,
@@ -176,52 +186,39 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Create the final composed image
-    // If no link overlay and image fills the canvas exactly, we can skip the background canvas
-    if (
-      composites.length === 1 &&
-      fittedWidth === STORY_WIDTH &&
-      fittedHeight === STORY_HEIGHT
-    ) {
-      // Image fills the entire canvas — no need for a background layer
-      const imageBuffer = composites.length === 1 ? fitted : undefined;
-
-      if (imageBuffer) {
-        return new NextResponse(new Uint8Array(imageBuffer), {
-          status: 200,
-          headers: {
-            "Content-Type": "image/jpeg",
-            "Cache-Control": "public, max-age=86400, s-maxage=86400",
-            "X-Story-Composed": "true",
-            "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
-            "X-Story-Fit-Mode": "cover",
-            "X-Story-Link-Overlay": linkUrl ? "true" : "false",
-          },
-        });
-      }
-    }
-
-    // Composite onto a 1080×1920 black background
-    const composed = await sharp({
-      create: {
-        width: STORY_WIDTH,
-        height: STORY_HEIGHT,
-        channels: 3,
-        background: { r: 0, g: 0, b: 0 },
-      },
-    })
+    // ---- Step 5: Composite everything onto the background ----
+    // Single JPEG encode at q95 — no double-encoding.
+    const composed = await sharp(backgroundLayer)
       .composite(composites)
-      .jpeg({ quality: 90 })
+      .jpeg({
+        quality: 95,
+        mozjpeg: true, // better compression at high quality
+        chromaSubsampling: "4:4:4", // preserve color detail
+      })
       .toBuffer();
+
+    const fitMode =
+      fittedWidth === STORY_WIDTH && fittedHeight === STORY_HEIGHT
+        ? "exact"
+        : fittedWidth === STORY_WIDTH
+          ? "fill-width"
+          : fittedHeight === STORY_HEIGHT
+            ? "fill-height"
+            : "contain-no-upscale";
 
     return new NextResponse(new Uint8Array(composed), {
       status: 200,
       headers: {
         "Content-Type": "image/jpeg",
+        // Allow caching since the same source URL produces the same output.
+        // The composer URL contains the full source URL as a query param,
+        // so different sources get different cache keys automatically.
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
         "X-Story-Composed": "true",
+        "X-Story-Version": "2",
         "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
-        "X-Story-Fit-Mode": fittedHeight < STORY_HEIGHT ? "fill-width" : "cover",
+        "X-Story-Foreground-Size": `${fittedWidth}x${fittedHeight}`,
+        "X-Story-Fit-Mode": fitMode,
         "X-Story-Link-Overlay": linkUrl ? "true" : "false",
       },
     });
@@ -247,40 +244,32 @@ async function createLinkOverlay(linkUrl: string): Promise<Buffer> {
       ? `${linkUrl.substring(0, maxDisplayLen - 1)}…`
       : linkUrl;
 
-  // Create a visual that mimics Instagram's native link sticker:
-  // White rounded pill with a link icon and URL text
-  // Positioned at the bottom of the story image
+  // Mimic Instagram's native link sticker: white rounded pill with link icon + URL
   const pillWidth = 700;
   const pillHeight = 70;
   const pillX = Math.floor((STORY_WIDTH - pillWidth) / 2);
   const pillY = Math.floor(LINK_BAR_HEIGHT / 2 - pillHeight / 2) + 10;
-  const cornerRadius = 35; // fully rounded ends like IG sticker
+  const cornerRadius = 35;
   const fontSize = 28;
   const textY = pillY + pillHeight / 2 + fontSize * 0.35;
 
   const svg = `<svg width="${STORY_WIDTH}" height="${LINK_BAR_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-  <!-- Drop shadow for the pill -->
   <defs>
     <filter id="shadow" x="-5%" y="-5%" width="110%" height="130%">
       <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.3)"/>
     </filter>
   </defs>
-  <!-- White pill background (like IG's link sticker) -->
   <rect x="${pillX}" y="${pillY}" width="${pillWidth}" height="${pillHeight}" rx="${cornerRadius}" ry="${cornerRadius}" fill="white" filter="url(#shadow)" />
-  <!-- Link icon (chain link, blue like IG) -->
   <g transform="translate(${pillX + 22}, ${pillY + pillHeight / 2 - 11})">
     <path d="M8 10L4 14c-1.1 1.1-1.1 2.9 0 4 1.1 1.1 2.9 1.1 4 0l4-4m2-2l4-4c1.1-1.1 1.1-2.9 0-4-1.1-1.1-2.9-1.1-4 0l-4 4" stroke="#0095F6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   </g>
-  <!-- Link URL text (dark, like IG) -->
   <text x="${pillX + 56}" y="${textY}" font-family="'Liberation Sans', 'DejaVu Sans', Arial, sans-serif" font-size="${fontSize}" font-weight="500" fill="#262626">${escapeXml(displayUrl)}</text>
 </svg>`;
 
   const overlayBuffer = Buffer.from(svg);
 
   // Convert SVG to PNG with alpha channel for compositing
-  const pngBuffer = await sharp(overlayBuffer)
-    .png()
-    .toBuffer();
+  const pngBuffer = await sharp(overlayBuffer).png().toBuffer();
 
   return pngBuffer;
 }
