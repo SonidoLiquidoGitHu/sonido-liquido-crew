@@ -5,6 +5,13 @@
 import { mailchimpClient } from "@/lib/clients/mailchimp";
 import { type NextRequest, NextResponse } from "next/server";
 
+// This route must never be cached at the edge or in the browser.
+// Without this, Netlify's Next.js plugin can serve stale campaign lists
+// (the exact symptom that caused "old campaigns shown but new ones missing").
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -84,16 +91,48 @@ export async function GET(request: NextRequest) {
         );
       }
       const status = searchParams.get("status") || undefined;
-      const count = Number.parseInt(searchParams.get("count") || "20");
-      const result = await mailchimpClient.getCampaigns({ status, count });
+      // Default 100 (was 20). Older default silently dropped recent campaigns
+      // on accounts with many campaigns in their history.
+      const count = Number.parseInt(searchParams.get("count") || "100");
+      // Optional audience filter — by default we no longer filter, so campaigns
+      // created in the Mailchimp UI (segments, A/B tests, RSS, etc.) all show up.
+      const listId = searchParams.get("list_id") || undefined;
+      const sortBy =
+        (searchParams.get("sort_field") as "create_time" | "send_time") ||
+        undefined;
+      const sortDir =
+        (searchParams.get("sort_dir") as "ASC" | "DESC") || undefined;
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          campaigns: result.campaigns,
-          totalItems: result.total_items,
-        },
+      const result = await mailchimpClient.getCampaigns({
+        status,
+        count,
+        listId,
+        sortBy,
+        sortDir,
       });
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            campaigns: result.campaigns,
+            totalItems: result.total_items,
+            // How many were returned in this page (vs. total on the account)
+            returnedCount: result.campaigns.length,
+          },
+        },
+        {
+          headers: {
+            // Belt-and-suspenders: even if Netlify's plugin ignores the
+            // `dynamic` export above, this header tells every cache in the
+            // chain (browser, edge, CDN) not to store the response.
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
+      );
     }
 
     // Get subscribers

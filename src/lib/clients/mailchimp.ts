@@ -463,14 +463,42 @@ class MailchimpClient {
 
   /**
    * Get campaigns
+   *
+   * IMPORTANT: We no longer filter by `list_id` by default. The previous
+   * behavior (always passing `list_id=this.audienceId`) excluded campaigns
+   * that were created in the Mailchimp UI and sent to a *segment*, *tag*,
+   * *group*, or as an *A/B test* / *RSS* campaign, because Mailchimp's
+   * `list_id` query filter does not always match those recipient configs.
+   * The result was that the Email Studio showed older "whole-list" campaigns
+   * but never the user's newer segment/AB-test campaigns.
+   *
+   * Pass `listId` explicitly only when you really want to restrict by audience.
+   *
+   * We also pin `sort_field=create_time` and `sort_dir=DESC` so the newest
+   * campaigns are always first, even if Mailchimp ever changes their default.
    */
   async getCampaigns(
-    options: { count?: number; status?: string } = {},
+    options: {
+      count?: number;
+      status?: string;
+      listId?: string;
+      sortBy?: "create_time" | "send_time";
+      sortDir?: "ASC" | "DESC";
+    } = {},
   ): Promise<{ campaigns: MailchimpCampaign[]; total_items: number }> {
     const params = new URLSearchParams({
-      count: String(options.count || 20),
-      list_id: this.audienceId,
+      // Raised from 20 → 100 so we don't silently drop recent campaigns
+      // on accounts with a long campaign history.
+      count: String(options.count || 100),
+      sort_field: options.sortBy || "create_time",
+      sort_dir: options.sortDir || "DESC",
     });
+
+    // Only filter by audience when explicitly requested. By default, return
+    // all campaigns on the account (regardless of recipient config).
+    if (options.listId) {
+      params.set("list_id", options.listId);
+    }
 
     if (options.status) {
       // Mailchimp uses "save" for drafts, but our UI uses "draft" for consistency.

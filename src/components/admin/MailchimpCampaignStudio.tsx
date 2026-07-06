@@ -347,6 +347,7 @@ export function MailchimpCampaignStudio() {
   const [isLoading, setIsLoading] = useState(true);
   const [audience, setAudience] = useState<AudienceData | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
+  const [campaignsTotal, setCampaignsTotal] = useState<number>(0);
   const [tags, setTags] = useState<TagData[]>([]);
   const [growthHistory, setGrowthHistory] = useState<GrowthItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -428,11 +429,15 @@ export function MailchimpCampaignStudio() {
   const fetchCampaigns = useCallback(async (status?: string) => {
     setCampaignsLoading(true);
     try {
-      const url = `/api/admin/mailchimp?action=campaigns&count=50${status && status !== "all" ? `&status=${status}` : ""}`;
-      const res = await fetch(url);
+      // cache: 'no-store' + _t cache-buster = double protection against
+      // the browser serving a stale campaign list (which was the symptom:
+      // older campaigns showing, newer Mailchimp-UI-created ones missing).
+      const url = `/api/admin/mailchimp?action=campaigns&count=100${status && status !== "all" ? `&status=${status}` : ""}&_t=${Date.now()}`;
+      const res = await fetch(url, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setCampaigns(data.data.campaigns || []);
+        setCampaignsTotal(data.data.totalItems || 0);
       }
     } catch (err) {
       console.error("Failed to fetch campaigns:", err);
@@ -2078,29 +2083,54 @@ export function MailchimpCampaignStudio() {
       {/* ==================== CAMPAIGNS TAB ==================== */}
       {!isLoading && activeTab === "campaigns" && (
         <div className="space-y-6">
-          {/* Filter */}
-          <div className="flex items-center gap-2">
-            {["all", "sent", "schedule", "draft", "sending"].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setCampaignFilter(filter)}
-                className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                  campaignFilter === filter
-                    ? "bg-primary/10 border-primary text-primary"
-                    : "bg-slc-card border-slc-border text-slc-muted hover:border-primary/50"
-                }`}
+          {/* Filter + Refresh + Count */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {["all", "sent", "schedule", "draft", "sending"].map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setCampaignFilter(filter)}
+                  className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                    campaignFilter === filter
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-slc-card border-slc-border text-slc-muted hover:border-primary/50"
+                  }`}
+                >
+                  {filter === "all"
+                    ? "Todas"
+                    : filter === "sent"
+                      ? "Enviadas"
+                      : filter === "schedule"
+                        ? "Programadas"
+                        : filter === "draft"
+                          ? "Borradores"
+                          : "Enviando"}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              {campaignsTotal > 0 && (
+                <span className="text-xs text-slc-muted">
+                  Mostrando {campaigns.length} de {campaignsTotal} campaña
+                  {campaignsTotal === 1 ? "" : "s"}
+                  {campaignsTotal > campaigns.length &&
+                    " — carga más en Mailchimp"}
+                </span>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchCampaigns(campaignFilter)}
+                disabled={campaignsLoading}
               >
-                {filter === "all"
-                  ? "Todas"
-                  : filter === "sent"
-                    ? "Enviadas"
-                    : filter === "schedule"
-                      ? "Programadas"
-                      : filter === "draft"
-                        ? "Borradores"
-                        : "Enviando"}
-              </button>
-            ))}
+                <RefreshCw
+                  className={`w-4 h-4 mr-2 ${
+                    campaignsLoading ? "animate-spin" : ""
+                  }`}
+                />
+                Actualizar
+              </Button>
+            </div>
           </div>
 
           {/* Campaigns List */}
