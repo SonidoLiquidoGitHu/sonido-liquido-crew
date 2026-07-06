@@ -9,6 +9,12 @@
 User-agent: *
 Allow: /
 
+# Explicitly allow llms.txt — it's a public convention for AI agents
+# to discover the site's content and machine-readable endpoints.
+# (It contains NO secrets — just descriptions and links. The gated
+# /api/catalogue endpoint requires a key regardless.)
+Allow: /llms.txt
+
 # Internal routes — not for search engines
 Disallow: /catalogo
 Disallow: /api/catalogue
@@ -22,37 +28,46 @@ Disallow: /c/
 
 # AI training crawlers — explicitly blocked from internal routes
 # (these specific bots often ignore general Disallow rules)
+# All of them are explicitly ALLOWED to read /llms.txt so they can
+# discover the site's machine-readable endpoints.
+
 User-agent: GPTBot
+Allow: /llms.txt
 Disallow: /catalogo
 Disallow: /api/catalogue
 Disallow: /admin
 Disallow: /api/admin
 
 User-agent: ChatGPT-User
+Allow: /llms.txt
 Disallow: /catalogo
 Disallow: /api/catalogue
 Disallow: /admin
 Disallow: /api/admin
 
 User-agent: ClaudeBot
+Allow: /llms.txt
 Disallow: /catalogo
 Disallow: /api/catalogue
 Disallow: /admin
 Disallow: /api/admin
 
 User-agent: anthropic-ai
+Allow: /llms.txt
 Disallow: /catalogo
 Disallow: /api/catalogue
 Disallow: /admin
 Disallow: /api/admin
 
 User-agent: PerplexityBot
+Allow: /llms.txt
 Disallow: /catalogo
 Disallow: /api/catalogue
 Disallow: /admin
 Disallow: /api/admin
 
 User-agent: Google-Extended
+Allow: /llms.txt
 Disallow: /catalogo
 Disallow: /api/catalogue
 Disallow: /admin

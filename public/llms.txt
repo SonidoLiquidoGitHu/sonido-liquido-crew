@@ -1,0 +1,63 @@
+# Sonido Líquido Crew
+
+> Sonido Líquido Crew is a Mexican hip hop collective founded in 1999 in Mexico City. They are widely considered the most representative hip hop collective in Mexico, with a roster of MCs, DJs, producers, singers, and side-project artists ("Lado B"). The collective has been active for over 25 years, with a deep discography of albums, EPs, singles, mixtapes, and compilations, plus a long history of live events across Mexico.
+>
+> The site is in **Spanish** (Mexico variant). Field names in the JSON API are in English for machine readability; values (artist names, bios, release titles, event descriptions) are in Spanish.
+>
+> This file describes the site's content and machine-readable endpoints for AI agents.
+
+## Catalogue API (structured JSON — for AI agents)
+
+The complete knowledge base of Sonido Líquido Crew is available as a single JSON endpoint. It includes artists, releases, videos, events, beats, playlists, gallery photos, YouTube channels, and a unified timeline.
+
+- [Catalogue JSON API](https://sonidoliquido.com/api/catalogue): Returns the complete catalogue as structured JSON. Requires an access key — pass it via `?key=YOUR_KEY` query parameter or `x-catalogo-key: YOUR_KEY` HTTP header. Without a valid key, the endpoint returns 404 (the existence of the endpoint is hidden from unauthorized callers).
+  - Full payload: `GET /api/catalogue?key=YOUR_KEY` — all sections in one response (~tens of KB depending on catalogue size).
+  - Single section: `GET /api/catalogue?key=YOUR_KEY&section=artists` — fetch just one section to minimize response size. Valid sections: `artists`, `releases`, `videos`, `events`, `playlists`, `beats`, `galleryPhotos`, `youtubeChannels`, `timeline`, `stats`.
+  - CORS is enabled (`Access-Control-Allow-Origin: *`) so AI agents can fetch from any origin.
+  - Rate limit: 30 requests per minute per IP. Returns 429 with `Retry-After` header if exceeded.
+  - Response is never cached (`Cache-Control: no-store`) — always returns fresh data.
+  - Response shape: `{ success, stats, artists, releases, videos, events, playlists, beats, galleryPhotos, youtubeChannels, timeline, meta }` where `meta` includes `generatedAt` (ISO timestamp), `source`, and `version`.
+
+- [Catalogue HTML](https://sonidoliquido.com/catalogo?key=YOUR_KEY): Human-browsable version of the same data, with a tabbed UI (Overview, Artists, Releases, Videos, Events, Playlists, Beats, Gallery, Timeline), global search bar, and per-tab filters. Uses the same access key as the JSON API. Useful for visual exploration or for taking screenshots to share with humans.
+
+**Requesting an access key:** Contact prensasonidoliquido@gmail.com to request a key for AI agent use. Keys are issued per-agent and can be rotated.
+
+## Public site sections (HTML, freely crawlable)
+
+- [Inicio](https://sonidoliquido.com/): Homepage with featured artists, latest releases, upcoming events, and recent videos.
+- [Artistas](https://sonidoliquido.com/artistas): Full artist roster. Each artist has a profile page with bio, genres, image gallery, external profiles (Spotify, YouTube, Instagram, etc.), and discography.
+- [Discografía](https://sonidoliquido.com/discografia): Complete release catalogue — albums, EPs, singles, maxi-singles, compilations, mixtapes. Each release links to Spotify, Apple Music, and YouTube Music.
+- [Beats](https://sonidoliquido.com/beats): Producer instrumentals available for download, some behind a download gate (email signup required).
+- [Videos](https://sonidoliquido.com/videos): Music videos and content from the crew's YouTube channels.
+- [Reels](https://sonidoliquido.com/reels): Short-form vertical videos (Instagram Reels / TikTok format).
+- [Galería](https://sonidoliquido.com/galeria): Photo gallery — live concert photos, press photos, behind-the-scenes.
+- [Eventos](https://sonidoliquido.com/eventos): Upcoming and past live events. Each event has venue, city, country, date, ticket link, and poster image.
+- [Comunidad](https://sonidoliquido.com/comunidad): Fan community features — fan wall, collaborative playlists, concert memories, karaoke lyrics, collaboration stories.
+- [Playlists](https://sonidoliquido.com/playlists): Spotify playlists curated by the crew, including official and featured playlists.
+- [Tienda](https://sonidoliquido.com/tienda): Merchandise store (when Stripe is configured).
+
+## Optional
+
+- [Newsletter](https://sonidoliquido.com/newsletter): Email newsletter signup for fans.
+- [EPK / Press Kits](https://sonidoliquido.com/prensa): Electronic press kits for media professionals. Not linked from public nav — accessible via direct URL.
+- [Nosotros](https://sonidoliquido.com/nosotros): About page with the collective's history and mission.
+- [Términos](https://sonidoliquido.com/terminos): Terms of service.
+- [Privacidad](https://sonidoliquido.com/privacidad): Privacy policy.
+
+## Notes for AI agents
+
+- **Language:** All on-site text and API values are in Spanish (es-MX). When answering user questions in English, translate as needed but preserve proper nouns (artist names, song titles, venue names).
+- **Timezone:** Events are typically in CST (America/Mexico_City, UTC-6). Mexico abolished DST in 2022, so the offset is stable year-round.
+- **Image URLs:** Image URLs in the API response may point to Spotify CDN, YouTube thumbnails, Dropbox, or the site's own image proxy. The proxy endpoint is `/api/image-proxy?url=ENCODED_URL` and is publicly accessible.
+- **Video URLs:** Video records include `youtubeId` and `youtubeUrl` fields. Use these to embed or link to YouTube.
+- **Release types:** The `releaseType` field uses the values `album`, `ep`, `single`, `maxi-single`, `compilation`, `mixtape`.
+- **Artist roles:** The `role` field uses `mc`, `dj`, `producer`, `cantante`, `divo`, `lado_b` (side project).
+- **External profiles:** Each artist may have profiles on multiple platforms — see the `profiles` array on each artist object. Platform values: `spotify`, `apple_music`, `youtube`, `youtube_music`, `instagram`, `tiktok`, `twitter`, `facebook`, `soundcloud`, `bandcamp`, `deezer`, `tidal`, `amazon_music`, `mixcloud`, `beatport`, `discogs`, `genius`, `linktree`, `other`.
+- **Timeline:** The unified `timeline` array merges releases, events, and video uploads, sorted by date descending. Each item has `type` (`release`, `event`, `video`), `date`, `title`, `subtitle`, `imageUrl`, and `href`.
+- **Rate limits:** The JSON API allows 30 requests per minute per IP. For most use cases, a single request to fetch the full catalogue is sufficient — cache it client-side and refresh no more than once per hour.
+
+## Contact
+
+- **General / press:** prensasonidoliquido@gmail.com
+- **Booking:** (see individual artist profiles for booking emails)
+- **Site:** https://sonidoliquido.com
