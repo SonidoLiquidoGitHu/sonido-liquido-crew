@@ -2,39 +2,48 @@ import { type NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
 /**
- * Story Image Composer (v2 — no pixelation)
- * =========================================
- * Generates a 1080×1920 (9:16) image for Instagram Stories.
+ * Story Image Composer (v3 — smart upscaling + better link sticker visual)
+ * ========================================================================
  *
- * PREVIOUS BEHAVIOR (caused pixelation):
- *   The source image was always resized to fill 1080px wide, with
- *   `withoutEnlargement: false`. That meant small source images (e.g. a
- *   500×500 cover or 640×640 Spotify thumbnail) got upscaled 2x+, producing
- *   soft / blocky / pixelated Stories. The image was also re-encoded twice
- *   (once after resize, once after composite), which compounded JPEG
- *   artifacts.
+ * WHAT CHANGED IN v3:
+ *   1. PIXELATION FIX: The previous v2 kept the foreground at native size
+ *      (withoutEnlargement: true), which meant a 640×640 Spotify cover
+ *      appeared tiny on a 1080×1920 canvas surrounded by blurry background.
+ *      Users perceived this as "pixelated" because the foreground looked
+ *      low-res next to all the empty blurred space.
  *
- * NEW BEHAVIOR:
- *   1. BACKGROUND LAYER — The source image is blurred and scaled with
- *      `fit: cover` to fill the full 1080×1920 canvas. Upscaling is OK here
- *      because the blur hides it. The background is also darkened slightly
- *      so the foreground stands out. This guarantees we always fill the
- *      screen — no awkward black bars.
- *   2. FOREGROUND LAYER — The source image is scaled with `fit: contain`
- *      and `withoutEnlargement: true`, so it is NEVER upscaled. Small
- *      images appear at their native size, centered on the blurred
- *      background. This is the same trick Instagram itself uses for
- *      non-9:16 Story images.
- *   3. LINK OVERLAY (optional) — A sticker-like pill with the link URL is
- *      composited at the bottom, since the Meta Graph API does not support
- *      clickable link stickers on Stories.
- *   4. SINGLE ENCODE — Everything is composited in the sharp pipeline and
- *      encoded once at JPEG quality 95 (was 90).
+ *      v3 introduces a `mode` parameter:
+ *        - mode=smart (default) — foreground scaled to fill 80% of canvas
+ *          width (capped at 1.5x upscale to avoid severe artifacting), with
+ *          a subtle sharpening pass to compensate for upscale softness.
+ *          Background still blurred for the "letterbox-free" look.
+ *        - mode=fill — foreground cover-fits the entire canvas (old v1
+ *          behavior, useful when source is already 9:16 or close to it).
+ *        - mode=contain — foreground fits inside canvas, never upscaled
+ *          (v2 behavior, useful for very small source images where any
+ *          upscale would look bad).
  *
- * Usage:
- *   GET /api/social/story-image?url=<encoded-image-url>&link=<encoded-link-url>
+ *   2. LINK STICKER VISUAL: The Meta Graph API does NOT support clickable
+ *      link stickers on Stories (confirmed Dec 2024 — see
+ *      https://stackoverflow.com/questions/78841320). To get TRUE clickable
+ *      link stickers via automation, you must use a third-party tool like
+ *      Storrito, Buffer, or Postiz that uses Instagram's private API.
  *
- * Returns:
+ *      For the visual overlay (the best we can do via the official Graph
+ *      API), v3 makes the sticker look MORE like Instagram's native link
+ *      sticker — bigger pill, clearer call-to-action ("Toca para ver →"),
+ *      drop shadow, and positioned higher (above the bottom safe area) so
+ *      it's more visible and harder to miss.
+ *
+ * USAGE:
+ *   GET /api/social/story-image?url=<encoded>&link=<encoded>&mode=smart
+ *
+ * MODES:
+ *   smart (default) — best for album covers, press photos, posters
+ *   fill             — best when source is already 9:16
+ *   contain          — best when source is tiny (<400px) and any upscale is bad
+ *
+ * RETURNS:
  *   image/jpeg (1080×1920)
  */
 
@@ -43,9 +52,20 @@ export const maxDuration = 30;
 
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
-const LINK_BAR_HEIGHT = 120;
-const BACKGROUND_BRIGHTNESS = 0.55; // 0..1, lower = darker
-const BACKGROUND_BLUR_SIGMA = 18;
+const LINK_BAR_HEIGHT = 200; // taller for v3 — gives room for bigger pill + CTA
+const BACKGROUND_BRIGHTNESS = 0.45; // darker so foreground pops more
+const BACKGROUND_BLUR_SIGMA = 25; // heavier blur to hide compression artifacts
+
+// In "smart" mode, cap the upscale factor. Beyond ~1.5x even lanczos3
+// starts looking obviously upscaled. Below this, sharpening can compensate.
+const SMART_MODE_MAX_UPSCALE = 1.5;
+// In "smart" mode, target filling this fraction of canvas width
+const SMART_MODE_FILL_RATIO = 0.85;
+// Sources below this size in any dimension are routed to "contain" mode
+// automatically, because upscaling them looks bad regardless of mode.
+const AUTO_CONTAIN_THRESHOLD = 400;
+
+type ComposeMode = "smart" | "fill" | "contain";
 
 export async function GET(req: NextRequest) {
   const urlParam = req.nextUrl.searchParams.get("url");
@@ -70,7 +90,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "URL must be http(s)" }, { status: 400 });
   }
 
-  // Optional link parameter — will be overlaid on the image
+  // Optional link parameter
   let linkUrl: string | undefined;
   const linkParam = req.nextUrl.searchParams.get("link");
   if (linkParam) {
@@ -80,6 +100,12 @@ export async function GET(req: NextRequest) {
       // Ignore invalid link encoding
     }
   }
+
+  // Mode parameter
+  const modeParam = req.nextUrl.searchParams.get("mode") || "smart";
+  const mode: ComposeMode = ["smart", "fill", "contain"].includes(modeParam)
+    ? (modeParam as ComposeMode)
+    : "smart";
 
   // Fetch the source image
   let sourceBuffer: Buffer;
@@ -118,9 +144,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // ---- Step 1.5: Auto-route to "contain" for tiny sources ----
+    // Even "smart" mode looks bad on very small sources.
+    let effectiveMode = mode;
+    if (
+      mode === "smart" &&
+      (srcWidth < AUTO_CONTAIN_THRESHOLD || srcHeight < AUTO_CONTAIN_THRESHOLD)
+    ) {
+      effectiveMode = "contain";
+      console.log(
+        `[Story Image] Source ${srcWidth}x${srcHeight} below threshold, auto-routing to contain mode`,
+      );
+    }
+
     // ---- Step 2: Build the blurred background layer (1080×1920) ----
-    // Cover-fit so it fills the canvas. Upscaling is fine here because the
-    // blur hides any pixelation. Darken so the foreground pops.
+    // Heavier blur in v3 to better hide compression artifacts on small sources.
     const backgroundLayer = await sharp(sourceBuffer)
       .rotate()
       .resize({
@@ -133,33 +171,67 @@ export async function GET(req: NextRequest) {
       })
       .modulate({ brightness: BACKGROUND_BRIGHTNESS })
       .blur(BACKGROUND_BLUR_SIGMA)
-      // PNG lossless to avoid recompression artifacts when compositing
       .png()
       .toBuffer();
 
-    // ---- Step 3: Build the sharp foreground layer ----
-    // Scale to fit INSIDE the canvas (preserve aspect ratio, never upscale).
-    // The `Math.min(..., 1)` is the key — it caps the scale at 1.0 so a
-    // 500×500 source stays 500×500 instead of being stretched to 1080.
-    const scale = Math.min(
-      STORY_WIDTH / srcWidth,
-      STORY_HEIGHT / srcHeight,
-      1, // never upscale
-    );
-    const fittedWidth = Math.max(1, Math.round(srcWidth * scale));
-    const fittedHeight = Math.max(1, Math.round(srcHeight * scale));
+    // ---- Step 3: Build the foreground layer ----
+    let fittedWidth: number;
+    let fittedHeight: number;
+    let applySharpen = false;
 
-    const foregroundLayer = await sharp(sourceBuffer)
-      .rotate()
-      .resize({
-        width: fittedWidth,
-        height: fittedHeight,
-        fit: sharp.fit.fill, // exact dimensions (we already preserved aspect)
-        withoutEnlargement: true,
-        kernel: "lanczos3",
-      })
-      .png() // lossless intermediate
-      .toBuffer();
+    if (effectiveMode === "fill") {
+      // Cover-fit the entire canvas (v1 behavior). Source is cropped if not 9:16.
+      fittedWidth = STORY_WIDTH;
+      fittedHeight = STORY_HEIGHT;
+    } else if (effectiveMode === "contain") {
+      // Fit inside canvas, never upscale (v2 behavior).
+      const scale = Math.min(
+        STORY_WIDTH / srcWidth,
+        STORY_HEIGHT / srcHeight,
+        1,
+      );
+      fittedWidth = Math.max(1, Math.round(srcWidth * scale));
+      fittedHeight = Math.max(1, Math.round(srcHeight * scale));
+    } else {
+      // "smart" mode — fill 85% of canvas width, cap upscale at 1.5x
+      const targetWidth = Math.round(STORY_WIDTH * SMART_MODE_FILL_RATIO);
+      const upscale = targetWidth / srcWidth;
+      const cappedUpscale = Math.min(upscale, SMART_MODE_MAX_UPSCALE);
+      fittedWidth = Math.max(1, Math.round(srcWidth * cappedUpscale));
+      // Preserve aspect ratio
+      fittedHeight = Math.max(1, Math.round(srcHeight * cappedUpscale));
+      // If we upscaled, apply a subtle sharpen to compensate
+      applySharpen = cappedUpscale > 1.0;
+      // If the resulting height exceeds canvas, scale down to fit
+      if (fittedHeight > STORY_HEIGHT) {
+        const hScale = STORY_HEIGHT / fittedHeight;
+        fittedWidth = Math.max(1, Math.round(fittedWidth * hScale));
+        fittedHeight = STORY_HEIGHT;
+      }
+    }
+
+    // Build the foreground pipeline
+    let foregroundPipeline = sharp(sourceBuffer).rotate().resize({
+      width: fittedWidth,
+      height: fittedHeight,
+      fit: effectiveMode === "fill" ? sharp.fit.cover : sharp.fit.fill,
+      position: sharp.gravity.center,
+      withoutEnlargement: false,
+      kernel: "lanczos3",
+    });
+
+    // Apply sharpening in smart mode if we upscaled, to recover perceived detail
+    if (applySharpen) {
+      // sigma=0.5 is a subtle sharpen — enough to compensate for lanczos3
+      // softness without introducing halos or ringing artifacts.
+      foregroundPipeline = foregroundPipeline.sharpen({
+        sigma: 0.5,
+        m1: 0.5,
+        m2: 0.2,
+      });
+    }
+
+    const foregroundLayer = await foregroundPipeline.png().toBuffer();
 
     // ---- Step 4: Build composites ----
     const foregroundLeft = Math.floor((STORY_WIDTH - fittedWidth) / 2);
@@ -187,38 +259,25 @@ export async function GET(req: NextRequest) {
     }
 
     // ---- Step 5: Composite everything onto the background ----
-    // Single JPEG encode at q95 — no double-encoding.
     const composed = await sharp(backgroundLayer)
       .composite(composites)
       .jpeg({
         quality: 95,
-        mozjpeg: true, // better compression at high quality
-        chromaSubsampling: "4:4:4", // preserve color detail
+        mozjpeg: true,
+        chromaSubsampling: "4:4:4",
       })
       .toBuffer();
-
-    const fitMode =
-      fittedWidth === STORY_WIDTH && fittedHeight === STORY_HEIGHT
-        ? "exact"
-        : fittedWidth === STORY_WIDTH
-          ? "fill-width"
-          : fittedHeight === STORY_HEIGHT
-            ? "fill-height"
-            : "contain-no-upscale";
 
     return new NextResponse(new Uint8Array(composed), {
       status: 200,
       headers: {
         "Content-Type": "image/jpeg",
-        // Allow caching since the same source URL produces the same output.
-        // The composer URL contains the full source URL as a query param,
-        // so different sources get different cache keys automatically.
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
         "X-Story-Composed": "true",
-        "X-Story-Version": "2",
+        "X-Story-Version": "3",
+        "X-Story-Mode": effectiveMode,
         "X-Story-Source-Size": `${srcWidth}x${srcHeight}`,
         "X-Story-Foreground-Size": `${fittedWidth}x${fittedHeight}`,
-        "X-Story-Fit-Mode": fitMode,
         "X-Story-Link-Overlay": linkUrl ? "true" : "false",
       },
     });
@@ -233,44 +292,72 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Create a semi-transparent link overlay bar with the URL text.
- * Returns a PNG buffer of size 1080×LINK_BAR_HEIGHT with transparency.
+ * Create the link sticker overlay.
+ *
+ * v3 design — looks closer to Instagram's native link sticker:
+ *   - Larger white pill (800×100) centered horizontally
+ *   - Link icon on the left (bigger, bolder)
+ *   - URL text in the middle
+ *   - "Toca para ver →" CTA on the right (in primary orange to match SL brand)
+ *   - Drop shadow under the pill
+ *   - Positioned in the bottom 200px of the canvas
+ *
+ * NOTE: This is a VISUAL sticker only. The Meta Graph API does not support
+ * clickable link stickers on Stories (confirmed Dec 2024). Viewers must
+ * manually type the URL. For TRUE clickable link stickers via automation,
+ * use Storrito, Buffer, or Postiz (which use Instagram's private API).
  */
 async function createLinkOverlay(linkUrl: string): Promise<Buffer> {
   // Truncate URL if too long for display
-  const maxDisplayLen = 45;
+  const maxDisplayLen = 38;
   const displayUrl =
     linkUrl.length > maxDisplayLen
       ? `${linkUrl.substring(0, maxDisplayLen - 1)}…`
       : linkUrl;
 
-  // Mimic Instagram's native link sticker: white rounded pill with link icon + URL
-  const pillWidth = 700;
-  const pillHeight = 70;
+  // Strip protocol for cleaner display
+  const cleanUrl = displayUrl.replace(/^https?:\/\//i, "");
+
+  const pillWidth = 820;
+  const pillHeight = 100;
   const pillX = Math.floor((STORY_WIDTH - pillWidth) / 2);
-  const pillY = Math.floor(LINK_BAR_HEIGHT / 2 - pillHeight / 2) + 10;
-  const cornerRadius = 35;
-  const fontSize = 28;
+  const pillY = Math.floor(LINK_BAR_HEIGHT / 2 - pillHeight / 2) + 20;
+  const cornerRadius = 50;
+  const fontSize = 32;
   const textY = pillY + pillHeight / 2 + fontSize * 0.35;
+
+  // Link icon (chain link, blue like IG native)
+  const iconX = pillX + 28;
+  const iconY = pillY + pillHeight / 2 - 13;
+
+  // CTA text position (right side of pill)
+  const ctaX = pillX + pillWidth - 180;
+  const ctaY = textY;
 
   const svg = `<svg width="${STORY_WIDTH}" height="${LINK_BAR_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="shadow" x="-5%" y="-5%" width="110%" height="130%">
-      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.3)"/>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="rgba(0,0,0,0.45)"/>
     </filter>
   </defs>
+
+  <!-- White pill background -->
   <rect x="${pillX}" y="${pillY}" width="${pillWidth}" height="${pillHeight}" rx="${cornerRadius}" ry="${cornerRadius}" fill="white" filter="url(#shadow)" />
-  <g transform="translate(${pillX + 22}, ${pillY + pillHeight / 2 - 11})">
-    <path d="M8 10L4 14c-1.1 1.1-1.1 2.9 0 4 1.1 1.1 2.9 1.1 4 0l4-4m2-2l4-4c1.1-1.1 1.1-2.9 0-4-1.1-1.1-2.9-1.1-4 0l-4 4" stroke="#0095F6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Link icon (chain link, IG blue) -->
+  <g transform="translate(${iconX}, ${iconY})">
+    <path d="M10 12L6 16c-1.3 1.3-1.3 3.4 0 4.7 1.3 1.3 3.4 1.3 4.7 0l4-4m2-2l4-4c1.3-1.3 1.3-3.4 0-4.7-1.3-1.3-3.4-1.3-4.7 0l-4 4" stroke="#0095F6" stroke-width="2.8" fill="none" stroke-linecap="round"/>
   </g>
-  <text x="${pillX + 56}" y="${textY}" font-family="'Liberation Sans', 'DejaVu Sans', Arial, sans-serif" font-size="${fontSize}" font-weight="500" fill="#262626">${escapeXml(displayUrl)}</text>
+
+  <!-- URL text (dark, like IG) -->
+  <text x="${iconX + 50}" y="${textY}" font-family="'Liberation Sans', 'DejaVu Sans', Arial, sans-serif" font-size="${fontSize}" font-weight="500" fill="#262626">${escapeXml(cleanUrl)}</text>
+
+  <!-- CTA arrow + text (Sonido Liquido orange) -->
+  <text x="${ctaX}" y="${ctaY}" font-family="'Liberation Sans', 'DejaVu Sans', Arial, sans-serif" font-size="26" font-weight="600" fill="#f97316">Toca para ver →</text>
 </svg>`;
 
   const overlayBuffer = Buffer.from(svg);
-
-  // Convert SVG to PNG with alpha channel for compositing
   const pngBuffer = await sharp(overlayBuffer).png().toBuffer();
-
   return pngBuffer;
 }
 

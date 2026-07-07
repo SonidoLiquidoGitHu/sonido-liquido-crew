@@ -766,6 +766,35 @@ export async function postToInstagramStory(
   linkUrl?: string,
   options?: { composeForStory?: boolean },
 ): Promise<InstagramPostResult> {
+  // ---- Storrito routing (clickable link stickers) ----
+  // If STORRITO_API_KEY is set, route through Storrito which supports
+  // TRUE clickable link stickers via Instagram's private API. This is the
+  // ONLY way to get clickable link stickers via automation — the official
+  // Meta Graph API does NOT support them.
+  //
+  // See src/lib/clients/storrito.ts for setup instructions.
+  try {
+    const { storritoClient } = await import("./storrito");
+    if (storritoClient.isConfigured() && linkUrl) {
+      console.log(
+        "[Meta] Storrito is configured and linkUrl is provided — routing Story through Storrito for clickable link sticker",
+      );
+      // For Storrito, we DON'T need to compose the image with the visual
+      // link overlay because Storrito will add a real clickable sticker.
+      // Just pass the raw image URL.
+      return await storritoClient.postStoryWithLinkSticker(
+        imageUrl,
+        caption,
+        linkUrl,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      "[Meta] Storrito routing failed, falling back to Graph API:",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   if (!(await isMetaConfiguredAsync())) {
     return {
       success: false,
@@ -813,10 +842,34 @@ export async function postToInstagramStory(
           : `${siteUrl}${linkUrl.startsWith("/") ? "" : "/"}${linkUrl}`;
       }
 
-      // Build composer URL for image framing (1080×1920)
-      // Include &link= so the URL is overlaid as visible text on the image,
-      // since the Meta API cannot create clickable link stickers on Stories.
-      let composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}`;
+      // Build composer URL for image framing (1080×1920).
+      //
+      // COMPOSER v3 (July 2026):
+      //   - mode=smart (default) — foreground scaled to 85% of canvas width
+      //     (capped at 1.5x upscale) with subtle sharpening to compensate for
+      //     upscale softness. Blurred background fills the rest. This fixes
+      //     the "pixelated" perception where small source images appeared
+      //     tiny on a 1080×1920 canvas surrounded by blurry space.
+      //   - &link= overlays the URL as visible text in a sticker-style pill
+      //     at the bottom of the image. This is a VISUAL sticker only — the
+      //     Meta Graph API does NOT support clickable link stickers on
+      //     Stories (confirmed Dec 2024, see SO #78841320). Viewers must
+      //     manually type the URL.
+      //
+      // CLICKABLE LINK STICKERS — NOT POSSIBLE VIA OFFICIAL API
+      // ---------------------------------------------------------
+      // The Meta Graph API documentation explicitly states:
+      //   "Publishing stickers (i.e., link, poll, location) is not supported."
+      // The `link` parameter on the container body is SILENTLY IGNORED.
+      //
+      // For TRUE clickable link stickers via automation, you have two options:
+      //   1. Storrito (paid SaaS, uses Instagram's private API)
+      //      → Set STORRITO_API_KEY + STORRITO_ACCOUNT_ID env vars and
+      //        the postToInstagramStory() function will route through it
+      //        instead of the Graph API (see postToInstagramStoryViaStorrito)
+      //   2. Buffer / Postiz / Hootsuite (paid SaaS, same approach)
+      //   3. Manual posting via the Instagram app (what the user is doing now)
+      let composerUrl = `${siteUrl}/api/social/story-image?url=${encodeURIComponent(imageUrl)}&mode=smart`;
       if (composerLinkUrl) {
         composerUrl += `&link=${encodeURIComponent(composerLinkUrl)}`;
       }
