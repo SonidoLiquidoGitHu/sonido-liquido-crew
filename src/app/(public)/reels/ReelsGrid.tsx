@@ -232,14 +232,21 @@ function VideoCard({
 }: {
   video: ReelVideo;
   index: number;
-  onOpen: (index: number) => void;
-  onShare: (index: number) => void;
+  /**
+   * onOpen receives the VIDEO ID (not the local section index).
+   * The parent resolves the ID to the correct index in `displayVideos`
+   * before opening the fullscreen viewer. This prevents the bug where
+   * a standalone video at local index 0 would open displayVideos[0]
+   * (which is the first EVENT video, not the clicked standalone video).
+   */
+  onOpen: (videoId: string) => void;
+  onShare: (videoId: string) => void;
   getPlatformIcon: (platform: string | null) => React.ReactNode;
   priority?: boolean;
 }) {
   return (
     <div
-      onClick={() => onOpen(index)}
+      onClick={() => onOpen(video.id)}
       className="group relative cursor-pointer overflow-hidden rounded-xl bg-slc-card border border-slc-border hover:border-primary/50 transition-all"
     >
       <div className="relative aspect-[9/16]">
@@ -285,7 +292,7 @@ function VideoCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onShare(index);
+            onShare(video.id);
           }}
           className="absolute bottom-14 right-2 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary"
         >
@@ -513,7 +520,19 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
     );
   }
 
-  const openReel = (index: number) => {
+  const openReel = (videoId: string) => {
+    // Resolve the video ID to the correct index in `displayVideos`.
+    // This is the fix for the thumbnail/video mismatch bug: previously,
+    // VideoCard passed its LOCAL section index (0-based within eventVideos
+    // or standaloneVideos), but the viewer uses displayVideos[activeIndex].
+    // When no event was selected, standalone video at local index 0 would
+    // open displayVideos[0] which is the first EVENT video — wrong!
+    // Now we look up by ID so the correct video always opens.
+    const index = displayVideos.findIndex((v) => v.id === videoId);
+    if (index === -1) {
+      console.warn("[ReelsGrid] openReel: video ID not found in displayVideos:", videoId);
+      return;
+    }
     setActiveIndex(index);
     setIsLiked(false);
     setVideoProgress(0);
@@ -531,6 +550,18 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
       hasShownTooltipRef.current = true;
       setShowTooltip(true);
     }
+  };
+
+  // Resolve a video ID to its index in displayVideos (for share modal).
+  // Same rationale as openReel — prevents the local-index/global-index
+  // mismatch bug.
+  const openShareModal = (videoId: string) => {
+    const index = displayVideos.findIndex((v) => v.id === videoId);
+    if (index === -1) {
+      console.warn("[ReelsGrid] openShareModal: video ID not found:", videoId);
+      return;
+    }
+    setShareModalIndex(index);
   };
 
   const closeReel = useCallback(() => {
@@ -878,7 +909,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                       video={video}
                       index={index}
                       onOpen={openReel}
-                      onShare={(i) => setShareModalIndex(i)}
+                      onShare={openShareModal}
                       getPlatformIcon={getPlatformIcon}
                       priority={index < 4}
                     />
@@ -918,7 +949,7 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
                 video={video}
                 index={index}
                 onOpen={openReel}
-                onShare={(i) => setShareModalIndex(i)}
+                onShare={openShareModal}
                 getPlatformIcon={getPlatformIcon}
                 priority={index < 4}
               />
