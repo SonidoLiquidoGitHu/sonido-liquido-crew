@@ -1,7 +1,7 @@
 import { TikTokFeed } from "@/components/public/sections/TikTokFeed";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artists, tags, verticalVideoTags, verticalVideos } from "@/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 
 export const metadata = {
   title: "Reels Feed | Sonido Líquido Crew",
@@ -52,12 +52,7 @@ async function getReelsData() {
             })
             .from(verticalVideoTags)
             .innerJoin(tags, eq(verticalVideoTags.tagId, tags.id))
-            .where(
-              sql`${verticalVideoTags.videoId} IN (${sql.join(
-                videoIds.map((id) => sql`${id}`),
-                sql`,`,
-              )})`,
-            )
+            .where(inArray(verticalVideoTags.videoId, videoIds))
         : [];
 
     const tagsByVideoId = new Map<string, typeof tags.$inferSelect[]>();
