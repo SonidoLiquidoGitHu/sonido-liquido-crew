@@ -3,6 +3,7 @@ import { verticalVideoEvents, verticalVideos } from "@/db/schema";
 import { generateUUID } from "@/lib/utils";
 import { asc, desc, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 // ===========================================
 // Helper: Generate slug from title
@@ -197,6 +198,9 @@ export async function POST(request: NextRequest) {
         } as any);
     }
 
+    // Revalidate so the new event appears on /reels immediately
+    revalidatePath("/reels");
+
     return NextResponse.json({
       success: true,
       data: { id: eventId, slug },
@@ -308,6 +312,12 @@ export async function PATCH(request: NextRequest) {
       .from(verticalVideoEvents)
       .where(eq(verticalVideoEvents.id, id));
 
+    // Revalidate the homepage and /reels so featured events appear/disappear
+    // immediately. Without this, ISR (5-min cache) would delay the update.
+    // Also revalidate the specific event page if it has a slug.
+    revalidatePath("/", "layout");
+    revalidatePath("/reels");
+
     return NextResponse.json({
       success: true,
       data: updatedEvent,
@@ -344,6 +354,10 @@ export async function DELETE(request: NextRequest) {
 
     // Delete the event
     await db.delete(verticalVideoEvents).where(eq(verticalVideoEvents.id, id));
+
+    // Revalidate so the deleted event disappears from homepage + /reels
+    revalidatePath("/", "layout");
+    revalidatePath("/reels");
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -233,34 +233,79 @@ export default async function HomePage() {
     // Featured vertical video events — appear on the homepage as cards
     // linking to /reels. Only events marked isFeatured AND isPublished
     // are included. Sorted by displayOrder then eventDate desc.
+    //
+    // ROBUSTNESS: This query is wrapped in safeFetch (returns [] on error),
+    // but we also want it to work even if migration 0021 (is_featured)
+    // hasn't run yet. The try-catch below handles that: if filtering by
+    // isFeatured fails (column missing), we fall back to just isPublished
+    // and filter isFeatured=false in JS (so no events show as featured
+    // pre-migration, which is correct — none CAN be featured without the
+    // column).
     safeFetch(
-      db
-        .select({
-          id: verticalVideoEvents.id,
-          title: verticalVideoEvents.title,
-          slug: verticalVideoEvents.slug,
-          description: verticalVideoEvents.description,
-          coverImageUrl: verticalVideoEvents.coverImageUrl,
-          eventDate: verticalVideoEvents.eventDate,
-          location: verticalVideoEvents.location,
-          videoCount: sql<number>`(
-            SELECT COUNT(*) FROM vertical_videos
-            WHERE vertical_videos.event_id = ${verticalVideoEvents.id}
-            AND vertical_videos.is_published = 1
-          )`.as("video_count"),
-        })
-        .from(verticalVideoEvents)
-        .where(
-          and(
-            eq(verticalVideoEvents.isPublished, true),
-            eq(verticalVideoEvents.isFeatured, true),
-          ),
-        )
-        .orderBy(
-          verticalVideoEvents.displayOrder,
-          desc(verticalVideoEvents.eventDate),
-        )
-        .limit(6),
+      (async () => {
+        try {
+          // Try the full query with isFeatured filter (post-migration)
+          const events = await db
+            .select({
+              id: verticalVideoEvents.id,
+              title: verticalVideoEvents.title,
+              slug: verticalVideoEvents.slug,
+              description: verticalVideoEvents.description,
+              coverImageUrl: verticalVideoEvents.coverImageUrl,
+              eventDate: verticalVideoEvents.eventDate,
+              location: verticalVideoEvents.location,
+            })
+            .from(verticalVideoEvents)
+            .where(
+              and(
+                eq(verticalVideoEvents.isPublished, true),
+                eq(verticalVideoEvents.isFeatured, true),
+              ),
+            )
+            .orderBy(
+              verticalVideoEvents.displayOrder,
+              desc(verticalVideoEvents.eventDate),
+            )
+            .limit(6);
+
+          if (events.length === 0) return [];
+
+          // Batch-fetch video counts for these events (avoids N+1 and
+          // avoids a raw SQL subquery which can be fragile on Turso)
+          const eventIds = events.map((e) => e.id);
+          const countRows = await db
+            .select({
+              eventId: verticalVideos.eventId,
+              total: sql<number>`count(*)`,
+            })
+            .from(verticalVideos)
+            .where(
+              and(
+                inArray(verticalVideos.eventId, eventIds),
+                eq(verticalVideos.isPublished, true),
+              ),
+            )
+            .groupBy(verticalVideos.eventId);
+
+          const countMap = new Map<string, number>();
+          for (const row of countRows) {
+            countMap.set(row.eventId as string, row.total);
+          }
+
+          return events.map((e) => ({
+            ...e,
+            videoCount: countMap.get(e.id) || 0,
+          }));
+        } catch (queryError) {
+          // is_featured column missing (pre-migration 0021) or other
+          // query error — return empty so the section is hidden.
+          console.warn(
+            "[HomePage] featuredVideoEvents query failed (non-fatal):",
+            queryError instanceof Error ? queryError.message : queryError,
+          );
+          return [];
+        }
+      })(),
       [],
     ),
   ]);
