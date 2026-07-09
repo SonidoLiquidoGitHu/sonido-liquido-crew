@@ -25,7 +25,11 @@
   ]
 
 [build]
-  command = "bun install && bun run build"
+  # Run migrations BEFORE the build so new columns exist when the app starts.
+  # `|| true` ensures the build doesn't fail if migrations can't run (e.g.,
+  # DB temporarily unreachable) — the app has runtime fallbacks for missing
+  # columns. Migrations are idempotent (setup.ts ignores "already exists").
+  command = "bun install && (bun run db:setup || echo '⚠️  Migrations skipped (DB may be unreachable) — app will use fallbacks') && bun run build"
   publish = ".next"
 
 [build.environment]
