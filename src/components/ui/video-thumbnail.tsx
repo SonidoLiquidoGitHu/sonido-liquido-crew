@@ -145,10 +145,13 @@ function PlayOverlay() {
  * as a thumbnail when no static thumbnail image is available.
  *
  * How it works:
- * 1. Creates a <video> element with preload="metadata"
- * 2. When the first frame is loaded, seeks to a specific time (0.5s)
- * 3. The browser renders the video frame as the "poster"
- * 4. We overlay a canvas-captured frame for better quality on some browsers
+ * 1. Uses IntersectionObserver to only create the <video> element when
+ *    the thumbnail is near the viewport. This prevents 20-30 hidden
+ *    <video> elements from downloading video metadata they don't need.
+ * 2. Creates a <video> element with preload="metadata"
+ * 3. When the first frame is loaded, seeks to a specific time (0.5s)
+ * 4. The browser renders the video frame as the "poster"
+ * 5. We overlay a canvas-captured frame for better quality on some browsers
  *
  * This approach is reliable because the browser's native video decoder
  * handles the frame extraction - no FFmpeg or canvas workarounds needed.
@@ -172,8 +175,41 @@ function VideoFrameFallback({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [frameCaptured, setFrameCaptured] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  // Only create the video element when the thumbnail is near the viewport.
+  // This is the key optimization — without it, a grid of 30 videos would
+  // create 30 <video> elements that all download metadata simultaneously.
+  const [isVisible, setIsVisible] = useState(false);
+
+  // IntersectionObserver — trigger when within 200px of viewport
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      // Fallback for very old browsers — just show it
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            observer.disconnect(); // Once visible, stay visible
+            break;
+          }
+        }
+      },
+      { rootMargin: "200px" }, // Start loading 200px before entering viewport
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
@@ -227,7 +263,7 @@ function VideoFrameFallback({
       video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("seeked", handleSeeked);
     };
-  }, [captureFrame]);
+  }, [captureFrame, isVisible]);
 
   // Fallback: If video fails to load, show placeholder
   const [videoError, setVideoError] = useState(false);
@@ -251,30 +287,42 @@ function VideoFrameFallback({
   }
 
   return (
-    <div className={`${fill ? "absolute inset-0" : "relative"} ${className}`}>
-      {/* Hidden video element for frame extraction */}
-      <video
-        ref={videoRef}
-        src={videoSrc}
-        preload="metadata"
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ opacity: frameCaptured ? 0 : 1 }}
-        onError={() => setVideoError(true)}
-      />
+    <div
+      ref={containerRef}
+      className={`${fill ? "absolute inset-0" : "relative"} ${className}`}
+    >
+      {/* Only create the <video> element when the container is near the viewport.
+          This is the critical optimization — without IntersectionObserver, a grid
+          of 30 videos would create 30 <video> elements that all try to download
+          video metadata simultaneously, killing page performance. */}
+      {isVisible && (
+        <>
+          {/* Hidden video element for frame extraction */}
+          {/* biome-ignore lint/a11y/useMediaCaption: decorative video */}
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            preload="metadata"
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: frameCaptured ? 0 : 1 }}
+            onError={() => setVideoError(true)}
+          />
 
-      {/* Canvas with captured frame (better quality than raw video) */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{
-          opacity: frameCaptured ? 1 : 0,
-          transition: "opacity 0.3s ease",
-        }}
-      />
+          {/* Canvas with captured frame (better quality than raw video) */}
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              opacity: frameCaptured ? 1 : 0,
+              transition: "opacity 0.3s ease",
+            }}
+          />
+        </>
+      )}
 
-      {/* Loading state while video frame is being extracted */}
+      {/* Loading state while video frame is being extracted (or before IntersectionObserver triggers) */}
       {!videoLoaded && (
         <div className="absolute inset-0 bg-gradient-to-br from-slc-card to-slc-dark flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-slc-border border-t-primary animate-spin" />

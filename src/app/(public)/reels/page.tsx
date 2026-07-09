@@ -8,7 +8,7 @@ import {
   verticalVideoTags,
   verticalVideos,
 } from "@/db/schema";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { PlayCircle, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -66,7 +66,7 @@ async function getReelsData(): Promise<{
   if (!isDatabaseConfigured()) return { videos: [], events: [] };
 
   try {
-    // Fetch all published videos
+    // Fetch all published videos (single query, not N+1)
     const allVideos = await db
       .select({
         id: verticalVideos.id,
@@ -92,23 +92,47 @@ async function getReelsData(): Promise<{
       .where(eq(verticalVideos.isPublished, true))
       .orderBy(desc(verticalVideos.isFeatured), desc(verticalVideos.createdAt));
 
-    // Fetch tags for each video
-    const videosWithTags = await Promise.all(
-      allVideos.map(async (video) => {
-        const videoTagRows = await db
-          .select({ tag: tags })
-          .from(verticalVideoTags)
-          .innerJoin(tags, eq(verticalVideoTags.tagId, tags.id))
-          .where(eq(verticalVideoTags.videoId, video.id));
+    // BATCH FETCH TAGS — single query for all videos, then group in JS.
+    // Previously this was an N+1 (one query per video) which added 100-500ms
+    // of latency on pages with 20-30 videos.
+    const videoIds = allVideos.map((v) => v.id);
+    const allTagRows =
+      videoIds.length > 0
+        ? await db
+            .select({
+              videoId: verticalVideoTags.videoId,
+              tag: tags,
+            })
+            .from(verticalVideoTags)
+            .innerJoin(tags, eq(verticalVideoTags.tagId, tags.id))
+            .where(
+              sql`${verticalVideoTags.videoId} IN (${sql.join(
+                videoIds.map((id) => sql`${id}`),
+                sql`,`,
+              )})`,
+            )
+        : [];
 
-        return {
-          ...video,
-          tags: videoTagRows.map((row) => row.tag),
-        };
-      }),
-    );
+    // Group tags by videoId
+    const tagsByVideoId = new Map<string, typeof tags.$inferSelect[]>();
+    for (const row of allTagRows) {
+      if (!tagsByVideoId.has(row.videoId)) {
+        tagsByVideoId.set(row.videoId, []);
+      }
+      tagsByVideoId.get(row.videoId)?.push(row.tag);
+    }
 
-    // Fetch all published events with video counts
+    const videosWithTags: ReelVideo[] = allVideos.map((video) => ({
+      ...video,
+      tags: (tagsByVideoId.get(video.id) || []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+      })),
+    }));
+
+    // BATCH FETCH EVENT VIDEO COUNTS — single query, group in JS.
+    // Previously another N+1 (one count query per event).
     const allEvents = await db
       .select()
       .from(verticalVideoEvents)
@@ -118,29 +142,48 @@ async function getReelsData(): Promise<{
         desc(verticalVideoEvents.eventDate),
       );
 
-    const eventsWithCounts = await Promise.all(
-      allEvents.map(async (event) => {
-        const [countResult] = await db
-          .select({ total: sql<number>`count(*)` })
-          .from(verticalVideos)
-          .where(
-            and(
-              eq(verticalVideos.eventId, event.id),
-              eq(verticalVideos.isPublished, true),
-            ),
-          );
+    const eventIds = allEvents.map((e) => e.id);
+    const eventCounts =
+      eventIds.length > 0
+        ? await db
+            .select({
+              eventId: verticalVideos.eventId,
+              total: sql<number>`count(*)`,
+            })
+            .from(verticalVideos)
+            .where(
+              sql`${verticalVideos.eventId} IN (${sql.join(
+                eventIds.map((id) => sql`${id}`),
+                sql`,`,
+              )}) AND ${verticalVideos.isPublished} = 1`,
+            )
+            .groupBy(verticalVideos.eventId)
+        : [];
 
-        return {
-          ...event,
-          videoCount: countResult?.total || 0,
-        };
-      }),
-    );
+    const countsByEventId = new Map<string, number>();
+    for (const row of eventCounts) {
+      countsByEventId.set(row.eventId as string, row.total);
+    }
 
-    // Only include events that have at least 1 video
-    const activeEvents = eventsWithCounts.filter((e) => e.videoCount > 0);
+    const eventsWithCounts: VideoEvent[] = allEvents
+      .map((event) => ({
+        id: event.id,
+        title: event.title,
+        slug: event.slug,
+        description: event.description,
+        coverImageUrl: event.coverImageUrl,
+        artistId: event.artistId,
+        eventDate: event.eventDate,
+        location: event.location,
+        isPublished: event.isPublished,
+        displayOrder: event.displayOrder,
+        videoCount: countsByEventId.get(event.id) || 0,
+        createdAt: event.createdAt,
+        updatedAt: event.updatedAt,
+      }))
+      .filter((e) => e.videoCount > 0);
 
-    return { videos: videosWithTags, events: activeEvents };
+    return { videos: videosWithTags, events: eventsWithCounts };
   } catch (error) {
     console.error("Error fetching reels:", error);
     return { videos: [], events: [] };

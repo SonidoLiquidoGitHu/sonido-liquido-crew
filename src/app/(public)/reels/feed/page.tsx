@@ -1,7 +1,7 @@
 import { TikTokFeed } from "@/components/public/sections/TikTokFeed";
 import { db, isDatabaseConfigured } from "@/db/client";
 import { artists, tags, verticalVideoTags, verticalVideos } from "@/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 export const metadata = {
   title: "Reels Feed | Sonido Líquido Crew",
@@ -39,23 +39,43 @@ async function getReelsData() {
       .where(eq(verticalVideos.isPublished, true))
       .orderBy(desc(verticalVideos.isFeatured), desc(verticalVideos.createdAt));
 
-    // Fetch tags for each video
-    const videosWithTags = await Promise.all(
-      allVideos.map(async (video) => {
-        const videoTagRows = await db
-          .select({ tag: tags })
-          .from(verticalVideoTags)
-          .innerJoin(tags, eq(verticalVideoTags.tagId, tags.id))
-          .where(eq(verticalVideoTags.videoId, video.id));
+    // BATCH FETCH TAGS — single query for all videos.
+    // Previously this was an N+1 (one query per video) which added 100-500ms
+    // of latency on feeds with 20-30 videos.
+    const videoIds = allVideos.map((v) => v.id);
+    const allTagRows =
+      videoIds.length > 0
+        ? await db
+            .select({
+              videoId: verticalVideoTags.videoId,
+              tag: tags,
+            })
+            .from(verticalVideoTags)
+            .innerJoin(tags, eq(verticalVideoTags.tagId, tags.id))
+            .where(
+              sql`${verticalVideoTags.videoId} IN (${sql.join(
+                videoIds.map((id) => sql`${id}`),
+                sql`,`,
+              )})`,
+            )
+        : [];
 
-        return {
-          ...video,
-          tags: videoTagRows.map((row) => row.tag),
-        };
-      }),
-    );
+    const tagsByVideoId = new Map<string, typeof tags.$inferSelect[]>();
+    for (const row of allTagRows) {
+      if (!tagsByVideoId.has(row.videoId)) {
+        tagsByVideoId.set(row.videoId, []);
+      }
+      tagsByVideoId.get(row.videoId)?.push(row.tag);
+    }
 
-    return videosWithTags;
+    return allVideos.map((video) => ({
+      ...video,
+      tags: (tagsByVideoId.get(video.id) || []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+      })),
+    }));
   } catch (error) {
     console.error("Error fetching reels for feed:", error);
     return [];

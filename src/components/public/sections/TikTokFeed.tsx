@@ -1197,9 +1197,9 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
   const preloadedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    // Preload the next video when active index changes
-    const nextIndex = activeIndex + 1;
-    const afterNextIndex = activeIndex + 2;
+    // Preload the next 3 videos when active index changes (was 2).
+    // Preload more for the immersive feed because users swipe quickly.
+    const indicesToPreload = [activeIndex + 1, activeIndex + 2, activeIndex + 3];
 
     const preloadVideo = (index: number) => {
       if (index >= videos.length) return;
@@ -1213,18 +1213,25 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
         img.src = thumb;
       }
 
-      // For direct videos, preload the video element
-      // Use proxied URL for mobile compatibility (Dropbox direct links fail on mobile)
+      // For direct videos, "warm up" the video-proxy URL by issuing a
+      // lightweight HEAD request. This triggers the server-side Dropbox
+      // cache resolution (if not already cached) AND warms the browser's
+      // HTTP cache for the 302 redirect target. The actual <video>
+      // element will then load near-instantly when the user swipes.
+      //
+      // We don't create a <video> element here anymore — that was wasteful
+      // (each one downloaded video metadata even if the user never swiped
+      // to it). A HEAD request is much cheaper.
       if (isDirectVideo(video)) {
-        const videoEl = document.createElement("video");
-        videoEl.preload = "auto";
-        videoEl.playsInline = true;
-        videoEl.src = getProxiedVideoSrc(video as unknown as VideoLike);
-        // Don't need to append to DOM — just creating starts preloading in most browsers
+        const videoSrc = getProxiedVideoSrc(video as unknown as VideoLike);
+        // Fire-and-forget HEAD request
+        fetch(videoSrc, { method: "HEAD", mode: "no-cors" }).catch(() => {
+          // Ignore errors — this is just a preload hint
+        });
         preloadedRef.current.add(video.id);
       }
 
-      // For YouTube, we can preload the thumbnail at least
+      // For YouTube, preload the thumbnail at least
       if (getYouTubeId(video)) {
         const ytId = getYouTubeId(video);
         const thumb = getProxiedThumbnailUrl(video as unknown as VideoLike);
@@ -1236,8 +1243,9 @@ function usePreloadManager(videos: ReelVideo[], activeIndex: number) {
       }
     };
 
-    preloadVideo(nextIndex);
-    preloadVideo(afterNextIndex);
+    for (const idx of indicesToPreload) {
+      preloadVideo(idx);
+    }
   }, [activeIndex, videos]);
 }
 
@@ -1260,6 +1268,33 @@ export function TikTokFeed({ videos }: TikTokFeedProps) {
 
   // Feature #3: Preload next video
   usePreloadManager(videos, activeIndex);
+
+  // ============================================================
+  // PREWARM DROPBOX CACHE ON MOUNT
+  // ============================================================
+  // Same as ReelsGrid — fires /api/vertical-videos/prewarm in the
+  // background after the feed becomes idle. Critical for this page
+  // because the user swipes through videos quickly and can't wait 1-5s
+  // for Dropbox API resolution on each new video.
+  useEffect(() => {
+    const triggerPrewarm = () => {
+      fetch("/api/vertical-videos/prewarm", { cache: "no-store" }).catch(
+        (err) => {
+          console.warn("[TikTokFeed] Prewarm failed (non-fatal):", err);
+        },
+      );
+    };
+    if (typeof window !== "undefined") {
+      const ric =
+        (window as unknown as { requestIdleCallback?: (cb: () => void) => void })
+          .requestIdleCallback;
+      if (ric) {
+        ric(triggerPrewarm);
+      } else {
+        setTimeout(triggerPrewarm, 1000);
+      }
+    }
+  }, []);
 
   // Navigate to a specific index with smooth scrolling
   const goToIndex = useCallback(

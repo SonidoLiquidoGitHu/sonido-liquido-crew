@@ -468,6 +468,39 @@ export function ReelsGrid({ videos, events }: ReelsGridProps) {
   const displayVideos = selectedEventId ? eventVideos : videos;
   const viewerIndex = activeIndex !== null ? activeIndex : null;
 
+  // ============================================================
+  // PREWARM DROPBOX CACHE ON MOUNT
+  // ============================================================
+  // Triggers a background API call that resolves + caches Dropbox temp
+  // links for ALL videos on the page. By the time the user clicks a
+  // video, /api/video-proxy returns a 302 instantly (cache hit) instead
+  // of taking 1-5s to call the Dropbox API on demand.
+  //
+  // We do this AFTER the page becomes visible (requestIdleCallback) so
+  // it doesn't compete with critical render resources.
+  useEffect(() => {
+    const triggerPrewarm = () => {
+      // Fire-and-forget — we don't care about the result
+      fetch("/api/vertical-videos/prewarm", { cache: "no-store" }).catch(
+        (err) => {
+          console.warn("[ReelsGrid] Prewarm failed (non-fatal):", err);
+        },
+      );
+    };
+
+    if (typeof window !== "undefined") {
+      // Use requestIdleCallback if available, else setTimeout
+      const ric =
+        (window as unknown as { requestIdleCallback?: (cb: () => void) => void })
+          .requestIdleCallback;
+      if (ric) {
+        ric(triggerPrewarm);
+      } else {
+        setTimeout(triggerPrewarm, 1500);
+      }
+    }
+  }, []);
+
   if (videos.length === 0) {
     return (
       <div className="text-center py-20">

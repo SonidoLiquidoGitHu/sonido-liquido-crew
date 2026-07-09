@@ -107,6 +107,11 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link rel="preconnect" href="https://www.dropbox.com" />
+        <link
+          rel="preconnect"
+          href="https://dl.dropboxusercontent.com"
+          crossOrigin="anonymous"
+        />
         <link rel="preconnect" href="https://open.spotify.com" />
       </head>
       <body className={`${oswald.variable} ${barlow.variable} antialiased`}>
