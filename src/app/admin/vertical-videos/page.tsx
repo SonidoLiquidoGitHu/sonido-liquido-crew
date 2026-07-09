@@ -77,6 +77,7 @@ interface VideoEvent {
   eventDate: string | null;
   location: string | null;
   isPublished: boolean;
+  isFeatured: boolean;
   displayOrder: number;
   videoCount: number;
   createdAt: string;
@@ -154,6 +155,7 @@ export default function AdminVerticalVideosPage() {
     eventDate: "",
     location: "",
     isPublished: true,
+    isFeatured: false,
     videoIds: [] as string[],
   });
   const [uploadEventId, setUploadEventId] = useState("");
@@ -1455,6 +1457,7 @@ export default function AdminVerticalVideosPage() {
       eventDate: "",
       location: "",
       isPublished: true,
+      isFeatured: false,
       videoIds: [],
     });
   };
@@ -1481,6 +1484,7 @@ export default function AdminVerticalVideosPage() {
         : "",
       location: event.location || "",
       isPublished: event.isPublished,
+      isFeatured: event.isFeatured,
       videoIds: eventVideoIds,
     });
     setShowEventModal(true);
@@ -1508,6 +1512,7 @@ export default function AdminVerticalVideosPage() {
             eventDate: eventForm.eventDate || null,
             location: eventForm.location || null,
             isPublished: eventForm.isPublished,
+            isFeatured: eventForm.isFeatured,
             videoIds: eventForm.videoIds,
           }),
         });
@@ -1535,6 +1540,7 @@ export default function AdminVerticalVideosPage() {
             eventDate: eventForm.eventDate || null,
             location: eventForm.location || null,
             isPublished: eventForm.isPublished,
+            isFeatured: eventForm.isFeatured,
           }),
         });
         const data = await res.json();
@@ -1574,6 +1580,38 @@ export default function AdminVerticalVideosPage() {
       }
     } catch {
       setMessage({ type: "error", text: "Error al eliminar evento" });
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  // Toggle event featured status (mirrors toggleFeatured for videos).
+  // Featured events appear on the homepage.
+  const toggleEventFeatured = async (event: VideoEvent) => {
+    try {
+      const res = await fetch("/api/admin/vertical-video-events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: event.id,
+          isFeatured: !event.isFeatured,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.id === event.id ? { ...e, isFeatured: !e.isFeatured } : e,
+          ),
+        );
+        setMessage({
+          type: "success",
+          text: event.isFeatured
+            ? "Evento quitado de destacados"
+            : "Evento marcado como destacado",
+        });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error al actualizar evento" });
     }
     setTimeout(() => setMessage(null), 3000);
   };
@@ -1810,6 +1848,12 @@ export default function AdminVerticalVideosPage() {
                     <EyeOff className="w-3 h-3" /> Borrador
                   </div>
                 )}
+                {/* Featured badge — mirrors the "Destacado" badge on video cards */}
+                {event.isFeatured && (
+                  <div className="absolute top-2 left-2 px-2 py-1 bg-primary rounded text-xs text-white flex items-center gap-1">
+                    <Star className="w-3 h-3" fill="currentColor" /> Destacado
+                  </div>
+                )}
               </div>
               {/* Info */}
               <div className="p-4">
@@ -1861,6 +1905,27 @@ export default function AdminVerticalVideosPage() {
                       <Mail className="w-4 h-4 mr-1" />
                     )}
                     Enviar a suscriptores
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleEventFeatured(event)}
+                    className={
+                      event.isFeatured
+                        ? "text-primary"
+                        : "text-slc-muted hover:text-primary"
+                    }
+                    title={
+                      event.isFeatured
+                        ? "Quitar de destacados"
+                        : "Destacar evento"
+                    }
+                  >
+                    <Star
+                      className="w-4 h-4 mr-1"
+                      fill={event.isFeatured ? "currentColor" : "none"}
+                    />
+                    {event.isFeatured ? "Destacado" : "Destacar"}
                   </Button>
                   <Button
                     variant="ghost"
@@ -2738,6 +2803,29 @@ export default function AdminVerticalVideosPage() {
                 ) : (
                   <EyeOff className="w-4 h-4 text-slc-muted" />
                 )}
+              </label>
+
+              {/* Featured toggle — featured events appear on the homepage */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={eventForm.isFeatured}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      isFeatured: e.target.checked,
+                    }))
+                  }
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm">Destacado</span>
+                <Star
+                  className={`w-4 h-4 ${eventForm.isFeatured ? "text-primary" : "text-slc-muted"}`}
+                  fill={eventForm.isFeatured ? "currentColor" : "none"}
+                />
+                <span className="text-xs text-slc-muted">
+                  (aparece en la página principal)
+                </span>
               </label>
 
               {/* Video Assignment (only in edit mode) */}

@@ -21,6 +21,11 @@ export const verticalVideoEvents = sqliteTable("vertical_video_events", {
   isPublished: integer("is_published", { mode: "boolean" })
     .notNull()
     .default(true),
+  // Featured events appear on the homepage, mirroring how individual
+  // vertical videos can be featured. Added in migration 0021.
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

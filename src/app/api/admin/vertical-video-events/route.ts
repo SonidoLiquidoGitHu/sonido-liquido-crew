@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       eventDate,
       location,
       isPublished,
+      isFeatured,
     } = body;
 
     if (!title) {
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       eventDate: eventDate ? new Date(eventDate) : null,
       location: location || null,
       isPublished: isPublished !== false,
+      isFeatured: isFeatured === true,
       displayOrder: 0,
     });
 
@@ -134,6 +136,7 @@ export async function PATCH(request: NextRequest) {
       "eventDate",
       "location",
       "isPublished",
+      "isFeatured",
       "displayOrder",
     ];
     const updateData: Record<string, unknown> = {};

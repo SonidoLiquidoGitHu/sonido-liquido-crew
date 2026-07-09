@@ -14,12 +14,14 @@ import {
 } from "@/components/public/LazySection";
 import { SectionNavDots } from "@/components/public/SectionNavDots";
 import { FeaturedBeats } from "@/components/public/sections/FeaturedBeats";
+import { FeaturedEvents } from "@/components/public/sections/FeaturedEvents";
 import { db, isDatabaseConfigured } from "@/db/client";
 import {
   artists,
   releaseArtists,
   releases as releasesTable,
   upcomingReleases,
+  verticalVideoEvents,
   verticalVideos,
 } from "@/db/schema";
 import {
@@ -29,7 +31,7 @@ import {
   releasesService,
   videosService,
 } from "@/lib/services";
-import { and, desc, eq, gte, inArray, like } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, sql } from "drizzle-orm";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
@@ -197,6 +199,7 @@ export default async function HomePage() {
     pastEvents,
     featuredBeats,
     featuredReels,
+    featuredVideoEvents,
   ] = await Promise.all([
     safeFetch(releasesService.getLatest(10), []),
     safeFetch(videosService.getFeatured(4), []),
@@ -225,6 +228,39 @@ export default async function HomePage() {
           desc(verticalVideos.createdAt),
         )
         .limit(15),
+      [],
+    ),
+    // Featured vertical video events — appear on the homepage as cards
+    // linking to /reels. Only events marked isFeatured AND isPublished
+    // are included. Sorted by displayOrder then eventDate desc.
+    safeFetch(
+      db
+        .select({
+          id: verticalVideoEvents.id,
+          title: verticalVideoEvents.title,
+          slug: verticalVideoEvents.slug,
+          description: verticalVideoEvents.description,
+          coverImageUrl: verticalVideoEvents.coverImageUrl,
+          eventDate: verticalVideoEvents.eventDate,
+          location: verticalVideoEvents.location,
+          videoCount: sql<number>`(
+            SELECT COUNT(*) FROM vertical_videos
+            WHERE vertical_videos.event_id = ${verticalVideoEvents.id}
+            AND vertical_videos.is_published = 1
+          )`.as("video_count"),
+        })
+        .from(verticalVideoEvents)
+        .where(
+          and(
+            eq(verticalVideoEvents.isPublished, true),
+            eq(verticalVideoEvents.isFeatured, true),
+          ),
+        )
+        .orderBy(
+          verticalVideoEvents.displayOrder,
+          desc(verticalVideoEvents.eventDate),
+        )
+        .limit(6),
       [],
     ),
   ]);
@@ -318,6 +354,15 @@ export default async function HomePage() {
         <section id="reels-stories">
           <ReelsStoriesBar videos={featuredReels} />
         </section>
+      )}
+
+      {/* ===========================================
+          2c. FEATURED VIDEO EVENTS (vertical video groupings)
+              Events marked "Destacado" in admin appear here
+              as cards linking to /reels.
+          =========================================== */}
+      {featuredVideoEvents.length > 0 && (
+        <FeaturedEvents events={featuredVideoEvents} />
       )}
 
       {/* ===========================================
