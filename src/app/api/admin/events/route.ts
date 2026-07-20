@@ -9,6 +9,7 @@ import {
 } from "@/lib/errors";
 import { eventsRepository } from "@/lib/repositories";
 import { type NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 export async function GET(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
@@ -79,6 +80,12 @@ export async function POST(request: NextRequest) {
       requestId,
       eventId: event.id,
     });
+
+    // Revalidate the homepage and events page so the new event (and its
+    // cover image) appear immediately. Without this, ISR (5-min cache)
+    // would delay the update.
+    revalidatePath("/", "layout");
+    revalidatePath("/eventos");
 
     return NextResponse.json({
       success: true,

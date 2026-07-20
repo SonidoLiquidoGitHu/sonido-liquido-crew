@@ -6,6 +6,7 @@ import {
 } from "@/lib/errors";
 import { eventsRepository } from "@/lib/repositories";
 import { type NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 export async function GET(
   request: NextRequest,
@@ -83,6 +84,12 @@ export async function PUT(
 
     errorLogger.info("Event updated successfully", { requestId, eventId: id });
 
+    // Revalidate the homepage and events page so the updated event (and its
+    // cover image) appear immediately. Without this, ISR (5-min cache)
+    // would delay the update.
+    revalidatePath("/", "layout");
+    revalidatePath("/eventos");
+
     return NextResponse.json({
       success: true,
       data: event,
@@ -145,6 +152,10 @@ export async function DELETE(
     }
 
     errorLogger.info("Event deleted successfully", { requestId, eventId: id });
+
+    // Revalidate so the deleted event disappears from homepage + events page
+    revalidatePath("/", "layout");
+    revalidatePath("/eventos");
 
     return NextResponse.json({
       success: true,
