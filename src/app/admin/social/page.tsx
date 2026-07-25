@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   Facebook,
+  FileText,
   Image as ImageIcon,
   Instagram,
   Key,
@@ -284,6 +285,14 @@ export default function AdminSocialPage() {
   );
   const [debugLoading, setDebugLoading] = useState(false);
 
+  // Caption preview state
+  // biome-ignore lint/suspicious/noExplicitAny: preview result from API
+  const [previewResult, setPreviewResult] = useState<Record<string, any> | null>(
+    null,
+  );
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewReleaseId, setPreviewReleaseId] = useState("");
+
   // Credentials state
   const [credentialInfo, setCredentialInfo] = useState<Record<
     string,
@@ -547,6 +556,38 @@ export default function AdminSocialPage() {
       });
     } finally {
       setDebugLoading(false);
+    }
+  };
+
+  // Preview caption for a release — safe way to test without posting
+  const previewCaption = async () => {
+    if (!previewReleaseId.trim()) {
+      setPreviewResult({ error: "Ingresa un Release ID" });
+      return;
+    }
+    setPreviewLoading(true);
+    setPreviewResult(null);
+    try {
+      const res = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "preview-release-caption",
+          releaseId: previewReleaseId.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPreviewResult(data.data);
+      } else {
+        setPreviewResult({ error: data.error || "Unknown error" });
+      }
+    } catch (err) {
+      setPreviewResult({
+        error: err instanceof Error ? err.message : "Request failed",
+      });
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -1566,6 +1607,95 @@ export default function AdminSocialPage() {
                     estado "processing". Prueba "Reiniciar Ciclo" para
                     resetearlos.
                   </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Caption Preview Panel */}
+          <div className="bg-slc-card border border-slc-border rounded-xl p-6">
+            <h2 className="font-oswald text-xl uppercase mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Previsualizar Caption de Release
+            </h2>
+            <p className="text-sm text-slc-muted mb-4">
+              Genera el caption que el autopost usaría para un release.
+              <strong className="text-white"> No publica nada</strong> — solo
+              muestra el caption para verificar título + @menciones.
+            </p>
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={previewReleaseId}
+                onChange={(e) => setPreviewReleaseId(e.target.value)}
+                placeholder="Pega el Release ID (de /admin/releases)"
+                className="flex-1 px-3 py-2 bg-slc-dark border border-slc-border rounded-lg text-sm text-white placeholder:text-slc-muted focus:outline-none focus:border-primary"
+              />
+              <Button onClick={previewCaption} disabled={previewLoading} variant="outline">
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4 mr-2" />
+                )}
+                Previsualizar
+              </Button>
+            </div>
+            {previewResult && (
+              <div className="space-y-4">
+                {previewResult.error ? (
+                  <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/20">
+                    <p className="text-sm text-red-400">{previewResult.error as string}</p>
+                  </div>
+                ) : (
+                  <>
+                    {previewResult.release && (
+                      <div className="p-3 bg-slc-dark rounded-lg border border-slc-border">
+                        <p className="text-sm font-medium">
+                          {previewResult.release.title as string}{" "}
+                          <span className="text-slc-muted text-xs">
+                            ({previewResult.release.releaseType as string})
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                    {previewResult.crewArtists && Array.isArray(previewResult.crewArtists) && (previewResult.crewArtists as Array<unknown>).length > 0 && (
+                      <div className="p-3 bg-slc-dark rounded-lg border border-slc-border">
+                        <p className="text-xs text-slc-muted mb-2">Artistas del crew:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(previewResult.crewArtists as Array<{ name: string; igHandle: string | null; isPrimary: boolean }>).map((artist, i) => (
+                            <span key={i} className={`px-2 py-1 rounded text-xs ${artist.isPrimary ? "bg-primary/20 text-primary border border-primary/30" : "bg-slc-card text-slc-muted border border-slc-border"}`}>
+                              {artist.name}{artist.igHandle ? ` → @${artist.igHandle}` : " (sin IG)"}{artist.isPrimary ? " ★" : ""}
+                            </span>
+                          ))}
+                        </div>
+                        {previewResult.crewMentionsLine && (
+                          <p className="text-xs text-green-400 mt-2 font-mono">{previewResult.crewMentionsLine as string}</p>
+                        )}
+                      </div>
+                    )}
+                    {previewResult.templateCaptions && Array.isArray(previewResult.templateCaptions) && (
+                      <div>
+                        <p className="text-xs text-slc-muted mb-2 uppercase tracking-wider">Variaciones de caption:</p>
+                        <div className="space-y-3">
+                          {(previewResult.templateCaptions as string[]).map((caption, i) => (
+                            <div key={i} className="p-3 bg-slc-dark rounded-lg border border-slc-border">
+                              <p className="text-[10px] text-slc-muted mb-1 uppercase">Variación {i + 1}</p>
+                              <pre className="text-sm text-white whitespace-pre-wrap font-sans">{caption}</pre>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {previewResult.aiCaption && (
+                      <div>
+                        <p className="text-xs text-slc-muted mb-2 uppercase tracking-wider">Caption IA:</p>
+                        <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                          <pre className="text-sm text-white whitespace-pre-wrap font-sans">{previewResult.aiCaption as string}</pre>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-slc-muted italic">{previewResult.note as string}</p>
+                  </>
                 )}
               </div>
             )}

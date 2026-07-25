@@ -27,6 +27,7 @@ import {
   extractStoryLinkUrl,
   generateAICaption,
   generateCaption,
+  type CaptionContext,
   getNextPendingItem,
   isMetaConfiguredAsync,
   postFacebookReel,
@@ -470,6 +471,8 @@ export async function POST(request: NextRequest) {
         return await handleSaveScheduleConfig(body);
       case "generate-ai-caption":
         return await handleGenerateAICaption(body);
+      case "preview-release-caption":
+        return await handlePreviewReleaseCaption(body);
       case "debug-autopost":
         return await handleDebugAutopost();
       default:
@@ -3162,6 +3165,172 @@ async function handleSaveScheduleConfig(body: Record<string, unknown>) {
     console.error("[Social API] Save schedule config error:", error);
     return NextResponse.json(
       { success: false, error: "Error al guardar la configuración de horario" },
+      { status: 500 },
+    );
+  }
+}
+
+// ===========================================
+// PREVIEW RELEASE CAPTION — Test caption generation without posting
+// ===========================================
+
+async function handlePreviewReleaseCaption(body: Record<string, unknown>) {
+  try {
+    const releaseId = body.releaseId as string;
+    if (!releaseId) {
+      return NextResponse.json(
+        { success: false, error: "releaseId is required" },
+        { status: 400 },
+      );
+    }
+
+    const { db } = await import("@/db/client");
+    const { releases, releaseArtists, artists } = await import(
+      "@/db/schema"
+    );
+    const { eq, desc } = await import("drizzle-orm");
+
+    // 1. Fetch the release
+    const releaseRows = await db
+      .select({
+        id: releases.id,
+        title: releases.title,
+        slug: releases.slug,
+        releaseType: releases.releaseType,
+        releaseDate: releases.releaseDate,
+        coverImageUrl: releases.coverImageUrl,
+        spotifyUrl: releases.spotifyUrl,
+      })
+      .from(releases)
+      .where(eq(releases.id, releaseId))
+      .limit(1);
+
+    const release = releaseRows[0];
+    if (!release) {
+      return NextResponse.json(
+        { success: false, error: `Release not found: ${releaseId}` },
+        { status: 404 },
+      );
+    }
+
+    // 2. Fetch ALL artists on this release (primary first)
+    const artistRows = await db
+      .select({
+        name: artists.name,
+        slug: artists.slug,
+        isPrimary: releaseArtists.isPrimary,
+      })
+      .from(releaseArtists)
+      .innerJoin(artists, eq(releaseArtists.artistId, artists.id))
+      .where(eq(releaseArtists.releaseId, releaseId))
+      .orderBy(desc(releaseArtists.isPrimary));
+
+    // 3. Build crewArtists with IG handle lookup
+    const CREW_IG_HANDLES: Record<string, string> = {
+      zaque: "zaqueslc",
+      dilema: "dilema_ladee",
+      "latin geisha": "latingeishamx",
+      latingeisha: "latingeishamx",
+      "bruno grasso": "brunograssosl",
+      "x santa-ana": "x_santa_ana",
+      "x santa ana": "x_santa_ana",
+      "santa-ana": "x_santa_ana",
+      "q master weed": "q.masterw",
+      "q masterw": "q.masterw",
+      masterweed: "q.masterw",
+      brez: "brez_idc",
+      "kev cabrone": "kev.cabrone",
+      "fancy freak": "fancyfreakcorp",
+      fancyfreakcorp: "fancyfreakcorp",
+      "chas 7p": "chas7pecados",
+      "chas 7": "chas7pecados",
+      chas7p: "chas7pecados",
+      chas7pecados: "chas7pecados",
+      "pepe levine": "pepelevineonline",
+      pepelevine: "pepelevineonline",
+      "reick uno": "reickuno",
+      reickuno: "reickuno",
+      codak: "ilikebigbuds_i_canot_lie",
+      hassyel: "hassyel_s.l.c",
+    };
+
+    const lookupHandle = (name: string): string | null => {
+      const normalized = name.trim().toLowerCase();
+      if (CREW_IG_HANDLES[normalized]) return CREW_IG_HANDLES[normalized];
+      const noAccents = normalized
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      return CREW_IG_HANDLES[noAccents] || null;
+    };
+
+    const crewArtists = artistRows.map((row) => ({
+      name: row.name,
+      slug: row.slug,
+      isPrimary: Boolean(row.isPrimary),
+      igHandle: lookupHandle(row.name),
+    }));
+
+    // 4. Build CaptionContext (same as regenerateCaptionForItem)
+    const primaryArtist =
+      crewArtists.find((a) => a.isPrimary) || crewArtists[0];
+    const ctx: CaptionContext = {
+      contentType: "spotify_track",
+      artistName: primaryArtist?.name,
+      releaseTitle: release.title,
+      releaseType: release.releaseType,
+      releaseDate: release.releaseDate,
+      spotifyUrl: release.spotifyUrl || undefined,
+      linkUrl: release.spotifyUrl || undefined,
+      crewArtists: crewArtists.map((a) => ({
+        name: a.name,
+        igHandle: a.igHandle,
+      })),
+    };
+
+    // 5. Generate all 3 template variations
+    const templateCaptions = [
+      generateCaption(ctx, 0),
+      generateCaption(ctx, 1),
+      generateCaption(ctx, 2),
+    ];
+
+    // 6. Generate AI caption (best-effort)
+    let aiCaption: string | null = null;
+    try {
+      aiCaption = await generateAICaption(ctx, 0);
+    } catch {
+      aiCaption = null;
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        release: {
+          id: release.id,
+          title: release.title,
+          slug: release.slug,
+          releaseType: release.releaseType,
+          releaseDate: release.releaseDate?.toISOString() || null,
+          coverImageUrl: release.coverImageUrl,
+          spotifyUrl: release.spotifyUrl,
+        },
+        crewArtists,
+        crewMentionsLine: crewArtists
+          .filter((a) => a.igHandle)
+          .map((a) => `@${a.igHandle}`)
+          .join(" "),
+        templateCaptions,
+        aiCaption,
+        note: "This is a PREVIEW only. No posts were made to FB/IG. The actual autopost will pick one of these variations based on the cycle number.",
+      },
+    });
+  } catch (error) {
+    console.error("[Social API] Preview release caption error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Error al previsualizar caption: ${(error as Error).message}`,
+      },
       { status: 500 },
     );
   }
