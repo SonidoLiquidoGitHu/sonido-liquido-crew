@@ -18,6 +18,90 @@ import { socialPostQueue, socialPostsLog } from "@/db/schema";
 import { and, desc, sql as drizzleSql, eq } from "drizzle-orm";
 
 // ===========================================
+// CREW ARTIST → INSTAGRAM HANDLE MAP
+// ===========================================
+// Used by release autopost captions to @mention all crew artists involved
+// in a release. The handle is the part after @ on Instagram (without the @).
+//
+// This is a static map because:
+//   1. It's faster than a DB lookup per post
+//   2. The crew roster is stable
+//   3. It's easy to update here when handles change
+//
+// To update: edit this map and redeploy. New artists added to the DB but
+// not in this map will still appear by name in the caption, just without
+// an @mention.
+//
+// Source: provided by the user (SonidoLiquido admin) on 2026-07.
+const CREW_IG_HANDLES: Record<string, string> = {
+  // Canonical name (lowercase) → Instagram handle (without @)
+  zaque: "zaqueslc",
+  dilema: "dilema_ladee",
+  "latin geisha": "latingeishamx",
+  "latingeisha": "latingeishamx",
+  "bruno grasso": "brunograssosl",
+  "x santa-ana": "x_santa_ana",
+  "x santa ana": "x_santa_ana",
+  "santa-ana": "x_santa_ana",
+  "q master weed": "q.masterw",
+  "q masterw": "q.masterw",
+  "masterweed": "q.masterw",
+  brez: "brez_idc",
+  "kev cabrone": "kev.cabrone",
+  "fancy freak": "fancyfreakcorp",
+  "fancyfreakcorp": "fancyfreakcorp",
+  "chas 7p": "chas7pecados",
+  "chas 7": "chas7pecados",
+  "chas7p": "chas7pecados",
+  "chas7pecados": "chas7pecados",
+  "pepe levine": "pepelevineonline",
+  "pepelevine": "pepelevineonline",
+  "reick uno": "reickuno",
+  "reickuno": "reickuno",
+  codak: "ilikebigbuds_i_canot_lie",
+  hassyel: "hassyel_s.l.c",
+};
+
+/**
+ * Look up an artist's Instagram handle by name (case-insensitive).
+ * Returns the handle WITHOUT the @ prefix, or null if not found.
+ */
+function getCrewIgHandle(artistName: string): string | null {
+  if (!artistName) return null;
+  const normalized = artistName.trim().toLowerCase();
+  // Direct match
+  if (CREW_IG_HANDLES[normalized]) {
+    return CREW_IG_HANDLES[normalized];
+  }
+  // Try without accents
+  const noAccents = normalized
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (CREW_IG_HANDLES[noAccents]) {
+    return CREW_IG_HANDLES[noAccents];
+  }
+  return null;
+}
+
+/**
+ * Build a list of "@handle" strings for a set of artist names.
+ * Only artists that have a known IG handle are included.
+ * Returns an empty array if none match.
+ */
+function buildIgMentions(artistNames: string[]): string[] {
+  const mentions: string[] = [];
+  const seen = new Set<string>();
+  for (const name of artistNames) {
+    const handle = getCrewIgHandle(name);
+    if (handle && !seen.has(handle)) {
+      mentions.push(`@${handle}`);
+      seen.add(handle);
+    }
+  }
+  return mentions;
+}
+
+// ===========================================
 // CONFIGURATION
 // ===========================================
 
@@ -1949,48 +2033,128 @@ async function regenerateCaptionForItem(
   // Use cycleNumber as variation seed — different cycle = different caption style
   const variationIndex = item.cycleNumber || 0;
 
-  // For spotify_track items, fetch the release date to apply 90-day logic
+  // For spotify_track items, fetch the release date AND all crew artists
+  // to apply 90-day logic and build @mentions for the caption.
   let releaseDate: Date | null = null;
+  let crewArtists: { name: string; igHandle: string | null }[] = [];
   if (item.contentType === "spotify_track" && item.releaseId) {
     try {
-      const { releases } = await import("@/db/schema");
+      const { releases, releaseArtists, artists } = await import(
+        "@/db/schema"
+      );
+      // Fetch release date
       const releaseRows = await db
-        .select({ releaseDate: releases.releaseDate })
+        .select({
+          releaseDate: releases.releaseDate,
+          title: releases.title,
+          releaseType: releases.releaseType,
+          spotifyUrl: releases.spotifyUrl,
+        })
         .from(releases)
         .where(eq(releases.id, item.releaseId))
         .limit(1);
       if (releaseRows[0]?.releaseDate) {
         releaseDate = releaseRows[0].releaseDate;
       }
+      // Use the canonical release title/type from DB if available
+      // (more reliable than extracting from the old caption)
+      if (releaseRows[0]?.title) {
+        // Stash on the item so the ctx builder below can pick it up
+        (item as unknown as Record<string, unknown>).__releaseTitle =
+          releaseRows[0].title;
+      }
+      if (releaseRows[0]?.releaseType) {
+        (item as unknown as Record<string, unknown>).__releaseType =
+          releaseRows[0].releaseType;
+      }
+      if (releaseRows[0]?.spotifyUrl) {
+        (item as unknown as Record<string, unknown>).__spotifyUrl =
+          releaseRows[0].spotifyUrl;
+        }
+
+      // Fetch ALL artists on this release (primary + featured) so we can
+      // @mention them in the caption. This is the new feature: every
+      // crew artist on the release gets credit + IG mention.
+      const artistRows = await db
+        .select({
+          name: artists.name,
+          isPrimary: releaseArtists.isPrimary,
+        })
+        .from(releaseArtists)
+        .innerJoin(artists, eq(releaseArtists.artistId, artists.id))
+        .where(eq(releaseArtists.releaseId, item.releaseId))
+        .orderBy(desc(releaseArtists.isPrimary)); // primary artists first
+
+      crewArtists = artistRows.map((row) => ({
+        name: row.name,
+        igHandle: getCrewIgHandle(row.name),
+      }));
+
+      // If we have crew artists, use the primary one as artistName
+      // (the caption templates use ctx.artistName as the headline)
+      const primaryArtist = artistRows.find((row) => row.isPrimary);
+      if (primaryArtist) {
+        (item as unknown as Record<string, unknown>).__primaryArtistName =
+          primaryArtist.name;
+      } else if (artistRows[0]) {
+        // No primary marked — use the first one
+        (item as unknown as Record<string, unknown>).__primaryArtistName =
+          artistRows[0].name;
+      }
     } catch (err) {
-      console.warn("[Social] Could not fetch release date for caption:", err);
+      console.warn(
+        "[Social] Could not fetch release details for caption:",
+        err,
+      );
     }
   }
 
   // Build a minimal caption context from the queue item data
   // The full context was available at populate time, but we reconstruct what we can
+  const itemExtra = item as unknown as Record<string, unknown>;
   const ctx: CaptionContext = {
     contentType: item.contentType as CaptionContext["contentType"],
     linkUrl: item.linkUrl || undefined,
     releaseDate,
+    // Use the canonical release title/type from DB (more reliable than
+    // extracting from the old caption)
+    releaseTitle: itemExtra.__releaseTitle as string | undefined,
+    releaseType: itemExtra.__releaseType as string | undefined,
+    spotifyUrl: itemExtra.__spotifyUrl as string | undefined,
+    // Crew artists on this release — used for @mentions
+    crewArtists: crewArtists.length > 0 ? crewArtists : undefined,
   };
 
-  // Try to extract artist name from the existing caption as a hint
-  const existingCaption = item.caption || "";
-  if (existingCaption.includes(" de ")) {
-    const match = existingCaption.match(/de\s+([^\n,—]+)/);
-    if (match) {
-      ctx.artistName = match[1].trim();
+  // Use the primary artist name from the DB if available; otherwise try to
+  // extract from the existing caption as a hint.
+  const primaryArtistName = itemExtra.__primaryArtistName as string | undefined;
+  if (primaryArtistName) {
+    ctx.artistName = primaryArtistName;
+  } else {
+    const existingCaption = item.caption || "";
+    if (existingCaption.includes(" de ")) {
+      const match = existingCaption.match(/de\s+([^\n,—]+)/);
+      if (match) {
+        ctx.artistName = match[1].trim();
+      }
     }
   }
 
-  // For tracks, try to extract release title from existing caption
-  if (item.contentType === "spotify_track") {
-    const titleMatch = existingCaption.match(/^.{1,80}—\s*(.+?)(?:\s*—|\s*$)/m);
+  // For tracks, if we still don't have a release title (DB lookup failed),
+  // try to extract from existing caption as a fallback
+  if (item.contentType === "spotify_track" && !ctx.releaseTitle) {
+    const existingCaption = item.caption || "";
+    const titleMatch = existingCaption.match(
+      /^.{1,80}—\s*(.+?)(?:\s*—|\s*$)/m,
+    );
     if (titleMatch) {
       ctx.releaseTitle = titleMatch[1].trim();
     }
-    // Extract Spotify URL from existing caption
+  }
+
+  // For tracks, if we still don't have a Spotify URL, extract from caption
+  if (item.contentType === "spotify_track" && !ctx.spotifyUrl) {
+    const existingCaption = item.caption || "";
     const urlMatch = existingCaption.match(
       /(https:\/\/open\.spotify\.com\/[^\s]+)/,
     );
@@ -2001,6 +2165,7 @@ async function regenerateCaptionForItem(
 
   // For curated tracks, try to extract track name
   if (item.contentType === "curated_track") {
+    const existingCaption = item.caption || "";
     const trackMatch = existingCaption.match(/"([^"]+)"/);
     if (trackMatch) {
       ctx.trackName = trackMatch[1];
@@ -2573,6 +2738,10 @@ export interface CaptionContext {
   eventDate?: Date | null;
   eventTime?: string;
   ticketUrl?: string;
+  // Crew artists on this release (for @mentions in captions).
+  // Each entry is { name, igHandle } where igHandle is the IG handle
+  // WITHOUT the @ prefix (or null if not in our crew map).
+  crewArtists?: { name: string; igHandle: string | null }[];
 }
 
 /**
@@ -2583,6 +2752,37 @@ function isNewRelease(releaseDate?: Date | null): boolean {
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   return new Date(releaseDate) > ninetyDaysAgo;
+}
+
+/**
+ * Build a string of "@handle1 @handle2 ..." from the crewArtists in ctx.
+ * Only artists with a known IG handle are included.
+ * Returns "" if no crew artists have handles.
+ *
+ * Used in release captions to @mention all crew artists on a release.
+ */
+function buildCrewMentionsLine(ctx: CaptionContext): string {
+  if (!ctx.crewArtists || ctx.crewArtists.length === 0) return "";
+  const mentions: string[] = [];
+  const seen = new Set<string>();
+  for (const artist of ctx.crewArtists) {
+    // Prefer the explicit igHandle, fall back to looking up by name
+    const handle = artist.igHandle || getCrewIgHandle(artist.name);
+    if (handle && !seen.has(handle)) {
+      mentions.push(`@${handle}`);
+      seen.add(handle);
+    }
+  }
+  return mentions.join(" ");
+}
+
+/**
+ * Build a string of artist names separated by commas (for the caption body
+ * when we want to credit all crew artists by name, not just @mentions).
+ */
+function buildCrewNamesLine(ctx: CaptionContext): string {
+  if (!ctx.crewArtists || ctx.crewArtists.length === 0) return "";
+  return ctx.crewArtists.map((a) => a.name).join(", ");
 }
 
 // Multiple caption variations per content type to avoid repetition
@@ -2693,14 +2893,20 @@ const CAPTION_VARIATIONS = {
                 ? "la mixtape"
                 : "el sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        const titleLine = ` "${ctx.releaseTitle || "Nuevo lanzamiento"}" — ${typeLabel} ya disponible`;
+        const mentions = buildCrewMentionsLine(ctx);
+        const crewLine = mentions ? `\n👥 ${mentions}` : "";
         return [
           `🔥 Nueva música de ${artistLine}`,
-          `${ctx.releaseTitle || "Nuevo lanzamiento"} — ${typeLabel} ya disponible`,
+          titleLine,
+          crewLine,
           "",
           `Escucha en Spotify: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
           "",
           hashtags,
-        ].join("\n");
+        ]
+          .filter((line) => line !== "")
+          .join("\n");
       },
       oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
         const typeLabel =
@@ -2712,38 +2918,54 @@ const CAPTION_VARIATIONS = {
                 ? "la mixtape"
                 : "el sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        const titleLine = ` "${ctx.releaseTitle || "Lanzamiento"}" — ${typeLabel}`;
+        const mentions = buildCrewMentionsLine(ctx);
+        const crewLine = mentions ? `\n👥 ${mentions}` : "";
         return [
           `🎶 Música de ${artistLine}`,
-          `${ctx.releaseTitle || "Lanzamiento"} — ${typeLabel}`,
+          titleLine,
+          crewLine,
           "",
           `Escucha en Spotify: ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
           "",
           hashtags,
-        ].join("\n");
+        ]
+          .filter((line) => line !== "")
+          .join("\n");
       },
     },
     {
       newRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        const mentions = buildCrewMentionsLine(ctx);
+        const crewLine = mentions ? `\n${mentions}` : "";
         return [
-          `${ctx.releaseTitle || "Nuevo lanzamiento"} — ${artistLine}`,
+          ` "${ctx.releaseTitle || "Nuevo lanzamiento"}" — ${artistLine}`,
           "Acaba de salir. Ya está en Spotify 👊",
+          crewLine,
           "",
           `${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
           "",
           hashtags,
-        ].join("\n");
+        ]
+          .filter((line) => line !== "")
+          .join("\n");
       },
       oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        const mentions = buildCrewMentionsLine(ctx);
+        const crewLine = mentions ? `\n${mentions}` : "";
         return [
-          `${ctx.releaseTitle || "Lanzamiento"} — ${artistLine}`,
+          ` "${ctx.releaseTitle || "Lanzamiento"}" — ${artistLine}`,
           "Clásico del colectivo, sigue sonando 🔊",
+          crewLine,
           "",
           `${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
           "",
           hashtags,
-        ].join("\n");
+        ]
+          .filter((line) => line !== "")
+          .join("\n");
       },
     },
     {
@@ -2757,14 +2979,19 @@ const CAPTION_VARIATIONS = {
                 ? "Mixtape"
                 : "Sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        const mentions = buildCrewMentionsLine(ctx);
+        const crewLine = mentions ? `\n${mentions}` : "";
         return [
           `Nuevo ${typeLabel.toLowerCase()} de ${artistLine}: "${ctx.releaseTitle || "Nuevo lanzamiento"}"`,
           "Ya disponible en todas las plataformas",
+          crewLine,
           "",
           `▶️ ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
           "",
           hashtags,
-        ].join("\n");
+        ]
+          .filter((line) => line !== "")
+          .join("\n");
       },
       oldRelease: (ctx: CaptionContext, siteUrl: string, hashtags: string) => {
         const typeLabel =
@@ -2776,14 +3003,19 @@ const CAPTION_VARIATIONS = {
                 ? "Mixtape"
                 : "Sencillo";
         const artistLine = ctx.artistName || "Sonido Líquido Crew";
+        const mentions = buildCrewMentionsLine(ctx);
+        const crewLine = mentions ? `\n${mentions}` : "";
         return [
           `${typeLabel} de ${artistLine}: "${ctx.releaseTitle || "Lanzamiento"}"`,
           "Del catálogo de Sonido Líquido, sigue vigente",
+          crewLine,
           "",
           `▶️ ${ctx.spotifyUrl || ctx.linkUrl || `${siteUrl}/discografia`}`,
           "",
           hashtags,
-        ].join("\n");
+        ]
+          .filter((line) => line !== "")
+          .join("\n");
       },
     },
   ],
@@ -3226,6 +3458,20 @@ export async function generateAICaption(
     if (ctx.ticketUrl) contextParts.push(`Boletos: ${ctx.ticketUrl}`);
     if (ctx.linkUrl) contextParts.push(`Link: ${ctx.linkUrl}`);
     if (ctx.spotifyUrl) contextParts.push(`Spotify: ${ctx.spotifyUrl}`);
+    // Crew artists on this release — include their IG handles so the AI
+    // can @mention them in the caption.
+    if (ctx.crewArtists && ctx.crewArtists.length > 0) {
+      const mentionsLine = ctx.crewArtists
+        .map((a) => {
+          const handle = a.igHandle || getCrewIgHandle(a.name);
+          return handle ? `${a.name} (@${handle})` : a.name;
+        })
+        .join(", ");
+      contextParts.push(`Artistas del crew en este lanzamiento: ${mentionsLine}`);
+      contextParts.push(
+        "INSTRUCCIÓN: Incluye los @handles de TODOS los artistas del crew listados arriba en el caption.",
+      );
+    }
 
     const variationSeed = variationIndex ?? Math.floor(Math.random() * 100);
 
@@ -3242,7 +3488,8 @@ REGLAS ESTRICTAS:
 8. Mantén el caption conciso (3-5 líneas + hashtags).
 9. NO uses emojis excesivos (máximo 2-3 por caption).
 10. Cada caption debe ser diferente. Variación #${variationSeed}.
-11. Para eventos: SIEMPRE incluye lugar, fecha y link a boletos si hay. Agrega #Evento #EnVivo a los hashtags.`;
+11. Para eventos: SIEMPRE incluye lugar, fecha y link a boletos si hay. Agrega #Evento #EnVivo a los hashtags.
+12. Para lanzamientos: SIEMPRE incluye el título del lanzamiento y los @handles de TODOS los artistas del crew listados.`;
 
     const userPrompt = `Genera un caption para este post de redes sociales:
 
