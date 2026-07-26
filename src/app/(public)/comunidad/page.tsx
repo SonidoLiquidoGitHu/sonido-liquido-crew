@@ -7,7 +7,7 @@ import { eventsService } from "@/lib/services";
 import { Camera, ListMusic, Loader2, MessageCircle, Users } from "lucide-react";
 import { Suspense } from "react";
 
-export const revalidate = 300; // 5 minutes
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Comunidad | Sonido Líquido Crew",

@@ -32,13 +32,13 @@ import {
   videosService,
 } from "@/lib/services";
 import { and, desc, eq, gte, inArray, like, sql } from "drizzle-orm";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { Suspense } from "react";
 
 // ===========================================
 // PERFORMANCE: Lazy load below-the-fold sections
 // ===========================================
-const LatestReleases = dynamic(
+const LatestReleases = nextDynamic(
   () =>
     import("@/components/public/sections/LatestReleases").then((m) => ({
       default: m.LatestReleases,
@@ -46,7 +46,7 @@ const LatestReleases = dynamic(
   { ssr: true },
 );
 
-const MusicaSection = dynamic(
+const MusicaSection = nextDynamic(
   () =>
     import("@/components/public/sections/MusicaSection").then((m) => ({
       default: m.MusicaSection,
@@ -54,7 +54,7 @@ const MusicaSection = dynamic(
   { ssr: true },
 );
 
-const VideosSection = dynamic(
+const VideosSection = nextDynamic(
   () =>
     import("@/components/public/sections/VideosSection").then((m) => ({
       default: m.VideosSection,
@@ -62,7 +62,7 @@ const VideosSection = dynamic(
   { ssr: true },
 );
 
-const GallerySection = dynamic(
+const GallerySection = nextDynamic(
   () =>
     import("@/components/public/sections/GallerySection").then((m) => ({
       default: m.GallerySection,
@@ -70,7 +70,7 @@ const GallerySection = dynamic(
   { ssr: true },
 );
 
-const EventsSection = dynamic(
+const EventsSection = nextDynamic(
   () =>
     import("@/components/public/sections/EventsSection").then((m) => ({
       default: m.EventsSection,
@@ -78,7 +78,7 @@ const EventsSection = dynamic(
   { ssr: true },
 );
 
-const NewsletterSection = dynamic(
+const NewsletterSection = nextDynamic(
   () =>
     import("@/components/public/sections/NewsletterSection").then((m) => ({
       default: m.NewsletterSection,
@@ -86,7 +86,7 @@ const NewsletterSection = dynamic(
   { ssr: true },
 );
 
-const StatsSection = dynamic(
+const StatsSection = nextDynamic(
   () =>
     import("@/components/public/sections/StatsSection").then((m) => ({
       default: m.StatsSection,
@@ -94,7 +94,7 @@ const StatsSection = dynamic(
   { ssr: true },
 );
 
-const VerticalVideoSection = dynamic(
+const VerticalVideoSection = nextDynamic(
   () =>
     import("@/components/public/sections/VerticalVideoSection").then((m) => ({
       default: m.VerticalVideoSection,
@@ -103,9 +103,17 @@ const VerticalVideoSection = dynamic(
 );
 
 // ===========================================
-// CACHING: Revalidate every 5 minutes for fresh content
+// CACHING: Force dynamic rendering (no build-time prerender)
 // ===========================================
-export const revalidate = 300; // 5 minutes ISR
+// Previously used `revalidate = 300` (ISR), which caused `next build` to
+// attempt prerendering the homepage at build time. On hosting platforms
+// where the database is not reachable during build (e.g., Render), this
+// caused the build to fail with "Exited with status 1".
+//
+// `force-dynamic` tells Next.js to always render at request time, never
+// at build time. The page still benefits from ISR-like caching via the
+// Cache-Control headers set in next.config.js.
+export const dynamic = "force-dynamic";
 
 // Helper to safely fetch data with fallback
 async function safeFetch<T>(promise: Promise<T>, fallback: T): Promise<T> {
