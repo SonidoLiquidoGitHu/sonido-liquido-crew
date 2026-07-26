@@ -107,6 +107,81 @@ function buildIgMentions(artistNames: string[]): string[] {
 
 const META_GRAPH_API = "https://graph.facebook.com/v22.0";
 
+// ===========================================
+// CAPTION LENGTH VALIDATION
+// ===========================================
+// Instagram: 2,200 char hard limit (API rejects longer)
+// Facebook: no hard limit, but feed truncates at ~477 chars
+// We truncate to IG's limit to be safe (FB can handle 2,200 fine).
+
+const MAX_CAPTION_LENGTH = 2200;
+
+/**
+ * Truncate a caption to fit within the platform character limit.
+ *
+ * Priority order (what to keep when truncating):
+ *   1. First line (headline — usually "🔥 Nueva música de..." or the title)
+ *   2. @mentions line (crew artist credits)
+ *   3. Link URL (Spotify/site)
+ *   4. Hashtags
+ *   5. Body text (descriptive — first to be trimmed)
+ *
+ * If the caption is already under the limit, returns it unchanged.
+ */
+function truncateCaption(caption: string, maxLength = MAX_CAPTION_LENGTH): string {
+  if (caption.length <= maxLength) return caption;
+
+  const lines = caption.split("\n");
+
+  // Categorize lines
+  let headline = "";
+  let mentions = "";
+  let link = "";
+  let hashtags = "";
+  const bodyLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith("@") && !headline) {
+      mentions = trimmed;
+    } else if (trimmed.startsWith("#")) {
+      hashtags = trimmed;
+    } else if (trimmed.match(/^https?:\/\//)) {
+      link = trimmed;
+    } else if (!headline) {
+      headline = trimmed;
+    } else {
+      bodyLines.push(trimmed);
+    }
+  }
+
+  // Build the truncated caption in priority order
+  const parts: string[] = [headline];
+  if (mentions) parts.push(mentions);
+
+  // Add as much body as fits
+  const overhead = parts.join("\n").length + (link ? link.length + 1 : 0) + (hashtags ? hashtags.length + 1 : 0) + 4;
+  const remainingSpace = maxLength - overhead;
+
+  if (remainingSpace > 20) {
+    // Try to fit some body text
+    const bodyText = bodyLines.join("\n");
+    if (bodyText.length <= remainingSpace) {
+      parts.push(bodyText);
+    } else {
+      parts.push(bodyText.substring(0, remainingSpace - 3) + "...");
+    }
+  }
+
+  if (link) parts.push(link);
+  if (hashtags) parts.push(hashtags);
+
+  const result = parts.join("\n");
+  // Final safety: hard truncate if still over (shouldn't happen, but just in case)
+  return result.length > maxLength ? result.substring(0, maxLength - 3) + "..." : result;
+}
+
 // Cached DB credentials (fetched once per process lifetime, or when invalidated)
 let _dbCredentials: Record<string, string> | null = null;
 
@@ -1991,6 +2066,9 @@ export interface SocialPostQueueWithId {
   platforms: string;
   postedPlatforms: string | null;
   errorMessage: string | null;
+  // Retry tracking (migration 0022)
+  retryCount?: number;
+  nextRetryAt?: Date | null;
 }
 
 /**
@@ -2331,6 +2409,16 @@ export async function processQueueItem(
     console.warn("[Social] Caption regeneration failed, using original:", err);
   }
 
+  // Truncate caption to platform limits (IG: 2,200 chars)
+  // Prevents IG API rejection for long captions with many @mentions
+  const originalLength = caption.length;
+  caption = truncateCaption(caption);
+  if (caption.length < originalLength) {
+    console.log(
+      `[Social] Caption truncated from ${originalLength} to ${caption.length} chars to fit platform limit`,
+    );
+  }
+
   // Default results with explicit error field so we never get "undefined" in messages
   let fbResult: FacebookPostResult = {
     success: false,
@@ -2660,7 +2748,74 @@ export async function processQueueItem(
   if (allPlatformsNowPosted) {
     newStatus = "posted";
   } else if (anyFailed && !anyPlatformSucceeded) {
-    newStatus = "failed";
+    // All platforms failed — check if we should retry or give up
+    const currentRetryCount = (item as SocialPostQueueWithId).retryCount || 0;
+    const MAX_RETRIES = 3;
+
+    // Check if the error is retryable (network/rate-limit) vs permanent (auth)
+    const errorStr = [
+      fbResult.error || "",
+      igResult.error || "",
+    ].join(" ").toLowerCase();
+    const isAuthError =
+      errorStr.includes("401") ||
+      errorStr.includes("unauthorized") ||
+      errorStr.includes("invalid_token") ||
+      errorStr.includes("permission") ||
+      errorStr.includes("access denied");
+
+    if (currentRetryCount < MAX_RETRIES && !isAuthError) {
+      // Retry with exponential backoff: 5min, 15min, 60min
+      const backoffMinutes = [5, 15, 60][currentRetryCount] || 60;
+      const nextRetryAt = new Date(Date.now() + backoffMinutes * 60 * 1000);
+      console.log(
+        `[Social] Post failed (attempt ${currentRetryCount + 1}/${MAX_RETRIES}). ` +
+          `Scheduling retry in ${backoffMinutes}min at ${nextRetryAt.toISOString()}`,
+      );
+      newStatus = "pending"; // Stay pending so the cron picks it up again
+      // biome-ignore lint/suspicious/noExplicitAny: drizzle partial update
+      const updateData: Record<string, any> = {
+        status: newStatus,
+        postedPlatforms: JSON.stringify(postedPlatforms),
+        retryCount: currentRetryCount + 1,
+        nextRetryAt: nextRetryAt,
+        updatedAt: new Date(),
+      };
+      const errors: string[] = [];
+      if (!fbResult.success && platforms.includes("facebook"))
+        errors.push(`FB: ${fbResult.error || "unknown error"}`);
+      if (!igResult.success && platforms.includes("instagram"))
+        errors.push(`IG: ${igResult.error || "unknown error"}`);
+      updateData.errorMessage = `Retry ${currentRetryCount + 1}/${MAX_RETRIES}: ${errors.join(" | ")}`;
+
+      try {
+        await db
+          .update(socialPostQueue)
+          .set(updateData)
+          .where(eq(socialPostQueue.id, item.id));
+      } catch (updateError) {
+        console.error("[Social] Failed to update queue item for retry:", updateError);
+      }
+
+      return {
+        queueId: item.id,
+        facebook: fbResult,
+        instagram: igResult,
+        instagramStory: igStoryResult,
+      };
+    } else {
+      // Max retries reached OR auth error — give up
+      if (isAuthError) {
+        console.warn(
+          "[Social] Post failed with auth error — not retrying (token issue, not transient)",
+        );
+      } else {
+        console.warn(
+          `[Social] Post failed after ${MAX_RETRIES} retries — giving up`,
+        );
+      }
+      newStatus = "failed";
+    }
   }
   // If some platforms succeeded but not all, keep as "pending" so the cron retries the failed ones
   // The postedPlatforms tracking prevents re-posting to already-succeeded platforms
@@ -2674,6 +2829,9 @@ export async function processQueueItem(
 
   if (allPlatformsNowPosted) {
     updateData.postedAt = new Date();
+    // Reset retry tracking on success
+    updateData.retryCount = 0;
+    updateData.nextRetryAt = null;
   }
 
   if (anyFailed) {
@@ -3583,6 +3741,10 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
 
       // Atomically claim the item: fetch pending, then immediately set to "processing"
       // This prevents the race condition where the cron fires again before the item is marked "posted"
+      //
+      // RETRY LOGIC: Skip items where next_retry_at is set and hasn't arrived yet.
+      // This implements exponential backoff for failed posts (5min, 15min, 60min).
+      // Items with next_retry_at = NULL OR next_retry_at <= now are eligible.
       const items = await db
         .select()
         .from(socialPostQueue)
@@ -3590,6 +3752,7 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
           and(
             eq(socialPostQueue.status, "pending"),
             eq(socialPostQueue.contentType, nextType),
+            drizzleSql`(${socialPostQueue.nextRetryAt} IS NULL OR ${socialPostQueue.nextRetryAt} <= unixepoch())`,
           ),
         )
         .orderBy(socialPostQueue.queueOrder, socialPostQueue.cycleNumber)
