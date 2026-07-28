@@ -21,11 +21,13 @@ import {
   AlertCircle,
   Check,
   ExternalLink,
+  Eye,
   GripVertical,
   Headphones,
   Link2,
   Loader2,
   Mail,
+  MousePointerClick,
   Music,
   Music2,
   Pencil,
@@ -33,6 +35,7 @@ import {
   Search,
   Settings,
   Trash2,
+  TrendingUp,
   X,
   Youtube,
 } from "lucide-react";
@@ -290,6 +293,14 @@ export default function SamplingResourcesAdminPage() {
   const [savingGate, setSavingGate] = useState(false);
   const [showGateConfig, setShowGateConfig] = useState(false);
 
+  // Analytics stats (fetched from separate endpoint, doesn't affect resource loading)
+  const [analytics, setAnalytics] = useState<{
+    views: number;
+    clicks: number;
+    access: number;
+    conversion: number;
+  } | null>(null);
+
   // Toast
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -326,6 +337,15 @@ export default function SamplingResourcesAdminPage() {
 
   useEffect(() => {
     fetchData();
+    // Fetch analytics stats (best-effort, separate endpoint)
+    fetch("/api/sampling-resources/stats")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setAnalytics(json.data);
+        }
+      })
+      .catch(() => {});
   }, [fetchData]);
 
   // Delete handler
@@ -589,6 +609,27 @@ export default function SamplingResourcesAdminPage() {
                 icon={Music2}
               />
               <StatCard label="Categorías" value={counts.categories} />
+            </div>
+          )}
+
+          {/* Analytics Stats — from separate table, won't break if missing */}
+          {analytics && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+              <StatCard label="Visitas" value={analytics.views} icon={Eye} />
+              <StatCard label="Clicks" value={analytics.clicks} icon={MousePointerClick} />
+              <StatCard label="Accesos" value={analytics.access} icon={Mail} />
+              <div className="rounded-xl border p-4 bg-slc-card border-slc-border">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <span className="text-xs uppercase tracking-wider text-slc-muted">
+                    Conversión
+                  </span>
+                </div>
+                <p className="font-oswald text-2xl text-green-500">
+                  {analytics.views > 0 ? `${analytics.conversion}%` : "—"}
+                </p>
+                <p className="text-[10px] text-slc-muted mt-0.5">clicks / visitas</p>
+              </div>
             </div>
           )}
         </div>

@@ -151,6 +151,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Track access event (best-effort, separate table)
+    try {
+      const { db: dbClient, isDatabaseConfigured } = await import("@/db/client");
+      const { samplingResourceAnalytics } = await import("@/db/schema");
+      if (isDatabaseConfigured()) {
+        await dbClient.insert(samplingResourceAnalytics).values({
+          id: crypto.randomUUID(),
+          resourceId: "global",
+          action: "access",
+        });
+      }
+    } catch {
+      // Table might not exist — silent fail
+    }
+
     return NextResponse.json({
       success: true,
       message: "Access granted",

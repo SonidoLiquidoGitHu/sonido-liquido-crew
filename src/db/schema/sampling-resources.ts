@@ -46,6 +46,28 @@ export const samplingResourcesSettings = sqliteTable(
 );
 
 // ===========================================
+// SAMPLING RESOURCES ANALYTICS TABLE
+// ===========================================
+// Separate table for analytics — does NOT modify the existing
+// sampling_resources table, so existing SELECT * queries keep working
+// even if this table doesn't exist yet on Render (no auto-migrations).
+//
+// Each row = one tracking event. We use COUNT queries to aggregate.
+// This is simpler and safer than ALTER TABLE + increment counters.
+
+export const samplingResourceAnalytics = sqliteTable(
+  "sampling_resource_analytics",
+  {
+    id: text("id").primaryKey(),
+    resourceId: text("resource_id").notNull(),
+    action: text("action", { enum: ["view", "click", "access"] }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+);
+
+// ===========================================
 // TYPE EXPORTS
 // ===========================================
 
@@ -53,3 +75,5 @@ export type SamplingResource = typeof samplingResources.$inferSelect;
 export type NewSamplingResource = typeof samplingResources.$inferInsert;
 export type SamplingResourcesSetting =
   typeof samplingResourcesSettings.$inferSelect;
+export type SamplingResourceAnalytic =
+  typeof samplingResourceAnalytics.$inferSelect;
