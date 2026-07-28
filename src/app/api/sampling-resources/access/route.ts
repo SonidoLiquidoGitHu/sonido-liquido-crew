@@ -134,21 +134,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Increment access_count for ALL resources (the user gains access to all)
-    // Best-effort — don't fail if this doesn't work
-    try {
-      const { db: dbClient, isDatabaseConfigured } = await import("@/db/client");
-      const { samplingResources } = await import("@/db/schema");
-      const { sql } = await import("drizzle-orm");
-      if (isDatabaseConfigured()) {
-        await dbClient
-          .update(samplingResources)
-          .set({ accessCount: sql`access_count + 1`, updatedAt: new Date() });
-      }
-    } catch (trackErr) {
-      console.warn("[sampling-resources] Failed to increment access_count:", trackErr);
-    }
-
     // Ensure the "sampling-resources" tag is applied in Mailchimp for segmentation
     try {
       const { mailchimpClient } = await import("@/lib/clients");
