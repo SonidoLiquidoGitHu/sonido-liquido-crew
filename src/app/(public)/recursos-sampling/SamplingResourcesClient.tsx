@@ -64,6 +64,17 @@ const typeMeta: Record<
 
 const STORAGE_KEY = "slc:sampling-access:v2";
 
+// Fire-and-forget tracking — don't await, don't block UI
+function trackResource(resourceId: string, action: "view" | "click") {
+  try {
+    fetch("/api/sampling-resources/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resourceId, action }),
+    }).catch(() => {}); // Silent fail
+  } catch {}
+}
+
 function ResourceEmbed({ resource }: { resource: SamplingResource }) {
   if (resource.type === "video" && resource.videoId) {
     return (
@@ -172,6 +183,7 @@ function ResourceCard({ resource }: { resource: SamplingResource }) {
           href={resource.url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackResource(resource.id, "click")}
           className="mt-5 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slc-darker border border-slc-border text-white text-sm font-medium uppercase tracking-wide hover:bg-primary hover:border-primary transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
@@ -569,6 +581,15 @@ export default function SamplingResourcesClient() {
       })
       .catch(() => {});
   }, []);
+
+  // Track views for all resources when access is granted
+  useEffect(() => {
+    if (accessGranted && resources.length > 0) {
+      for (const resource of resources) {
+        trackResource(resource.id, "view");
+      }
+    }
+  }, [accessGranted, resources]);
 
   // Group by category
   const categories = Array.from(

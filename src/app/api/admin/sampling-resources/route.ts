@@ -125,6 +125,10 @@ function rowToResource(row: (typeof samplingResources)["$inferSelect"]) {
     ...(row.videoId ? { videoId: row.videoId } : {}),
     ...(row.playlistId ? { playlistId: row.playlistId } : {}),
     ...(row.handle ? { handle: row.handle } : {}),
+    // Analytics fields (migration 0022) — default to 0 if columns don't exist
+    viewCount: (row as Record<string, unknown>).viewCount ?? 0,
+    clickCount: (row as Record<string, unknown>).clickCount ?? 0,
+    accessCount: (row as Record<string, unknown>).accessCount ?? 0,
   };
 }
 

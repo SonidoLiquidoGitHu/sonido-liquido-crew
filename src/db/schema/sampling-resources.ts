@@ -20,6 +20,15 @@ export const samplingResources = sqliteTable("sampling_resources", {
   playlistId: text("playlist_id"),
   handle: text("handle"),
   sortOrder: integer("sort_order").notNull().default(0),
+
+  // Analytics (migration 0022)
+  // viewCount: incremented when the resource card is visible on the public page
+  // clickCount: incremented when a user clicks the external link to YouTube
+  // accessCount: incremented when a user submits their email to access the page
+  viewCount: integer("view_count").notNull().default(0),
+  clickCount: integer("click_count").notNull().default(0),
+  accessCount: integer("access_count").notNull().default(0),
+
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
