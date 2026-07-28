@@ -61,13 +61,6 @@ export const socialPostQueue = sqliteTable("social_post_queue", {
   // Error details if failed
   errorMessage: text("error_message"),
 
-  // Retry tracking (migration 0022)
-  // retry_count: 0 = never tried, 1 = failed once, etc.
-  // next_retry_at: when to retry next (null = no retry scheduled or already retried)
-  // After 3 failed attempts, status is set to 'failed' permanently.
-  retryCount: integer("retry_count").notNull().default(0),
-  nextRetryAt: integer("next_retry_at", { mode: "timestamp" }),
-
   // Timestamps
   scheduledAt: integer("scheduled_at", { mode: "timestamp" }), // When it's supposed to go out
   postedAt: integer("posted_at", { mode: "timestamp" }), // When it actually went out

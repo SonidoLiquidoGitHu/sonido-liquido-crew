@@ -2066,9 +2066,6 @@ export interface SocialPostQueueWithId {
   platforms: string;
   postedPlatforms: string | null;
   errorMessage: string | null;
-  // Retry tracking (migration 0022)
-  retryCount?: number;
-  nextRetryAt?: Date | null;
 }
 
 /**
@@ -2748,74 +2745,7 @@ export async function processQueueItem(
   if (allPlatformsNowPosted) {
     newStatus = "posted";
   } else if (anyFailed && !anyPlatformSucceeded) {
-    // All platforms failed — check if we should retry or give up
-    const currentRetryCount = (item as SocialPostQueueWithId).retryCount || 0;
-    const MAX_RETRIES = 3;
-
-    // Check if the error is retryable (network/rate-limit) vs permanent (auth)
-    const errorStr = [
-      fbResult.error || "",
-      igResult.error || "",
-    ].join(" ").toLowerCase();
-    const isAuthError =
-      errorStr.includes("401") ||
-      errorStr.includes("unauthorized") ||
-      errorStr.includes("invalid_token") ||
-      errorStr.includes("permission") ||
-      errorStr.includes("access denied");
-
-    if (currentRetryCount < MAX_RETRIES && !isAuthError) {
-      // Retry with exponential backoff: 5min, 15min, 60min
-      const backoffMinutes = [5, 15, 60][currentRetryCount] || 60;
-      const nextRetryAt = new Date(Date.now() + backoffMinutes * 60 * 1000);
-      console.log(
-        `[Social] Post failed (attempt ${currentRetryCount + 1}/${MAX_RETRIES}). ` +
-          `Scheduling retry in ${backoffMinutes}min at ${nextRetryAt.toISOString()}`,
-      );
-      newStatus = "pending"; // Stay pending so the cron picks it up again
-      // biome-ignore lint/suspicious/noExplicitAny: drizzle partial update
-      const updateData: Record<string, any> = {
-        status: newStatus,
-        postedPlatforms: JSON.stringify(postedPlatforms),
-        retryCount: currentRetryCount + 1,
-        nextRetryAt: nextRetryAt,
-        updatedAt: new Date(),
-      };
-      const errors: string[] = [];
-      if (!fbResult.success && platforms.includes("facebook"))
-        errors.push(`FB: ${fbResult.error || "unknown error"}`);
-      if (!igResult.success && platforms.includes("instagram"))
-        errors.push(`IG: ${igResult.error || "unknown error"}`);
-      updateData.errorMessage = `Retry ${currentRetryCount + 1}/${MAX_RETRIES}: ${errors.join(" | ")}`;
-
-      try {
-        await db
-          .update(socialPostQueue)
-          .set(updateData)
-          .where(eq(socialPostQueue.id, item.id));
-      } catch (updateError) {
-        console.error("[Social] Failed to update queue item for retry:", updateError);
-      }
-
-      return {
-        queueId: item.id,
-        facebook: fbResult,
-        instagram: igResult,
-        instagramStory: igStoryResult,
-      };
-    } else {
-      // Max retries reached OR auth error — give up
-      if (isAuthError) {
-        console.warn(
-          "[Social] Post failed with auth error — not retrying (token issue, not transient)",
-        );
-      } else {
-        console.warn(
-          `[Social] Post failed after ${MAX_RETRIES} retries — giving up`,
-        );
-      }
-      newStatus = "failed";
-    }
+    newStatus = "failed";
   }
   // If some platforms succeeded but not all, keep as "pending" so the cron retries the failed ones
   // The postedPlatforms tracking prevents re-posting to already-succeeded platforms
@@ -2829,9 +2759,6 @@ export async function processQueueItem(
 
   if (allPlatformsNowPosted) {
     updateData.postedAt = new Date();
-    // Reset retry tracking on success
-    updateData.retryCount = 0;
-    updateData.nextRetryAt = null;
   }
 
   if (anyFailed) {
@@ -3741,10 +3668,6 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
 
       // Atomically claim the item: fetch pending, then immediately set to "processing"
       // This prevents the race condition where the cron fires again before the item is marked "posted"
-      //
-      // RETRY LOGIC: Skip items where next_retry_at is set and hasn't arrived yet.
-      // This implements exponential backoff for failed posts (5min, 15min, 60min).
-      // Items with next_retry_at = NULL OR next_retry_at <= now are eligible.
       const items = await db
         .select()
         .from(socialPostQueue)
@@ -3752,7 +3675,6 @@ export async function getNextPendingItem(): Promise<SocialPostQueueWithId | null
           and(
             eq(socialPostQueue.status, "pending"),
             eq(socialPostQueue.contentType, nextType),
-            drizzleSql`(${socialPostQueue.nextRetryAt} IS NULL OR ${socialPostQueue.nextRetryAt} <= unixepoch())`,
           ),
         )
         .orderBy(socialPostQueue.queueOrder, socialPostQueue.cycleNumber)
