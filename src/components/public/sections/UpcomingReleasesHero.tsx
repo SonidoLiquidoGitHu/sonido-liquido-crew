@@ -225,7 +225,8 @@ function CompactReleaseCard({
   const hasPresave = Boolean(
     release.rpmPresaveUrl ||
       release.spotifyPresaveUrl ||
-      release.appleMusicPresaveUrl,
+      release.appleMusicPresaveUrl ||
+      release.distrokidHyperfollowUrl,
   );
 
   return (
@@ -396,10 +397,11 @@ function CompactReleaseCard({
               </div>
             )}
 
-            {/* Presave Button */}
+            {/* Presave Button — prioritizes HyperFollow for one-click access */}
             {hasPresave ? (
               <Link
                 href={
+                  release.distrokidHyperfollowUrl ||
                   release.rpmPresaveUrl ||
                   release.spotifyPresaveUrl ||
                   release.appleMusicPresaveUrl ||
@@ -415,7 +417,7 @@ function CompactReleaseCard({
                   className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wide shadow-lg shadow-primary/30 gap-2"
                 >
                   <Bell className="w-4 h-4" />
-                  Pre-save ahora
+                  {release.distrokidHyperfollowUrl ? "Pre-save ya" : "Pre-save ahora"}
                 </Button>
               </Link>
             ) : (
@@ -480,6 +482,19 @@ function CompactReleaseCard({
                     title="Deezer"
                   >
                     <span className="text-[#00C7F2] font-bold text-xs">D</span>
+                  </Link>
+                )}
+                {release.distrokidHyperfollowUrl && (
+                  <Link
+                    href={release.distrokidHyperfollowUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-8 px-3 rounded-full bg-primary/20 hover:bg-primary/40 flex items-center justify-center transition-colors"
+                    title="DistroKid HyperFollow"
+                  >
+                    <span className="text-primary font-bold text-[10px] uppercase">
+                      HyperFollow
+                    </span>
                   </Link>
                 )}
               </div>

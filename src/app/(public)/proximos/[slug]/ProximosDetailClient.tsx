@@ -79,7 +79,9 @@ export default function ProximosDetailClient({
     youtubeMusic: release.youtubeMusicPresaveUrl,
   };
 
-  const hasPresaveLinks = Object.values(presaveLinks).some(Boolean);
+  const hasPresaveLinks =
+    Object.values(presaveLinks).some(Boolean) ||
+    Boolean(release.distrokidHyperfollowUrl);
 
   // Minimal shape consumed by the StoryCard canvas generators
   const shareData: UpcomingReleaseShareData = {
@@ -227,6 +229,22 @@ export default function ProximosDetailClient({
               {/* Presave Buttons */}
               {hasPresaveLinks && !isReleased && (
                 <PresaveButtons links={presaveLinks} />
+              )}
+
+              {/* HyperFollow (DistroKid) — one-click presave to all platforms */}
+              {release.distrokidHyperfollowUrl && !isReleased && (
+                <div className="mt-6">
+                  <Button asChild size="lg" className="text-lg px-8 py-6 gap-2">
+                    <a
+                      href={release.distrokidHyperfollowUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="w-5 h-5" />
+                      Pre-save en HyperFollow
+                    </a>
+                  </Button>
+                </div>
               )}
 
               {/* Main CTA if RPM link exists */}
