@@ -369,19 +369,41 @@ export default function MediaReleasePage({
             </div>
           </div>
 
+          {/* Banner Image — full width at top, if available */}
+          {release.bannerImageUrl && (
+            <div className="relative w-full aspect-[3/1] rounded-xl overflow-hidden bg-slc-card mb-6">
+              <Image
+                src={release.bannerImageUrl}
+                alt={release.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 800px"
+              />
+            </div>
+          )}
+
           {/* Title & Meta */}
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Cover */}
+            {/* Cover — clickable to download full-res */}
             {release.coverImageUrl && (
-              <div className="w-32 h-32 lg:w-40 lg:h-40 flex-shrink-0 rounded-lg overflow-hidden bg-slc-card">
+              <a
+                href={release.coverImageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-32 h-32 lg:w-40 lg:h-40 flex-shrink-0 rounded-lg overflow-hidden bg-slc-card group relative block"
+                title="Click para descargar imagen HD"
+              >
                 <Image
                   src={release.coverImageUrl}
                   alt={release.title}
                   width={160}
                   height={160}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
-              </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <Download className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
             )}
 
             <div className="flex-1">
@@ -806,7 +828,9 @@ export default function MediaReleasePage({
               )}
 
             {/* Downloads */}
-            {(release.pressKitUrl ||
+            {(release.coverImageUrl ||
+              release.bannerImageUrl ||
+              release.pressKitUrl ||
               release.highResImagesUrl ||
               release.linerNotesUrl) && (
               <div className="bg-slc-card border border-slc-border rounded-xl p-5">
@@ -815,6 +839,30 @@ export default function MediaReleasePage({
                   Archivos
                 </h3>
                 <div className="space-y-2">
+                  {release.coverImageUrl && (
+                    <a
+                      href={release.coverImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 transition-colors group"
+                    >
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                      <span className="flex-1">Portada (HD)</span>
+                      <Download className="w-3 h-3 text-slc-muted group-hover:text-primary" />
+                    </a>
+                  )}
+                  {release.bannerImageUrl && (
+                    <a
+                      href={release.bannerImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-2 rounded-lg text-sm bg-slc-dark hover:bg-primary/10 transition-colors group"
+                    >
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                      <span className="flex-1">Banner (HD)</span>
+                      <Download className="w-3 h-3 text-slc-muted group-hover:text-primary" />
+                    </a>
+                  )}
                   {release.pressKitUrl && (
                     <a
                       href={release.pressKitUrl}

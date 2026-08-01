@@ -45,6 +45,7 @@ import {
   UserPlus,
   Users,
   Video,
+  Wand2,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -141,6 +142,7 @@ export default function EditMediaReleasePage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [existingPressKits, setExistingPressKits] = useState<
     {
@@ -654,6 +656,51 @@ export default function EditMediaReleasePage() {
     );
   };
 
+  // AI description generator — generates summary, content, and pull quote
+  const handleGenerateDescription = async () => {
+    if (!formData.title) {
+      setMessage({ type: "error", text: "Necesitas un título primero" });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+    setGeneratingAI(true);
+    try {
+      const res = await fetch("/api/admin/media-releases/generate-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          artistName: formData.mainArtistName || undefined,
+          category: formData.category,
+          releaseType: undefined,
+          releaseDate: formData.releaseDate || undefined,
+          tags: formData.tags || undefined,
+          existingSummary: formData.summary || undefined,
+          existingContent: formData.content || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFormData((prev) => ({
+          ...prev,
+          summary: data.data.summary || prev.summary,
+          content: data.data.content || prev.content,
+          pullQuote: data.data.pullQuote || prev.pullQuote,
+        }));
+        setMessage({ type: "success", text: "Descripción generada con IA" });
+      } else {
+        setMessage({
+          type: "error",
+          text: data.error || "Error al generar descripción",
+        });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error de conexión con la IA" });
+    }
+    setGeneratingAI(false);
+    setTimeout(() => setMessage(null), 4000);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1006,9 +1053,26 @@ export default function EditMediaReleasePage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm text-slc-muted mb-2">
-                        Resumen (1-2 oraciones para redes sociales)
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm text-slc-muted">
+                          Resumen (1-2 oraciones para redes sociales)
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGenerateDescription}
+                          disabled={generatingAI || !formData.title}
+                          className="gap-1.5 text-xs"
+                        >
+                          {generatingAI ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Wand2 className="w-3.5 h-3.5" />
+                          )}
+                          {generatingAI ? "Generando..." : "Generar con IA"}
+                        </Button>
+                      </div>
                       <textarea
                         value={formData.summary}
                         onChange={(e) =>
